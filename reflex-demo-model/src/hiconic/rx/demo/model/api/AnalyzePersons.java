@@ -10,8 +10,10 @@ import hiconic.rx.demo.model.data.HasPersons;
 import hiconic.rx.demo.model.data.PersonsAnalysis;
 
 public interface AnalyzePersons extends PersonRequest, HasPersons {
+
 	EntityType<AnalyzePersons> T = EntityTypes.T(AnalyzePersons.class);
-	
+
 	@Override
 	EvalContext<? extends PersonsAnalysis> eval(Evaluator<ServiceRequest> evaluator);
+
 }

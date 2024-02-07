@@ -8,22 +8,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class DataGenerationSource {
-	private List<String> names;
-	private List<String> lastNames;
+
+	private final List<String> names;
+	private final List<String> lastNames;
 	
 	public DataGenerationSource() {
 		names = readLines("names.txt");
 		lastNames = readLines("last-names.txt");
 	}
 	
-	public List<String> getNames() {
-		return names;
-	}
-	
-	public List<String> getLastNames() {
-		return lastNames;
-	}
-
 	private List<String> readLines(String resource) {
 		List<String> elements = new ArrayList<String>();
 		
@@ -39,4 +32,12 @@ public class DataGenerationSource {
 		}
 		return elements;
 	}
+	public List<String> getNames() {
+		return names;
+	}
+	
+	public List<String> getLastNames() {
+		return lastNames;
+	}
+
 }

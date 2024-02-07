@@ -7,7 +7,7 @@ import java.util.function.Supplier;
 
 import com.braintribe.cfg.Required;
 import com.braintribe.gm.model.reason.Maybe;
-import com.braintribe.model.processing.service.api.ServiceRequestContext;
+import com.braintribe.model.processing.service.api.ServiceProcessor;
 import com.braintribe.model.processing.service.impl.AbstractDispatchingServiceProcessor;
 import com.braintribe.model.processing.service.impl.DispatchConfiguration;
 
@@ -20,65 +20,139 @@ import hiconic.rx.demo.model.data.Person;
 import hiconic.rx.demo.model.data.PersonsAnalysis;
 
 /**
+ * {@link ServiceProcessor} for {@link PersonRequest}s.
+ *
+ * <h2>Curl examples</h2>
  * 
- * Example curl call to generate person data into a file call result.json
- * curl http://localhost:8080/api/main/GeneratePersons?personCount=1000000 > result.json
+ * Generate person data:
+ * 
+ * <pre>
+ * curl "http://localhost:8080/api/main/GeneratePersons?personCount=1000000&type-explicitness=never" > persons.json
+ * </pre>
+ * 
+ * Analyze person data:
+ * 
+ * <pre>
+ * curl "http://localhost:8080/api/main/AnalyzePersons?TODO"
+ * </pre>
  */
 public class PersonRequestProcessor extends AbstractDispatchingServiceProcessor<PersonRequest, Object> {
+
+	private static long YEAR_IN_MS = 365L * 24 * 60 * 60 * 1000;
+	private static long THIRTY_YEARS_IN_MS = 30L * YEAR_IN_MS;
+
 	private Supplier<DataGenerationSource> dataGenerationSourceSupplier;
-	
+
 	@Required
 	public void setDataGenerationSourceSupplier(Supplier<DataGenerationSource> dataGenerationSourceSupplier) {
 		this.dataGenerationSourceSupplier = dataGenerationSourceSupplier;
 	}
-	
+
 	@Override
 	protected void configureDispatching(DispatchConfiguration<PersonRequest, Object> dispatching) {
-		dispatching.registerReasoned(GeneratePersons.T, this::generatePersons);
-		dispatching.registerReasoned(AnalyzePersons.T, this::analyzePersons);
+		dispatching.registerReasoned(GeneratePersons.T, (ctx, req) -> generatePersons(req));
+		dispatching.registerReasoned(AnalyzePersons.T, (ctx, req) -> analyzePersons(req));
 	}
-	
-	private Maybe<HasPersons> generatePersons(ServiceRequestContext context, GeneratePersons request) {
+
+	//
+	// GeneratePersons
+	//
+	private Maybe<HasPersons> generatePersons(GeneratePersons request) {
+		DataGenerator generator = new DataGenerator();
+		int count = request.getPersonCount();
 
 		HasPersons result = HasPersons.T.create();
-		
-		int count = request.getPersonCount();
-		
-		DataGenerationSource source = dataGenerationSourceSupplier.get();
-		
-		List<String> names = source.getNames();
-		List<String> lastNames = source.getLastNames();
 
-		Random random = new Random(0);
-		
-		int namesSize = names.size();
-		int lastNamesSize = lastNames.size();
-		Gender[] genders = Gender.values();
-		long thirtyYearsInMs = 30L * 365 * 24 * 60 * 60 * 1000;
 		List<Person> persons = result.getPersons();
-		
-		for (int i = 0; i < count; i++) {
-			String name = names.get(random.nextInt(namesSize));
-			String lastName = lastNames.get(random.nextInt(lastNamesSize));
-			String email = name.toLowerCase() + "." + lastName.toLowerCase() + "@demo.rx";
-			Gender gender = genders[random.nextInt(genders.length)];
-			Date birthday = new Date(random.nextLong(thirtyYearsInMs)); 
-			
-			Person p = Person.T.create();
-			p.setName(name);
-			p.setLastName(lastName);
-			p.setEmail(email);
-			p.setGender(gender);
-			p.setBirthday(birthday);
-			
-			persons.add(p);
-		}
-		
+		for (int i = 0; i < count; i++)
+			persons.add(generatePerson(generator));
+
 		return Maybe.complete(result);
 	}
-	
-	private Maybe<PersonsAnalysis> analyzePersons(ServiceRequestContext context, AnalyzePersons request) {
-		
-		return Maybe.complete(null);
+
+	private Person generatePerson(DataGenerator generator) {
+		Person p = Person.T.create();
+
+		p.setName(generator.randomName());
+		p.setLastName(generator.randomLastName());
+		p.setGender(generator.randomGander());
+		p.setBirthday(generator.randomBirthDate());
+
+		p.setEmail((p.getName() + "." + p.getLastName() + "@demo.rx").toLowerCase());
+
+		return p;
+	}
+
+	class DataGenerator {
+		private final DataGenerationSource source = dataGenerationSourceSupplier.get();
+
+		private final List<String> names = source.getNames();
+		private final List<String> lastNames = source.getLastNames();
+
+		private final Random random = new Random(0);
+
+		private final int namesSize = names.size();
+		private final int lastNamesSize = lastNames.size();
+
+		public String randomName() {
+			return names.get(random.nextInt(namesSize));
+		}
+
+		public String randomLastName() {
+			return lastNames.get(random.nextInt(lastNamesSize));
+		}
+
+		public Gender randomGander() {
+			return random.nextBoolean() ? Gender.male : Gender.female;
+		}
+
+		public Date randomBirthDate() {
+			return new Date(random.nextLong(THIRTY_YEARS_IN_MS));
+		}
+	}
+
+	//
+	// AnalyzePersons
+	//
+	private Maybe<PersonsAnalysis> analyzePersons(AnalyzePersons request) {
+		return Maybe.complete(analyze(request.getPersons()));
+	}
+
+	private PersonsAnalysis analyze(List<Person> persons) {
+		PersonsAnalysis result = PersonsAnalysis.T.create();
+
+		if (persons.isEmpty()) {
+			return result;
+		}
+
+		long ageSum = 0;
+		int males = 0;
+		int females = 0;
+		int unknowns = 0;
+
+		for (Person p : persons) {
+			ageSum += p.getBirthday().getTime();
+
+			if (p.getGender() == Gender.male) {
+				males++;
+
+			} else if (p.getGender() == Gender.female) {
+				females++;
+
+			} else {
+				unknowns++;
+			}
+		}
+
+		int total = males + females + unknowns;
+		long avgAgeTime = ageSum / total;
+		long avgAgeYears = avgAgeTime / YEAR_IN_MS - 1970; // leap years aren't real
+
+		result.setAverageAge((int) avgAgeYears);
+		result.setPersonsCount(total);
+		result.setMales(males);
+		result.setFemales(females);
+
+		return result;
 	}
 }
