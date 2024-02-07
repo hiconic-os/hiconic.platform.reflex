@@ -1,4 +1,4 @@
-package hiconic.rx.demo.model;
+package hiconic.rx.demo.model.api;
 
 import com.braintribe.model.generic.eval.EvalContext;
 import com.braintribe.model.generic.eval.Evaluator;

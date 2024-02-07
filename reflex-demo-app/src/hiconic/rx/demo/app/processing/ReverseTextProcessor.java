@@ -6,7 +6,7 @@ import com.braintribe.gm.model.reason.essential.InvalidArgument;
 import com.braintribe.model.processing.service.api.ReasonedServiceProcessor;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
 
-import hiconic.rx.demo.model.ReverseText;
+import hiconic.rx.demo.model.api.ReverseText;
 
 public class ReverseTextProcessor implements ReasonedServiceProcessor<ReverseText, String> {
 	@Override
