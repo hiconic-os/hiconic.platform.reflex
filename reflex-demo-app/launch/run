@@ -1,0 +1,13 @@
+#!/bin/bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+INST_DIR=$DIR/../
+
+if [ -z "${JAVA_HOME}" ]; then
+    # JAVA_HOME not set (or empty) --> let's hope 'java' is on the PATH
+    JAVA_EXECUTABLE=java
+else
+    # JAVA_HOME set --> use 'java' command from there
+    JAVA_EXECUTABLE="${JAVA_HOME}/bin/java"
+fi
+
+"$JAVA_EXECUTABLE" -Djava.util.logging.config.file="$INST_DIR/conf/logging.properties" -Dreflex.app.dir="$INST_DIR" -jar "$INST_DIR/lib/launch.jar" "$@"

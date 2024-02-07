@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>hiconic.platform.reflex</groupId>
+	<artifactId>parent</artifactId>
+	<version>1.0.1</version>
+	<packaging>pom</packaging>
+	<properties>
+		<java.version>1.17</java.version>
+		<V.hiconic.platform.reflex>[1.0,1.1)</V.hiconic.platform.reflex>
+        <V.com.braintribe.common>[2.0,2.1)</V.com.braintribe.common>
+        <V.com.braintribe.logging>[2.0,2.1)</V.com.braintribe.logging>
+        <V.com.braintribe.wire>[2.0,2.1)</V.com.braintribe.wire>
+        <V.com.braintribe.gm>[2.0,2.1)</V.com.braintribe.gm>
+        <V.tribefire.extension.web-api>[1.0,1.1)</V.tribefire.extension.web-api>
+        <V.io.undertow>1.2.11.Final</V.io.undertow>
+	</properties>
+</project>
