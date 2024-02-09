@@ -1,6 +1,7 @@
 package hiconic.rx.platform;
 
 
+import static com.braintribe.console.ConsoleOutputs.cyan;
 import static com.braintribe.console.ConsoleOutputs.green;
 import static com.braintribe.console.ConsoleOutputs.text;
 
@@ -22,6 +23,7 @@ public class RxPlatform {
 	private static ApplicationProperties properties = PropertyLookups.create(ApplicationProperties.class, RxModuleLoader.readApplicationProperties()::getProperty);
 	
 	public static void main(String[] args) {
+		long startTime = System.currentTimeMillis();
 		setupConsoleOutput();
 		installShutdownHook();
 		
@@ -29,9 +31,19 @@ public class RxPlatform {
 		
 		ConsoleOutputs.println("Loading Application");
 		platformContract = Wire.context(new RxPlatformWireModule(appDir, args)).contract();
+
+		long upTime = System.currentTimeMillis();
+		long startupDuration = upTime - startTime;
+		
+		double startupDurationInS = startupDuration / 1000D;
+		
+		String formattedStartupDuration = String.format("%.3f", startupDurationInS);
+		
 		ConsoleOutputs.println(ConsoleOutputs.sequence(
 				text("Application Loaded "),
-				green("Successfully")
+				green("Successfully"),
+				text(" in "),
+				cyan(formattedStartupDuration + "s")
 		));
 		
 		eagerLoading();

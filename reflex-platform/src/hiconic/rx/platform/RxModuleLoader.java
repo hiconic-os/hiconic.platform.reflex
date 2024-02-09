@@ -1,5 +1,12 @@
 package hiconic.rx.platform;
 
+import static com.braintribe.console.ConsoleOutputs.brightBlack;
+import static com.braintribe.console.ConsoleOutputs.brightBlue;
+import static com.braintribe.console.ConsoleOutputs.cyan;
+import static com.braintribe.console.ConsoleOutputs.println;
+import static com.braintribe.console.ConsoleOutputs.sequence;
+import static com.braintribe.console.ConsoleOutputs.text;
+
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -47,7 +54,9 @@ public class RxModuleLoader implements LifecycleAware {
 	
 	@Override
 	public void postConstruct() {
+		println("Loading Modules:");
 		loadModules();
+		println();
 	}
 	
 	@Override
@@ -118,11 +127,17 @@ public class RxModuleLoader implements LifecycleAware {
 		if (wireModule == null)
 			return Reasons.build(ConfigurationError.T).text("Missing wire-module property in " + propertiesUrl).toMaybe();
 		
-		// TODO: more dynamic reflection of loading 
-		ConsoleOutputs.println( //
-				ConsoleOutputs.sequence(
-					ConsoleOutputs.text("Loading Module: "), //
-					ConsoleOutputs.brightBlue(wireModule) //
+		
+		int index = wireModule.lastIndexOf('.');
+		
+		String pckg = wireModule.substring(0, index);
+		String name = wireModule.substring(index + 1);
+		
+		println( //
+				sequence(
+					text("  - "), //
+					cyan(name), //
+					brightBlack(" (" + pckg + ")") //
 				)
 		);
 		

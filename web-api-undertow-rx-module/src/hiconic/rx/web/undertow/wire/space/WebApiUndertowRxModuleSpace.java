@@ -1,5 +1,11 @@
 package hiconic.rx.web.undertow.wire.space;
 
+import static com.braintribe.console.ConsoleOutputs.brightBlack;
+import static com.braintribe.console.ConsoleOutputs.cyan;
+import static com.braintribe.console.ConsoleOutputs.println;
+import static com.braintribe.console.ConsoleOutputs.sequence;
+import static com.braintribe.console.ConsoleOutputs.text;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -51,9 +57,26 @@ public class WebApiUndertowRxModuleSpace implements RxModuleContract {
 		undertowServer().start();
 	}
 	
+	@Override
+	public void onApplicationReady() {
+		println(
+				sequence(
+						text("Web Api Server running on: "),
+						cyan("http://localhost:"),
+						text("" + configuration().getPort()),
+						cyan("/api/")
+				)
+		);
+	}
+	
+	@Managed
+	private UndertowConfiguration configuration() {
+		return platform.readConfig(UndertowConfiguration.T).get();
+	}
+	
 	@Managed
 	private Undertow undertowServer() {
-		int port = platform.readConfig(UndertowConfiguration.T).get().getPort();
+		int port = configuration().getPort();
 		
 		WebApiV1Server servlet = server();
 		
