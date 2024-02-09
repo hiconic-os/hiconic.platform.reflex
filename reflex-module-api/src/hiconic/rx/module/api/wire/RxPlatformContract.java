@@ -37,6 +37,11 @@ public interface RxPlatformContract extends WireSpace {
 	 * Returns the {@link MarshallerRegistry}
 	 */
 	MarshallerRegistry marshallers();
+	
+	/**
+	 * Returns the arguments that were passed to the platform's main method
+	 */
+	String[] cliArguments();
 
 	/**
 	 *	Returns a configuration for the given type or a reason why the configuration could not be retrieved.

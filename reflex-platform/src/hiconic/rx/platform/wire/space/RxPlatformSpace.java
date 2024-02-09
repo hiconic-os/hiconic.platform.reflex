@@ -2,8 +2,6 @@ package hiconic.rx.platform.wire.space;
 
 import java.io.File;
 
-import com.braintribe.codec.marshaller.api.ConfigurableMarshallerRegistry;
-import com.braintribe.codec.marshaller.api.MarshallerRegistry;
 import com.braintribe.codec.marshaller.common.BasicConfigurableMarshallerRegistry;
 import com.braintribe.codec.marshaller.json.JsonStreamMarshaller;
 import com.braintribe.codec.marshaller.yaml.YamlMarshaller;
@@ -56,6 +54,11 @@ public class RxPlatformSpace implements RxPlatformContract {
 		
 		// load service processing
 		evaluator();
+		
+		// notify all modules about application being ready for action
+		for (RxModuleContract moduleContract: moduleLoader().getModuleContracts()) {
+			moduleContract.onApplicationReady();
+		}
 	}
 	
 	private void configureServices(ConfigurableDispatchingServiceProcessor config) {
@@ -141,5 +144,10 @@ public class RxPlatformSpace implements RxPlatformContract {
 		}
 		
 		return bean;
+	}
+	
+	@Override
+	public String[] cliArguments() {
+		return config.cliArguments();
 	}
 }

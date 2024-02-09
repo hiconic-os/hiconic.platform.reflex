@@ -15,18 +15,21 @@ import hiconic.rx.platform.wire.space.RxPlatformSpace;
 
 public class RxPlatformWireModule implements WireTerminalModule<RxPlatformContract> {
 	
-	private File appDir;
 	private RxPlatformConfigContract config;
 	
-	public RxPlatformWireModule(File appDir) {
+	public RxPlatformWireModule(File appDir, String[] cliArguments) {
 		super();
-		this.appDir = appDir;
 		
 		config = new RxPlatformConfigContract() {
 			
 			@Override
 			public File appDir() {
 				return appDir;
+			}
+			
+			@Override
+			public String[] cliArguments() {
+				return cliArguments;
 			}
 		};
 		

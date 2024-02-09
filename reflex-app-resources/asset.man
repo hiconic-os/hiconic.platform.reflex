@@ -1,0 +1,4 @@
+ResourcePriming = com.braintribe.model.asset.natures.ResourcePriming
+
+$nature = ResourcePriming()
+.accessIds = ('cortex')

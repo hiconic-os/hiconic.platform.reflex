@@ -1,6 +1,9 @@
 package hiconic.rx.platform;
 
 
+import static com.braintribe.console.ConsoleOutputs.green;
+import static com.braintribe.console.ConsoleOutputs.text;
+
 import java.io.File;
 
 import com.braintribe.console.AbstractAnsiConsole;
@@ -8,32 +11,48 @@ import com.braintribe.console.ConsoleConfiguration;
 import com.braintribe.console.ConsoleOutputs;
 import com.braintribe.model.generic.GMF;
 import com.braintribe.wire.api.Wire;
+import com.braintribe.wire.impl.properties.PropertyLookups;
 
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.platform.wire.RxPlatformWireModule;
 
 public class RxPlatform {
 	private static RxPlatformContract platformContract;
+	private static Object monitor = new Object();
+	private static ApplicationProperties properties = PropertyLookups.create(ApplicationProperties.class, RxModuleLoader.readApplicationProperties()::getProperty);
 	
 	public static void main(String[] args) {
 		setupConsoleOutput();
+		installShutdownHook();
 		
 		File appDir = determineAppDir();
 		
 		ConsoleOutputs.println("Loading Application");
-		platformContract = Wire.context(new RxPlatformWireModule(appDir)).contract();
-		ConsoleOutputs.println("Application Loaded Successfully");
+		platformContract = Wire.context(new RxPlatformWireModule(appDir, args)).contract();
+		ConsoleOutputs.println(ConsoleOutputs.sequence(
+				text("Application Loaded "),
+				green("Successfully")
+		));
 		
 		eagerLoading();
 		
-		Object waiter = new Object();
 		try {
-			synchronized(waiter) {
-				waiter.wait();
+			synchronized(monitor) {
+				monitor.wait();
 			}
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
+	}
+	
+	private static void installShutdownHook() {
+		// Registering the shutdown hook
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+        	ConsoleOutputs.println("Shutting down Application");
+        	synchronized (monitor) {
+        		monitor.notify();
+        	}
+        }));
 	}
 
 	private static void eagerLoading() {
@@ -50,7 +69,8 @@ public class RxPlatform {
 	}
 
 	private static void setupConsoleOutput() {
-		ConsoleConfiguration.install(new SysOutConsole(true));
+		if (properties.consoleOutput())
+			ConsoleConfiguration.install(new SysOutConsole(true));
 	}
 	
 	private static class SysOutConsole extends AbstractAnsiConsole  {

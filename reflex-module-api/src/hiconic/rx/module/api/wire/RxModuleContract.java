@@ -73,4 +73,11 @@ public interface RxModuleContract extends WireSpace {
 	default void configureApiModel(ModelMetaDataEditor editor) {
 	}
 	
+	/**
+	 * Called when the platform application loaded and initialized all modules
+	 */
+	default void onApplicationReady() {
+		
+	}
+	
 }

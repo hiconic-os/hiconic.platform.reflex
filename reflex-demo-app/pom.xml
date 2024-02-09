@@ -10,22 +10,6 @@
     <properties/>
     <dependencies>
         <dependency>
-            <groupId>com.braintribe.gm</groupId>
-            <artifactId>service-api</artifactId>
-            <version>${V.com.braintribe.gm}</version>
-        </dependency>
-        <dependency>
-            <groupId>hiconic.platform.reflex</groupId>
-            <artifactId>reflex-demo-model</artifactId>
-            <version>${V.hiconic.platform.reflex}</version>
-            <?tag asset ?>
-        </dependency>
-        <dependency>
-            <groupId>hiconic.platform.reflex</groupId>
-            <artifactId>reflex-module-api</artifactId>
-            <version>${V.hiconic.platform.reflex}</version>
-        </dependency>
-        <dependency>
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>reflex-platform</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
@@ -33,6 +17,11 @@
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>web-api-undertow-rx-module</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>reflex-demo-rx-module</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
     </dependencies>

@@ -3,6 +3,7 @@ package hiconic.rx.platform;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.io.UncheckedIOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -118,7 +119,12 @@ public class RxModuleLoader implements LifecycleAware {
 			return Reasons.build(ConfigurationError.T).text("Missing wire-module property in " + propertiesUrl).toMaybe();
 		
 		// TODO: more dynamic reflection of loading 
-		ConsoleOutputs.println("Loading Module: " + wireModule);
+		ConsoleOutputs.println( //
+				ConsoleOutputs.sequence(
+					ConsoleOutputs.text("Loading Module: "), //
+					ConsoleOutputs.brightBlue(wireModule) //
+				)
+		);
 		
 		Class<?> wireModuleClass;
 		try {
@@ -183,5 +189,27 @@ public class RxModuleLoader implements LifecycleAware {
 			return Reasons.build(ConfigurationError.T).text("Could not load WireContext for WireModule " + wireModule.getClass().getName()) //
 					.cause(InternalError.from(e)).toMaybe();
 		}
+	}
+	
+	public static Properties readApplicationProperties() {
+		Enumeration<URL> resources;
+		try {
+			resources = RxModuleLoader.class.getClassLoader().getResources("META-INF/rx-app.properties");
+		} catch (IOException e) {
+			throw new UncheckedIOException("Could not determine META-INF/rx-app.properties class path resources", e);
+		}
+		
+		Properties properties = new Properties();
+
+		while (resources.hasMoreElements()) {
+			URL url = resources.nextElement();
+			try (Reader reader = new InputStreamReader(url.openStream(), "UTF-8")) {
+				properties.load(reader);
+			} catch (IOException e) {
+				throw new UncheckedIOException("Could not read properties from " + url, e);
+			}
+		}
+		
+		return properties;
 	}
 }
