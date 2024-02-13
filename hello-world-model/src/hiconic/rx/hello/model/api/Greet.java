@@ -1,6 +1,7 @@
 package hiconic.rx.hello.model.api;
 
 
+import com.braintribe.model.generic.annotation.meta.Mandatory;
 import com.braintribe.model.generic.eval.EvalContext;
 import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.generic.reflection.EntityType;
@@ -12,6 +13,7 @@ public interface Greet extends ServiceRequest {
 	
 	String name = "name";
 	
+	@Mandatory
 	String getName();
 	void setName(String name);
 	

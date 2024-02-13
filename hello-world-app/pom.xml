@@ -14,7 +14,6 @@
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>hello-world-model</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
-            <?tag asset ?>
         </dependency>
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
@@ -29,6 +28,11 @@
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>web-api-undertow-rx-module</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>validation-rx-module</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
     </dependencies>

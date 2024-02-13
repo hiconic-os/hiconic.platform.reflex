@@ -31,13 +31,13 @@ public interface Options extends GenericEntity {
 	
 	@Description("Route the response of the request to a channel defined by the given value. The response is serialized in a format defined by 'responseMimeType'. "
 			+ "Supported channels: stdout, stderr, none or a filepath.")	
-	@Initializer("'none'")
+	@Initializer("'stdout'")
 	@Alias("r")
 	String getResponse();
 	void setResponse(String response);
 	
-	@Description("The mimetype of the serialization format for the response output. Possible values: text/yaml, application/x-yaml, text/xml, application/json, gm/bin, gm/jse, gm/man")	
-	@Initializer("'text/yaml'")
+	@Description("The mimetype of the serialization format for the response output. Possible values: text/yaml, application/x-yaml")	
+	@Initializer("'application/json'")
 	@Mandatory
 	String getResponseMimeType();
 	void setResponseMimeType(String responseMimeType);

@@ -1,16 +1,15 @@
 package hiconic.rx.platform.wire.space;
 
 import java.io.File;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import com.braintribe.codec.marshaller.common.BasicConfigurableMarshallerRegistry;
 import com.braintribe.codec.marshaller.json.JsonStreamMarshaller;
 import com.braintribe.codec.marshaller.yaml.YamlMarshaller;
 import com.braintribe.gm.config.yaml.ModeledYamlConfiguration;
 import com.braintribe.gm.model.reason.Maybe;
-import com.braintribe.gm.service.wire.common.contract.CommonServiceProcessingContract;
-import com.braintribe.gm.service.wire.common.contract.ServiceProcessingConfigurationContract;
 import com.braintribe.model.generic.GenericEntity;
-import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.meta.GmMetaModel;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
@@ -21,7 +20,7 @@ import com.braintribe.model.processing.meta.editor.BasicModelMetaDataEditor;
 import com.braintribe.model.processing.meta.oracle.BasicModelOracle;
 import com.braintribe.model.processing.meta.oracle.ModelOracle;
 import com.braintribe.model.processing.service.common.ConfigurableDispatchingServiceProcessor;
-import com.braintribe.model.service.api.ServiceRequest;
+import com.braintribe.model.processing.service.common.eval.ConfigurableServiceRequestEvaluator;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 import com.braintribe.wire.api.context.WireContext;
@@ -37,21 +36,13 @@ import hiconic.rx.platform.wire.contract.RxPlatformConfigContract;
 public class RxPlatformSpace implements RxPlatformContract {
 
 	@Import
-	private ServiceProcessingConfigurationContract serviceProcessingConfiguration;
-	
-	@Import
-	private CommonServiceProcessingContract commonServiceProcessing;
-	
-	@Import
 	private RxPlatformConfigContract config;
 	
 	@Import
-	WireContext<?> wireContext;
+	private WireContext<?> wireContext;
 	
 	@Override
 	public void onLoaded(WireContextConfiguration configuration) {
-		serviceProcessingConfiguration.registerServiceConfigurer(this::configureServices);
-		
 		// load service processing
 		evaluator();
 		
@@ -61,23 +52,11 @@ public class RxPlatformSpace implements RxPlatformContract {
 		}
 	}
 	
-	private void configureServices(ConfigurableDispatchingServiceProcessor config) {
-		for (RxModuleContract moduleContract: moduleLoader().getModuleContracts()) {
-			moduleContract.registerProcessors(config);
-		}
-	}
-	
 	@Managed
 	private RxModuleLoader moduleLoader() {
 		RxModuleLoader bean = new RxModuleLoader();
 		bean.setParentContext(wireContext);
 		return bean;
-	}
-	
-	@Managed
-	@Override
-	public Evaluator<ServiceRequest> evaluator() {
-		return commonServiceProcessing.evaluator();
 	}
 	
 	@Managed
@@ -149,5 +128,35 @@ public class RxPlatformSpace implements RxPlatformContract {
 	@Override
 	public String[] cliArguments() {
 		return config.cliArguments();
+	}
+	
+	@Override
+	public String applicationName() {
+		return config.properties().applicationName();
+	}
+	
+	@Override
+	@Managed
+	public ConfigurableServiceRequestEvaluator evaluator() {
+		ConfigurableServiceRequestEvaluator bean = new ConfigurableServiceRequestEvaluator();
+		bean.setExecutorService(executorService());
+		bean.setServiceProcessor(selectingServiceProcessor());
+		return bean;
+	}
+
+	@Managed
+	public ExecutorService executorService() {
+		return Executors.newFixedThreadPool(100);
+	}
+
+	@Managed
+	public ConfigurableDispatchingServiceProcessor selectingServiceProcessor() {
+		ConfigurableDispatchingServiceProcessor bean = new ConfigurableDispatchingServiceProcessor();
+
+		for (RxModuleContract moduleContract: moduleLoader().getModuleContracts()) {
+			moduleContract.registerProcessors(bean);
+		}
+
+		return bean;
 	}
 }

@@ -3,6 +3,8 @@ package hiconic.rx.platform;
 
 import static com.braintribe.console.ConsoleOutputs.cyan;
 import static com.braintribe.console.ConsoleOutputs.green;
+import static com.braintribe.console.ConsoleOutputs.magenta;
+import static com.braintribe.console.ConsoleOutputs.sequence;
 import static com.braintribe.console.ConsoleOutputs.text;
 
 import java.io.File;
@@ -29,8 +31,13 @@ public class RxPlatform {
 		
 		File appDir = determineAppDir();
 		
-		ConsoleOutputs.println("Loading Application");
-		platformContract = Wire.context(new RxPlatformWireModule(appDir, args)).contract();
+		ConsoleOutputs.println(sequence( //
+				text("Loading "), //
+				magenta(properties.applicationName()), //
+				text(" Application") //
+		));
+		
+		platformContract = Wire.context(new RxPlatformWireModule(appDir, args, properties)).contract();
 
 		long upTime = System.currentTimeMillis();
 		long startupDuration = upTime - startTime;
@@ -39,7 +46,7 @@ public class RxPlatform {
 		
 		String formattedStartupDuration = String.format("%.3f", startupDurationInS);
 		
-		ConsoleOutputs.println(ConsoleOutputs.sequence(
+		ConsoleOutputs.println(sequence(
 				text("Application Loaded "),
 				green("Successfully"),
 				text(" in "),
