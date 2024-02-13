@@ -6,7 +6,7 @@ import com.braintribe.model.generic.annotation.meta.Description;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 
-@Description("Creates a Reflex module.")
+@Description("Creates a Reflex application.")
 public interface CreateReflexApp extends CreateArtifact {
 
 	EntityType<CreateReflexApp> T = EntityTypes.T(CreateReflexApp.class);
