@@ -11,6 +11,7 @@
         <V.com.braintribe.logging>[2.0,2.1)</V.com.braintribe.logging>
         <V.com.braintribe.wire>[2.0,2.1)</V.com.braintribe.wire>
         <V.com.braintribe.gm>[2.0,2.1)</V.com.braintribe.gm>
+        <V.com.braintribe.devrock.templates>[2.0,2.1)</V.com.braintribe.devrock.templates>
         <V.tribefire.extension.web-api>[1.0,1.1)</V.tribefire.extension.web-api>
         <V.io.undertow>1.2.11.Final</V.io.undertow>
 	</properties>
