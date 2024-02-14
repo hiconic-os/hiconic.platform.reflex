@@ -18,11 +18,11 @@ Hiconic reflex (aka RX) aims to be a platform for __modeled micro-services__ wit
 
 ## Demo
 
-To get in touch without further ado you can take a first glance at [demos](./readme/demo/demo.md).
+To get in touch without further ado you can take a first glance at he platform with help of [demos](./readme/demo/demo.md).
 
 ## Building Your Own Application
 
-[Learn](./readme/platform-building/platform-building.md) how to build our own application with a few steps.
+[Learn](./readme/platform-building/platform-building.md) how to build our own application from a model and a module with a few steps.
 
 ## Design Concepts
 

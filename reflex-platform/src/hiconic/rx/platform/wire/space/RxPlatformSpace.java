@@ -146,7 +146,7 @@ public class RxPlatformSpace implements RxPlatformContract {
 
 	@Managed
 	public ExecutorService executorService() {
-		return Executors.newFixedThreadPool(100);
+		return Executors.newCachedThreadPool();
 	}
 
 	@Managed
