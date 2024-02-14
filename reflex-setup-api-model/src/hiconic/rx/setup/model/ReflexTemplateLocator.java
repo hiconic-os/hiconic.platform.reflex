@@ -6,6 +6,7 @@ import hiconic.platform.reflex._ReflexSetupApiModel_;
 
 /*package*/ class ReflexTemplateLocator {
 
+	/** Returns a fully qualified artifact name for an artifact in this same group. */
 	public static String template(String artifactId) {
 		ArtifactReflection ar = _ReflexSetupApiModel_.reflection;
 		return ar.groupId() + ":" + artifactId + "#" + ReflexTemplateLocator.removeRevision(ar.version());
