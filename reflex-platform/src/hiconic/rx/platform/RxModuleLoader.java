@@ -29,8 +29,14 @@ import com.braintribe.utils.lcd.LazyInitialized;
 import com.braintribe.wire.api.Wire;
 import com.braintribe.wire.api.context.WireContext;
 import com.braintribe.wire.api.module.WireTerminalModule;
+import com.braintribe.wire.api.space.ContractResolution;
+import com.braintribe.wire.api.space.ContractSpaceResolver;
+import com.braintribe.wire.api.space.WireSpace;
+import com.braintribe.wire.impl.properties.PropertyLookups;
 
+import hiconic.rx.module.api.wire.EnvironmentPropertiesContract;
 import hiconic.rx.module.api.wire.RxModuleContract;
+import hiconic.rx.module.api.wire.SystemPropertiesContract;
 
 public class RxModuleLoader implements LifecycleAware {
 
@@ -208,7 +214,9 @@ public class RxModuleLoader implements LifecycleAware {
 
 	private Maybe<WireContext<RxModuleContract>> loadWireModuleContext(WireTerminalModule<RxModuleContract> wireModule) {
 		try {
-			WireContext<RxModuleContract> wireContext = Wire.contextBuilder(wireModule).parent(parentContext).build();
+			WireContext<RxModuleContract> wireContext = Wire.contextBuilder(wireModule) //
+					.parent(parentContext) //
+					.bindContracts(PropertyLookupContractResolver.INSTANCE).build();
 			return Maybe.complete(wireContext);
 
 		} catch (Exception e) {
@@ -242,5 +250,24 @@ public class RxModuleLoader implements LifecycleAware {
 		}
 
 		return properties;
+	}
+	
+	private static class PropertyLookupContractResolver implements ContractSpaceResolver {
+		
+		public static PropertyLookupContractResolver INSTANCE = new PropertyLookupContractResolver();
+
+		@Override
+		public ContractResolution resolveContractSpace(Class<? extends WireSpace> contractSpaceClass) {
+			if (SystemPropertiesContract.class.isAssignableFrom(contractSpaceClass)) {
+				return f -> PropertyLookups.create(contractSpaceClass, System::getProperty);
+			}
+			
+			if (EnvironmentPropertiesContract.class.isAssignableFrom(contractSpaceClass)) {
+				return f -> PropertyLookups.create(contractSpaceClass, System::getenv);
+			}
+			
+			return null;
+		}
+		
 	}
 }

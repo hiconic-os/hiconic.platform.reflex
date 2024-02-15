@@ -29,11 +29,12 @@ import com.braintribe.wire.api.context.WireContextConfiguration;
 import hiconic.platform.reflex._ReflexPlatform_;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
+import hiconic.rx.module.api.wire.RxProcessLaunchContract;
 import hiconic.rx.platform.RxModuleLoader;
 import hiconic.rx.platform.wire.contract.RxPlatformConfigContract;
 
 @Managed
-public class RxPlatformSpace implements RxPlatformContract {
+public class RxPlatformSpace implements RxPlatformContract, RxProcessLaunchContract {
 
 	@Import
 	private RxPlatformConfigContract config;
@@ -128,6 +129,11 @@ public class RxPlatformSpace implements RxPlatformContract {
 	@Override
 	public String[] cliArguments() {
 		return config.cliArguments();
+	}
+	
+	@Override
+	public String launchScriptName() {
+		return config.launchScriptName();
 	}
 	
 	@Override

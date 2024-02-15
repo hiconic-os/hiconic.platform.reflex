@@ -17,27 +17,28 @@ import com.braintribe.wire.api.Wire;
 import com.braintribe.wire.impl.properties.PropertyLookups;
 
 import hiconic.rx.module.api.wire.RxPlatformContract;
+import hiconic.rx.platform.conf.ApplicationProperties;
+import hiconic.rx.platform.conf.SystemProperties;
 import hiconic.rx.platform.wire.RxPlatformWireModule;
 
 public class RxPlatform {
 	private static RxPlatformContract platformContract;
 	private static Object monitor = new Object();
-	private static ApplicationProperties properties = PropertyLookups.create(ApplicationProperties.class, RxModuleLoader.readApplicationProperties()::getProperty);
+	private static ApplicationProperties applicationProperties = PropertyLookups.create(ApplicationProperties.class, RxModuleLoader.readApplicationProperties()::getProperty);
+	private static SystemProperties systemProperties = PropertyLookups.create(SystemProperties.class, System::getProperty);
 	
 	public static void main(String[] args) {
 		long startTime = System.currentTimeMillis();
 		setupConsoleOutput();
 		installShutdownHook();
 		
-		File appDir = determineAppDir();
-		
 		ConsoleOutputs.println(sequence( //
 				text("Loading "), //
-				magenta(properties.applicationName()), //
+				magenta(applicationProperties.applicationName()), //
 				text(" Application") //
 		));
 		
-		platformContract = Wire.context(new RxPlatformWireModule(appDir, args, properties)).contract();
+		platformContract = Wire.context(new RxPlatformWireModule(args, applicationProperties, systemProperties)).contract();
 
 		long upTime = System.currentTimeMillis();
 		long startupDuration = upTime - startTime;
@@ -78,17 +79,8 @@ public class RxPlatform {
 		GMF.getTypeReflection().getPackagedModels().forEach(m -> m.getMetaModel());
 	}
 
-	private static File determineAppDir() {
-		String appDir = System.getProperty("reflex.app.dir");
-		
-		if (appDir != null)
-			return new File(appDir);
-		
-		return new File(".");
-	}
-
 	private static void setupConsoleOutput() {
-		if (properties.consoleOutput())
+		if (applicationProperties.consoleOutput())
 			ConsoleConfiguration.install(new SysOutConsole(true));
 	}
 	

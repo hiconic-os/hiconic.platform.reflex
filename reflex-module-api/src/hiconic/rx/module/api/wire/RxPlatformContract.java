@@ -39,11 +39,6 @@ public interface RxPlatformContract extends WireSpace {
 	MarshallerRegistry marshallers();
 	
 	/**
-	 * Returns the arguments that were passed to the platform's main method
-	 */
-	String[] cliArguments();
-	
-	/**
 	 * The name of the application which the platform is hosting given by the applicationName property in META-INF/rx-app.properties
 	 */
 	String applicationName();
