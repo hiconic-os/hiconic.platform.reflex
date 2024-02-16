@@ -11,14 +11,18 @@ public interface CreateReflexProject extends CreateArtifact {
 
 	EntityType<CreateReflexProject> T = EntityTypes.T(CreateReflexProject.class);
 
-	@Alias("p")
-	@Description("Specifies the intended platform. The only effect is that a corresponding module dependency will be added to the application.")
-	RxPlatform getPlatform();
-	void setPlatform(RxPlatform platform);
+	@Alias("e")
+	@Description("Specifies the intended endpoint. The only effect is that a corresponding module dependency will be added to the application.")
+	RxEndpoint getEndpoint();
+	void setEndpoint(RxEndpoint endpoint);
 
 	@Override
 	default String template() {
 		return ReflexTemplateLocator.template("reflex-project-template");
 	}
 
+	@Override
+	default boolean delegatingOnly() {
+		return true;
+	}
 }

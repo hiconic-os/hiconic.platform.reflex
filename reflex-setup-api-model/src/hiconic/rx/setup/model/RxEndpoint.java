@@ -9,11 +9,11 @@ import com.braintribe.model.generic.reflection.EnumTypes;
  * 
  * @author peter.gazdik
  */
-public enum RxPlatform implements EnumBase {
+public enum RxEndpoint implements EnumBase {
 	web,
 	cli;
 
-	public static final EnumType T = EnumTypes.T(RxPlatform.class);
+	public static final EnumType T = EnumTypes.T(RxEndpoint.class);
 
 	@Override
 	public EnumType type() {
