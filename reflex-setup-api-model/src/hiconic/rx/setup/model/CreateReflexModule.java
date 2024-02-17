@@ -10,6 +10,9 @@ public interface CreateReflexModule extends CreateArtifact {
 
 	EntityType<CreateReflexModule> T = EntityTypes.T(CreateReflexModule.class);
 
+	boolean getSampleProcessor();
+	void setSampleProcessor(boolean sampleProcessor);
+
 	@Override
 	default String template() {
 		return ReflexTemplateLocator.template("reflex-module-template");

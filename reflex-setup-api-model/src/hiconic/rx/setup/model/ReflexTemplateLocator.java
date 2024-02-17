@@ -4,7 +4,7 @@ import com.braintribe.common.artifact.ArtifactReflection;
 
 import hiconic.platform.reflex._ReflexSetupApiModel_;
 
-/*package*/ class ReflexTemplateLocator {
+public class ReflexTemplateLocator {
 
 	/** Returns a fully qualified artifact name for an artifact in this same group. */
 	public static String template(String artifactId) {

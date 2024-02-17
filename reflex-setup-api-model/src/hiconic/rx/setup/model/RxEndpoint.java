@@ -5,11 +5,11 @@ import com.braintribe.model.generic.reflection.EnumType;
 import com.braintribe.model.generic.reflection.EnumTypes;
 
 /**
- * 
- * 
  * @author peter.gazdik
  */
 public enum RxEndpoint implements EnumBase {
+
+	none,
 	web,
 	cli;
 

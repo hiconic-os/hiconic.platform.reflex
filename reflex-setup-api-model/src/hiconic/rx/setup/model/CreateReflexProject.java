@@ -1,6 +1,7 @@
 package hiconic.rx.setup.model;
 
 import com.braintribe.devrock.templates.model.artifact.CreateArtifact;
+import com.braintribe.model.generic.annotation.Initializer;
 import com.braintribe.model.generic.annotation.meta.Alias;
 import com.braintribe.model.generic.annotation.meta.Description;
 import com.braintribe.model.generic.reflection.EntityType;
@@ -13,6 +14,7 @@ public interface CreateReflexProject extends CreateArtifact {
 
 	@Alias("e")
 	@Description("Specifies the intended endpoint. The only effect is that a corresponding module dependency will be added to the application.")
+	@Initializer("web")
 	RxEndpoint getEndpoint();
 	void setEndpoint(RxEndpoint endpoint);
 
