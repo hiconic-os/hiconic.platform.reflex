@@ -19,7 +19,7 @@ We need to prepare the `devrock-sdk`, which is a directory that besides actual p
 Note that we have added two CLI tools to our path:
 
 * _jinni_ - allows creation of new projects based on templates, among other things 
-* _dr_ - is a simple wrapper for the underlying build scripts - _Gradle_ and _Ant_ - to make things simpler
+* _dr_ - is a simple wrapper for the underlying build tools - _Gradle_ and _Ant_ - to make things simpler
 
 To verify the `PATH` is configured properly go to the command line and run:
 
@@ -43,9 +43,9 @@ DONE
 
 _dev-env_ (which obviously stands for Development Environment) is a directory inside `devrock-sdk/env` which contains the code and configuration of your project, including an _Eclipse_ workspace.
 
-> Having multiple _dev-envs_ is useful when working on multiple independent projects, but you can do all your work in just one _dev-env_.
-
 Let's create a _dev-evn_ called `demo`.
+
+> Having multiple _dev-envs_ is useful when working on multiple independent projects, but you can do all your work in just one.
 
 On command line, navigate to `devrock-sdk/env`, end enter:
 ```cli
@@ -109,6 +109,15 @@ jinni create-group
 
 This creates a _parent_ for the _group_ as well as _Gradle_ files used for building multiple artifacts at the same time.
 
+Expected folder structure (excluding files starting with '.'):
+```
+parent/
+  build.xml
+  pom.xml
+build.gradle
+buildscript.gralde
+```
+
 ## Creating an Application
 
 We can let _Jinni_ create a simple `hello-world` web application for us:
@@ -116,11 +125,11 @@ We can let _Jinni_ create a simple `hello-world` web application for us:
 jinni create-reflex-project demo
 ```
 
-This creates the following three artifacts for us:
+This creates the following three artifacts:
 
-* `demo-model` contains our request entities (and thus defines our API). As an example, _Jinni_ has created one such request called `Greet`.
+* `demo-model` contains the request entities that make up our API. As an example, _Jinni_ creates one such request called `Greet`.
 
-* `demo-rx-module` contains the implementation of our API. As an example, _Jinni_ has create a `GreetProcessor`, which can handle the `Greet` request. `DemoRxModuleSpace` then binds this processor to that request inside the `registerProcessors` method:
+* `demo-rx-module` contains the implementation of our API. As an example, _Jinni_ creates `GreetProcessor` to handle the `Greet` request. `DemoRxModuleSpace` then binds this processor to that request inside the `registerProcessors` method:
 
   ```java
   @Override
@@ -129,9 +138,9 @@ This creates the following three artifacts for us:
   }
   ```
 
-* `demo-app` defines our application as bundle of the `reflex-platform`, our module and a web endpoint module `web-api-undertow-rx-module`.
+* `demo-app` defines our application as a bundle of the `reflex-platform`, our `demo-rx-module` and a module that provides a web server with a REST endpoint (`web-api-undertow-rx-module`).
 
-  Note that this `web` endpoint is the default, but we could have also created a CLI application via:
+  Note that this `web` endpoint is the default, but we could have also created a `CLI` application via:
   ```cli
   jinni create-reflex-project demo -e cli
   ```
@@ -158,9 +167,9 @@ sh run
 
 Our application should start at the default port `8080`.
 
-To verify, open [http://localhost:8080/api/main/Greet?name=John](http://localhost:8080/api/main/Greet?name=John)
+To verify, open [http://localhost:8080/api/main/Greet?name=Someone](http://localhost:8080/api/main/Greet?name=Someone)
 
-Your browser should display "Hello John".
+Your browser should display "Hello Someone".
 
 
 ### Starting the Application from Eclipse
@@ -181,4 +190,4 @@ Now we need to import our artifacts. This is easy thanks to the _Devrock_ plugin
 
 Now, we want to run our application - `demo-app` - with the main class `RxPlatform`. For this there is a generated _Eclipse_ launch configuration. Expand the `demo-app` project, right click `demo-app.lauch` and click `Debug As` / `demo-app`.
 
-
+To verify, once again, open [http://localhost:8080/api/main/Greet?name=Someone](http://localhost:8080/api/main/Greet?name=Someone)
