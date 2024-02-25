@@ -1,11 +1,11 @@
 package hiconic.rx.web.undertow.wire.space;
 
-import static com.braintribe.console.ConsoleOutputs.brightBlack;
 import static com.braintribe.console.ConsoleOutputs.cyan;
 import static com.braintribe.console.ConsoleOutputs.println;
 import static com.braintribe.console.ConsoleOutputs.sequence;
 import static com.braintribe.console.ConsoleOutputs.text;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -15,7 +15,6 @@ import javax.servlet.ServletException;
 
 import org.jboss.logging.Logger;
 
-import com.braintribe.console.ConsoleOutputs;
 import com.braintribe.ddra.endpoints.api.api.v1.DdraMappings;
 import com.braintribe.model.resource.api.MimeTypeRegistry;
 import com.braintribe.model.resource.utils.MimeTypeRegistryImpl;
@@ -30,11 +29,15 @@ import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.web.servlet.ApiV1RestServletUtils;
 import hiconic.rx.web.servlet.DdraEndpointsExceptionHandler;
 import hiconic.rx.web.servlet.WebApiV1Server;
+import hiconic.rx.web.undertow.model.config.StaticFilesystemResourceMapping;
+import hiconic.rx.web.undertow.model.config.StaticWebServerConfiguration;
 import hiconic.rx.web.undertow.model.config.UndertowConfiguration;
 import io.undertow.Handlers;
 import io.undertow.Undertow;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.handlers.PathHandler;
+import io.undertow.server.handlers.resource.FileResourceManager;
+import io.undertow.server.handlers.resource.ResourceHandler;
 import io.undertow.servlet.Servlets;
 import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.DeploymentManager;
@@ -75,6 +78,11 @@ public class WebApiUndertowRxModuleSpace implements RxModuleContract {
 	}
 	
 	@Managed
+	private StaticWebServerConfiguration webServerConfiguration() {
+		return platform.readConfig(StaticWebServerConfiguration.T).get();
+	}
+	
+	@Managed
 	private Undertow undertowServer() {
 		int port = configuration().getPort();
 		
@@ -101,8 +109,17 @@ public class WebApiUndertowRxModuleSpace implements RxModuleContract {
 			throw new RuntimeException(e);
 		}
 		
-		//PathHandler path = Handlers.path(Handlers.redirect("/api")).addPrefixPath("/api", handler);
-		PathHandler path = Handlers.path(handler);
+		PathHandler path = Handlers.path(Handlers.redirect("/api")).addPrefixPath("/api", handler);
+		
+		for (StaticFilesystemResourceMapping mapping: webServerConfiguration().getResourceMappings()) {
+			
+	        // Create the ResourceHandler for serving static files
+	        ResourceHandler resourceHandler = new ResourceHandler(new FileResourceManager(new File(mapping.getRootDir()), 100))
+	                .setWelcomeFiles("index.html")
+	                .setDirectoryListingEnabled(false);
+
+			path.addExactPath(mapping.getPath(), resourceHandler);
+		}
 	    
 		Undertow bean = Undertow.builder()
 				.addHttpListener(port, "localhost")
