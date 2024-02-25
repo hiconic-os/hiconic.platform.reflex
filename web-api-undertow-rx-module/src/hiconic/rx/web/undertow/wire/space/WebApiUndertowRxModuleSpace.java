@@ -109,17 +109,10 @@ public class WebApiUndertowRxModuleSpace implements RxModuleContract {
 			throw new RuntimeException(e);
 		}
 		
-		PathHandler path = Handlers.path(Handlers.redirect("/api")).addPrefixPath("/api", handler);
+		//PathHandler path = Handlers.path(Handlers.redirect("/api")).addPrefixPath("/api", handler);
+		PathHandler path = Handlers.path(handler);
 		
-		for (StaticFilesystemResourceMapping mapping: webServerConfiguration().getResourceMappings()) {
-			
-	        // Create the ResourceHandler for serving static files
-	        ResourceHandler resourceHandler = new ResourceHandler(new FileResourceManager(new File(mapping.getRootDir()), 100))
-	                .setWelcomeFiles("index.html")
-	                .setDirectoryListingEnabled(false);
-
-			path.addExactPath(mapping.getPath(), resourceHandler);
-		}
+		configureResources(path);
 	    
 		Undertow bean = Undertow.builder()
 				.addHttpListener(port, "localhost")
@@ -128,6 +121,20 @@ public class WebApiUndertowRxModuleSpace implements RxModuleContract {
 		
 		return bean;
 	}
+	
+	private void configureResources(PathHandler path) {
+		for (StaticFilesystemResourceMapping mapping: webServerConfiguration().getResourceMappings()) {
+			
+	        // Create the ResourceHandler for serving static files
+	        ResourceHandler resourceHandler = new ResourceHandler(new FileResourceManager(new File(mapping.getRootDir()), 100))
+	                .setWelcomeFiles("index.html")
+	                .setDirectoryListingEnabled(false);
+
+			path.addPrefixPath(mapping.getPath(), resourceHandler);
+		}
+	}
+	
+
 	
 	@Managed
 	private WebApiV1Server server() {
