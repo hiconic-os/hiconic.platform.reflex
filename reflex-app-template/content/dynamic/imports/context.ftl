@@ -15,18 +15,5 @@
 
 <#assign basePackage = "${support.smartPackageName(_groupPackage, nameBaseSnake)}">
 
-<#assign wirePackage = "${basePackage}.wire">
-<#assign spacePackage = "${wirePackage}.space">
-<#assign modelPackage = "${basePackage}.model">
-<#assign modelDeploymentPackage = "${modelPackage}.deployment">
-<#assign modelApiPackage = "${modelPackage}.api">
-<#assign processingPackage = "${basePackage}.processing">
-
-<#assign wireModuleSimple = "${_artifactIdPascal}">
-<#assign wireModuleFull = "${wirePackage}.${wireModuleSimple}">
-
-<#assign spaceSimple = "${_artifactIdPascal}Space">
-<#assign spaceFull = "${spacePackage}.${spaceSimple}">
-
-<#assign serviceProcessorSimple = "${nameBasePascal}ServiceProcessor">
-<#assign serviceProcessorFull = "${modelDeploymentPackage}.${serviceProcessorSimple}">
+<#assign launchFileName = "${request.artifactId}.launch">
+<#assign projectName = "${request.artifactId} - ${request.groupId}">

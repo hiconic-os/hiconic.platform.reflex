@@ -1,6 +1,5 @@
 <#import '/imports/context.ftl' as context>
-${template.relocate(context.relocation(context.wireModuleFull))}
-package ${context.wirePackage};
+${template.relocate(context.relocation(context.wireModuleFull))}package ${context.wirePackage};
 
 import com.braintribe.wire.api.context.WireContextBuilder;
 import com.braintribe.wire.api.module.WireTerminalModule;

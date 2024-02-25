@@ -3,7 +3,8 @@
     <#return "src/${classFullName?replace('.', '/')}.java">
 </#function>
 
-<#assign _groupPackage = request.groupId?replace("-", "")>
+<#assign groupId = request.groupId>
+<#assign _groupPackage = groupId?replace("-", "")>
 <#assign _artifactIdPascal = support.toPascalCase(request.artifactId, '-')>
 
 <#assign nameBaseKebab = request.artifactId?remove_ending("-rx-module")>
@@ -16,7 +17,6 @@
 <#assign wirePackage = "${basePackage}.wire">
 <#assign spacePackage = "${wirePackage}.space">
 <#assign modelPackage = "${basePackage}.model">
-<#assign modelDeploymentPackage = "${modelPackage}.deployment">
 <#assign modelApiPackage = "${modelPackage}.api">
 <#assign processingPackage = "${basePackage}.processing">
 
@@ -26,5 +26,11 @@
 <#assign spaceSimple = "${_artifactIdPascal}Space">
 <#assign spaceFull = "${spacePackage}.${spaceSimple}">
 
-<#assign serviceProcessorSimple = "${nameBasePascal}ServiceProcessor">
-<#assign serviceProcessorFull = "${modelDeploymentPackage}.${serviceProcessorSimple}">
+<#assign greetRequestSimple = "Greet">
+<#assign greetRequestFull = "${modelApiPackage}.${greetRequestSimple}">
+
+<#assign greetProcessorSimple = "GreetProcessor">
+<#assign greetProcessorFull = "${processingPackage}.${greetProcessorSimple}">
+
+<#assign modelReflectionSimple = "_${context.nameBasePascal}Model_">
+<#assign modelReflectionFull = "${context.groupId}.${modelReflectionSimple}">
