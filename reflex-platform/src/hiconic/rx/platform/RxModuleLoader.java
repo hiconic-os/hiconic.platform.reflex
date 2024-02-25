@@ -251,9 +251,9 @@ public class RxModuleLoader implements LifecycleAware {
 
 		return properties;
 	}
-	
+
 	private static class PropertyLookupContractResolver implements ContractSpaceResolver {
-		
+
 		public static PropertyLookupContractResolver INSTANCE = new PropertyLookupContractResolver();
 
 		@Override
@@ -261,13 +261,13 @@ public class RxModuleLoader implements LifecycleAware {
 			if (SystemPropertiesContract.class.isAssignableFrom(contractSpaceClass)) {
 				return f -> PropertyLookups.create(contractSpaceClass, System::getProperty);
 			}
-			
+
 			if (EnvironmentPropertiesContract.class.isAssignableFrom(contractSpaceClass)) {
 				return f -> PropertyLookups.create(contractSpaceClass, System::getenv);
 			}
-			
+
 			return null;
 		}
-		
+
 	}
 }
