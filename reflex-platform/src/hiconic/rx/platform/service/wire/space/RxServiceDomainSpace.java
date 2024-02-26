@@ -1,5 +1,6 @@
 package hiconic.rx.platform.service.wire.space;
 
+import com.braintribe.gm._ServiceApiModel_;
 import com.braintribe.model.meta.GmMetaModel;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.meta.cmd.CmdResolverImpl;
@@ -55,6 +56,7 @@ public class RxServiceDomainSpace implements RxServiceDomainContract {
 	@Managed
 	public ConfigurationModelBuilder configurationModelBuilder() {
 		ConfigurationModelBuilder bean = ConfigurationModels.create(_ReflexPlatform_.groupId, "configured-" + config.domainId() + "-api-model");
+		bean.addDependency(_ServiceApiModel_.reflection);
 		return bean;
 	}
 	
@@ -81,7 +83,7 @@ public class RxServiceDomainSpace implements RxServiceDomainContract {
 		RxServiceDomain bean = new RxServiceDomain();
 		bean.setDomainId(config.domainId());
 		bean.setEvaluator(evaluator());
-		bean.setMdResolver(cmdResolver());
+		bean.setCmdResolver(this::cmdResolver);
 		bean.setConfigurationModelBuilder(configurationModelBuilder());
 		bean.setDispatcher(selectingServiceProcessor());
 		return bean;

@@ -2,7 +2,6 @@ package hiconic.rx.demo.wire.space;
 
 import com.braintribe.wire.api.annotation.Managed;
 
-import hiconic.platform.reflex._DemoModel_;
 import hiconic.rx.demo.model.api.PersonRequest;
 import hiconic.rx.demo.model.api.ReverseText;
 import hiconic.rx.demo.processing.DataGenerationSource;
@@ -16,8 +15,6 @@ public class DemoRxModuleSpace implements RxModuleContract {
 	
 	@Override
 	public void configureMainServiceDomain(ServiceDomainConfiguration configuration) {
-		configuration.addModel(_DemoModel_.reflection);
-		
 		configuration.register(ReverseText.T, reverseTextProcessor());
 		configuration.register(PersonRequest.T, personRequestProcessor());
 	}

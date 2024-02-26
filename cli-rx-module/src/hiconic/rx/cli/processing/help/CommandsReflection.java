@@ -14,6 +14,7 @@ package hiconic.rx.cli.processing.help;
 import static com.braintribe.utils.lcd.CollectionTools2.newList;
 import static com.braintribe.utils.lcd.StringTools.camelCaseToSocialDistancingCase;
 
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
@@ -76,11 +77,11 @@ public class CommandsReflection {
 	}
 
 	public CommandsOverview getCommandsOverview() {
-		EntityTypeOracle serviceRequestOracle = modelOracle.getEntityTypeOracle(ServiceRequest.T);
-		EntityTypeOracle fromOracle = modelOracle.getEntityTypeOracle(From.T);
-		EntityTypeOracle optionsOracle = modelOracle.getEntityTypeOracle(Options.T);
+		EntityTypeOracle serviceRequestOracle = modelOracle.findEntityTypeOracle(ServiceRequest.T);
+		EntityTypeOracle fromOracle = modelOracle.findEntityTypeOracle(From.T);
+		EntityTypeOracle optionsOracle = modelOracle.findEntityTypeOracle(Options.T);
 
-		GmMetaModel serviceApiModel = serviceRequestOracle.asGmEntityType().declaringModel();
+		GmMetaModel serviceApiModel = serviceRequestOracle != null? serviceRequestOracle.asGmEntityType().declaringModel() : null;
 
 		List<GmEntityType> requestTypes = listTypes(serviceRequestOracle, serviceApiModel);
 		List<GmEntityType> inputTypes = listTypes(fromOracle, null);
@@ -90,6 +91,9 @@ public class CommandsReflection {
 	}
 
 	private List<GmEntityType> listTypes(EntityTypeOracle serviceRequestOracle, GmMetaModel exclusionModel) {
+		if (serviceRequestOracle == null)
+			return Collections.emptyList();
+		
 		return serviceRequestOracle.getSubTypes() //
 				.transitive() //
 				.includeSelf() //

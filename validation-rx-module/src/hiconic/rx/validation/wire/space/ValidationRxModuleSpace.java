@@ -1,7 +1,6 @@
 package hiconic.rx.validation.wire.space;
 
 import com.braintribe.model.processing.service.api.InterceptorRegistry;
-import com.braintribe.model.processing.service.common.ConfigurableDispatchingServiceProcessor;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
@@ -22,15 +21,14 @@ public class ValidationRxModuleSpace implements RxModuleContract {
 	
 	@Managed
 	private ValidationProcessor validationProcessor() {
-		// TODO: validation needs to keep each service domain separate (currently everything works only on main domain)
 		ValidationProcessor bean = new ValidationProcessor();
-		bean.setValidation(validation());
+		bean.setValidationSupplier(this::validation);
 		return bean;
 	}
 	
 	@Managed
-	private Validation validation() {
-		Validation bean = new Validation(platform.serviceDomains().main().cmdResolver());
+	private Validation validation(String domainId) {
+		Validation bean = new Validation(platform.serviceDomains().byId(domainId).cmdResolver());
 		return bean;
 	}
 

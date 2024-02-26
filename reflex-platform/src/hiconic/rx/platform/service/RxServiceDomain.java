@@ -3,7 +3,10 @@ package hiconic.rx.platform.service;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import com.braintribe.cfg.Required;
 import com.braintribe.common.artifact.ArtifactReflection;
@@ -25,12 +28,13 @@ import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 
 public class RxServiceDomain implements ServiceDomain, ServiceDomainConfiguration {
 
-	private CmdResolver mdResolver;
+	private Supplier<CmdResolver> cmdResolverSupplier;
 	private String domainId;
 	private Evaluator<ServiceRequest> evaluator;
 	private ConfigurationModelBuilder configurationModelBuilder;
 	private ConfigurableDispatchingServiceProcessor dispatcher;
 	private List<Consumer<ModelMetaDataEditor>> modelConfigurers = Collections.synchronizedList(new ArrayList<>());
+	private Set<String> models = ConcurrentHashMap.newKeySet();
 	
 	@Required
 	public void setDispatcher(ConfigurableDispatchingServiceProcessor dispatcher) {
@@ -43,8 +47,8 @@ public class RxServiceDomain implements ServiceDomain, ServiceDomainConfiguratio
 	}
 	
 	@Required
-	public void setMdResolver(CmdResolver mdResolver) {
-		this.mdResolver = mdResolver;
+	public void setCmdResolver(Supplier<CmdResolver> cmdResolver) {
+		this.cmdResolverSupplier = cmdResolver;
 	}
 
 	@Required
@@ -68,7 +72,7 @@ public class RxServiceDomain implements ServiceDomain, ServiceDomainConfiguratio
 
 	@Override
 	public CmdResolver cmdResolver() {
-		return mdResolver;
+		return cmdResolverSupplier.get();
 	}
 
 	@Override
@@ -83,25 +87,30 @@ public class RxServiceDomain implements ServiceDomain, ServiceDomainConfiguratio
 	
 	@Override
 	public ServiceDomainConfiguration addModel(ArtifactReflection modelArtifactReflection) {
-		configurationModelBuilder.addDependency(modelArtifactReflection);
+		addModelByName(modelArtifactReflection.name());
 		return this;
 	}
 	
 	@Override
 	public ServiceDomainConfiguration addModel(GmMetaModel gmModel) {
-		configurationModelBuilder.addDependency(gmModel);
+		if (models.add(gmModel.getName()))
+			configurationModelBuilder.addDependency(gmModel);
+		
 		return this;
 	}
 	
 	@Override
 	public ServiceDomainConfiguration addModel(Model model) {
-		configurationModelBuilder.addDependency(model);
+		addModelByName(model.name());
+		
 		return this;
 	}
 	
 	@Override
 	public ServiceDomainConfiguration addModelByName(String modelName) {
-		configurationModelBuilder.addDependencyByName(modelName);
+		if (models.add(modelName))
+			configurationModelBuilder.addDependencyByName(modelName);
+		
 		return this;
 	}
 	
@@ -113,6 +122,7 @@ public class RxServiceDomain implements ServiceDomain, ServiceDomainConfiguratio
 	@Override
 	public <R extends ServiceRequest> void register(EntityType<R> requestType,
 			ServiceProcessor<? super R, ?> serviceProcessor) {
+		addModel(requestType.getModel());
 		dispatcher.register(requestType, serviceProcessor);
 	}
 	

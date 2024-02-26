@@ -51,10 +51,12 @@ public class RxPlatformSpace implements RxPlatformContract, RxProcessLaunchContr
 		List<RxModuleContract> moduleContracts = moduleLoader().listModuleContracts();
 
 		RxServiceDomainConfigurations serviceDomainConfigurations = serviceDomainConfigurations();
+		RxServiceDomain mainDomain = serviceDomainConfigurations.main();
 		
 		// run service domain configuration of all modules
 		// TODO: parallelize
 		for (RxModuleContract moduleContract: moduleContracts) {
+			moduleContract.configureMainServiceDomain(mainDomain);
 			moduleContract.configureServiceDomains(serviceDomainConfigurations);
 			moduleContract.registerCrossDomainInterceptors(rootServiceProcessor());
 			moduleContract.registerFallbackProcessors(fallbackProcessor());
@@ -96,6 +98,7 @@ public class RxPlatformSpace implements RxPlatformContract, RxProcessLaunchContr
 	public RxServiceDomains serviceDomains() {
 		RxServiceDomains bean = new RxServiceDomains();
 		bean.setParentWireContext(wireContext);
+		bean.setFallbackProcessor(fallbackProcessor());
 		return bean;
 	}
 	
@@ -166,6 +169,7 @@ public class RxPlatformSpace implements RxPlatformContract, RxProcessLaunchContr
 		ConfigurableDispatchingServiceProcessor bean = new ConfigurableDispatchingServiceProcessor();
 
 		bean.register(ServiceRequest.T, serviceDomainDispatcher());
+		bean.registerInterceptor("domain-validation").register(serviceDomainDispatcher());
 		
 		return bean;
 	}

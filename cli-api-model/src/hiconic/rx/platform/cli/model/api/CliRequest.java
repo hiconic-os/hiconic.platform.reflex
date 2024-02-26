@@ -12,7 +12,7 @@ public interface CliRequest extends ServiceRequest, DomainRequest {
 	EntityType<CliRequest> T = EntityTypes.T(CliRequest.class);
 
 	
-	@Initializer("'serviceDomain.cli'")
+	@Initializer("'cli'")
 	@Override
 	String getDomainId();
 }

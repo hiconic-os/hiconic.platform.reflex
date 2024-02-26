@@ -48,20 +48,19 @@ import com.braintribe.model.meta.data.mapping.PositionalArguments;
 import com.braintribe.model.meta.data.prompt.Deprecated;
 import com.braintribe.model.meta.data.prompt.Description;
 import com.braintribe.model.meta.data.prompt.Hidden;
-import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.meta.cmd.builders.EntityMdResolver;
 import com.braintribe.model.processing.meta.cmd.builders.ModelMdResolver;
 import com.braintribe.model.processing.meta.cmd.builders.PropertyMdResolver;
 import com.braintribe.model.processing.meta.oracle.EntityTypeOracle;
-import com.braintribe.model.processing.meta.oracle.ModelOracle;
 import com.braintribe.model.processing.service.api.ServiceProcessor;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.model.service.api.result.Neutral;
-import com.braintribe.utils.lcd.LazyInitialized;
 import com.braintribe.utils.lcd.StringTools;
 
 import hiconic.rx.cli.processing.help.CommandsReflection.CommandsOverview;
+import hiconic.rx.module.api.service.ServiceDomain;
+import hiconic.rx.module.api.service.ServiceDomains;
 import hiconic.rx.platform.cli.model.api.Help;
 
 public class HelpProcessor implements ServiceProcessor<Help, Neutral> {
@@ -76,24 +75,19 @@ public class HelpProcessor implements ServiceProcessor<Help, Neutral> {
 
 	private static final EntityType<Deprecated> DeprecatedType = com.braintribe.model.meta.data.prompt.Deprecated.T;
 
-	private ModelOracle modelOracle;
-	private ModelMdResolver mdResolver;
-	private LazyInitialized<CommandsReflection> commandsReflection = new LazyInitialized<CommandsReflection>(() -> new CommandsReflection(modelOracle, mdResolver));
-	private CmdResolver cmdResolver;
 	private String launchScript = "launch-script";
-
+	private ServiceDomains serviceDomains;
+	
 	@Configurable
 	public void setLaunchScript(String launchScript) {
 		this.launchScript = launchScript;
 	}
 	
 	@Required
-	public void setCmdResolver(CmdResolver cmdResolver) {
-		this.cmdResolver = cmdResolver;
-		this.modelOracle = cmdResolver.getModelOracle();
-		this.mdResolver = cmdResolver.getMetaData().useCases(USE_CASE_HELP, USE_CASE_EXECUTION);
+	public void setServiceDomains(ServiceDomains serviceDomains) {
+		this.serviceDomains = serviceDomains;
 	}
-
+	
 	@Override
 	public Neutral process(ServiceRequestContext context, Help request) {
 		if (request.getType() == null)
@@ -103,29 +97,51 @@ public class HelpProcessor implements ServiceProcessor<Help, Neutral> {
 
 		return NEUTRAL;
 	}
+	
+	private CommandsReflection commandsReflection(ServiceDomain serviceDomain) {
+		ModelMdResolver mdResolver = serviceDomain.cmdResolver().getMetaData().useCases(USE_CASE_HELP, USE_CASE_EXECUTION);
+		CommandsReflection cr = new CommandsReflection(serviceDomain.modelOracle(), mdResolver);
+		return cr;
+	}
 
 	private void getRequestDetails(ServiceRequestContext context, Help request) {
+		
+		GmEntityType type = null;
+		CommandsReflection cr = null;
+		
+		for (ServiceDomain serviceDomain: serviceDomains.list()) {
+			cr = commandsReflection(serviceDomain);
 
-		GmEntityType type = commandsReflection.get().resolveTypeFromCommandName(request.getType());
+			CommandsOverview overview = cr.getCommandsOverview();
 
-		if (type == null) {
-			EntityTypeOracle requestTypeOracle = modelOracle.findEntityTypeOracle(request.getType());
+			type = cr.resolveTypeFromCommandName(request.getType());
+			
+			if (type == null) {
+				EntityTypeOracle requestTypeOracle = cr.modelOracle.findEntityTypeOracle(request.getType());
 
-			if (requestTypeOracle == null)
-				throw new IllegalArgumentException("unknown type: " + request.getType());
-
-			type = requestTypeOracle.asGmEntityType();
+				if (requestTypeOracle != null)
+					type = requestTypeOracle.asGmEntityType();
+			}
+			
+			if (type != null)
+				break;
 		}
+		
+		
+		if (type == null)
+			throw new IllegalArgumentException("unknown type: " + request.getType());
+
 
 		println(sequence(
 				// yellow("command line options:\n"),
-				format(context, request, type, false)));
+				format(context, request, type, false, cr)));
+
 	}
 
-	private ConsoleOutput format(ServiceRequestContext context, Help request, GmEntityType requestType, boolean propertiesOnly) {
+	private ConsoleOutput format(ServiceRequestContext context, Help request, GmEntityType requestType, boolean propertiesOnly, CommandsReflection cr) {
 		ConfigurableConsoleOutputContainer sequence = configurableSequence();
 
-		EntityMdResolver requestTypeMdResolver = mdResolver.entityType(requestType);
+		EntityMdResolver requestTypeMdResolver = cr.mdResolver.entityType(requestType);
 
 		int lineWidth = resolveLineWidth(context);
 
@@ -170,7 +186,7 @@ public class HelpProcessor implements ServiceProcessor<Help, Neutral> {
 			}
 		}
 
-		List<GmProperty> relevantProperties = commandsReflection.get().getRelevantPropertiesOf(requestType);
+		List<GmProperty> relevantProperties = cr.getRelevantPropertiesOf(requestType);
 
 		if (!relevantProperties.isEmpty()) {
 			// if (!propertiesOnly)
@@ -208,7 +224,7 @@ public class HelpProcessor implements ServiceProcessor<Help, Neutral> {
 
 				propertyBuilder.append("\n");
 
-				String names = commandsReflection.get().cliNameAndAliasesOf(property) //
+				String names = cr.cliNameAndAliasesOf(property) //
 						.collect(Collectors.joining(" "));
 
 				propertyBuilder.append(cyan(names));
@@ -397,10 +413,12 @@ public class HelpProcessor implements ServiceProcessor<Help, Neutral> {
 
 		return builder;
 	}
-
-	private void getRequestOverview(Help request) {
-		CommandsOverview commandsOverview = commandsReflection.get().getCommandsOverview();
-
+	
+	private ConsoleOutput generateServiceDomainOverview(Help request, ServiceDomain serviceDomain) {
+		ModelMdResolver mdResolver = serviceDomain.cmdResolver().getMetaData().useCases(USE_CASE_HELP, USE_CASE_EXECUTION);
+		CommandsReflection cr = new CommandsReflection(serviceDomain.modelOracle(), mdResolver);
+		CommandsOverview commandsOverview = cr.getCommandsOverview();
+		
 		// collect the dynamic part of the console output which consists of the requests
 		ConfigurableConsoleOutputContainer commands = configurableSequence();
 		ConfigurableConsoleOutputContainer deprecatedCommands = configurableSequence();
@@ -408,8 +426,6 @@ public class HelpProcessor implements ServiceProcessor<Help, Neutral> {
 		boolean includeDeprecated = request.getDeprecated();
 		boolean includeUpToDate = request.getUpToDate();
 
-		CommandsReflection cr = commandsReflection.get();
-		
 		for (GmEntityType type : commandsOverview.requestTypes) {
 			String name = cr.resolveStandardAlias(type);
 
@@ -420,6 +436,39 @@ public class HelpProcessor implements ServiceProcessor<Help, Neutral> {
 			else
 				commands.append(cmdOutputLine(name));
 		}
+
+		ConfigurableConsoleOutputContainer factoryCommands = configurableSequence();
+		commandsOverview.inputTypes.stream() //
+				.map(cr::resolveStandardAlias) //
+				.map(this::cmdOutputLine) //
+				.forEach(factoryCommands::append);
+
+		// @formatter:off
+		ConfigurableConsoleOutputContainer overview = configurableSequence();
+		
+		// @formatter:on
+
+		if (commands.size() > 0 && includeUpToDate) {
+			overview.append(text("\n\n"));
+			overview.append(yellow(serviceDomain.domainId() + " commands:\n"));
+			overview.append(commands);
+		}
+
+		if (deprecatedCommands.size() > 0 && includeDeprecated) {
+			overview.append(text("\n\n"));
+			overview.append(yellow(serviceDomain.domainId() + " deprecated commands:\n"));
+			overview.append(deprecatedCommands);
+		}
+		
+		return overview;
+	}
+
+	private void getRequestOverview(Help request) {
+
+		boolean includeUpToDate = request.getUpToDate();
+		
+		CommandsReflection cr = commandsReflection(serviceDomains.byId("cli"));
+		CommandsOverview commandsOverview = cr.getCommandsOverview();
 
 		ConfigurableConsoleOutputContainer factoryCommands = configurableSequence();
 		commandsOverview.inputTypes.stream() //
@@ -451,18 +500,10 @@ public class HelpProcessor implements ServiceProcessor<Help, Neutral> {
 			overview.append(factoryCommands);
 		}
 
-		if (commands.size() > 0 && includeUpToDate) {
-			overview.append(text("\n\n"));
-			overview.append(yellow("commands:\n"));
-			overview.append(commands);
+		for (ServiceDomain serviceDomain: serviceDomains.list()) {
+			overview.append(generateServiceDomainOverview(request, serviceDomain));
 		}
-
-		if (deprecatedCommands.size() > 0 && includeDeprecated) {
-			overview.append(text("\n\n"));
-			overview.append(yellow("deprecated commands:\n"));
-			overview.append(deprecatedCommands);
-		}
-
+		
 		println(overview);
 	}
 

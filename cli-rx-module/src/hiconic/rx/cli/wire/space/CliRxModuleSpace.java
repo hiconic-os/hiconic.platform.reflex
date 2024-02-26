@@ -1,7 +1,5 @@
 package hiconic.rx.cli.wire.space;
 
-import java.util.Arrays;
-
 import com.braintribe.gm.cli.posix.parser.PosixCommandLineParser;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.wire.api.annotation.Import;
@@ -13,6 +11,7 @@ import hiconic.rx.cli.processing.IntroductionProcessor;
 import hiconic.rx.cli.processing.help.HelpProcessor;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.service.ServiceDomainConfiguration;
+import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.module.api.wire.RxProcessLaunchContract;
@@ -28,8 +27,9 @@ public class CliRxModuleSpace implements RxModuleContract {
 	private RxProcessLaunchContract processLaunch;
 	
 	@Override
-	public void configureMainServiceDomain(ServiceDomainConfiguration configuration) {
-		configuration.addModel(_CliApiModel_.reflection);
+	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
+		ServiceDomainConfiguration configuration = configurations.byId("cli");
+		
 		configuration.register(Introduce.T, introductionProcessor());
 		configuration.register(Help.T, helpProcessor());
 	}
@@ -43,8 +43,8 @@ public class CliRxModuleSpace implements RxModuleContract {
 	@Managed
 	private HelpProcessor helpProcessor() {
 		HelpProcessor bean = new HelpProcessor();
-		bean.setCmdResolver(platform.serviceDomains().main().cmdResolver());
 		bean.setLaunchScript(processLaunch.launchScriptName());
+		bean.setServiceDomains(platform.serviceDomains());
 		return bean;
 	}
 
@@ -60,7 +60,7 @@ public class CliRxModuleSpace implements RxModuleContract {
 		CliExecutor bean = new CliExecutor();
 		bean.setArgs(processLaunch.cliArguments());
 		bean.setParser(parser());
-		bean.setDefaultDomains(Arrays.asList("main"));
+		bean.setDefaultDomains(platform.serviceDomains().list().stream().map(ServiceDomain::domainId).toList());
 		bean.setEvaluator(platform.evaluator());
 		bean.setMarshallerRegistry(platform.marshallers());
 		return bean;
