@@ -132,11 +132,12 @@ This creates the following three artifacts:
 * `demo-rx-module` contains the implementation of our API. As an example, _Jinni_ creates `GreetProcessor` to handle the `Greet` request. `DemoRxModuleSpace` then binds this processor to that request inside the `registerProcessors` method:
 
   ```java
-  @Override
-  public void registerProcessors(ConfigurableDispatchingServiceProcessor dispatching) {
-  	dispatching.register(Greet.T, greetProcessor());
-  }
+	@Override
+	public void configureMainServiceDomain(ServiceDomainConfiguration configuration) {
+		configuration.register(Greet.T, greetProcessor());
+	}
   ```
+  > Service Domain is a logical space with its own configuration, most notably mappings from requests to processors. In simple cases, we only work with the domain called `main`, but defining other domains is also possible (with `configureServiceDomains(...)`).
 
 * `demo-app` defines our application as a bundle of the `reflex-platform`, our `demo-rx-module` and a module that provides a web server with a REST endpoint (`web-api-undertow-rx-module`).
 
