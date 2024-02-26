@@ -14,7 +14,7 @@ You should have received a copy of the GNU Lesser General Public License along w
         <version>[1.0,1.1)</version>
     </parent>
     <artifactId>reflex-module-template</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
     <properties>
         <archetype>library</archetype>
     </properties>
