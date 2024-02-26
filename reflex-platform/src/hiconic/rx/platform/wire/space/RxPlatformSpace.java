@@ -1,8 +1,10 @@
 package hiconic.rx.platform.wire.space;
 
 import java.io.File;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 
 import com.braintribe.codec.marshaller.common.BasicConfigurableMarshallerRegistry;
 import com.braintribe.codec.marshaller.json.JsonStreamMarshaller;
@@ -11,26 +13,24 @@ import com.braintribe.gm.config.yaml.ModeledYamlConfiguration;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.reflection.EntityType;
-import com.braintribe.model.meta.GmMetaModel;
-import com.braintribe.model.processing.meta.cmd.CmdResolver;
-import com.braintribe.model.processing.meta.cmd.CmdResolverImpl;
-import com.braintribe.model.processing.meta.configuration.ConfigurationModels;
-import com.braintribe.model.processing.meta.configured.ConfigurationModelBuilder;
 import com.braintribe.model.processing.meta.editor.BasicModelMetaDataEditor;
-import com.braintribe.model.processing.meta.oracle.BasicModelOracle;
-import com.braintribe.model.processing.meta.oracle.ModelOracle;
+import com.braintribe.model.processing.meta.editor.ModelMetaDataEditor;
 import com.braintribe.model.processing.service.common.ConfigurableDispatchingServiceProcessor;
 import com.braintribe.model.processing.service.common.eval.ConfigurableServiceRequestEvaluator;
+import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 import com.braintribe.wire.api.context.WireContext;
 import com.braintribe.wire.api.context.WireContextConfiguration;
 
-import hiconic.platform.reflex._ReflexPlatform_;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.module.api.wire.RxProcessLaunchContract;
 import hiconic.rx.platform.loading.RxModuleLoader;
+import hiconic.rx.platform.service.RxServiceDomain;
+import hiconic.rx.platform.service.RxServiceDomainConfigurations;
+import hiconic.rx.platform.service.RxServiceDomains;
+import hiconic.rx.platform.service.ServiceDomainDispatcher;
 import hiconic.rx.platform.wire.contract.RxPlatformConfigContract;
 
 @Managed
@@ -44,13 +44,43 @@ public class RxPlatformSpace implements RxPlatformContract, RxProcessLaunchContr
 	
 	@Override
 	public void onLoaded(WireContextConfiguration configuration) {
-		// load service processing
-		evaluator();
+		configureModules();
+	}
+	
+	private void configureModules() {
+		List<RxModuleContract> moduleContracts = moduleLoader().listModuleContracts();
+
+		RxServiceDomainConfigurations serviceDomainConfigurations = serviceDomainConfigurations();
 		
+		// run service domain configuration of all modules
+		// TODO: parallelize
+		for (RxModuleContract moduleContract: moduleContracts) {
+			moduleContract.configureServiceDomains(serviceDomainConfigurations);
+			moduleContract.registerCrossDomainInterceptors(rootServiceProcessor());
+			moduleContract.registerFallbackProcessors(fallbackProcessor());
+		}
+		
+		// run all collected model meta data configurers
+		// TODO: parallelize metadata editing per servicedomain as models are isolated
+		RxServiceDomains serviceDomains = serviceDomains();
+		for (RxServiceDomain serviceDomain: serviceDomains.list()) {
+			BasicModelMetaDataEditor editor = new BasicModelMetaDataEditor(serviceDomain.getConfigurationModelBuilder().get());
+
+			for (Consumer<ModelMetaDataEditor> configurer : serviceDomain.getModelConfigurers()) {
+				configurer.accept(editor);
+			}
+		}
+
 		// notify all modules about application being ready for action
-		for (RxModuleContract moduleContract: moduleLoader().getModuleContracts()) {
+		for (RxModuleContract moduleContract: moduleContracts) {
 			moduleContract.onApplicationReady();
 		}
+	}
+	
+	private RxServiceDomainConfigurations serviceDomainConfigurations() {
+		RxServiceDomainConfigurations bean = new RxServiceDomainConfigurations();
+		bean.setServiceDomains(serviceDomains());
+		return bean;
 	}
 	
 	@Managed
@@ -61,17 +91,11 @@ public class RxPlatformSpace implements RxPlatformContract, RxProcessLaunchContr
 		return bean;
 	}
 	
-	@Managed
 	@Override
-	public CmdResolver mdResolver() {
-		CmdResolver bean = CmdResolverImpl.create(modelOracle()).done();
-		return bean;
-	}
-	
 	@Managed
-	@Override
-	public ModelOracle modelOracle() {
-		ModelOracle bean = new BasicModelOracle(configurationModel());
+	public RxServiceDomains serviceDomains() {
+		RxServiceDomains bean = new RxServiceDomains();
+		bean.setParentWireContext(wireContext);
 		return bean;
 	}
 	
@@ -107,26 +131,6 @@ public class RxPlatformSpace implements RxPlatformContract, RxProcessLaunchContr
 		return new YamlMarshaller();
 	}
 	
-	@Managed
-	public GmMetaModel configurationModel() {
-		ConfigurationModelBuilder configurationModelBuilder = ConfigurationModels.create(_ReflexPlatform_.groupId, "configured-reflex-api-model");
-		
-		for (RxModuleContract moduleContract: moduleLoader().getModuleContracts()) {
-			moduleContract.addApiModels(configurationModelBuilder);
-		}
-		
-		GmMetaModel bean =  configurationModelBuilder.get();
-		bean.setVersion(_ReflexPlatform_.version);
-		
-		BasicModelMetaDataEditor editor = new BasicModelMetaDataEditor(bean);
-		
-		for (RxModuleContract moduleContract: moduleLoader().getModuleContracts()) {
-			moduleContract.configureApiModel(editor);
-		}
-		
-		return bean;
-	}
-	
 	@Override
 	public String[] cliArguments() {
 		return config.cliArguments();
@@ -147,23 +151,35 @@ public class RxPlatformSpace implements RxPlatformContract, RxProcessLaunchContr
 	public ConfigurableServiceRequestEvaluator evaluator() {
 		ConfigurableServiceRequestEvaluator bean = new ConfigurableServiceRequestEvaluator();
 		bean.setExecutorService(executorService());
-		bean.setServiceProcessor(selectingServiceProcessor());
+		bean.setServiceProcessor(rootServiceProcessor());
 		return bean;
 	}
 
+	@Override
 	@Managed
 	public ExecutorService executorService() {
 		return Executors.newCachedThreadPool();
 	}
 
 	@Managed
-	public ConfigurableDispatchingServiceProcessor selectingServiceProcessor() {
+	public ConfigurableDispatchingServiceProcessor rootServiceProcessor() {
 		ConfigurableDispatchingServiceProcessor bean = new ConfigurableDispatchingServiceProcessor();
 
-		for (RxModuleContract moduleContract: moduleLoader().getModuleContracts()) {
-			moduleContract.registerProcessors(bean);
-		}
-
+		bean.register(ServiceRequest.T, serviceDomainDispatcher());
+		
+		return bean;
+	}
+	
+	@Managed
+	private ServiceDomainDispatcher serviceDomainDispatcher() {
+		ServiceDomainDispatcher bean = new ServiceDomainDispatcher();
+		bean.setServiceDomains(serviceDomains());
+		return bean;
+	}
+	
+	@Managed
+	private ConfigurableDispatchingServiceProcessor fallbackProcessor() {
+		ConfigurableDispatchingServiceProcessor bean = new ConfigurableDispatchingServiceProcessor();
 		return bean;
 	}
 }

@@ -57,7 +57,13 @@ public class RxModuleLoader implements LifecycleAware {
 				.map(c -> c.contract()) //
 				.iterator();
 	}
-
+	
+	public List<RxModuleContract> listModuleContracts() {
+		return contexts.stream() //
+				.map(c -> c.contract()) //
+				.toList();
+	}
+	
 	@Override
 	public void postConstruct() {
 		println("Loading Modules:");

@@ -16,6 +16,7 @@ import javax.servlet.ServletException;
 import org.jboss.logging.Logger;
 
 import com.braintribe.ddra.endpoints.api.api.v1.DdraMappings;
+import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.resource.api.MimeTypeRegistry;
 import com.braintribe.model.resource.utils.MimeTypeRegistryImpl;
 import com.braintribe.utils.StringTools;
@@ -24,6 +25,7 @@ import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 import com.braintribe.wire.api.context.WireContextConfiguration;
 
+import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.web.servlet.ApiV1RestServletUtils;
@@ -144,12 +146,22 @@ public class WebApiUndertowRxModuleSpace implements RxModuleContract {
 		bean.setExceptionHandler(exceptionHandler());
 		bean.setMappings(new DdraMappings());
 		bean.setMarshallerRegistry(platform.marshallers());
-		bean.setMdResolverProvider(d -> platform.mdResolver());
+		bean.setMdResolverProvider(this::cmdResolverForDomain);
 		bean.setRestServletUtils(servletUtils());
 		bean.setStreamPipeFactory(StreamPipes.simpleFactory());
 		bean.setTraversingCriteriaMap(tc.criteriaMap());
 		return bean;
 	}
+	
+	private CmdResolver cmdResolverForDomain(String domainId) {
+		ServiceDomain domain = platform.serviceDomains().byId(domainId);
+		
+		if (domain == null)
+			return null;
+		
+		return domain.cmdResolver();
+	}
+
 	
 	private ApiV1RestServletUtils servletUtils() {
 		ApiV1RestServletUtils bean = new ApiV1RestServletUtils();

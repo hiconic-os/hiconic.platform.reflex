@@ -3,8 +3,7 @@ package hiconic.rx.cli.wire.space;
 import java.util.Arrays;
 
 import com.braintribe.gm.cli.posix.parser.PosixCommandLineParser;
-import com.braintribe.model.processing.meta.configured.ConfigurationModelBuilder;
-import com.braintribe.model.processing.service.common.ConfigurableDispatchingServiceProcessor;
+import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
@@ -12,6 +11,8 @@ import hiconic.platform.reflex._CliApiModel_;
 import hiconic.rx.cli.processing.CliExecutor;
 import hiconic.rx.cli.processing.IntroductionProcessor;
 import hiconic.rx.cli.processing.help.HelpProcessor;
+import hiconic.rx.module.api.service.ServiceDomain;
+import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.module.api.wire.RxProcessLaunchContract;
@@ -27,16 +28,12 @@ public class CliRxModuleSpace implements RxModuleContract {
 	private RxProcessLaunchContract processLaunch;
 	
 	@Override
-	public void addApiModels(ConfigurationModelBuilder builder) {
-		builder.addDependency(_CliApiModel_.reflection);
+	public void configureMainServiceDomain(ServiceDomainConfiguration configuration) {
+		configuration.addModel(_CliApiModel_.reflection);
+		configuration.register(Introduce.T, introductionProcessor());
+		configuration.register(Help.T, helpProcessor());
 	}
 	
-	@Override
-	public void registerProcessors(ConfigurableDispatchingServiceProcessor dispatching) {
-		dispatching.register(Introduce.T, introductionProcessor());
-		dispatching.register(Help.T, helpProcessor());
-	}
-
 	@Override
 	public void onApplicationReady() {
 		// start parsing, configuring and execution of cli inputs
@@ -46,7 +43,7 @@ public class CliRxModuleSpace implements RxModuleContract {
 	@Managed
 	private HelpProcessor helpProcessor() {
 		HelpProcessor bean = new HelpProcessor();
-		bean.setCmdResolver(platform.mdResolver());
+		bean.setCmdResolver(platform.serviceDomains().main().cmdResolver());
 		bean.setLaunchScript(processLaunch.launchScriptName());
 		return bean;
 	}
@@ -71,7 +68,17 @@ public class CliRxModuleSpace implements RxModuleContract {
 	
 	@Managed
 	private PosixCommandLineParser parser() {
-		PosixCommandLineParser bean = new PosixCommandLineParser(domainId -> platform.mdResolver());
+		// TODO: better reasoning for type and domain lookup
+		PosixCommandLineParser bean = new PosixCommandLineParser(this::cmdResolverForDomain);
 		return bean;
+	}
+	
+	private CmdResolver cmdResolverForDomain(String domainId) {
+		ServiceDomain domain = platform.serviceDomains().byId(domainId);
+		
+		if (domain == null)
+			return null;
+		
+		return domain.cmdResolver();
 	}
 }

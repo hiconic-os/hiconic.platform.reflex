@@ -75,7 +75,7 @@ public class RxPlatform {
 	}
 
 	private static void eagerLoading() {
-		GMF.getTypeReflection().getPackagedModels().forEach(m -> m.getMetaModel());
+		// GMF.getTypeReflection().getPackagedModels().forEach(m -> m.getMetaModel());
 	}
 
 	private static void setupConsoleOutput() {

@@ -1,12 +1,12 @@
 package hiconic.rx.module.api.wire;
 
 import com.braintribe.codec.marshaller.api.ConfigurableMarshallerRegistry;
-import com.braintribe.model.processing.meta.configured.ConfigurationModelBuilder;
-import com.braintribe.model.processing.meta.editor.ModelMetaDataEditor;
-import com.braintribe.model.processing.service.api.ServiceInterceptorProcessor;
-import com.braintribe.model.processing.service.api.ServiceProcessor;
-import com.braintribe.model.processing.service.common.ConfigurableDispatchingServiceProcessor;
+import com.braintribe.model.processing.service.api.InterceptorRegistry;
+import com.braintribe.model.processing.service.api.ProcessorRegistry;
 import com.braintribe.wire.api.space.WireSpace;
+
+import hiconic.rx.module.api.service.ServiceDomainConfiguration;
+import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 
 /**
  * Wire contract for reflex modules that need to be implemented by an according wire space
@@ -48,29 +48,49 @@ import com.braintribe.wire.api.space.WireSpace;
  */
 public interface RxModuleContract extends WireSpace {
 	/**
-	 * Bind {@link ServiceProcessor
-	 * service processors} and {@link ServiceInterceptorProcessor service
-	 * interceptors} on request types of the main service domain.
+	 * Configures service domains by:
+	 * <ul>
+	 * 	<li>adding models</li>
+	 * 	<li>binding processors</li>
+	 *  <li>binding interceptors</li>
+	 *  <li>configuring meta data on models</li>
+	 * </ul>
 	 */
-	default void registerProcessors(ConfigurableDispatchingServiceProcessor dispatching) {
+	default void configureServiceDomains(ServiceDomainConfigurations configurations) {
+		
 	}
 
+	/**
+	 * Configures the main service domain by:
+	 * <ul>
+	 * 	<li>adding models</li>
+	 * 	<li>binding processors</li>
+	 *  <li>binding interceptors</li>
+	 *  <li>configuring meta data on models</li>
+	 * </ul>
+	 */
+	default void configureMainServiceDomain(ServiceDomainConfiguration configuration) {
+		
+	}
+	
+	/**
+	 * Registers interceptors that will run for each service domain
+	 */
+	default void registerCrossDomainInterceptors(InterceptorRegistry interceptorRegistry) {
+		
+	}
+	
+	/**
+	 * Registers service processors that will run if a service domain has no specific processor registered
+	 */
+	default void registerFallbackProcessors(ProcessorRegistry processorRegistry) {
+		
+	}
+	
 	/**
 	 * Registers marshallers with general availability
 	 */
 	default void registerMarshaller(ConfigurableMarshallerRegistry registry) {
-	}
-	
-	/**
-	 * Adds models to the configuration model of the main service domain
-	 */
-	default void addApiModels(ConfigurationModelBuilder builder) {
-	}
-
-	/**
-	 * Configures meta data on the configuration model of the main service domain
-	 */
-	default void configureApiModel(ModelMetaDataEditor editor) {
 	}
 	
 	/**
