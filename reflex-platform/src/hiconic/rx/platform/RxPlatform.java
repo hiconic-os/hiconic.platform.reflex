@@ -15,6 +15,7 @@ import com.braintribe.wire.impl.properties.PropertyLookups;
 
 import hiconic.rx.platform.conf.ApplicationProperties;
 import hiconic.rx.platform.conf.SystemProperties;
+import hiconic.rx.platform.loading.RxModuleLoader;
 import hiconic.rx.platform.wire.RxPlatformWireModule;
 
 public class RxPlatform {

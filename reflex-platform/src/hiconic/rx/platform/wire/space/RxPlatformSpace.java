@@ -30,7 +30,7 @@ import hiconic.platform.reflex._ReflexPlatform_;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.module.api.wire.RxProcessLaunchContract;
-import hiconic.rx.platform.RxModuleLoader;
+import hiconic.rx.platform.loading.RxModuleLoader;
 import hiconic.rx.platform.wire.contract.RxPlatformConfigContract;
 
 @Managed
@@ -56,6 +56,7 @@ public class RxPlatformSpace implements RxPlatformContract, RxProcessLaunchContr
 	@Managed
 	private RxModuleLoader moduleLoader() {
 		RxModuleLoader bean = new RxModuleLoader();
+		bean.setExecutorService(executorService());
 		bean.setParentContext(wireContext);
 		return bean;
 	}

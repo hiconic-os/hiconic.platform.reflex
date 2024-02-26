@@ -1,10 +1,6 @@
-package hiconic.rx.platform;
+package hiconic.rx.platform.loading;
 
-import static com.braintribe.console.ConsoleOutputs.brightBlack;
-import static com.braintribe.console.ConsoleOutputs.cyan;
 import static com.braintribe.console.ConsoleOutputs.println;
-import static com.braintribe.console.ConsoleOutputs.sequence;
-import static com.braintribe.console.ConsoleOutputs.text;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -15,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.ExecutorService;
 
 import com.braintribe.cfg.LifecycleAware;
 import com.braintribe.cfg.Required;
@@ -22,8 +19,6 @@ import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.config.ConfigurationError;
 import com.braintribe.gm.model.reason.essential.InternalError;
-import com.braintribe.gm.model.reason.essential.IoError;
-import com.braintribe.gm.model.reason.essential.NotFound;
 import com.braintribe.logging.Logger;
 import com.braintribe.utils.lcd.LazyInitialized;
 import com.braintribe.wire.api.Wire;
@@ -45,9 +40,16 @@ public class RxModuleLoader implements LifecycleAware {
 	private WireContext<?> parentContext;
 	private List<WireContext<RxModuleContract>> contexts;
 
+	private ExecutorService executorService;
+
 	@Required
 	public void setParentContext(WireContext<?> parentContext) {
 		this.parentContext = parentContext;
+	}
+
+	@Required
+	public void setExecutorService(ExecutorService executorService) {
+		this.executorService = executorService;
 	}
 
 	public Iterable<RxModuleContract> getModuleContracts() {
@@ -69,8 +71,9 @@ public class RxModuleLoader implements LifecycleAware {
 	}
 
 	private void loadModules() {
-		Maybe<List<WireContext<RxModuleContract>>> contextsMaybe = loadWireModules() //
-				.flatMap(this::loadWireModuleContexts);
+		Maybe<List<WireTerminalModule<RxModuleContract>>> wireModules = WireModuleLoader.loadWireModules();
+
+		Maybe<List<WireContext<RxModuleContract>>> contextsMaybe = wireModules.flatMap(this::loadWireModuleContexts);
 
 		contexts = contextsMaybe.get();
 	}
@@ -81,116 +84,7 @@ public class RxModuleLoader implements LifecycleAware {
 		}
 	}
 
-	private Maybe<List<WireTerminalModule<RxModuleContract>>> loadWireModules() {
-		try {
-			Enumeration<URL> resources = getClass().getClassLoader().getResources("META-INF/rx-module.properties");
-
-			LazyInitialized<ConfigurationError> lazyError = new LazyInitialized<>( //
-					() -> ConfigurationError.create("Error while loading rx-module configurations"));
-
-			List<WireTerminalModule<RxModuleContract>> wireModules = new ArrayList<>();
-
-			while (resources.hasMoreElements()) {
-				URL url = resources.nextElement();
-				Maybe<WireTerminalModule<RxModuleContract>> wireModuleMaybe = loadWireModule(url);
-
-				if (wireModuleMaybe.isUnsatisfied())
-					lazyError.get().getReasons().add(wireModuleMaybe.whyUnsatisfied());
-
-				wireModules.add(wireModuleMaybe.get());
-			}
-
-			if (lazyError.isInitialized())
-				return lazyError.get().asMaybe();
-
-			return Maybe.complete(wireModules);
-
-		} catch (IOException e) {
-			return Reasons.build(IoError.T) //
-					.text("Could not enumerate classpath resources with the name 'META-INF/rx-module.properties'") //
-					.cause(InternalError.from(e)) //
-					.toMaybe();
-		}
-	}
-
-	public Maybe<WireTerminalModule<RxModuleContract>> loadWireModule(URL propertiesUrl) {
-		Properties properties = new Properties();
-
-		try (Reader reader = new InputStreamReader(propertiesUrl.openStream(), "UTF-8")) {
-			properties.load(reader);
-
-		} catch (IOException e) {
-			return Reasons.build(IoError.T) //
-					.text("Could not read properties from " + propertiesUrl) //
-					.cause(InternalError.from(e)) //
-					.toMaybe();
-		}
-
-		String wireModule = properties.getProperty("wire-module");
-		if (wireModule == null)
-			return Reasons.build(ConfigurationError.T).text("Missing wire-module property in " + propertiesUrl).toMaybe();
-
-		int index = wireModule.lastIndexOf('.');
-
-		String pckg = wireModule.substring(0, index);
-		String name = wireModule.substring(index + 1);
-
-		println( //
-				sequence(text("  - "), //
-						cyan(name), //
-						brightBlack(" (" + pckg + ")") //
-				));
-
-		Class<?> wireModuleClass;
-		try {
-			wireModuleClass = Class.forName(wireModule);
-
-		} catch (ClassNotFoundException e) {
-			return Reasons.build(ConfigurationError.T) //
-					.text("Could not find class " + wireModule + " configured with wire-module property in " + propertiesUrl) //
-					.toMaybe();
-		}
-
-		if (!wireModuleClass.isEnum())
-			return Reasons.build(ConfigurationError.T) //
-					.text("Class " + wireModule + " configured with wire-module property in " + propertiesUrl + " is not an enum class") //
-					.toMaybe();
-
-		@SuppressWarnings("rawtypes")
-		var enumClass = (Class<? extends Enum>) wireModuleClass;
-
-		Enum<?> constant;
-
-		try {
-			constant = Enum.valueOf(enumClass, "INSTANCE");
-
-		} catch (IllegalArgumentException e) {
-			return Reasons.build(ConfigurationError.T) //
-					.text("Enum class " + wireModule + " configured with wire-module property in " + propertiesUrl
-							+ " is missing a constant INSTANCE") //
-					.toMaybe();
-		}
-
-		if (!(constant instanceof WireTerminalModule))
-			return Reasons.build(NotFound.T) //
-					.text("Constant INSTANCE of enum class " + wireModule + " configured with wire-module property in " + propertiesUrl
-							+ " is not a WireTerminalModule") //
-					.toMaybe();
-
-		var wireTerminalModule = (WireTerminalModule<RxModuleContract>) constant;
-
-		if (!RxModuleContract.class.isAssignableFrom(wireTerminalModule.contract())) {
-			return Reasons.build(ConfigurationError.T) //
-					.text("Constant INSTANCE of enum class " + wireModule + " configured with wire-module property in " + propertiesUrl
-							+ " is not a WireTerminalModule with a contract of type RxModuleContract") //
-					.toMaybe();
-		}
-
-		return Maybe.complete(wireTerminalModule);
-	}
-
 	private Maybe<List<WireContext<RxModuleContract>>> loadWireModuleContexts(List<WireTerminalModule<RxModuleContract>> wireModules) {
-
 		List<WireContext<RxModuleContract>> contexts = new ArrayList<>(wireModules.size());
 
 		LazyInitialized<ConfigurationError> lazyError = new LazyInitialized<>(
@@ -270,4 +164,5 @@ public class RxModuleLoader implements LifecycleAware {
 		}
 
 	}
+
 }
