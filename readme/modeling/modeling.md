@@ -1,6 +1,14 @@
-# Custom Modeling
+# Models
 
-To create types for a model you have to declare interfaces and enums. The interfaces are automatically implemented and reflected by the GenericModel type-system. 
+To create types for a model you have to declare interfaces and enums. The interfaces are automatically implemented and reflected by the GenericModel type-system.
+
+A model artifact has
+
+You can create a model with all the requirements from a given name on the command line with the devrock-sdk:
+
+```
+jinni create-model <your-model>
+```
 
 ## Modeling in General
 

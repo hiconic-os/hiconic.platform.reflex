@@ -11,4 +11,4 @@ else
     JAVA_EXECUTABLE="${JAVA_HOME}/bin/java"
 fi
 
-"$JAVA_EXECUTABLE" -Djava.util.logging.config.file="$INST_DIR/conf/logging.properties" -Dreflex.app.dir="$INST_DIR"  -Dreflex.launch.script=$LAUNCH_SCRIPT -jar "$INST_DIR/lib/launch.jar" "$@"
+"$JAVA_EXECUTABLE" -Dreflex.app.dir="$INST_DIR"  -Dreflex.launch.script=$LAUNCH_SCRIPT -jar "$INST_DIR/lib/launch.jar" "$@"

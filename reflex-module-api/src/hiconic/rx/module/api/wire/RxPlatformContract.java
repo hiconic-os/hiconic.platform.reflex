@@ -7,7 +7,6 @@ import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.generic.reflection.EntityType;
-import com.braintribe.model.processing.service.common.ConfigurableDispatchingServiceProcessor;
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.wire.api.space.WireSpace;
 

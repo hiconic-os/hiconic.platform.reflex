@@ -6,13 +6,21 @@ import static com.braintribe.console.ConsoleOutputs.magenta;
 import static com.braintribe.console.ConsoleOutputs.sequence;
 import static com.braintribe.console.ConsoleOutputs.text;
 
+import java.io.File;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
+
+import org.slf4j.LoggerFactory;
+import org.slf4j.bridge.SLF4JBridgeHandler;
+
 import com.braintribe.console.AbstractAnsiConsole;
 import com.braintribe.console.ConsoleConfiguration;
 import com.braintribe.console.ConsoleOutputs;
-import com.braintribe.model.generic.GMF;
 import com.braintribe.wire.api.Wire;
 import com.braintribe.wire.impl.properties.PropertyLookups;
 
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.joran.JoranConfigurator;
 import hiconic.rx.platform.conf.ApplicationProperties;
 import hiconic.rx.platform.conf.SystemProperties;
 import hiconic.rx.platform.loading.RxModuleLoader;
@@ -25,9 +33,12 @@ public class RxPlatform {
 	private static final SystemProperties systemProperties = PropertyLookups.create(SystemProperties.class, System::getProperty);
 	private static final ApplicationProperties applicationProperties = PropertyLookups.create( //
 			ApplicationProperties.class, RxModuleLoader.readApplicationProperties()::getProperty);
+	
+	private static final Logger logger = System.getLogger(RxPlatform.class.getName());
 
 	public static void main(String[] args) {
 		long startTime = System.currentTimeMillis();
+		setupLogging();
 		setupConsoleOutput();
 		installShutdownHook();
 
@@ -54,6 +65,8 @@ public class RxPlatform {
 		));
 
 		eagerLoading();
+		
+		logger.log(Level.INFO, "Application loaded");
 
 		try {
 			synchronized (monitor) {
@@ -62,6 +75,33 @@ public class RxPlatform {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
+	}
+
+	private static void setupLogging() {
+		// Assume SLF4J is bound to logback in the current environment
+        LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
+        
+        File logConfig = new File(systemProperties.appDir(), "conf/logback.xml");
+        
+        if (logConfig.exists()) {
+	        try {
+	            JoranConfigurator configurator = new JoranConfigurator();
+	            configurator.setContext(context);
+	            // Clear any previous configuration
+	            context.reset(); 
+	            // Load new configuration
+	            configurator.doConfigure(logConfig);
+	        } catch (Exception e) {
+	            // Handle errors during configuration
+	            System.err.print("Error configuring Logback: ");
+	            e.printStackTrace(System.err);
+	        }
+        }
+		
+		// Remove existing handlers attached to the j.u.l root logger
+        SLF4JBridgeHandler.removeHandlersForRootLogger();
+        // Add SLF4JBridgeHandler to j.u.l's root logger
+        SLF4JBridgeHandler.install();
 	}
 
 	private static void installShutdownHook() {

@@ -1,17 +1,20 @@
 package hiconic.rx.hello.wire;
 
-import com.braintribe.wire.api.context.WireContextBuilder;
-import com.braintribe.wire.api.module.WireTerminalModule;
+import java.util.List;
+
+import com.braintribe.wire.api.module.WireModule;
 
 import hiconic.rx.hello.wire.space.ReflexHelloAppRxModuleSpace;
-import hiconic.rx.module.api.wire.RxModuleContract;
+import hiconic.rx.module.api.wire.RxModule;
 
-public enum ReflexHelloAppRxModule implements WireTerminalModule<RxModuleContract> {
+public enum ReflexHelloAppRxModule implements RxModule<ReflexHelloAppRxModuleSpace> {
 	INSTANCE;
-
+	
 	@Override
-	public void configureContext(WireContextBuilder<?> contextBuilder) {
-		WireTerminalModule.super.configureContext(contextBuilder);
-		contextBuilder.bindContract(RxModuleContract.class, ReflexHelloAppRxModuleSpace.class);
+	public List<WireModule> dependencies() {
+		// add dependencies to other wire modules if required
+		return List.of();
 	}
+	
+	
 }
