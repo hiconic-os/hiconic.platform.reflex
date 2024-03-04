@@ -99,5 +99,4 @@ public interface RxModuleContract extends WireSpace {
 	default void onApplicationReady() {
 		
 	}
-	
 }
