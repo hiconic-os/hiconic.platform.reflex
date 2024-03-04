@@ -1,4 +1,4 @@
-# The hiconic reflex platform
+# The Hiconic Reflex Platform
 
 _Hiconic_ _Reflex_ (aka RX) aims to be a platform for __modeled micro-services__ with attention to:
 
@@ -10,7 +10,7 @@ _Hiconic_ _Reflex_ (aka RX) aims to be a platform for __modeled micro-services__
 * convention over configuration
 * simple, yet flexible configuration
 * modeled error handling
-* location agnostic modeled services for caller and callee
+* modeled services, location agnostic for caller and callee
 * service portability by separation of concerns
   * format (JSON, YAML, efficient binary, ...)
   * transport (HTTP, message queue, CLI, ...)
@@ -25,4 +25,4 @@ For a quick overview of _Reflex_ see our [demos](./readme/demo/demo.md).
 
 Learn how to [build your own application](./readme/getting-started/getting-started.md) with a few steps.
 
-Dive into a more [detailed explanation](./readme/platform-components/platform-components.md) on the components which make up a reflex platform
+[Read about](./readme/platform-components/platform-components.md) the components from which reflex applications are built.
