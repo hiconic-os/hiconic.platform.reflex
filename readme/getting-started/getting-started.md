@@ -5,11 +5,13 @@
 * Eclipse IDE **_(1)_**
 * JDK 21+ installed with `JAVA_HOME` configured appropriately
 
-**_(1)_** Sorry about that. While you currently need _Eclipse_ and our _Devrock_ plugins (I know), we are already working on supporting all IDEs using standard tools (_Gradle_).
+**_(1)_** Sorry about that. While you currently need _Eclipse_ because of our own plugins (I know), we're already working on supporting all IDEs using standard tools (_Gradle_).
+
+> ⚠️If you are new to _Eclipse_ make sure to change the _Java_ version to 21 in [preferences](https://stackoverflow.com/a/4881124/1696307) - under `Java` configure two things -  proper JDK under `Installed JREs`, and compiler level as 21 under `Compiler`.
 
 ## Preparing the Environment
 
-We need to prepare the `devrock-sdk`, which is a directory that besides actual projects contains development tools, environment configuration and so on:
+We need to prepare the `devrock-sdk`, which is a folder that besides actual projects contains development tools, environment configuration and so on:
 
 * Download [devrock-sdk.zip](https://api.hiconic-os.org/download-sdk.php)
 * Unpack the `devrock-sdk` root folder from the zip
@@ -20,6 +22,8 @@ Note that we have added two CLI tools to our path:
 
 * _jinni_ - allows creation of new projects based on templates, among other things 
 * _dr_ - is a simple wrapper for the underlying build tools - _Gradle_ and _Ant_ - to make things simpler
+
+> We use the term `Devrock` as a brand name for our tooling, such as our build tools or _Eclipse_ plugins.
 
 To verify the `PATH` is configured properly go to the command line and run:
 
@@ -38,6 +42,8 @@ get help with: jinni help
 
 DONE
 ```
+
+> ⚠️On Windows, we have observed performance problem due to scanning the `devrock-sdk` directory. In such case consider adding this directory to the exception list in Windows Virus & threat protection settings.
 
 ## Create a dev-env
 
@@ -68,30 +74,18 @@ demo/
 * `git` would typically contain one or more _Git_ repository with our source code; in this example we will only create a repository folder, without initializing it as a _Git_ repository
 * `tf-setups` can be ignored
 
-
-## Installing Eclipse Plugins
-
-We provide plugins that manage your project's classpath and (especially for models) generate extra code and data used by our framework.
-
-Install these plugins in _Eclipse_:
-* open `Help`/`Install New Software`
-* click `Add...` to enter a new plugin repository
-* **Name:** `Hiconic OS` \
-**Location:** `https://eclipse.hiconic-os.org/beta`
-* Select the following plugins:\
-`artifact-container` \
-`artifact-reflection-builder` \
-`main plugin` \
-`model nature builder`
-
-
-## Creating a Group directory
+## Creating a Group Directory
 
 > Note we use the terms `artifact` and `group` as they are used by _Maven_.
 
 _Hiconic_ uses a convention that all artifacts within a particular _group_ are placed inside a directory whose name is the _groupId_.
 
-First create a _group_ directory, say `reflex.demo`
+First, let's move inside `git`:
+```cli
+cd demo/git
+```
+
+Create a _group_ directory, say `reflex.demo`:
 
 ```cli
 mkdir reflex.demo
@@ -107,7 +101,7 @@ And initialize the group:
 jinni create-group
 ```
 
-This creates a _parent_ for the _group_ as well as _Gradle_ files used for building multiple artifacts at the same time.
+This creates a _parent_ for the _group_ as well as _Gradle_ files used for building multiple artifacts at the same time. (Individual artifacts have their own ant scripts, for now). 
 
 Expected folder structure (excluding files starting with '.'):
 ```
@@ -115,7 +109,7 @@ parent/
   build.xml
   pom.xml
 build.gradle
-buildscript.gralde
+buildscript.gradle
 ```
 
 ## Creating an Application
@@ -147,14 +141,16 @@ This creates the following three artifacts:
   ```
 
 
-### Starting the Application from Command Line
+## Starting the Application from Command Line
 
 To start the application from a command line we have to build it first. Call:
 ```cli
 dr +range .
 ```
 
-> This runs the `devrock` build tool. `range` is the parameter specifying which artifacts we want to build and the value `.` is a special character that means everything.
+> This runs our build tool. `range` is the parameter specifying which artifacts we want to build and `.` is a special value that means everything.
+
+> NOTE that downloading all the dependencies might take _Gradle_ a few minutes the very first time.
 
 The previous step has, among other things, prepared launch scripts for our application. Let's navigate to:
 ```cli
@@ -172,8 +168,23 @@ To verify, open [http://localhost:8080/api/main/Greet?name=Someone](http://local
 
 Your browser should display "Hello Someone".
 
+## Installing Eclipse Plugins
 
-### Starting the Application from Eclipse
+In order to develop and run, we currently need _Eclipse_ plugins that manage your project's classpath and (especially for models) generate extra code and data used by our framework.
+
+Follow these instruction in _Eclipse_:
+* open `Help`/`Install New Software`
+* click `Add...` to enter a new plugin repository
+* **Name:** `Hiconic OS` \
+**Location:** `https://eclipse.hiconic-os.org/beta`
+* From the list of `devrock's features` select the following:\
+`artifact-container` \
+`artifact-reflection-builder` \
+`main plugin` \
+`model nature builder`
+
+
+## Starting the Application from Eclipse
 
 Let's now import our projects in _Eclipse_ and run the application (in debug mode) from there.
 
