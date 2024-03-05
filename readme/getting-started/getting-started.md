@@ -43,7 +43,7 @@ get help with: jinni help
 DONE
 ```
 
-> ⚠️On Windows, we have observed performance problem due to scanning the `devrock-sdk` directory. In such case consider adding this directory to the exception list in Windows Virus & threat protection settings.
+> ⚠️On _Windows_, we have observed performance problems due to scanning the `devrock-sdk` directory. In such case consider adding this directory to the exception list in `Windows Security` / `Virus & threat protection`.
 
 ## Create a dev-env
 
