@@ -150,6 +150,11 @@ public class RxPlatformSpace implements RxPlatformContract, RxProcessLaunchContr
 	}
 	
 	@Override
+	public String nodeId() {
+		return "main";
+	}
+	
+	@Override
 	@Managed
 	public ConfigurableServiceRequestEvaluator evaluator() {
 		ConfigurableServiceRequestEvaluator bean = new ConfigurableServiceRequestEvaluator();

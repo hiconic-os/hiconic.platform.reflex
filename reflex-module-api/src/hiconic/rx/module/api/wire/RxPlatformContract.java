@@ -41,6 +41,11 @@ public interface RxPlatformContract extends WireSpace {
 	String applicationName();
 	
 	/**
+	 * The nodeId of this instance in distributed systems 
+	 */
+	String nodeId();
+	
+	/**
 	 *	Returns a configuration for the given type or a reason why the configuration could not be retrieved.
 	 *	If an explicit configuration cannot be found a default initialized instance of the configType will be returned. 
 	 */

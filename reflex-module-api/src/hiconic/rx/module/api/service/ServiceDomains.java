@@ -2,6 +2,8 @@ package hiconic.rx.module.api.service;
 
 import java.util.List;
 
+import com.braintribe.model.meta.GmMetaModel;
+
 public interface ServiceDomains {
 	/**
 	 * Returns the main {@link ServiceDomain}
@@ -16,4 +18,6 @@ public interface ServiceDomains {
 	 * Enumerates all available ServiceDomains
 	 */
 	List<? extends ServiceDomain> list();
+	
+	List<? extends ServiceDomain> listDependers(GmMetaModel model);
 }
