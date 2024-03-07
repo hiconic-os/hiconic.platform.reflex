@@ -6,7 +6,7 @@
         <version>[1.0,1.1)</version>
     </parent>
     <artifactId>cli-api-model</artifactId>
-    <version>1.0.7</version>
+    <version>1.0.8</version>
     <properties>
         <archetype>model</archetype>
     </properties>

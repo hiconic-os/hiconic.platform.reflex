@@ -6,7 +6,7 @@
         <version>[1.0,1.1)</version>
     </parent>
     <artifactId>db-module-api</artifactId>
-    <version>1.0.2</version>
+    <version>1.0.3</version>
     <properties/>
     <dependencies>
         <!-- no dependencies -->
