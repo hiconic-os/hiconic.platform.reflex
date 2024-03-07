@@ -122,6 +122,14 @@ jinni create-reflex-project demo
 This creates the following three artifacts:
 
 * `demo-model` contains the request entities that make up our API. As an example, _Jinni_ creates one such request called `Greet`.
+  ```java
+  public interface Greet extends ServiceRequest {
+    EntityType<Greet> T = EntityTypes.T(Greet.class);
+
+    String getName();
+    void setName(String name);
+  }
+  ```
 
 * `demo-rx-module` contains the implementation of our API. As an example, _Jinni_ creates `GreetProcessor` to handle the `Greet` request. `DemoRxModuleSpace` then binds this processor to that request inside the `registerProcessors` method:
 
