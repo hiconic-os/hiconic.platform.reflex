@@ -2,6 +2,8 @@ package hiconic.rx.demo.model.api;
 
 import com.braintribe.model.generic.annotation.meta.Description;
 import com.braintribe.model.generic.annotation.meta.Mandatory;
+import com.braintribe.model.generic.annotation.meta.MaxLength;
+import com.braintribe.model.generic.annotation.meta.Pattern;
 import com.braintribe.model.generic.annotation.meta.PositionalArguments;
 import com.braintribe.model.generic.eval.EvalContext;
 import com.braintribe.model.generic.eval.Evaluator;
@@ -18,6 +20,8 @@ public interface ReverseText extends ServiceRequest {
 	
 	@Description("The text that should be reversed")
 	@Mandatory
+	@Pattern("^(?!etah$).*$")
+	@MaxLength(10)
 	String getText();
 	void setText(String text);
 	
