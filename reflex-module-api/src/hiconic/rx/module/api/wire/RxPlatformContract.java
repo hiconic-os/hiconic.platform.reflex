@@ -17,7 +17,6 @@ import hiconic.rx.module.api.service.ServiceDomains;
  * you have to import this contract in your wire space. See example in the documentation of {@link RxModuleContract}.
  * 
  * @author dirk.scheffler
- *
  */
 public interface RxPlatformContract extends WireSpace {
 	/**
@@ -52,8 +51,7 @@ public interface RxPlatformContract extends WireSpace {
 	<C extends GenericEntity> Maybe<C> readConfig(EntityType<C> configType);
 
 	/**
-	 * The general purpose thread pool
-	 * @return
+	 * General purpose thread pool.
 	 */
 	ExecutorService executorService();
 }

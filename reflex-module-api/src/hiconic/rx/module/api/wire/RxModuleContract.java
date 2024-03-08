@@ -44,9 +44,10 @@ import hiconic.rx.module.api.service.ServiceDomainConfigurations;
  * </pre>
  * 
  * @author dirk.scheffler
- *
  */
+@SuppressWarnings("unused")
 public interface RxModuleContract extends WireSpace {
+
 	/**
 	 * Configures service domains by:
 	 * <ul>
@@ -57,7 +58,7 @@ public interface RxModuleContract extends WireSpace {
 	 * </ul>
 	 */
 	default void configureServiceDomains(ServiceDomainConfigurations configurations) {
-		
+		// implement if needed
 	}
 
 	/**
@@ -70,33 +71,34 @@ public interface RxModuleContract extends WireSpace {
 	 * </ul>
 	 */
 	default void configureMainServiceDomain(ServiceDomainConfiguration configuration) {
-		
+		// implement if needed
 	}
 	
 	/**
 	 * Registers interceptors that will run for each service domain
 	 */
 	default void registerCrossDomainInterceptors(InterceptorRegistry interceptorRegistry) {
-		
+		// implement if needed
 	}
 	
 	/**
 	 * Registers service processors that will run if a service domain has no specific processor registered
 	 */
 	default void registerFallbackProcessors(ProcessorRegistry processorRegistry) {
-		
+		// implement if needed
 	}
 	
 	/**
 	 * Registers marshallers with general availability
 	 */
 	default void registerMarshaller(ConfigurableMarshallerRegistry registry) {
+		// implement if needed
 	}
 	
 	/**
 	 * Called when the platform application loaded and initialized all modules
 	 */
 	default void onApplicationReady() {
-		
+		// implement if needed
 	}
 }

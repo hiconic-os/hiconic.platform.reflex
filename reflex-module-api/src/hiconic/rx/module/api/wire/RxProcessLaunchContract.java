@@ -17,7 +17,6 @@ public interface RxProcessLaunchContract extends WireSpace {
 	
 	/**
 	 * The name of the launch script (bat/sh) that started the process
-	 * @return
 	 */
 	String launchScriptName();
 

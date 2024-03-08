@@ -6,19 +6,26 @@ import com.braintribe.wire.api.tools.Generics;
 
 public interface RxModule<M extends RxModuleContract> extends WireTerminalModule<RxModuleContract> {
 
-	// better?
-	default void bindExports(Exports exports) { }
-	
+	/**
+	 * Binds {@link RxExportContract}s to the actual space.
+	 *
+	 * @see RxExportContract
+	 */
+	@SuppressWarnings("unused")
+	default void bindExports(Exports exports) {
+		// implement if needed
+	}
+
 	@Override
 	default void configureContext(WireContextBuilder<?> contextBuilder) {
 		WireTerminalModule.super.configureContext(contextBuilder);
-		
+
 		Class<M> moduleSpaceClass = moduleSpaceClass();
 		contextBuilder.bindContract(RxModuleContract.class, moduleSpaceClass);
 	}
-	
+
 	default Class<M> moduleSpaceClass() {
-		return (Class<M>)Generics.getGenericsParameter(getClass(), RxModule.class, "M");
+		return (Class<M>) Generics.getGenericsParameter(getClass(), RxModule.class, "M");
 	}
 
 }
