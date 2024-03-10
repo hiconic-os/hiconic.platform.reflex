@@ -15,34 +15,6 @@ import hiconic.rx.module.api.service.ServiceDomainConfigurations;
  * The reflex platform accesses modules via this contract while modules can access the platform
  * via {@link RxPlatformContract}.
  * 
- * <p>
- * Example for module implementation
- * 
- * <pre>
- * package example;
- * 
- * import hiconic.rx.module.api.wire.RxModuleContract;
- * import hiconic.rx.module.api.wire.RxPlatformContract;
- * import com.braintribe.wire.api.annotation.Import;
- * 
- * public class MyReflexWireModule implements RxModuleContract {
- *   &#64;Import
- *   private RxPlatformContract platform;
- *   
- *   &#64;Override
- *   public void addApiModels(ConfigurationModelBuilder builder) {
- *     builder.addDependencyByName("groupId:my-model");
- *   }
- * }
- * </pre>
- * 
- * <p>
- * Example for module injection
- * 
- * <pre>
- * wire-module=example.MyReflexWireModule
- * </pre>
- * 
  * @author dirk.scheffler
  */
 @SuppressWarnings("unused")

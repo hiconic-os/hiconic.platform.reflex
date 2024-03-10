@@ -1,11 +1,5 @@
 package hiconic.rx.platform.loading;
 
-import static com.braintribe.console.ConsoleOutputs.brightBlack;
-import static com.braintribe.console.ConsoleOutputs.cyan;
-import static com.braintribe.console.ConsoleOutputs.println;
-import static com.braintribe.console.ConsoleOutputs.sequence;
-import static com.braintribe.console.ConsoleOutputs.text;
-
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -25,8 +19,8 @@ import com.braintribe.gm.model.reason.essential.InternalError;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
 import com.braintribe.gm.model.reason.essential.IoError;
 import com.braintribe.gm.model.reason.essential.NotFound;
-import com.braintribe.wire.api.module.WireTerminalModule;
 
+import hiconic.rx.module.api.wire.RxModule;
 import hiconic.rx.module.api.wire.RxModuleContract;
 
 /**
@@ -34,16 +28,16 @@ import hiconic.rx.module.api.wire.RxModuleContract;
  */
 /* package */ class WireModuleLoader {
 
-	public static Maybe<List<WireTerminalModule<RxModuleContract>>> loadWireModules() {
+	public static Maybe<List<RxModule<?>>> loadWireModules() {
 		Maybe<List<URL>> urlsMaybe = collectModuleUrls();
 		if (urlsMaybe.isUnsatisfied())
 			return urlsMaybe.cast();
 
 		List<URL> urls = urlsMaybe.get();
 
-		List<Maybe<WireTerminalModule<RxModuleContract>>> maybeWireModules = urls.stream() //
+		List<Maybe<RxModule<?>>> maybeWireModules = urls.stream() //
 				.parallel() //
-				.map(url -> loadWireModule(url)) //
+				.map(url -> loadRxModule(url)) //
 				.collect(Collectors.toList());
 
 		return fuseMaybes(maybeWireModules, () -> ConfigurationError.create("Error while loading rx-module configurations"));
@@ -105,7 +99,7 @@ import hiconic.rx.module.api.wire.RxModuleContract;
 		return WireModuleLoader.class.getClassLoader().getResources("META-INF/rx-module.properties");
 	}
 
-	private static Maybe<WireTerminalModule<RxModuleContract>> loadWireModule(URL propertiesUrl) {
+	private static Maybe<RxModule<?>> loadRxModule(URL propertiesUrl) {
 		Properties properties = new Properties();
 
 		try (Reader reader = new InputStreamReader(propertiesUrl.openStream(), "UTF-8")) {
@@ -124,32 +118,17 @@ import hiconic.rx.module.api.wire.RxModuleContract;
 					.text("Missing property 'wire-module' in " + propertiesUrl) //
 					.toMaybe();
 
-		printWireModule(wireModule);
+		Maybe<RxModule<?>> rxModule = loadRxModule(wireModule);
 
-		Maybe<WireTerminalModule<RxModuleContract>> maybeTerminalModule = loadWireTerminalModule(wireModule);
-
-		if (maybeTerminalModule.isUnsatisfied())
+		if (rxModule.isUnsatisfied())
 			return Reasons.build(ConfigurationError.T) //
 					.text("Could load " + wireModule + " configured with property 'wire-module' in " + propertiesUrl) //
-					.cause(maybeTerminalModule.whyUnsatisfied()).toMaybe();
+					.cause(rxModule.whyUnsatisfied()).toMaybe();
 
-		return maybeTerminalModule;
+		return rxModule;
 	}
 
-	private static void printWireModule(String wireModule) {
-		int index = wireModule.lastIndexOf('.');
-
-		String pckg = wireModule.substring(0, index);
-		String name = wireModule.substring(index + 1);
-
-		println( //
-				sequence(text("  - "), //
-						cyan(name), //
-						brightBlack(" (" + pckg + ")") //
-				));
-	}
-
-	private static Maybe<WireTerminalModule<RxModuleContract>> loadWireTerminalModule(String wireModule) {
+	private static Maybe<RxModule<?>> loadRxModule(String wireModule) {
 		Class<?> wireModuleClass;
 		try {
 			wireModuleClass = Class.forName(wireModule);
@@ -178,19 +157,19 @@ import hiconic.rx.module.api.wire.RxModuleContract;
 					.toMaybe();
 		}
 
-		if (!(constant instanceof WireTerminalModule))
+		if (!(constant instanceof RxModule))
 			return Reasons.build(NotFound.T) //
-					.text("Constant INSTANCE of enum class " + wireModule + " is not a WireTerminalModule") //
+					.text("Constant INSTANCE of enum class " + wireModule + " is not an RxModule") //
 					.toMaybe();
 
-		var wireTerminalModule = (WireTerminalModule<RxModuleContract>) constant;
+		var rxModule = (RxModule<?>) constant;
 
-		if (!RxModuleContract.class.isAssignableFrom(wireTerminalModule.contract())) {
+		if (!RxModuleContract.class.isAssignableFrom(rxModule.contract())) {
 			return Reasons.build(InvalidArgument.T) //
-					.text("Constant INSTANCE of enum class " + wireModule + " is not a WireTerminalModule with a contract of type RxModuleContract") //
+					.text("Constant INSTANCE of enum class " + wireModule + " is not an RxModule with a contract of type RxModuleContract") //
 					.toMaybe();
 		}
 
-		return Maybe.complete(wireTerminalModule);
+		return Maybe.complete(rxModule);
 	}
 }

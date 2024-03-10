@@ -6,11 +6,5 @@ import hiconic.rx.module.api.wire.Exports;
 import hiconic.rx.module.api.wire.RxModule;
 
 public enum DbRxModule implements RxModule<DbRxModuleSpace> {
-
 	INSTANCE;
-	
-	@Override
-	public void bindExports(Exports exports) {
-		exports.bind(DatabaseContract.class, moduleSpaceClass());
-	}
 }

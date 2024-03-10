@@ -1,6 +1,10 @@
 package hiconic.rx.platform.loading;
 
+import static com.braintribe.console.ConsoleOutputs.brightBlack;
+import static com.braintribe.console.ConsoleOutputs.cyan;
 import static com.braintribe.console.ConsoleOutputs.println;
+import static com.braintribe.console.ConsoleOutputs.sequence;
+import static com.braintribe.console.ConsoleOutputs.text;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -8,6 +12,7 @@ import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Properties;
@@ -23,15 +28,16 @@ import com.braintribe.logging.Logger;
 import com.braintribe.utils.lcd.LazyInitialized;
 import com.braintribe.wire.api.Wire;
 import com.braintribe.wire.api.context.WireContext;
-import com.braintribe.wire.api.module.WireTerminalModule;
 import com.braintribe.wire.api.space.ContractResolution;
 import com.braintribe.wire.api.space.ContractSpaceResolver;
 import com.braintribe.wire.api.space.WireSpace;
 import com.braintribe.wire.impl.properties.PropertyLookups;
 
 import hiconic.rx.module.api.wire.EnvironmentPropertiesContract;
+import hiconic.rx.module.api.wire.RxModule;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.SystemPropertiesContract;
+import hiconic.rx.platform.loading.RxModuleAnalysis.RxExportEntry;
 
 public class RxModuleLoader implements LifecycleAware {
 
@@ -57,13 +63,13 @@ public class RxModuleLoader implements LifecycleAware {
 				.map(c -> c.contract()) //
 				.iterator();
 	}
-	
+
 	public List<RxModuleContract> listModuleContracts() {
 		return contexts.stream() //
 				.map(c -> c.contract()) //
 				.toList();
 	}
-	
+
 	@Override
 	public void postConstruct() {
 		println("Loading Modules:");
@@ -77,9 +83,11 @@ public class RxModuleLoader implements LifecycleAware {
 	}
 
 	private void loadModules() {
-		Maybe<List<WireTerminalModule<RxModuleContract>>> wireModules = WireModuleLoader.loadWireModules();
+		Maybe<List<RxModule<?>>> maybeRxModules = WireModuleLoader.loadWireModules();
 
-		Maybe<List<WireContext<RxModuleContract>>> contextsMaybe = wireModules.flatMap(this::loadWireModuleContexts);
+		RxModuleAnalysis rxAnalysis = RxModuleAnalyzer.analyze(maybeRxModules.get());
+
+		Maybe<List<WireContext<RxModuleContract>>> contextsMaybe = loadWireModuleContexts(rxAnalysis);
 
 		contexts = contextsMaybe.get();
 	}
@@ -90,20 +98,22 @@ public class RxModuleLoader implements LifecycleAware {
 		}
 	}
 
-	private Maybe<List<WireContext<RxModuleContract>>> loadWireModuleContexts(List<WireTerminalModule<RxModuleContract>> wireModules) {
-		List<WireContext<RxModuleContract>> contexts = new ArrayList<>(wireModules.size());
+	private Maybe<List<WireContext<RxModuleContract>>> loadWireModuleContexts(RxModuleAnalysis analysis) {
+		var importResolver = new ImportResolver(analysis.exports);
 
-		LazyInitialized<ConfigurationError> lazyError = new LazyInitialized<>(
+		var contexts = new ArrayList<WireContext<RxModuleContract>>(analysis.nodes.size());
+
+		var lazyError = new LazyInitialized<ConfigurationError>( //
 				() -> ConfigurationError.create("Error while loading rx-module wire contexts"));
 
-		for (WireTerminalModule<RxModuleContract> wireModule : wireModules) {
-			Maybe<WireContext<RxModuleContract>> contextMaybe = loadWireModuleContext(wireModule);
+		// TODO parallelize instead
+		for (RxModuleNode node : nodesSortedDependenciesFirst(analysis)) {
+			var maybeWireCtx = loadWireContextForModule(node, importResolver);
 
-			if (contextMaybe.isUnsatisfied()) {
-				lazyError.get().getReasons().add(contextMaybe.whyUnsatisfied());
-			}
-
-			contexts.add(contextMaybe.get());
+			if (maybeWireCtx.isUnsatisfied())
+				lazyError.get().getReasons().add(maybeWireCtx.whyUnsatisfied());
+			else
+				contexts.add(maybeWireCtx.get());
 		}
 
 		if (lazyError.isInitialized())
@@ -112,20 +122,49 @@ public class RxModuleLoader implements LifecycleAware {
 		return Maybe.complete(contexts);
 	}
 
-	private Maybe<WireContext<RxModuleContract>> loadWireModuleContext(WireTerminalModule<RxModuleContract> wireModule) {
+	private List<RxModuleNode> nodesSortedDependenciesFirst(RxModuleAnalysis analysis) {
+		var rxNodes = new ArrayList<>(analysis.nodes.values());
+		rxNodes.sort(Comparator.comparingInt(RxModuleNode::getIndex));
+		return rxNodes;
+	}
+
+	private Maybe<WireContext<RxModuleContract>> loadWireContextForModule(RxModuleNode node, ImportResolver importResolver) {
+		var rxModule = node.module;
+
+		printWireModule(rxModule.moduleName());
+
 		try {
-			WireContext<RxModuleContract> wireContext = Wire.contextBuilder(wireModule) //
+			WireContext<RxModuleContract> wireContext = Wire.contextBuilder(rxModule) //
 					.parent(parentContext) //
-					.bindContracts(PropertyLookupContractResolver.INSTANCE).build();
+					.bindContracts(importResolver) //
+					.bindContracts(PropertyLookupContractResolver.INSTANCE) //
+					.build();
+
+			for (RxExportEntry export : node.exports)
+				export.moduleWireContext = wireContext;
+
 			return Maybe.complete(wireContext);
 
 		} catch (Exception e) {
-			logger.error("Error while loading module " + wireModule);
+			logger.error("Error while loading module " + rxModule.moduleName());
 			return Reasons.build(ConfigurationError.T) //
-					.text("Could not load WireContext for WireModule " + wireModule.getClass().getName()) //
+					.text("Could not load WireContext for WireModule " + rxModule.moduleName()) //
 					.cause(InternalError.from(e)) //
 					.toMaybe();
 		}
+	}
+
+	private static void printWireModule(String wireModule) {
+		int index = wireModule.lastIndexOf('.');
+
+		String pckg = wireModule.substring(0, index);
+		String name = wireModule.substring(index + 1);
+
+		println( //
+				sequence(text("  - "), //
+						cyan(name), //
+						brightBlack(" (" + pckg + ")") //
+				));
 	}
 
 	public static Properties readApplicationProperties() {
@@ -137,7 +176,7 @@ public class RxModuleLoader implements LifecycleAware {
 			throw new UncheckedIOException("Could not determine META-INF/rx-app.properties class path resources", e);
 		}
 
-		Properties properties = new Properties();
+		var properties = new Properties();
 
 		while (resources.hasMoreElements()) {
 			URL url = resources.nextElement();
@@ -154,7 +193,7 @@ public class RxModuleLoader implements LifecycleAware {
 
 	private static class PropertyLookupContractResolver implements ContractSpaceResolver {
 
-		public static PropertyLookupContractResolver INSTANCE = new PropertyLookupContractResolver();
+		public static final PropertyLookupContractResolver INSTANCE = new PropertyLookupContractResolver();
 
 		@Override
 		public ContractResolution resolveContractSpace(Class<? extends WireSpace> contractSpaceClass) {

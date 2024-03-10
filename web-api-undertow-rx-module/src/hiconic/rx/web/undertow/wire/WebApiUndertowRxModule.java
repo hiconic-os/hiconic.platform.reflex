@@ -1,17 +1,8 @@
 package hiconic.rx.web.undertow.wire;
 
-import com.braintribe.wire.api.context.WireContextBuilder;
-import com.braintribe.wire.api.module.WireTerminalModule;
-
-import hiconic.rx.module.api.wire.RxModuleContract;
+import hiconic.rx.module.api.wire.RxModule;
 import hiconic.rx.web.undertow.wire.space.WebApiUndertowRxModuleSpace;
 
-public enum WebApiUndertowRxModule implements WireTerminalModule<RxModuleContract> {
+public enum WebApiUndertowRxModule implements RxModule<WebApiUndertowRxModuleSpace> {
 	INSTANCE;
-
-	@Override
-	public void configureContext(WireContextBuilder<?> contextBuilder) {
-		WireTerminalModule.super.configureContext(contextBuilder);
-		contextBuilder.bindContract(RxModuleContract.class, WebApiUndertowRxModuleSpace.class);
-	}
 }
