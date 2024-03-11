@@ -16,4 +16,5 @@
     <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="hiconic.rx.platform.RxPlatform"/>
     <stringAttribute key="org.eclipse.jdt.launching.MODULE_NAME" value="demo-web-app - hiconic.platform.reflex"/>
     <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="demo-web-app - hiconic.platform.reflex"/>
+    <stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Dreflex.app.dir=C:\devrock-sdk\env\reflex-auth\demo-web-app"/>
 </launchConfiguration>

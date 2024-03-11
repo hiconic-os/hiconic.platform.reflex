@@ -29,5 +29,21 @@
             <artifactId>validation-rx-module</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
+        
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>db-rx-module</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>security-rx-module</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+		<dependency>
+		    <groupId>org.postgresql</groupId>
+		    <artifactId>postgresql</artifactId>
+		    <version>42.7.2</version>
+		</dependency>        
     </dependencies>
 </project>
