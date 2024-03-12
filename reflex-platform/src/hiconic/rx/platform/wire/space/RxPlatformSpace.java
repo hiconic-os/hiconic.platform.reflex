@@ -90,6 +90,7 @@ public class RxPlatformSpace implements RxPlatformContract, RxProcessLaunchContr
 		RxModuleLoader bean = new RxModuleLoader();
 		bean.setExecutorService(executorService());
 		bean.setParentContext(wireContext);
+		bean.setContractSpaceResolverConfigurator(config.contractSpaceResolverConfigurator());
 		return bean;
 	}
 	

@@ -35,6 +35,7 @@ import com.braintribe.wire.api.space.WireSpace;
 import com.braintribe.wire.impl.properties.PropertyLookups;
 
 import hiconic.rx.module.api.wire.EnvironmentPropertiesContract;
+import hiconic.rx.module.api.wire.RxContractSpaceResolverConfigurator;
 import hiconic.rx.module.api.wire.RxModule;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.SystemPropertiesContract;
@@ -47,12 +48,18 @@ public class RxModuleLoader implements LifecycleAware {
 
 	private WireContext<?> parentContext;
 	private List<WireContext<RxModuleContract>> contexts;
+	private RxContractSpaceResolverConfigurator resolverConfigurator;
 
 	private ExecutorService executorService;
 
 	@Required
 	public void setParentContext(WireContext<?> parentContext) {
 		this.parentContext = parentContext;
+	}
+
+	@Required
+	public void setContractSpaceResolverConfigurator(RxContractSpaceResolverConfigurator resolverConfigurator) {
+		this.resolverConfigurator = resolverConfigurator;
 	}
 
 	@Required
@@ -100,13 +107,14 @@ public class RxModuleLoader implements LifecycleAware {
 	}
 
 	private Maybe<List<WireContext<RxModuleContract>>> loadWireModuleContexts(RxModuleAnalysis analysis) {
-		var importResolver = new RxExportResolver(analysis.exports);
-		registerOnParentContext(importResolver);
-
 		var contexts = new ArrayList<WireContext<RxModuleContract>>(analysis.nodes.size());
 
 		var lazyError = new LazyInitialized<ConfigurationError>( //
 				() -> ConfigurationError.create("Error while loading rx-module wire contexts"));
+
+		var importResolver = new RxExportResolver(analysis.exports);
+
+		resolverConfigurator.addResolver(importResolver);
 
 		// TODO parallelize instead
 		for (RxModuleNode node : nodesSortedDependenciesFirst(analysis)) {
@@ -122,12 +130,6 @@ public class RxModuleLoader implements LifecycleAware {
 			return lazyError.get().asMaybe();
 
 		return Maybe.complete(contexts);
-	}
-
-	private void registerOnParentContext(RxExportResolver importResolver) {
-		parentContext.contract(RxPlatformConfigContract.class) //
-				.contractSpaceResolverConfigurator() //
-				.addResolver(importResolver);
 	}
 
 	private List<RxModuleNode> nodesSortedDependenciesFirst(RxModuleAnalysis analysis) {
