@@ -9,6 +9,7 @@ import static com.braintribe.console.ConsoleOutputs.text;
 import java.io.File;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
+import java.util.function.Function;
 
 import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
@@ -17,30 +18,98 @@ import com.braintribe.console.AbstractAnsiConsole;
 import com.braintribe.console.ConsoleConfiguration;
 import com.braintribe.console.ConsoleOutputs;
 import com.braintribe.wire.api.Wire;
+import com.braintribe.wire.api.context.WireContext;
 import com.braintribe.wire.impl.properties.PropertyLookups;
 
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.joran.JoranConfigurator;
+import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.platform.conf.ApplicationProperties;
 import hiconic.rx.platform.conf.SystemProperties;
 import hiconic.rx.platform.loading.RxModuleLoader;
 import hiconic.rx.platform.wire.RxPlatformWireModule;
 
-public class RxPlatform {
-
-	private static final Object monitor = new Object();
-
-	private static final SystemProperties systemProperties = PropertyLookups.create(SystemProperties.class, System::getProperty);
-	private static final ApplicationProperties applicationProperties = PropertyLookups.create( //
-			ApplicationProperties.class, RxModuleLoader.readApplicationProperties()::getProperty);
-	
+public class RxPlatform implements AutoCloseable {
 	private static final Logger logger = System.getLogger(RxPlatform.class.getName());
 
+	private final SystemProperties systemProperties;
+	private final ApplicationProperties applicationProperties;
+	
+	private String[] args;
+
+	private RxPlatformContract platformContract;
+
+	private WireContext<RxPlatformContract> wireContext;
+	
+	public RxPlatform() {
+		this(new String[]{});
+	}
+
+	public RxPlatform(String[] args) {
+		this(//
+			args, // 
+			defaultSystemPropertyLookup(), //
+			defaultApplicationPropertyLookup() //
+		);
+		this.args = args;
+	}
+	
+	public RxPlatform(Function<String, String> systemPropertyLookup, Function<String, String> applicationPropertyLookup) {
+		this(new String[] {}, systemPropertyLookup, applicationPropertyLookup);
+	}
+	
+	public RxPlatform(String[] args, Function<String, String> systemPropertyLookup, Function<String, String> applicationPropertyLookup) {
+		this.args = args;
+		
+		systemProperties = PropertyLookups.create(SystemProperties.class, systemPropertyLookup);
+		applicationProperties = PropertyLookups.create(ApplicationProperties.class, applicationPropertyLookup);
+		
+		start();
+	}
+	
+	public static Function<String, String> defaultSystemPropertyLookup() {
+		return System::getProperty;
+	}
+	
+	public static Function<String, String> defaultApplicationPropertyLookup() {
+		return RxModuleLoader.readApplicationProperties()::getProperty;
+	}
+	
+	public RxPlatformContract getContract() {
+		return platformContract;
+	}
+	
+	public WireContext<RxPlatformContract> getWireContext() {
+		return wireContext;
+	}
+
 	public static void main(String[] args) {
+		try (RxPlatform platform = new RxPlatform(args)) {
+		
+			Object monitor = new Object();
+			
+			// Registering the shutdown hook
+			Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+				ConsoleOutputs.println("Shutting down Application");
+				synchronized (monitor) {
+					monitor.notify();
+				}
+			}));
+			
+			try {
+				synchronized (monitor) {
+					monitor.wait();
+				}
+			} catch (InterruptedException e) {
+				logger.log(Level.ERROR, "Unexpected interruption", e);
+			}
+		}
+	}
+	
+	private void start() {
 		long startTime = System.currentTimeMillis();
 		setupLogging();
 		setupConsoleOutput();
-		installShutdownHook();
 
 		ConsoleOutputs.println(sequence( //
 				text("Loading "), //
@@ -48,7 +117,8 @@ public class RxPlatform {
 				text(" Application") //
 		));
 
-		Wire.context(new RxPlatformWireModule(args, applicationProperties, systemProperties)).contract();
+		wireContext = Wire.context(new RxPlatformWireModule(args, applicationProperties, systemProperties));
+		platformContract = wireContext.contract();
 
 		long upTime = System.currentTimeMillis();
 		long startupDuration = upTime - startTime;
@@ -68,16 +138,14 @@ public class RxPlatform {
 		
 		logger.log(Level.INFO, "Application loaded");
 
-		try {
-			synchronized (monitor) {
-				monitor.wait();
-			}
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
+	}
+	
+	@Override
+	public void close() {
+		wireContext.close();
 	}
 
-	private static void setupLogging() {
+	private void setupLogging() {
 		// Assume SLF4J is bound to logback in the current environment
         LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
         
@@ -104,21 +172,11 @@ public class RxPlatform {
         SLF4JBridgeHandler.install();
 	}
 
-	private static void installShutdownHook() {
-		// Registering the shutdown hook
-		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-			ConsoleOutputs.println("Shutting down Application");
-			synchronized (monitor) {
-				monitor.notify();
-			}
-		}));
-	}
-
-	private static void eagerLoading() {
+	private void eagerLoading() {
 		// GMF.getTypeReflection().getPackagedModels().forEach(m -> m.getMetaModel());
 	}
 
-	private static void setupConsoleOutput() {
+	private void setupConsoleOutput() {
 		if (applicationProperties.consoleOutput())
 			ConsoleConfiguration.install(new SysOutConsole(true));
 	}

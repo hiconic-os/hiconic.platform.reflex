@@ -4,6 +4,7 @@ import java.io.File;
 
 import com.braintribe.wire.api.space.WireSpace;
 
+import hiconic.rx.module.api.wire.RxContractSpaceResolverConfigurator;
 import hiconic.rx.platform.conf.ApplicationProperties;
 
 public interface RxPlatformConfigContract extends WireSpace {
@@ -11,4 +12,5 @@ public interface RxPlatformConfigContract extends WireSpace {
 	File appDir();
 	String launchScriptName();
 	String[] cliArguments();
+	RxContractSpaceResolverConfigurator contractSpaceResolverConfigurator();
 }

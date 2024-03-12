@@ -6,11 +6,14 @@ import com.braintribe.wire.api.annotation.Default;
 import com.braintribe.wire.api.annotation.Name;
 
 public interface SystemProperties {
-	@Name("reflex.app.dir")
+	static String PROPERTY_APP_DIR = "reflex.app.dir";
+	static String PROPERTY_LAUNCH_SCRIPT = "reflex.launch.script"; 
+	
+	@Name(PROPERTY_APP_DIR)
 	@Default(".")
 	File appDir();
 	
-	@Name("reflex.launch.script")
+	@Name(PROPERTY_LAUNCH_SCRIPT)
 	@Default("launch-script")
 	String launchScript();
 }
