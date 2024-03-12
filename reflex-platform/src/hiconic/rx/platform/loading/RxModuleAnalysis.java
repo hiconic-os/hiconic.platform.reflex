@@ -37,7 +37,7 @@ public class RxModuleAnalysis implements Exports {
 	}
 
 	private <E extends RxExportContract, S extends E> void bind(Class<E> contractClass, Class<S> spaceClass, E spaceInstance) {
-		RxExportEntry entry = new RxExportEntry(currentNode.module, spaceClass, spaceInstance);
+		RxExportEntry entry = new RxExportEntry(currentNode.module, contractClass, spaceClass, spaceInstance);
 
 		currentNode.exports.add(entry);
 
@@ -51,12 +51,15 @@ public class RxModuleAnalysis implements Exports {
 	public static class RxExportEntry {
 		// because we keep these entries in memory, we don't want to store the RxModuleNode with all the temporary information
 		public final RxModule<RxModuleContract> module;
+		public final Class<? extends RxExportContract> contractClass;
 		public final Class<? extends RxExportContract> spaceClass;
 		public RxExportContract space;
 		public WireContext<?> moduleWireContext;
 
-		public RxExportEntry(RxModule<RxModuleContract> module, Class<? extends RxExportContract> spaceClass, RxExportContract space) {
+		public RxExportEntry(RxModule<RxModuleContract> module, Class<? extends RxExportContract> contractClass,
+				Class<? extends RxExportContract> spaceClass, RxExportContract space) {
 			this.module = module;
+			this.contractClass = contractClass;
 			this.spaceClass = spaceClass;
 			this.space = space;
 		}

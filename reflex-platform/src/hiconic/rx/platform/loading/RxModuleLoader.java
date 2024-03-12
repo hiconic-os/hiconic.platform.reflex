@@ -28,6 +28,7 @@ import com.braintribe.logging.Logger;
 import com.braintribe.utils.lcd.LazyInitialized;
 import com.braintribe.wire.api.Wire;
 import com.braintribe.wire.api.context.WireContext;
+import com.braintribe.wire.api.context.WireContextBuilder;
 import com.braintribe.wire.api.space.ContractResolution;
 import com.braintribe.wire.api.space.ContractSpaceResolver;
 import com.braintribe.wire.api.space.WireSpace;
@@ -38,6 +39,7 @@ import hiconic.rx.module.api.wire.RxModule;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.SystemPropertiesContract;
 import hiconic.rx.platform.loading.RxModuleAnalysis.RxExportEntry;
+import hiconic.rx.platform.wire.contract.RxPlatformConfigContract;
 
 public class RxModuleLoader implements LifecycleAware {
 
@@ -93,13 +95,13 @@ public class RxModuleLoader implements LifecycleAware {
 	}
 
 	private void closeWireModuleContexts() {
-		for (WireContext<RxModuleContract> context : contexts) {
+		for (WireContext<RxModuleContract> context : contexts)
 			context.close();
-		}
 	}
 
 	private Maybe<List<WireContext<RxModuleContract>>> loadWireModuleContexts(RxModuleAnalysis analysis) {
-		var importResolver = new ImportResolver(analysis.exports);
+		var importResolver = new RxExportResolver(analysis.exports);
+		registerOnParentContext(importResolver);
 
 		var contexts = new ArrayList<WireContext<RxModuleContract>>(analysis.nodes.size());
 
@@ -108,7 +110,7 @@ public class RxModuleLoader implements LifecycleAware {
 
 		// TODO parallelize instead
 		for (RxModuleNode node : nodesSortedDependenciesFirst(analysis)) {
-			var maybeWireCtx = loadWireContextForModule(node, importResolver);
+			var maybeWireCtx = loadWireContextForModule(node);
 
 			if (maybeWireCtx.isUnsatisfied())
 				lazyError.get().getReasons().add(maybeWireCtx.whyUnsatisfied());
@@ -122,21 +124,31 @@ public class RxModuleLoader implements LifecycleAware {
 		return Maybe.complete(contexts);
 	}
 
+	private void registerOnParentContext(RxExportResolver importResolver) {
+		parentContext.contract(RxPlatformConfigContract.class) //
+				.contractSpaceResolverConfigurator() //
+				.addResolver(importResolver);
+	}
+
 	private List<RxModuleNode> nodesSortedDependenciesFirst(RxModuleAnalysis analysis) {
 		var rxNodes = new ArrayList<>(analysis.nodes.values());
 		rxNodes.sort(Comparator.comparingInt(RxModuleNode::getIndex));
 		return rxNodes;
 	}
 
-	private Maybe<WireContext<RxModuleContract>> loadWireContextForModule(RxModuleNode node, ImportResolver importResolver) {
+	private Maybe<WireContext<RxModuleContract>> loadWireContextForModule(RxModuleNode node) {
 		var rxModule = node.module;
 
 		printWireModule(rxModule.moduleName());
 
 		try {
-			WireContext<RxModuleContract> wireContext = Wire.contextBuilder(rxModule) //
+			WireContextBuilder<RxModuleContract> contextBuilder = Wire.contextBuilder(rxModule);
+			for (RxExportEntry export : node.exports)
+				if (export.spaceClass != null)
+					contextBuilder.bindContract(export.contractClass, export.spaceClass);
+
+			WireContext<RxModuleContract> wireContext = contextBuilder //
 					.parent(parentContext) //
-					.bindContracts(importResolver) //
 					.bindContracts(PropertyLookupContractResolver.INSTANCE) //
 					.build();
 

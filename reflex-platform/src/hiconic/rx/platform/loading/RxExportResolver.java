@@ -12,11 +12,11 @@ import hiconic.rx.platform.loading.RxModuleAnalysis.RxExportEntry;
 /**
  * @author peter.gazdik
  */
-/* package */ class ImportResolver implements ContractSpaceResolver {
+/* package */ class RxExportResolver implements ContractSpaceResolver {
 
 	private final Map<Class<? extends RxExportContract>, RxExportEntry> exports;
 
-	public ImportResolver(Map<Class<? extends RxExportContract>, RxExportEntry> exports) {
+	public RxExportResolver(Map<Class<? extends RxExportContract>, RxExportEntry> exports) {
 		this.exports = exports;
 	}
 
@@ -42,7 +42,9 @@ import hiconic.rx.platform.loading.RxModuleAnalysis.RxExportEntry;
 			throw new IllegalStateException("Cannot resolve contract " + contractClass.getName() + ", expored by module " + entry.module.moduleName()
 					+ ", as that module is not loaded.");
 
-		return entry.moduleWireContext.contract(contractClass);
+		entry.space = (RxExportContract) entry.moduleWireContext.contract(contractClass);
+
+		return entry.space;
 	}
 
 }
