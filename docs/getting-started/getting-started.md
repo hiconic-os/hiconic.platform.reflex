@@ -49,9 +49,9 @@ DONE
 
 _dev-env_ (which obviously stands for Development Environment) is a directory inside `devrock-sdk/env` which contains the code and configuration of your project, including an _Eclipse_ workspace.
 
-Let's create a _dev-evn_ called `demo`.
-
 > Having multiple _dev-envs_ is useful when working on multiple independent projects, but you can do all your work in just one.
+
+Let's create a _dev-evn_ called `demo`.
 
 On command line, navigate to `devrock-sdk/env`, end enter:
 ```cli
@@ -68,7 +68,7 @@ demo/
   tf-setups/
 ```
 
-* `artifacts` is a local maven repository, i.e. stores your own artifacts built locally and downloaded third party dependencies. The _Maven_ repositories are configured inside, in `repository-configuration.yaml`
+* `artifacts` is a local _Maven_ repository, i.e. stores your own artifacts built locally and downloaded third party dependencies. The _Maven_ repositories are configured inside, in `repository-configuration.yaml`
 * `commands` can be ignored
 * `eclipse-workspace` is the workspace to open from _Eclipse_
 * `git` would typically contain one or more _Git_ repository with our source code; in this example we will only create a repository folder, without initializing it as a _Git_ repository
@@ -139,11 +139,11 @@ This creates the following three artifacts:
 		configuration.register(Greet.T, greetProcessor());
 	}
   ```
-  > Service Domain is a logical space with its own configuration, most notably mappings from requests to processors. In simple cases, we only work with the domain called `main`, but defining other domains is also possible (with `configureServiceDomains(...)`).
+  > _Service Domain_ is a logical space with its own configuration, most notably mappings from requests to processors. In simple cases, we only work with the domain called `main`, but defining other domains is also possible (by implementing another method - `configureServiceDomains(...)`).
 
 * `demo-app` defines our application as a bundle of the `reflex-platform`, our `demo-rx-module` and a module that provides a web server with a REST endpoint (`web-api-undertow-rx-module`).
 
-  Note that this `web` endpoint is the default, but we could have also created a `CLI` application via:
+  Note that this `web` endpoint is the default, but we could have also created a `CLI` application with `-e cli`, i.e.:
   ```cli
   jinni create-reflex-project demo -e cli
   ```
@@ -196,13 +196,13 @@ Follow these instruction in _Eclipse_:
 
 Let's now import our projects in _Eclipse_ and run the application (in debug mode) from there.
 
-> Make sure to stop the application with CTRL+C if it's running from the command line.
+> Make sure to stop the application with `CTRL+C` if it's still running from the command line.
 
 Let's open the _Eclipse_ workspace in our _dev-env_, located under `devrock-sdk/env/demo/eclipse-workspace`.
 
-> If you're new to _Eclipse_ and the IDE has opened without you specifying a workspace, you need to click on `File` / `Switch Workspace` / `Other` to select the workspace.
+> If you're new to _Eclipse_ and the IDE has opened without you specifying a workspace, you need to click on `File` / `Switch Workspace` / `Other...` to select the workspace.
 
-Now we need to import our artifacts. This is easy thanks to the _Devrock_ plugins, which are aware of our _dev-env_. They registered a shortcut - `CTRL` + `SHIFT` + `I`,type `demo` and select all the artifacts:
+Now we need to import our artifacts. This is easy thanks to the _Devrock_ plugins, which are aware of our _dev-env_. They registered a shortcut - `CTRL` + `SHIFT` + `I` so press it, type `demo` and select all the artifacts:
 
 ![](./images/screen-import.png)
 

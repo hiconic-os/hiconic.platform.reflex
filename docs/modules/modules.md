@@ -1,11 +1,11 @@
 # Reflex Modules
 
-A reflex module has to declare a number of things to be recognized and loadable by the reflex platform:
+A _Reflex_ module has to declare a number of things to be recognized and loadable by the _Reflex_ platform:
 
 * Artifact [Dependencies](#artifact-dependencies)
 * Dependency Injection
-  * Reflex Wire [Module](#reflex-wire-module)
-  * Reflex Module [Space](#reflex-module-space)
+  * _Reflex_ Wire [Module](#reflex-wire-module)
+  * _Reflex_ Module [Space](#reflex-module-space)
 
 You can create a module with all the requirements from a given name on the command line with the devrock-sdk:
 
@@ -19,8 +19,8 @@ Add the following dependency to your artifact descriptor:
 
 ```xml
 <!-- 
-    The reflex-module-api brings the essential interfaces
-    rquired to declare a reflex module:
+    The Reflex-module-api brings the essential interfaces
+    rquired to declare a Reflex module:
     RxModuleContract
     RxModule 
 -->
@@ -37,7 +37,7 @@ Additionally you can depend on model artifacts and any other library required fo
 
 # Reflex Wire Module
 
-A reflex module has to define a wire module for dependency. It basically names the [module space](#reflex-module-space) which will do all the required registrations agains the platform or other modules:
+A _Reflex_ module has to define a wire module for dependency. It basically names the [module space](#reflex-module-space) which will do all the required registrations against the platform or other modules:
 
 Source file: `example/module/wire/ExampleRxModule.java`
 
@@ -53,7 +53,7 @@ public enum ExampleRxModule implements RxModule<ExampleRxModuleSpace> {
 }
 ```
 
-For automatic detection and loading by the reflex platform the wire module needs to be announced in a properties file:
+For automatic detection and loading by the _Reflex_ platform the wire module needs to be announced in a properties file:
 
 Source file: `META-INF/rx-module.properties`
 
