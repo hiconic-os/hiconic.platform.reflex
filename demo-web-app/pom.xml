@@ -16,7 +16,7 @@
         </dependency>
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
-            <artifactId>web-api-undertow-rx-module</artifactId>
+            <artifactId>web-api-server-rx-module</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
         <dependency>

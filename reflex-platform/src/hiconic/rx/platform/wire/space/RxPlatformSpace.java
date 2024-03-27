@@ -27,10 +27,13 @@ import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.module.api.wire.RxProcessLaunchContract;
 import hiconic.rx.platform.loading.RxModuleLoader;
+import hiconic.rx.platform.models.RxConfiguredModel;
+import hiconic.rx.platform.models.RxConfiguredModels;
+import hiconic.rx.platform.models.RxModelConfigurations;
 import hiconic.rx.platform.service.RxServiceDomain;
 import hiconic.rx.platform.service.RxServiceDomainConfigurations;
 import hiconic.rx.platform.service.RxServiceDomains;
-import hiconic.rx.platform.service.ServiceDomainDispatcher;
+import hiconic.rx.platform.service.RxServiceDomainDispatcher;
 import hiconic.rx.platform.wire.contract.RxPlatformConfigContract;
 
 @Managed
@@ -56,6 +59,7 @@ public class RxPlatformSpace implements RxPlatformContract, RxProcessLaunchContr
 		// run service domain configuration of all modules
 		// TODO: parallelize
 		for (RxModuleContract moduleContract: moduleContracts) {
+			moduleContract.configureModels(modelConfigurations());
 			moduleContract.configureMainServiceDomain(mainDomain);
 			moduleContract.configureServiceDomains(serviceDomainConfigurations);
 			moduleContract.registerCrossDomainInterceptors(rootServiceProcessor());
@@ -63,14 +67,10 @@ public class RxPlatformSpace implements RxPlatformContract, RxProcessLaunchContr
 		}
 		
 		// run all collected model meta data configurers
-		// TODO: parallelize metadata editing per servicedomain as models are isolated
-		RxServiceDomains serviceDomains = serviceDomains();
-		for (RxServiceDomain serviceDomain: serviceDomains.list()) {
-			BasicModelMetaDataEditor editor = new BasicModelMetaDataEditor(serviceDomain.getConfigurationModelBuilder().get());
-
-			for (Consumer<ModelMetaDataEditor> configurer : serviceDomain.getModelConfigurers()) {
-				configurer.accept(editor);
-			}
+		// TODO: parallelize metadata editing per model as models are isolated
+		for (RxConfiguredModel configuredModel: configuredModels().list()) {
+			// TODO: trigger eager configuration
+			configuredModel.cmdResolver();
 		}
 
 		// notify all modules about application being ready for action
@@ -98,8 +98,24 @@ public class RxPlatformSpace implements RxPlatformContract, RxProcessLaunchContr
 	@Managed
 	public RxServiceDomains serviceDomains() {
 		RxServiceDomains bean = new RxServiceDomains();
-		bean.setParentWireContext(wireContext);
+		bean.setContextEvaluator(evaluator());
 		bean.setFallbackProcessor(fallbackProcessor());
+		bean.setExecutorService(executorService());
+		bean.setModelConfigurations(modelConfigurations());
+		return bean;
+	}
+	
+	@Override
+	@Managed
+	public RxConfiguredModels configuredModels() {
+		RxConfiguredModels bean = new RxConfiguredModels();
+		return bean;
+	}
+	
+	@Managed
+	public RxModelConfigurations modelConfigurations() {
+		RxModelConfigurations bean = new RxModelConfigurations();
+		bean.setConfiguredModels(configuredModels());
 		return bean;
 	}
 	
@@ -181,8 +197,8 @@ public class RxPlatformSpace implements RxPlatformContract, RxProcessLaunchContr
 	}
 	
 	@Managed
-	private ServiceDomainDispatcher serviceDomainDispatcher() {
-		ServiceDomainDispatcher bean = new ServiceDomainDispatcher();
+	private RxServiceDomainDispatcher serviceDomainDispatcher() {
+		RxServiceDomainDispatcher bean = new RxServiceDomainDispatcher();
 		bean.setServiceDomains(serviceDomains());
 		return bean;
 	}

@@ -4,7 +4,6 @@ package hiconic.platform.reflex.security.processor;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Supplier;
 
 import com.braintribe.cfg.Configurable;
 import com.braintribe.cfg.Required;

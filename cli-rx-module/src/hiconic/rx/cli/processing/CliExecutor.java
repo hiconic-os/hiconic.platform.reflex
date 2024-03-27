@@ -26,6 +26,8 @@ import com.braintribe.codec.marshaller.api.Marshaller;
 import com.braintribe.codec.marshaller.api.MarshallerRegistry;
 import com.braintribe.codec.marshaller.api.OutputPrettiness;
 import com.braintribe.codec.marshaller.api.options.GmSerializationContextBuilder;
+import com.braintribe.common.attribute.AttributeContext;
+import com.braintribe.common.attribute.AttributeContextBuilder;
 import com.braintribe.common.attribute.common.CallerEnvironment;
 import com.braintribe.common.attribute.common.impl.BasicCallerEnvironment;
 import com.braintribe.console.ConsoleConfiguration;
@@ -38,18 +40,25 @@ import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
+import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.eval.EvalContext;
 import com.braintribe.model.generic.eval.Evaluator;
+import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.processing.service.api.OutputConfigAspect;
 import com.braintribe.model.processing.service.impl.BasicOutputConfig;
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.model.service.api.result.Neutral;
+import com.braintribe.utils.collection.impl.AttributeContexts;
 import com.braintribe.utils.lcd.StringTools;
 
+import hiconic.rx.module.api.endpoint.EndpointInput;
+import hiconic.rx.module.api.endpoint.EndpointInputAttribute;
+import hiconic.rx.module.api.service.ServiceDomain;
+import hiconic.rx.module.api.service.ServiceDomains;
 import hiconic.rx.platform.cli.model.api.Introduce;
 import hiconic.rx.platform.cli.model.api.Options;
 
-public class CliExecutor {
+public class CliExecutor implements EndpointInput {
 	private static final List<String> FILE_INDICATORS = Arrays.asList(".", "/", "\\", ":");
 	
 	private String[] args;
@@ -59,10 +68,18 @@ public class CliExecutor {
 	private ServiceRequest request;
 	private Evaluator<ServiceRequest> evaluator;
 	private MarshallerRegistry marshallerRegistry;
+	private ServiceDomains serviceDomains;
+
+	private ParsedCommandLine commandLine;
 	
 	@Required
 	public void setMarshallerRegistry(MarshallerRegistry marshallerRegistry) {
 		this.marshallerRegistry = marshallerRegistry;
+	}
+	
+	@Required
+	public void setServiceDomains(ServiceDomains serviceDomains) {
+		this.serviceDomains = serviceDomains;
 	}
 	
 	@Required
@@ -101,7 +118,24 @@ public class CliExecutor {
 	}
 	
 	private int _process() throws Exception {
-
+		AttributeContextBuilder contextBuilder = AttributeContexts.derivePeek();
+		
+		contextBuilder.set(OutputConfigAspect.class, new BasicOutputConfig(options.getVerbose()));
+		contextBuilder.setAttribute(CallerEnvironment.class, callerEnvironment());
+		contextBuilder.set(EndpointInputAttribute.class, this);
+		
+		AttributeContext attributeContext = contextBuilder.build();
+		
+		AttributeContexts.push(attributeContext);
+		try {
+			return processContextualized();
+		}
+		finally {
+			AttributeContexts.pop();
+		}
+	}
+	
+	private int processContextualized() throws Exception {
 		Reason error = loadRequestAndOptions();
 		
 		configureProtocolling(options);
@@ -131,12 +165,22 @@ public class CliExecutor {
 		if (commandLineMaybe.isUnsatisfied())
 			return commandLineMaybe.whyUnsatisfied();
 		
-		ParsedCommandLine commandLine = commandLineMaybe.get();
-		
+		commandLine = commandLineMaybe.get();
 		options = commandLine.acquireInstance(Options.T);
-		request = commandLine.findInstance(ServiceRequest.T).orElseGet(Introduce.T::create);
+		request = commandLine.findInstance(ServiceRequest.T).orElseGet(this::getDefaultRequest);
 		
 		return null;
+	}
+	
+	private ServiceRequest getDefaultRequest() {
+		ServiceDomain serviceDomain = serviceDomains.main();
+		
+		ServiceRequest defaultRequest = serviceDomain.defaultRequest();
+		
+		if (defaultRequest == null)
+			defaultRequest = Introduce.T.create();
+		
+		return defaultRequest;
 	}
 
 	private Maybe<ParsedCommandLine> parseCommand() {
@@ -241,7 +285,7 @@ public class CliExecutor {
 	}
 	
 	private Reason evalAndHandleResponse() throws IOException {
-		Maybe<?> maybe = evalRequest();
+		Maybe<?> maybe = request.eval(evaluator).getReasoned();
 		
 		if (maybe.isUnsatisfied())
 			return maybe.whyUnsatisfied();
@@ -253,15 +297,11 @@ public class CliExecutor {
 		return null;
 	}
 
-	private Maybe<?> evalRequest() {
-		EvalContext<?> evalContext = request.eval(evaluator);
-		evalContext.setAttribute(OutputConfigAspect.class, new BasicOutputConfig(options.getVerbose()));
-		evalContext.setAttribute(CallerEnvironment.class, callerEnvironment());
-
-		// evaluate the request
-		return evalContext.getReasoned();
+	@Override
+	public <T extends GenericEntity> T findInput(EntityType<T> inputType) {
+		return commandLine != null? commandLine.findInstance(inputType).orElse(null): null;
 	}
-
+	
 	private CallerEnvironment callerEnvironment() {
 		File currentWorkingDirectory = new File(System.getProperty("user.dir"));
 		return new BasicCallerEnvironment(true, currentWorkingDirectory);

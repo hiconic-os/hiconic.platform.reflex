@@ -50,6 +50,7 @@ public abstract class AbstractRxTest {
 	
 	@After
 	public void onAfter() {
-		platform.close();
+		if (platform != null)
+			platform.close();
 	}
 }

@@ -6,33 +6,47 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 
 import com.braintribe.cfg.Required;
+import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.meta.GmMetaModel;
 import com.braintribe.model.processing.service.common.ConfigurableDispatchingServiceProcessor;
+import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.utils.lcd.LazyInitialized;
-import com.braintribe.wire.api.Wire;
-import com.braintribe.wire.api.context.WireContext;
 
+import hiconic.platform.reflex._ReflexPlatform_;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.service.ServiceDomains;
-import hiconic.rx.platform.service.wire.RxServiceDomainWireModule;
-import hiconic.rx.platform.service.wire.contract.RxServiceDomainContract;
+import hiconic.rx.platform.models.RxConfiguredModel;
+import hiconic.rx.platform.models.RxModelConfigurations;
 
 public class RxServiceDomains implements ServiceDomains {
-	private Map<String, WireContext<RxServiceDomainContract>> domains = new ConcurrentHashMap<>();
-	private WireContext<?> parentWireContext;
+	private Map<String, RxServiceDomain> domains = new ConcurrentHashMap<>();
 	private ConfigurableDispatchingServiceProcessor fallbackProcessor;
+	private Evaluator<ServiceRequest> contextEvaluator;
 	private LazyInitialized<Map<GmMetaModel, List<RxServiceDomain>>> domainsByModel = new LazyInitialized<>(this::indexDependers);
+	private ExecutorService executorService;
+	private RxModelConfigurations modelConfigurations;
+	
+	@Required
+	public void setModelConfigurations(RxModelConfigurations modelConfigurations) {
+		this.modelConfigurations = modelConfigurations;
+	}
+	
+	@Required
+	public void setExecutorService(ExecutorService executorService) {
+		this.executorService = executorService;
+	}
+	
+	@Required
+	public void setContextEvaluator(Evaluator<ServiceRequest> contextEvaluator) {
+		this.contextEvaluator = contextEvaluator;
+	}
 	
 	@Required
 	public void setFallbackProcessor(ConfigurableDispatchingServiceProcessor fallbackProcessor) {
 		this.fallbackProcessor = fallbackProcessor;
-	}
-	
-	@Required
-	public void setParentWireContext(WireContext<?> parentWireContext) {
-		this.parentWireContext = parentWireContext;
 	}
 	
 	@Override
@@ -42,12 +56,7 @@ public class RxServiceDomains implements ServiceDomains {
 
 	@Override
 	public RxServiceDomain byId(String domainId) {
-		WireContext<RxServiceDomainContract> wireContext = domains.get(domainId);
-		
-		if (wireContext == null)
-			return null;
-		
-		return wireContext.contract().serviceDomain();
+		return domains.get(domainId);
 	}
 	
 	@Override
@@ -59,8 +68,6 @@ public class RxServiceDomains implements ServiceDomains {
 		Map<GmMetaModel, List<RxServiceDomain>> index = new HashMap<>();
 
 		for (RxServiceDomain domain: list()) {
-			index.computeIfAbsent(null, k -> new ArrayList<>());
-			
 			domain.modelOracle().getDependencies() //
 				.includeSelf() //
 				.transitive() //
@@ -71,21 +78,18 @@ public class RxServiceDomains implements ServiceDomains {
 	} 
 	
 	public RxServiceDomain acquire(String domainId) {
-		return domains.computeIfAbsent(domainId, this::createServiceDomain).contract().serviceDomain();
+		return domains.computeIfAbsent(domainId, this::createServiceDomain);
 	}
 	
-	private WireContext<RxServiceDomainContract> createServiceDomain(String domainId) {
-		WireContext<RxServiceDomainContract> wireContext = Wire.contextBuilder(new RxServiceDomainWireModule(domainId, fallbackProcessor)) //
-				.parent(parentWireContext) //
-				.build();
+	private RxServiceDomain createServiceDomain(String domainId) {
+		RxConfiguredModel configuredModel = modelConfigurations.byName(_ReflexPlatform_.groupId + ":configured-" + domainId + "-api-model");
 		
-		return wireContext;
+		RxServiceDomain domain = new RxServiceDomain(domainId, configuredModel, executorService, contextEvaluator, fallbackProcessor);
+		return domain;
 	}
 
 	@Override
 	public List<RxServiceDomain> list() {
-		return domains.values().stream() // 
-			.map(c -> c.contract().serviceDomain()) //
-			.toList();
+		return List.copyOf(domains.values());
 	}
 }

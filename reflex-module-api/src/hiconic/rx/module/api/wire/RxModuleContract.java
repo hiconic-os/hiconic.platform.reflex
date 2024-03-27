@@ -5,6 +5,7 @@ import com.braintribe.model.processing.service.api.InterceptorRegistry;
 import com.braintribe.model.processing.service.api.ProcessorRegistry;
 import com.braintribe.wire.api.space.WireSpace;
 
+import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 
@@ -20,6 +21,19 @@ import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 @SuppressWarnings("unused")
 public interface RxModuleContract extends WireSpace {
 
+	/**
+	 * Configures models by:
+	 * <ul>
+	 * 	<li>adding models</li>
+	 * 	<li>binding processors</li>
+	 *  <li>binding interceptors</li>
+	 *  <li>configuring meta data on models</li>
+	 * </ul>
+	 */
+	default void configureModels(ModelConfigurations configurations) {
+		// implement if needed
+	}
+	
 	/**
 	 * Configures service domains by:
 	 * <ul>

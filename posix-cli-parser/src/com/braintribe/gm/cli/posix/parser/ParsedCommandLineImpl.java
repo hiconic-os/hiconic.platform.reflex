@@ -16,6 +16,11 @@ public class ParsedCommandLineImpl implements ParsedCommandLine {
 
 	private List<GenericEntity> entities = new ArrayList<>();
 	private Map<EntityType<?>, GenericEntity> entitiesByType = new ConcurrentHashMap<>();
+	private Function<EntityType<?>, GenericEntity> entityFactory;
+	
+	public ParsedCommandLineImpl(Function<EntityType<?>, GenericEntity> entityFactory) {
+		this.entityFactory = entityFactory;
+	}
 	
 	@Override
 	public void addEntity(GenericEntity entity) {
@@ -25,7 +30,7 @@ public class ParsedCommandLineImpl implements ParsedCommandLine {
 	
 	@Override
 	public <O extends GenericEntity> O acquireInstance(EntityType<O> optionsType) {
-		return (O) entitiesByType.computeIfAbsent(optionsType, t -> t.create());
+		return (O) entitiesByType.computeIfAbsent(optionsType, entityFactory);
 	}
 	
 	@Override

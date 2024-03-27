@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>hiconic.platform.reflex</groupId>
+        <artifactId>parent</artifactId>
+        <version>[1.0,1.1)</version>
+    </parent>
+    <artifactId>web-rpc-client-module-api</artifactId>
+    <version>1.0.1</version>
+    <properties/>
+    <dependencies>
+        <!-- no dependencies -->
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>reflex-module-api</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>web-rpc-client-configuration-model</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+            <?tag asset ?>
+        </dependency>
+        <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>service-api-model</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+            <?tag asset ?>
+        </dependency>
+    </dependencies>
+</project>

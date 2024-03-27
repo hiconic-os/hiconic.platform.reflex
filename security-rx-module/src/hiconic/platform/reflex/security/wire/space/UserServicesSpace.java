@@ -60,6 +60,9 @@ public class UserServicesSpace implements RxModuleContract {
 	@Managed 
 	private StandardUserSessionService standardUserSessionService() {
 		StandardUserSessionService bean = new StandardUserSessionService();
+		bean.setSessionIdProvider(userSessionIdFactory());
+		bean.setNodeId(platform.nodeId());
+		bean.setDefaultUserSessionMaxIdleTime(TimeSpan.create(24, TimeUnit.hour));
 		return bean;
 	}
 	

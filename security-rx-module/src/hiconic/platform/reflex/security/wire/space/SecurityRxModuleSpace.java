@@ -3,6 +3,7 @@ package hiconic.platform.reflex.security.wire.space;
 import com.braintribe.model.processing.service.api.InterceptorRegistry;
 import com.braintribe.model.securityservice.AuthenticateCredentials;
 import com.braintribe.model.securityservice.SecurityRequest;
+import com.braintribe.model.securityservice.SimplifiedOpenUserSession;
 import com.braintribe.model.securityservice.credentials.ExistingSessionCredentials;
 import com.braintribe.model.securityservice.credentials.GrantedCredentials;
 import com.braintribe.model.securityservice.credentials.TrustedCredentials;
@@ -14,6 +15,7 @@ import com.braintribe.wire.api.annotation.Managed;
 import hiconic.platform.reflex.security.processor.AuthenticationProcessor;
 import hiconic.platform.reflex.security.processor.AuthorizingServiceInterceptor;
 import hiconic.platform.reflex.security.processor.SecurityServiceProcessor;
+import hiconic.platform.reflex.security.processor.SimpleSecurityServiceProcessor;
 import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.module.api.wire.RxModuleContract;
@@ -34,6 +36,7 @@ public class SecurityRxModuleSpace implements RxModuleContract {
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
 		ServiceDomainConfiguration configuration = configurations.byId("security");
 		configuration.register(SecurityRequest.T, securityProcessor());
+		configuration.register(SimplifiedOpenUserSession.T, simpleSecurityProcessor());
 		configuration.register(AuthenticateCredentials.T, authenticationProcessor());
 	}
 	
@@ -64,6 +67,12 @@ public class SecurityRxModuleSpace implements RxModuleContract {
 		bean.setEvaluator(platform.evaluator());
 		bean.setUserService(userServices.standardUserService());
 		bean.setUserSessionService(userServices.userSessionService());
+		return bean;
+	}
+	
+	@Managed
+	private SimpleSecurityServiceProcessor simpleSecurityProcessor() {
+		SimpleSecurityServiceProcessor bean = new SimpleSecurityServiceProcessor();
 		return bean;
 	}
 	

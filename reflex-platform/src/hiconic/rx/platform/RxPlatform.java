@@ -41,8 +41,11 @@ public class RxPlatform implements AutoCloseable {
 
 	private WireContext<RxPlatformContract> wireContext;
 	
+	private boolean configureLogging = true;
+	
 	public RxPlatform() {
 		this(new String[]{});
+		configureLogging = false;
 	}
 
 	public RxPlatform(String[] args) {
@@ -146,6 +149,9 @@ public class RxPlatform implements AutoCloseable {
 	}
 
 	private void setupLogging() {
+		if (!configureLogging)
+			return;
+		
 		// Assume SLF4J is bound to logback in the current environment
         LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
         

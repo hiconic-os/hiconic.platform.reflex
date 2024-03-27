@@ -5,7 +5,7 @@ import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
-import hiconic.platform.reflex._CliApiModel_;
+import hiconic.rx.cli.processing.CliEntityFactory;
 import hiconic.rx.cli.processing.CliExecutor;
 import hiconic.rx.cli.processing.IntroductionProcessor;
 import hiconic.rx.cli.processing.help.HelpProcessor;
@@ -17,6 +17,7 @@ import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.module.api.wire.RxProcessLaunchContract;
 import hiconic.rx.platform.cli.model.api.Help;
 import hiconic.rx.platform.cli.model.api.Introduce;
+import hiconic.rx.platform.cli.model.api.Options;
 
 @Managed
 public class CliRxModuleSpace implements RxModuleContract {
@@ -60,6 +61,7 @@ public class CliRxModuleSpace implements RxModuleContract {
 		CliExecutor bean = new CliExecutor();
 		bean.setArgs(processLaunch.cliArguments());
 		bean.setParser(parser());
+		bean.setServiceDomains(platform.serviceDomains());
 		bean.setDefaultDomains(platform.serviceDomains().list().stream().map(ServiceDomain::domainId).toList());
 		bean.setEvaluator(platform.evaluator());
 		bean.setMarshallerRegistry(platform.marshallers());
@@ -70,6 +72,14 @@ public class CliRxModuleSpace implements RxModuleContract {
 	private PosixCommandLineParser parser() {
 		// TODO: better reasoning for type and domain lookup
 		PosixCommandLineParser bean = new PosixCommandLineParser(this::cmdResolverForDomain);
+		bean.setEntityFactory(cliEntityFactory());
+		return bean;
+	}
+	
+	@Managed
+	private CliEntityFactory cliEntityFactory() {
+		CliEntityFactory bean = new CliEntityFactory();
+		bean.setOptions(platform.readConfig(Options.T).get());
 		return bean;
 	}
 	
