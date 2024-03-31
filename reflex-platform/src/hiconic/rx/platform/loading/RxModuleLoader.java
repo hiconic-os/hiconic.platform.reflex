@@ -40,7 +40,6 @@ import hiconic.rx.module.api.wire.RxModule;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.SystemPropertiesContract;
 import hiconic.rx.platform.loading.RxModuleAnalysis.RxExportEntry;
-import hiconic.rx.platform.wire.contract.RxPlatformConfigContract;
 
 public class RxModuleLoader implements LifecycleAware {
 

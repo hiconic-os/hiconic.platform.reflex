@@ -5,7 +5,6 @@ import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
-import hiconic.platform.reflex._CliApiModel_;
 import hiconic.rx.cli.processing.CliExecutor;
 import hiconic.rx.cli.processing.IntroductionProcessor;
 import hiconic.rx.cli.processing.help.HelpProcessor;
