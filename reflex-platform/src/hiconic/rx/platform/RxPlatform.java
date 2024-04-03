@@ -146,6 +146,9 @@ public class RxPlatform implements AutoCloseable {
 	}
 
 	private void setupLogging() {
+		if (!applicationProperties.setupLogging())
+			return;
+		
 		// Assume SLF4J is bound to logback in the current environment
         LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
         

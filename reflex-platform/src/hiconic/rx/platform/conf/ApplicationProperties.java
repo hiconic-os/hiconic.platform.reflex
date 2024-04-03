@@ -6,6 +6,9 @@ public interface ApplicationProperties {
 	@Default("true")
 	boolean consoleOutput();
 	
+	@Default("true")
+	boolean setupLogging();
+	
 	@Default("Reflex")
 	String applicationName();
 }
