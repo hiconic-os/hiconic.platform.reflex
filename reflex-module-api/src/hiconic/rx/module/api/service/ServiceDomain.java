@@ -10,4 +10,5 @@ public interface ServiceDomain {
 	CmdResolver cmdResolver();
 	ModelOracle modelOracle();
 	Evaluator<ServiceRequest> evaluator();
+	ServiceRequest defaultRequest();
 }

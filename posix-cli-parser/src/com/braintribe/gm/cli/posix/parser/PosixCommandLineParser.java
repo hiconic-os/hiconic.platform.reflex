@@ -40,9 +40,14 @@ public class PosixCommandLineParser extends AbstractCommandLineParser {
 	
 	private Map<String, Maybe<CommandLineParserTypeIndex>> typeIndices = new ConcurrentHashMap<>();
 	private Function<String, CmdResolver> cmdResolverProvider;
+	private Function<EntityType<?>, GenericEntity> entityFactory = EntityType::create;
 	
 	public PosixCommandLineParser(Function<String, CmdResolver> cmdResolverProvider) {
 		this.cmdResolverProvider = cmdResolverProvider;
+	}
+	
+	public void setEntityFactory(Function<EntityType<?>, GenericEntity> entityFactory) {
+		this.entityFactory = entityFactory;
 	}
 	
 	private Maybe<CommandLineParserTypeIndex> findTypeIndex(String domainId) {
@@ -255,7 +260,7 @@ public class PosixCommandLineParser extends AbstractCommandLineParser {
 				
 				if (entityType != null) {
 					this.currentTypeIndex = index; 
-					return entityType.create();
+					return entityFactory.apply(entityType);
 				}
 			}
 			

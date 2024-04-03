@@ -66,6 +66,7 @@ public class RxServiceDomainSpace implements RxServiceDomainContract {
 		ConfigurableServiceRequestEvaluator bean = new ConfigurableServiceRequestEvaluator();
 		bean.setExecutorService(platform.executorService());
 		bean.setServiceProcessor(selectingServiceProcessor());
+		bean.setContextEvaluator(platform.evaluator());
 		return bean;
 	}
 

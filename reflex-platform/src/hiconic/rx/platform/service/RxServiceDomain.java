@@ -35,6 +35,7 @@ public class RxServiceDomain implements ServiceDomain, ServiceDomainConfiguratio
 	private ConfigurableDispatchingServiceProcessor dispatcher;
 	private List<Consumer<ModelMetaDataEditor>> modelConfigurers = Collections.synchronizedList(new ArrayList<>());
 	private Set<String> models = ConcurrentHashMap.newKeySet();
+	private List<Supplier<? extends ServiceRequest>> defaultRequestSuppliers = Collections.synchronizedList(new ArrayList<>());
 	
 	@Required
 	public void setDispatcher(ConfigurableDispatchingServiceProcessor dispatcher) {
@@ -131,11 +132,26 @@ public class RxServiceDomain implements ServiceDomain, ServiceDomainConfiguratio
 		modelConfigurers.add(configurer);
 	}
 	
+	@Override
+	public void addDefaultRequestSupplier(Supplier<? extends ServiceRequest> defaultRequestSupplier) {
+		defaultRequestSuppliers.add(defaultRequestSupplier);
+	}
+	
 	public List<Consumer<ModelMetaDataEditor>> getModelConfigurers() {
 		return modelConfigurers;
 	}
 	
 	public ConfigurableDispatchingServiceProcessor getDispatcher() {
 		return dispatcher;
+	}
+	
+	@Override
+	public ServiceRequest defaultRequest() {
+		for (Supplier<? extends ServiceRequest> supplier: defaultRequestSuppliers) {
+			ServiceRequest request = supplier.get();
+			if (request != null)
+				return request;
+		}
+		return null;
 	}
 }

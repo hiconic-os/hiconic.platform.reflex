@@ -1,12 +1,14 @@
 package hiconic.rx.module.api.service;
 
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import com.braintribe.common.artifact.ArtifactReflection;
 import com.braintribe.model.generic.reflection.Model;
 import com.braintribe.model.meta.GmMetaModel;
 import com.braintribe.model.processing.meta.editor.ModelMetaDataEditor;
 import com.braintribe.model.processing.service.api.ServiceRegistry;
+import com.braintribe.model.service.api.ServiceRequest;
 
 public interface ServiceDomainConfiguration extends ServiceRegistry {
 
@@ -27,4 +29,6 @@ public interface ServiceDomainConfiguration extends ServiceRegistry {
 	ServiceDomainConfiguration addModel(Model model);
 	
 	void configureModel(Consumer<ModelMetaDataEditor> configurer);
+	
+	void addDefaultRequestSupplier(Supplier<? extends ServiceRequest> defaultRequestSupplier);
 }

@@ -1,10 +1,9 @@
 package com.braintribe.gm.cli.posix.parser;
 
-import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.braintribe.gm.cli.posix.parser.api.ParsedCommandLine;
@@ -13,18 +12,11 @@ import com.braintribe.model.generic.reflection.EntityType;
 
 public class ParsedCommandLineImpl implements ParsedCommandLine {
 
-	private List<GenericEntity> entities = new ArrayList<>();
-	private Map<EntityType<?>, GenericEntity> entitiesByType = new ConcurrentHashMap<>();
+	private Set<GenericEntity> entities = new LinkedHashSet<>();
 	
 	@Override
 	public void addEntity(GenericEntity entity) {
 		entities.add(entity);
-		entitiesByType.put(entity.entityType(), entity);
-	}
-	
-	@Override
-	public <O extends GenericEntity> O acquireInstance(EntityType<O> optionsType) {
-		return (O) entitiesByType.computeIfAbsent(optionsType, t -> t.create());
 	}
 	
 	@Override

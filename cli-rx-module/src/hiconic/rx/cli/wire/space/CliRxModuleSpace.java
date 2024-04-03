@@ -1,11 +1,15 @@
 package hiconic.rx.cli.wire.space;
 
+import static com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling.getOrTunnel;
+
 import com.braintribe.gm.cli.posix.parser.PosixCommandLineParser;
+import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.cli.processing.CliExecutor;
+import hiconic.rx.cli.processing.EntityFactory;
 import hiconic.rx.cli.processing.IntroductionProcessor;
 import hiconic.rx.cli.processing.help.HelpProcessor;
 import hiconic.rx.module.api.service.ServiceDomain;
@@ -16,6 +20,7 @@ import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.module.api.wire.RxProcessLaunchContract;
 import hiconic.rx.platform.cli.model.api.Help;
 import hiconic.rx.platform.cli.model.api.Introduce;
+import hiconic.rx.platform.cli.model.api.Options;
 
 @Managed
 public class CliRxModuleSpace implements RxModuleContract {
@@ -60,8 +65,10 @@ public class CliRxModuleSpace implements RxModuleContract {
 		bean.setArgs(processLaunch.cliArguments());
 		bean.setParser(parser());
 		bean.setDefaultDomains(platform.serviceDomains().list().stream().map(ServiceDomain::domainId).toList());
+		bean.setServiceDomains(platform.serviceDomains());
 		bean.setEvaluator(platform.evaluator());
 		bean.setMarshallerRegistry(platform.marshallers());
+		bean.setEntityFactory(inputEntityFactory());
 		return bean;
 	}
 	
@@ -69,6 +76,14 @@ public class CliRxModuleSpace implements RxModuleContract {
 	private PosixCommandLineParser parser() {
 		// TODO: better reasoning for type and domain lookup
 		PosixCommandLineParser bean = new PosixCommandLineParser(this::cmdResolverForDomain);
+		bean.setEntityFactory(inputEntityFactory());
+		return bean;
+	}
+	
+	@Managed
+	private EntityFactory inputEntityFactory() {
+		EntityFactory bean = new EntityFactory();
+		bean.registerSingleton(Options.T, getOrTunnel(platform.readConfig(Options.T)));
 		return bean;
 	}
 	

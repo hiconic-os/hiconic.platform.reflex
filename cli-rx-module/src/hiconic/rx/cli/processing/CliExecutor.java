@@ -6,6 +6,7 @@ import static com.braintribe.console.ConsoleOutputs.println;
 import static com.braintribe.console.ConsoleOutputs.sequence;
 import static com.braintribe.console.ConsoleOutputs.text;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -14,9 +15,14 @@ import java.io.PrintStream;
 import java.io.UncheckedIOException;
 import java.io.UnsupportedEncodingException;
 import java.io.Writer;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 import com.braintribe.cfg.Required;
 import com.braintribe.codec.marshaller.api.CharacterMarshaller;
@@ -28,7 +34,9 @@ import com.braintribe.codec.marshaller.api.OutputPrettiness;
 import com.braintribe.codec.marshaller.api.options.GmSerializationContextBuilder;
 import com.braintribe.common.attribute.common.CallerEnvironment;
 import com.braintribe.common.attribute.common.impl.BasicCallerEnvironment;
+import com.braintribe.console.Console;
 import com.braintribe.console.ConsoleConfiguration;
+import com.braintribe.console.ConsoleOutputs;
 import com.braintribe.console.PrintStreamConsole;
 import com.braintribe.console.VoidConsole;
 import com.braintribe.exception.Exceptions;
@@ -38,19 +46,25 @@ import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
+import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.eval.EvalContext;
 import com.braintribe.model.generic.eval.Evaluator;
+import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.processing.service.api.OutputConfigAspect;
 import com.braintribe.model.processing.service.impl.BasicOutputConfig;
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.model.service.api.result.Neutral;
 import com.braintribe.utils.lcd.StringTools;
 
+import hiconic.rx.module.api.endpoint.EndpointInput;
+import hiconic.rx.module.api.endpoint.EndpointInputAttribute;
+import hiconic.rx.module.api.service.ServiceDomains;
 import hiconic.rx.platform.cli.model.api.Introduce;
 import hiconic.rx.platform.cli.model.api.Options;
 
-public class CliExecutor {
+public class CliExecutor implements EndpointInput {
 	private static final List<String> FILE_INDICATORS = Arrays.asList(".", "/", "\\", ":");
+	private static Logger logger = System.getLogger(CliExecutor.class.getName());
 	
 	private String[] args;
 	private PosixCommandLineParser parser;
@@ -59,6 +73,10 @@ public class CliExecutor {
 	private ServiceRequest request;
 	private Evaluator<ServiceRequest> evaluator;
 	private MarshallerRegistry marshallerRegistry;
+	private ParsedCommandLine commandLine;
+	private ServiceDomains serviceDomains;
+	private Function<EntityType<?>, GenericEntity> entityFactory;
+	private List<Runnable> runAtExit = new ArrayList<>();
 	
 	@Required
 	public void setMarshallerRegistry(MarshallerRegistry marshallerRegistry) {
@@ -76,6 +94,11 @@ public class CliExecutor {
 	}
 	
 	@Required
+	public void setServiceDomains(ServiceDomains serviceDomains) {
+		this.serviceDomains = serviceDomains;
+	}
+	
+	@Required
 	public void setParser(PosixCommandLineParser parser) {
 		this.parser = parser;
 	}
@@ -83,6 +106,11 @@ public class CliExecutor {
 	@Required
 	public void setArgs(String[] args) {
 		this.args = args;
+	}
+	
+	@Required
+	public void setEntityFactory(Function<EntityType<?>, GenericEntity> entityFactory) {
+		this.entityFactory = entityFactory;
 	}
 	
 	public void process() {
@@ -96,8 +124,22 @@ public class CliExecutor {
 	}
 	
 	private void exit(int retval) {
-		ConsoleConfiguration.install(VoidConsole.INSTANCE);
+		runAtExit.forEach(Runnable::run);
 		System.exit(retval);
+	}
+	
+	private void closeAtExit(Closeable closeable) {
+		runAtExit(() -> {
+			try {
+				closeable.close();
+			} catch (IOException e) {
+				logger.log(Level.ERROR, "Error while closing closeable", e);
+			}
+		});
+	}
+	
+	private void runAtExit(Runnable runnable) {
+		runAtExit.add(runnable);
 	}
 	
 	private int _process() throws Exception {
@@ -131,12 +173,21 @@ public class CliExecutor {
 		if (commandLineMaybe.isUnsatisfied())
 			return commandLineMaybe.whyUnsatisfied();
 		
-		ParsedCommandLine commandLine = commandLineMaybe.get();
+		commandLine = commandLineMaybe.get();
 		
-		options = commandLine.acquireInstance(Options.T);
-		request = commandLine.findInstance(ServiceRequest.T).orElseGet(Introduce.T::create);
+		options = commandLine.findInstance(Options.T).orElseGet(() -> (Options)entityFactory.apply(Options.T));
+		request = commandLine.findInstance(ServiceRequest.T).orElseGet(this::determineDefaultRequest);
 		
 		return null;
+	}
+	
+	private ServiceRequest determineDefaultRequest() {
+		ServiceRequest defaultRequest = serviceDomains.main().defaultRequest();
+		
+		if (defaultRequest != null)
+			return defaultRequest;
+		
+		return Introduce.T.create();
 	}
 
 	private Maybe<ParsedCommandLine> parseCommand() {
@@ -151,35 +202,43 @@ public class CliExecutor {
 	
 	public Reason configureProtocolling(Options options) {
 		String protocolTo = options.getProtocol();
-
+		
 		if (protocolTo != null) {
 			switch (protocolTo) {
 				case OutputChannels.STDOUT:
-					ensureCharsetAndInstallProtocolOutput(System.out);
+					ensureCharsetAndInstallProtocolOutput(() -> System.out);
 					break;
 				case OutputChannels.STDERR:
-					ensureCharsetAndInstallProtocolOutput(System.err);
+					ensureCharsetAndInstallProtocolOutput(() -> System.err);
 					break;
 				case OutputChannels.NONE:
-					ConsoleConfiguration.install(VoidConsole.INSTANCE);
+					installConsole(VoidConsole.INSTANCE);
 					break;
 				default:
 					Reason error = checkChannelValue(protocolTo, "protocol");
+					
 					if (error != null)
 						return error;
 
-				try {
-					PrintStream printStream = new PrintStream(new FileOutputStream(protocolTo), true, "UTF-8");
-					ensureCharsetAndInstallProtocolOutput(printStream);
-				} catch (IOException e) {
-					throw new UncheckedIOException(e);
-				}
+					try {
+						PrintStream printStream = new PrintStream(new FileOutputStream(protocolTo), true, "UTF-8");
+						closeAtExit(printStream);
+						ensureCharsetAndInstallProtocolOutput(() -> printStream);
+					} catch (IOException e) {
+						throw new UncheckedIOException(e);
+					}
 			}
 		} else {
-			ConsoleConfiguration.install(VoidConsole.INSTANCE);
+			installConsole(VoidConsole.INSTANCE);
 		}
 		
 		return null;
+	}
+	
+	private void installConsole(Console console) {
+		Console previousConsole = Console.get();
+		runAtExit(() -> ConsoleConfiguration.install(previousConsole));
+		ConsoleConfiguration.install(console);
 	}
 	
 	private static Reason checkChannelValue(String value, String parameterName) {
@@ -193,15 +252,24 @@ public class CliExecutor {
 	}
 
 
-	private void ensureCharsetAndInstallProtocolOutput(PrintStream ps) {
+	private void ensureCharsetAndInstallProtocolOutput(Supplier<PrintStream> psSupplier) {
 		try {
+			final Console console;
 			if (options.getProtocolCharset() != null) {
-				ps = new PrintStream(ps, false, options.getProtocolCharset());
+				DelegateOutputStream delegatingOut = new DelegateOutputStream(psSupplier);
+				
+				// reconstruct PrintStream to change charset 
+				@SuppressWarnings("resource")
+				PrintStream printStream = new PrintStream(delegatingOut, false, options.getProtocolCharset());
+				
+				console = new PrintStreamConsole(printStream, options.getColored(), false);
+			}
+			else {
+				console = new SuppliedPrintStreamConsole(psSupplier, options.getColored(), false);
 			}
 
-			PrintStreamConsole console = new PrintStreamConsole(ps, options.getColored());
-			ConsoleConfiguration.install(console);
-
+			installConsole(console);
+			
 		} catch (UnsupportedEncodingException e) {
 			throw new UncheckedIOException(e);
 		}
@@ -257,9 +325,20 @@ public class CliExecutor {
 		EvalContext<?> evalContext = request.eval(evaluator);
 		evalContext.setAttribute(OutputConfigAspect.class, new BasicOutputConfig(options.getVerbose()));
 		evalContext.setAttribute(CallerEnvironment.class, callerEnvironment());
+		evalContext.setAttribute(EndpointInputAttribute.class, this);
 
 		// evaluate the request
 		return evalContext.getReasoned();
+	}
+	
+	@Override
+	public <I extends GenericEntity> I findInput(EntityType<I> inputType) {
+		return commandLine.findInstance(inputType).orElse(null);
+	}
+	
+	@Override
+	public <I extends GenericEntity> List<I> findInputs(EntityType<I> inputType) {
+		return commandLine.listInstances(inputType);
 	}
 
 	private CallerEnvironment callerEnvironment() {
