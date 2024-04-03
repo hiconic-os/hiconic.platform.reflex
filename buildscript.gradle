@@ -35,11 +35,4 @@ configureBuildscript {
                 maven { url uri("file://${repo.rootPath}") } 
         }
     }
-
-    configurations.all {
-        resolutionStrategy {
-            cacheDynamicVersionsFor 3650, 'days'
-            cacheChangingModulesFor 3650, 'days'
-        }
-    }
 }
