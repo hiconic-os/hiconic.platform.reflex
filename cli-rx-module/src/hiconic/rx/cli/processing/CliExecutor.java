@@ -19,6 +19,7 @@ import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.function.Function;
@@ -32,11 +33,12 @@ import com.braintribe.codec.marshaller.api.Marshaller;
 import com.braintribe.codec.marshaller.api.MarshallerRegistry;
 import com.braintribe.codec.marshaller.api.OutputPrettiness;
 import com.braintribe.codec.marshaller.api.options.GmSerializationContextBuilder;
+import com.braintribe.common.attribute.AttributeContext;
+import com.braintribe.common.attribute.AttributeContextBuilder;
 import com.braintribe.common.attribute.common.CallerEnvironment;
 import com.braintribe.common.attribute.common.impl.BasicCallerEnvironment;
 import com.braintribe.console.Console;
 import com.braintribe.console.ConsoleConfiguration;
-import com.braintribe.console.ConsoleOutputs;
 import com.braintribe.console.PrintStreamConsole;
 import com.braintribe.console.VoidConsole;
 import com.braintribe.exception.Exceptions;
@@ -54,6 +56,7 @@ import com.braintribe.model.processing.service.api.OutputConfigAspect;
 import com.braintribe.model.processing.service.impl.BasicOutputConfig;
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.model.service.api.result.Neutral;
+import com.braintribe.utils.collection.impl.AttributeContexts;
 import com.braintribe.utils.lcd.StringTools;
 
 import hiconic.rx.module.api.endpoint.EndpointInput;
@@ -84,6 +87,11 @@ public class CliExecutor implements EndpointInput {
 	}
 	
 	@Required
+	public void setServiceDomains(ServiceDomains serviceDomains) {
+		this.serviceDomains = serviceDomains;
+	}
+	
+	@Required
 	public void setEvaluator(Evaluator<ServiceRequest> evaluator) {
 		this.evaluator = evaluator;
 	}
@@ -91,11 +99,6 @@ public class CliExecutor implements EndpointInput {
 	@Required
 	public void setDefaultDomains(List<String> defaultDomains) {
 		this.defaultDomains = defaultDomains;
-	}
-	
-	@Required
-	public void setServiceDomains(ServiceDomains serviceDomains) {
-		this.serviceDomains = serviceDomains;
 	}
 	
 	@Required
@@ -143,7 +146,24 @@ public class CliExecutor implements EndpointInput {
 	}
 	
 	private int _process() throws Exception {
-
+		AttributeContextBuilder contextBuilder = AttributeContexts.derivePeek();
+		
+		contextBuilder.set(OutputConfigAspect.class, new BasicOutputConfig(options.getVerbose()));
+		contextBuilder.setAttribute(CallerEnvironment.class, callerEnvironment());
+		contextBuilder.set(EndpointInputAttribute.class, this);
+		
+		AttributeContext attributeContext = contextBuilder.build();
+		
+		AttributeContexts.push(attributeContext);
+		try {
+			return processContextualized();
+		}
+		finally {
+			AttributeContexts.pop();
+		}
+	}
+	
+	private int processContextualized() throws Exception {
 		Reason error = loadRequestAndOptions();
 		
 		configureProtocolling(options);
@@ -309,7 +329,7 @@ public class CliExecutor implements EndpointInput {
 	}
 	
 	private Reason evalAndHandleResponse() throws IOException {
-		Maybe<?> maybe = evalRequest();
+		Maybe<?> maybe = request.eval(evaluator).getReasoned();
 		
 		if (maybe.isUnsatisfied())
 			return maybe.whyUnsatisfied();
@@ -333,11 +353,16 @@ public class CliExecutor implements EndpointInput {
 	
 	@Override
 	public <I extends GenericEntity> I findInput(EntityType<I> inputType) {
+		if (commandLine == null)
+			return null;
 		return commandLine.findInstance(inputType).orElse(null);
 	}
 	
 	@Override
 	public <I extends GenericEntity> List<I> findInputs(EntityType<I> inputType) {
+		if (commandLine == null)
+			return Collections.emptyList();
+
 		return commandLine.listInstances(inputType);
 	}
 

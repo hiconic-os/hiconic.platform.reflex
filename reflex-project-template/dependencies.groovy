@@ -27,7 +27,7 @@ createAppRequest.artifactId = appName;
 createAppRequest.dependencies += [dependency(request.groupId, moduleName)]
 
 if (request.endpoint == RxEndpoint.web) {
-	createAppRequest.dependencies += [dependency('hiconic.platform.reflex', 'web-api-undertow-rx-module')]
+	createAppRequest.dependencies += [dependency('hiconic.platform.reflex', 'web-api-server-rx-module')]
 
 } else if (request.endpoint == RxEndpoint.cli) {
 	createAppRequest.dependencies += [dependency('hiconic.platform.reflex', 'cli-rx-module')]

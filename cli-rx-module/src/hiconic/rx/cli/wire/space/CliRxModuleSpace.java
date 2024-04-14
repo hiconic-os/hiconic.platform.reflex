@@ -64,6 +64,7 @@ public class CliRxModuleSpace implements RxModuleContract {
 		CliExecutor bean = new CliExecutor();
 		bean.setArgs(processLaunch.cliArguments());
 		bean.setParser(parser());
+		bean.setServiceDomains(platform.serviceDomains());
 		bean.setDefaultDomains(platform.serviceDomains().list().stream().map(ServiceDomain::domainId).toList());
 		bean.setServiceDomains(platform.serviceDomains());
 		bean.setEvaluator(platform.evaluator());

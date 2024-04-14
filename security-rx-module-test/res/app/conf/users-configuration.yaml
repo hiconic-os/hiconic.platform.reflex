@@ -1,0 +1,12 @@
+roles:
+- &admin 
+  name: admin
+users:
+- id: reflector
+  name: reflector
+  password: reflect
+  firstName: Reflexo
+  lastName: Reflexus
+  email: reflexo.reflexus@hiconic.io
+  roles:
+  - *admin

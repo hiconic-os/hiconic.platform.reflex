@@ -10,6 +10,8 @@ import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.wire.api.space.WireSpace;
 
+import hiconic.rx.module.api.service.ConfiguredModels;
+import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.service.ServiceDomains;
 
 /**
@@ -24,6 +26,13 @@ public interface RxPlatformContract extends WireSpace {
 	 */
 	Evaluator<ServiceRequest> evaluator();
 
+
+	/**
+	 * Returns the {@link ConfiguredModels}.
+	 */
+	ConfiguredModels configuredModels();
+
+	
 	/**
 	 * Returns the {@link ServiceDomains}.
 	 */
