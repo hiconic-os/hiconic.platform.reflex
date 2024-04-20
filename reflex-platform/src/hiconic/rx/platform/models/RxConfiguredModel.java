@@ -9,8 +9,10 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 import com.braintribe.common.artifact.ArtifactReflection;
+import com.braintribe.common.attribute.AttributeContext;
 import com.braintribe.gm._RootModel_;
 import com.braintribe.model.generic.GMF;
 import com.braintribe.model.generic.reflection.EntityType;
@@ -25,9 +27,10 @@ import com.braintribe.model.processing.meta.editor.ModelMetaDataEditor;
 import com.braintribe.model.processing.meta.oracle.BasicModelOracle;
 import com.braintribe.model.processing.meta.oracle.ModelOracle;
 import com.braintribe.model.processing.service.api.InterceptorKind;
-import com.braintribe.model.processing.service.api.InterceptorRegistration;
+import com.braintribe.model.processing.service.api.MappingServiceProcessor;
 import com.braintribe.model.processing.service.api.ServiceInterceptorProcessor;
 import com.braintribe.model.processing.service.api.ServiceProcessor;
+import com.braintribe.model.processing.service.impl.ServiceProcessors;
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.utils.lcd.LazyInitialized;
 
@@ -37,8 +40,9 @@ import hiconic.rx.model.service.processing.md.PostProcessWith;
 import hiconic.rx.model.service.processing.md.PreProcessWith;
 import hiconic.rx.model.service.processing.md.ProcessWith;
 import hiconic.rx.module.api.service.ConfiguredModel;
-import hiconic.rx.module.api.service.ConfiguredModelReference;
+import hiconic.rx.module.api.service.InterceptorBuilder;
 import hiconic.rx.module.api.service.ModelConfiguration;
+import hiconic.rx.module.api.service.ModelReference;
 import hiconic.rx.platform.service.RxInterceptor;
 
 public class RxConfiguredModel implements ModelConfiguration, ConfiguredModel {
@@ -59,13 +63,6 @@ public class RxConfiguredModel implements ModelConfiguration, ConfiguredModel {
 	@Override
 	public String modelName() {
 		return name;
-	}
-	
-	@Override
-	public <R extends ServiceRequest> void register(EntityType<R> requestType,
-			ServiceProcessor<? super R, ?> serviceProcessor) {
-		addModel(requestType.getModel());
-		configureModel(editor -> editor.onEntityType(requestType).addMetaData(ProcessWith.create(serviceProcessor)));
 	}
 	
 	private CmdResolver configureModel() {
@@ -90,70 +87,26 @@ public class RxConfiguredModel implements ModelConfiguration, ConfiguredModel {
 	}
 	
 	@Override
-	public ModelOracle modelOracle() {
-		return cmdResolver().getModelOracle();
+	public CmdResolver cmdResolver(AttributeContext attributeContext) {
+		return configuredModels.cmdResolver(attributeContext, modelOracle());
+	}
+
+	@Override
+	public CmdResolver systemCmdResolver() {
+		return configuredModels.systemCmdResolver(modelOracle());
 	}
 	
 	@Override
-	public InterceptorRegistration registerInterceptor(String identification) {
-		return new InterceptorRegistration() {
-			
-			private String insertIdentification;
-			private boolean before;
-			
-			@Override
-			public void register(ServiceInterceptorProcessor interceptor) {
-				registerForType(ServiceRequest.T, interceptor);
-			}
-			
-			@Override
-			public <R extends ServiceRequest> void registerForType(EntityType<R> requestType, ServiceInterceptorProcessor interceptor) {
-				InterceptorEntry interceptorEntry = new InterceptorEntry(identification, requestType, interceptor);
-				register(interceptorEntry);
-			}
-			
-			private <R extends ServiceRequest> void register(InterceptorEntry interceptorEntry) {
-				addModel(interceptorEntry.requestType.getModel());
-				synchronized (interceptors) {
-					if (insertIdentification != null) {
-						requireInterceptorIterator(insertIdentification, before).add(interceptorEntry);
-					}
-					else {
-						interceptors.add(interceptorEntry);
-					}
-					
-					if (interceptors.size() == 1)
-						configureModel(RxConfiguredModel.this::configureInterceptors);
-				}
-			}
-			
-			@Override
-			public void registerWithPredicate(Predicate<ServiceRequest> predicate, ServiceInterceptorProcessor interceptor) {
-				InterceptorEntry interceptorEntry = new InterceptorEntry(identification, ServiceRequest.T, predicate, interceptor);
-				register(interceptorEntry);
-			}
-			
-			@Override
-			public InterceptorRegistration before(String identification) {
-				this.insertIdentification = identification;
-				this.before = true;
-				return this;
-			}
-			
-			@Override
-			public InterceptorRegistration after(String identification) {
-				this.insertIdentification = identification;
-				this.before = false;
-				return this;
-			}
-		};
+	public ModelOracle modelOracle() {
+		return cmdResolver().getModelOracle();
 	}
 	
 	private void configureInterceptors(ModelMetaDataEditor editor) {
 		int prio = 0;
 		for (InterceptorEntry entry: interceptors) {
 			final InterceptWith interceptWith;
-			InterceptorKind kind = entry.interceptor.processor().getKind();
+			ServiceInterceptorProcessor processor = entry.interceptorSupplier.get();
+			InterceptorKind kind = processor.getKind();
 			switch (kind) {
 			case around:
 				interceptWith = AroundProcessWith.T.create();
@@ -168,7 +121,9 @@ public class RxConfiguredModel implements ModelConfiguration, ConfiguredModel {
 				throw new UnsupportedOperationException("Unsupported interception kind " + kind);
 			}
 			
-			interceptWith.setAssociate(entry.interceptor);
+			RxInterceptor interceptor = new RxInterceptor(processor, entry.predicate);
+			
+			interceptWith.setAssociate(interceptor);
 			interceptWith.setConflictPriority((double)prio++);
 			
 			editor.onEntityType(entry.requestType).addMetaData(interceptWith);
@@ -222,7 +177,7 @@ public class RxConfiguredModel implements ModelConfiguration, ConfiguredModel {
 	}
 	
 	@Override
-	public void addModel(ConfiguredModelReference modelReference) {
+	public void addModel(ModelReference modelReference) {
 		RxConfiguredModel configuredModel = configuredModels.acquire(modelReference);
 		GmMetaModel gmMetaModel = configuredModel.configurationModelBuilder.get();
 		addModel(gmMetaModel);
@@ -230,21 +185,95 @@ public class RxConfiguredModel implements ModelConfiguration, ConfiguredModel {
 
 	@Override
 	public void configureModel(Consumer<ModelMetaDataEditor> configurer) {
+		cmdResolver.close();
 		modelConfigurers.add(configurer);
+	}
+	
+	@Override
+	public <R extends ServiceRequest> void bindRequest(EntityType<R> requestType, Supplier<ServiceProcessor<? super R, ?>> serviceProcessorSupplier) {
+		addModel(requestType.getModel());
+		configureModel(editor -> editor.onEntityType(requestType).addMetaData(ProcessWith.create(serviceProcessorSupplier.get())));
+	}
+	
+	@Override
+	public <R extends ServiceRequest> void bindRequestMapped(EntityType<R> requestType,
+			Supplier<MappingServiceProcessor<? super R, ?>> serviceProcessorSupplier) {
+		addModel(requestType.getModel());
+		configureModel(editor -> editor.onEntityType(requestType).addMetaData(ProcessWith.create(ServiceProcessors.dispatcher(serviceProcessorSupplier.get()))));
+	}
+	
+	@Override
+	public InterceptorBuilder bindInterceptor(String identification) {
+		return new InterceptorBuilder() {
+			private String insertIdentification;
+			private boolean before;
+			private EntityType<? extends ServiceRequest> requestType;
+			private Predicate<ServiceRequest> predicate = r -> true;
+			
+			@Override
+			public void bind(Supplier<ServiceInterceptorProcessor> interceptor) {
+				InterceptorEntry interceptorEntry = new InterceptorEntry(identification, requestType, predicate, interceptor);
+				register(interceptorEntry);
+			}
+			
+			@Override
+			public InterceptorBuilder predicate(Predicate<ServiceRequest> predicate) {
+				this.predicate = predicate;
+				return this;
+			}
+			
+			@Override
+			public InterceptorBuilder before(String identification) {
+				this.insertIdentification = identification;
+				this.before = true;
+				return this;
+			}
+			
+			@Override
+			public InterceptorBuilder after(String identification) {
+				this.insertIdentification = identification;
+				this.before = false;
+				return this;
+			}
+			
+			@Override
+			public InterceptorBuilder forType(EntityType<? extends ServiceRequest> requestType) {
+				this.requestType = requestType;
+				return this;
+			}
+			
+			private <R extends ServiceRequest> void register(InterceptorEntry interceptorEntry) {
+				addModel(interceptorEntry.requestType.getModel());
+				synchronized (interceptors) {
+					if (insertIdentification != null) {
+						requireInterceptorIterator(insertIdentification, before).add(interceptorEntry);
+					}
+					else {
+						interceptors.add(interceptorEntry);
+					}
+					
+					if (interceptors.size() == 1)
+						configureModel(RxConfiguredModel.this::configureInterceptors);
+				}
+			}
+		};
 	}
 	
 	private static class InterceptorEntry {
 		String identification;
-		RxInterceptor interceptor;
+		Supplier<ServiceInterceptorProcessor> interceptorSupplier;
 		EntityType<? extends ServiceRequest> requestType;
+		Predicate<ServiceRequest> predicate;
 		
-		public InterceptorEntry(String identifier, EntityType<? extends ServiceRequest> requestType, ServiceInterceptorProcessor interceptor) {
-			this(identifier, requestType, r -> true, interceptor);
+		
+		public InterceptorEntry(String identifier, EntityType<? extends ServiceRequest> requestType, Supplier<ServiceInterceptorProcessor> interceptorSupplier) {
+			this(identifier, requestType, r -> true, interceptorSupplier);
 		}
 		
-		public InterceptorEntry(String identifier, EntityType<? extends ServiceRequest> requestType, Predicate<ServiceRequest> predicate, ServiceInterceptorProcessor interceptor) {
+		public InterceptorEntry(String identifier, EntityType<? extends ServiceRequest> requestType, Predicate<ServiceRequest> predicate, Supplier<ServiceInterceptorProcessor> interceptorSupplier) {
 			this.identification = identifier;
-			this.interceptor = new RxInterceptor(interceptor, predicate);
+			this.predicate = predicate;
+			this.interceptorSupplier = interceptorSupplier;
 			this.requestType = requestType;
 		}
 	}

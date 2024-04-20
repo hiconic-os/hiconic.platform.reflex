@@ -5,6 +5,7 @@ import com.braintribe.model.processing.service.api.InterceptorRegistry;
 import com.braintribe.model.processing.service.api.ProcessorRegistry;
 import com.braintribe.wire.api.space.WireSpace;
 
+import hiconic.rx.module.api.service.ModelConfiguration;
 import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
@@ -31,6 +32,17 @@ public interface RxModuleContract extends WireSpace {
 	 * </ul>
 	 */
 	default void configureModels(ModelConfigurations configurations) {
+		// implement if needed
+	}
+	
+	/**
+	 * Configures the main persistence model acquired by {@link ModelConfigurations#mainPersistenceModel()}
+	 * <ul>
+	 * 	<li>adding models</li>
+	 *  <li>configuring meta data on models</li>
+	 * </ul>
+	 */
+	default void configureMainPersistenceModel(ModelConfiguration configuration) {
 		// implement if needed
 	}
 	

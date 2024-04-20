@@ -12,7 +12,7 @@ public class ReflexHelloAppRxModuleSpace implements RxModuleContract {
 	
 	@Override
 	public void configureMainServiceDomain(ServiceDomainConfiguration configuration) {
-		configuration.register(Greet.T, greetProcessor());
+		configuration.bindRequest(Greet.T, this::greetProcessor);
 	}
 
 	@Managed

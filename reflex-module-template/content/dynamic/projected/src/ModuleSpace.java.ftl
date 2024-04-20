@@ -25,7 +25,7 @@ public class ${context.spaceSimple} implements RxModuleContract {
 <#if request.sampleProcessor>
 	@Override
 	public void configureMainServiceDomain(ServiceDomainConfiguration configuration) {
-		configuration.register(${context.greetRequestSimple}.T, greetProcessor());
+		configuration.bindRequest(${context.greetRequestSimple}.T, this::greetProcessor);
 	}
 
 	@Managed

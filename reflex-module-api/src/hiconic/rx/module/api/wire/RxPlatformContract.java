@@ -3,11 +3,13 @@ package hiconic.rx.module.api.wire;
 import java.util.concurrent.ExecutorService;
 
 import com.braintribe.codec.marshaller.api.MarshallerRegistry;
+import com.braintribe.common.attribute.AttributeContext;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.service.api.ServiceRequest;
+import com.braintribe.model.usersession.UserSession;
 import com.braintribe.wire.api.space.WireSpace;
 
 import hiconic.rx.module.api.service.ConfiguredModels;
@@ -25,6 +27,11 @@ public interface RxPlatformContract extends WireSpace {
 	 * Returns the root service evaluator
 	 */
 	Evaluator<ServiceRequest> evaluator();
+	
+	/**
+	 * Returns the root system service evaluator which uses a prepared {@link AttributeContext} (e.g. to support a system user authorization when executing requests)
+	 */
+	Evaluator<ServiceRequest> systemEvaluator();
 
 
 	/**

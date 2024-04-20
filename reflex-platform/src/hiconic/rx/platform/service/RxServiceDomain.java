@@ -15,12 +15,13 @@ import com.braintribe.model.meta.GmMetaModel;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.meta.editor.ModelMetaDataEditor;
 import com.braintribe.model.processing.meta.oracle.ModelOracle;
-import com.braintribe.model.processing.service.api.InterceptorRegistration;
+import com.braintribe.model.processing.service.api.MappingServiceProcessor;
 import com.braintribe.model.processing.service.api.ServiceProcessor;
 import com.braintribe.model.processing.service.common.eval.ConfigurableServiceRequestEvaluator;
 import com.braintribe.model.service.api.ServiceRequest;
 
-import hiconic.rx.module.api.service.ConfiguredModelReference;
+import hiconic.rx.module.api.service.InterceptorBuilder;
+import hiconic.rx.module.api.service.ModelReference;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 import hiconic.rx.platform.models.RxConfiguredModel;
@@ -86,7 +87,7 @@ public class RxServiceDomain implements ServiceDomain, ServiceDomainConfiguratio
 	}
 	
 	@Override
-	public void addModel(ConfiguredModelReference modelReference) {
+	public void addModel(ModelReference modelReference) {
 		modelConfiguration.addModel(modelReference);
 	}
 	
@@ -116,18 +117,26 @@ public class RxServiceDomain implements ServiceDomain, ServiceDomainConfiguratio
 	}
 	
 	@Override
-	public InterceptorRegistration registerInterceptor(String identification) {
-		return modelConfiguration.registerInterceptor(identification);
+	public InterceptorBuilder bindInterceptor(String identification) {
+		return modelConfiguration.bindInterceptor(identification);
 	}
-	
-	@Override
-	public <R extends ServiceRequest> void register(EntityType<R> requestType,
-			ServiceProcessor<? super R, ?> serviceProcessor) {
-		modelConfiguration.register(requestType, serviceProcessor);
-	}
+
 	
 	@Override
 	public void configureModel(Consumer<ModelMetaDataEditor> configurer) {
 		modelConfiguration.configureModel(configurer);
 	}
-}
+
+	@Override
+	public <R extends ServiceRequest> void bindRequest(EntityType<R> requestType,
+			Supplier<ServiceProcessor<? super R, ?>> serviceProcessorSupplier) {
+		modelConfiguration.bindRequest(requestType, serviceProcessorSupplier);
+	}
+	
+	@Override
+	public <R extends ServiceRequest> void bindRequestMapped(EntityType<R> requestType,
+			Supplier<MappingServiceProcessor<? super R, ?>> serviceProcessorSupplier) {
+		modelConfiguration.bindRequestMapped(requestType, serviceProcessorSupplier);
+	}
+	
+}	

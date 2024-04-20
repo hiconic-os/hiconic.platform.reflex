@@ -3,7 +3,6 @@ package hiconic.rx.cli.wire.space;
 import static com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling.getOrTunnel;
 
 import com.braintribe.gm.cli.posix.parser.PosixCommandLineParser;
-import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
@@ -34,8 +33,8 @@ public class CliRxModuleSpace implements RxModuleContract {
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
 		ServiceDomainConfiguration configuration = configurations.byId("cli");
 		
-		configuration.register(Introduce.T, introductionProcessor());
-		configuration.register(Help.T, helpProcessor());
+		configuration.bindRequest(Introduce.T, this::introductionProcessor);
+		configuration.bindRequest(Help.T, this::helpProcessor);
 	}
 	
 	@Override

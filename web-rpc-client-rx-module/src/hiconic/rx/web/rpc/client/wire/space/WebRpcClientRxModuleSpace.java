@@ -42,7 +42,7 @@ public class WebRpcClientRxModuleSpace implements RxModuleContract, WebRpcClient
 		ModelConfiguration bean = modelConfigurations.byName("configured-remote-service-api-model-" + connection.getName());
 		
 		bean.addModel(_ServiceApiModel_.reflection);
-		bean.register(ServiceRequest.T, remoteServiceProcessor(connection));
+		bean.bindRequest(ServiceRequest.T, () -> remoteServiceProcessor(connection));
 		
 		return bean;
 	}

@@ -1,23 +1,34 @@
 package hiconic.rx.platform.wire.space;
 
+import static com.braintribe.wire.api.util.Sets.set;
+
 import java.io.File;
+import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import com.braintribe.codec.marshaller.common.BasicConfigurableMarshallerRegistry;
 import com.braintribe.codec.marshaller.json.JsonStreamMarshaller;
 import com.braintribe.codec.marshaller.yaml.YamlMarshaller;
+import com.braintribe.common.attribute.AttributeContext;
 import com.braintribe.gm.config.yaml.ModeledYamlConfiguration;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.reflection.EntityType;
-import com.braintribe.model.processing.meta.editor.BasicModelMetaDataEditor;
-import com.braintribe.model.processing.meta.editor.ModelMetaDataEditor;
 import com.braintribe.model.processing.service.common.ConfigurableDispatchingServiceProcessor;
+import com.braintribe.model.processing.service.common.context.UserSessionAspect;
 import com.braintribe.model.processing.service.common.eval.ConfigurableServiceRequestEvaluator;
 import com.braintribe.model.service.api.ServiceRequest;
+import com.braintribe.model.user.Role;
+import com.braintribe.model.user.User;
+import com.braintribe.model.usersession.UserSession;
+import com.braintribe.model.usersession.UserSessionType;
+import com.braintribe.utils.collection.impl.AttributeContexts;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 import com.braintribe.wire.api.context.WireContext;
@@ -27,13 +38,15 @@ import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.module.api.wire.RxProcessLaunchContract;
 import hiconic.rx.platform.loading.RxModuleLoader;
+import hiconic.rx.platform.models.RxCmdResolverManager;
 import hiconic.rx.platform.models.RxConfiguredModel;
 import hiconic.rx.platform.models.RxConfiguredModels;
 import hiconic.rx.platform.models.RxModelConfigurations;
+import hiconic.rx.platform.service.ContextualizingServiceRequestEvaluator;
 import hiconic.rx.platform.service.RxServiceDomain;
 import hiconic.rx.platform.service.RxServiceDomainConfigurations;
-import hiconic.rx.platform.service.RxServiceDomains;
 import hiconic.rx.platform.service.RxServiceDomainDispatcher;
+import hiconic.rx.platform.service.RxServiceDomains;
 import hiconic.rx.platform.wire.contract.RxPlatformConfigContract;
 
 @Managed
@@ -58,16 +71,24 @@ public class RxPlatformSpace implements RxPlatformContract, RxProcessLaunchContr
 		
 		// run service domain configuration of all modules
 		// TODO: parallelize
+		RxModelConfigurations modelConfigurations = modelConfigurations();
+		
 		for (RxModuleContract moduleContract: moduleContracts) {
-			moduleContract.configureModels(modelConfigurations());
+			
+			moduleContract.configureMainPersistenceModel(modelConfigurations.mainPersistenceModel());
+			moduleContract.configureModels(modelConfigurations);
+			
 			moduleContract.configureMainServiceDomain(mainDomain);
 			moduleContract.configureServiceDomains(serviceDomainConfigurations);
+			
 			moduleContract.registerCrossDomainInterceptors(rootServiceProcessor());
 			moduleContract.registerFallbackProcessors(fallbackProcessor());
+			
 		}
 		
 		// run all collected model meta data configurers
 		// TODO: parallelize metadata editing per model as models are isolated
+		// TODO: do that based on configuration because there is a tradeoff between bootstrap time and bootstrap completeness
 		for (RxConfiguredModel configuredModel: configuredModels().list()) {
 			// TODO: trigger eager configuration
 			configuredModel.cmdResolver();
@@ -109,6 +130,64 @@ public class RxPlatformSpace implements RxPlatformContract, RxProcessLaunchContr
 	@Managed
 	public RxConfiguredModels configuredModels() {
 		RxConfiguredModels bean = new RxConfiguredModels();
+		bean.setCmdResolverManager(cmdResolverManager());
+		bean.setSystemAttributeContextSupplier(systemAttributeContextSupplier());
+		return bean;
+	}
+	
+	@Managed
+	private Supplier<AttributeContext> systemAttributeContextSupplier() {
+		return () -> AttributeContexts.derivePeek().set(UserSessionAspect.class, systemUserSession()).build();
+	}
+	
+	@Managed
+	public UserSession systemUserSession() {
+		UserSession bean = UserSession.T.create();
+
+		User user = systemUser();
+		
+		Set<String> effectiveRoles = new HashSet<>();
+		effectiveRoles.add("$all");
+		effectiveRoles.add("$user-" + user.getName());
+		for (Role userRole : user.getRoles())
+			effectiveRoles.add(userRole.getName());
+
+		Date now = new Date();
+
+		bean.setSessionId(UUID.randomUUID().toString());
+		bean.setType(UserSessionType.internal);
+		bean.setCreationInternetAddress("0:0:0:0:0:0:0:1");
+		bean.setCreationDate(now);
+		bean.setLastAccessedDate(now);
+		bean.setUser(user);
+		bean.setEffectiveRoles(effectiveRoles);
+
+		return bean;
+	}
+	
+	private static final Set<String> internalRoles = set("internal");
+	private static final String internalName = "internal";
+	
+	@Managed
+	public User systemUser() {
+
+		User bean = User.T.create();
+		bean.setId(internalName);
+		bean.setName(internalName);
+
+		for (String internalRoleName : internalRoles) {
+			Role internalRole = Role.T.create();
+			internalRole.setId(internalRoleName);
+			internalRole.setName(internalRoleName);
+			bean.getRoles().add(internalRole);
+		}
+
+		return bean;
+	}
+
+	@Managed
+	private RxCmdResolverManager cmdResolverManager() {
+		RxCmdResolverManager bean = new RxCmdResolverManager();
 		return bean;
 	}
 	
@@ -177,6 +256,15 @@ public class RxPlatformSpace implements RxPlatformContract, RxProcessLaunchContr
 		ConfigurableServiceRequestEvaluator bean = new ConfigurableServiceRequestEvaluator();
 		bean.setExecutorService(executorService());
 		bean.setServiceProcessor(rootServiceProcessor());
+		return bean;
+	}
+	
+	@Override
+	@Managed
+	public ContextualizingServiceRequestEvaluator systemEvaluator() {
+		ContextualizingServiceRequestEvaluator bean = new ContextualizingServiceRequestEvaluator();
+		bean.setDelegate(evaluator());
+		bean.setAttributeContextProvider(systemAttributeContextSupplier());
 		return bean;
 	}
 

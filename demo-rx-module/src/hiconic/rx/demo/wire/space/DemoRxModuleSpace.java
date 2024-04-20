@@ -15,8 +15,8 @@ public class DemoRxModuleSpace implements RxModuleContract {
 	
 	@Override
 	public void configureMainServiceDomain(ServiceDomainConfiguration configuration) {
-		configuration.register(ReverseText.T, reverseTextProcessor());
-		configuration.register(PersonRequest.T, personRequestProcessor());
+		configuration.bindRequest(ReverseText.T, this::reverseTextProcessor);
+		configuration.bindRequest(PersonRequest.T, this::personRequestProcessor);
 	}
 	
 	@Managed

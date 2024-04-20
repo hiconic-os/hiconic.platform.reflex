@@ -12,7 +12,7 @@ public class SecurityRxTestModuleSpace implements RxModuleContract {
 
 	@Override
 	public void configureMainServiceDomain(ServiceDomainConfiguration configuration) {
-		configuration.register(SecurityTestRequest.T, testProcessor());
+		configuration.bindRequest(SecurityTestRequest.T, this::testProcessor);
 	}
 	
 	@Managed

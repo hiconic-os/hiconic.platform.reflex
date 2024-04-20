@@ -35,9 +35,9 @@ public class SecurityRxModuleSpace implements RxModuleContract {
 	@Override
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
 		ServiceDomainConfiguration configuration = configurations.byId("security");
-		configuration.register(SecurityRequest.T, securityProcessor());
-		configuration.register(SimplifiedOpenUserSession.T, simpleSecurityProcessor());
-		configuration.register(AuthenticateCredentials.T, authenticationProcessor());
+		configuration.bindRequest(SecurityRequest.T, this::securityProcessor);
+		configuration.bindRequest(SimplifiedOpenUserSession.T, this::simpleSecurityProcessor);
+		configuration.bindRequest(AuthenticateCredentials.T, this::authenticationProcessor);
 	}
 	
 	@Override

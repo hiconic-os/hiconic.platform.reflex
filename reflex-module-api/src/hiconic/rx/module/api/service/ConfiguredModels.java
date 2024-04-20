@@ -10,6 +10,10 @@ public interface ConfiguredModels {
 	 */
 	ConfiguredModel byName(String modelName);
 	
+	ConfiguredModel byReference(ModelReference reference);
+	
+	ConfiguredModel mainPersistenceModel();
+	
 	/**
 	 * Enumerates all available ServiceDomains
 	 */
