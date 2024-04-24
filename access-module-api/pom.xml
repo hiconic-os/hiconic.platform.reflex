@@ -26,5 +26,10 @@
             <artifactId>gm-session-api</artifactId>
             <version>${V.com.braintribe.gm}</version>
         </dependency>
+        <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>aop-access-api</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
     </dependencies>
 </project>

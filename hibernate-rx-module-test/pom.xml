@@ -9,7 +9,6 @@
     <version>1.0.1</version>
     <properties/>
     <dependencies>
-        <!-- no dependencies -->
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>reflex-test-commons</artifactId>

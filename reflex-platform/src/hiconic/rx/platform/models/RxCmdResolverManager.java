@@ -15,7 +15,7 @@ import com.braintribe.model.processing.service.common.context.UserSessionAspect;
 import com.braintribe.model.usersession.UserSession;
 
 public class RxCmdResolverManager {
-	record CmdResolverKey(Set<String> roles) {}
+	record CmdResolverKey(Set<String> roles, ModelOracle oracle) {}
 	
 	private Map<CmdResolverKey, CmdResolver> cache = new ConcurrentHashMap<>();
 
@@ -26,12 +26,15 @@ public class RxCmdResolverManager {
 		Set<String> effectiveRoles = userSession != null? userSession.getEffectiveRoles(): Collections.emptySet();
 		
 		// access cache with the determined roles
-		return cache.computeIfAbsent(new CmdResolverKey(effectiveRoles), k -> {
+		return cache.computeIfAbsent(new CmdResolverKey(effectiveRoles, modelOracle), k -> {
 			
 			CmdResolverBuilder builder = CmdResolverImpl.create(modelOracle);
 			
 			builder.addDynamicAspectProvider(RoleAspect.class, () -> k.roles());
-			builder.setSessionProvider(() -> new Object());
+			builder.setSessionProvider(() -> k);
+			
+			// TODO: please Peter add what is required in terms of Experts (e.g. Hibernate Dialect stuff)
+			// builder.addExpert(null, null)
 			
 			return builder.done();
 		});

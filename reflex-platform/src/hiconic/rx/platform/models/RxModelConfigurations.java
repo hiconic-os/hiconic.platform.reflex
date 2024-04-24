@@ -3,9 +3,9 @@ package hiconic.rx.platform.models;
 import com.braintribe.cfg.Required;
 import com.braintribe.common.artifact.ArtifactReflection;
 
-import hiconic.rx.module.api.service.ModelReference;
 import hiconic.rx.module.api.service.ModelConfiguration;
 import hiconic.rx.module.api.service.ModelConfigurations;
+import hiconic.rx.module.api.service.ModelReference;
 
 public class RxModelConfigurations implements ModelConfigurations {
 	private RxConfiguredModels configuredModels;
@@ -43,7 +43,7 @@ public class RxModelConfigurations implements ModelConfigurations {
 	}
 	
 	@Override
-	public ModelConfiguration extendedModel(ModelReference reference, ArtifactReflection baseModel) {
+	public RxConfiguredModel extendedModel(ModelReference reference, ArtifactReflection baseModel) {
 		RxConfiguredModel configuredModel = byReference(reference);
 		configuredModel.addModel(baseModel);
 		return configuredModel;

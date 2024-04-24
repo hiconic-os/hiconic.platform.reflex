@@ -28,7 +28,7 @@ public class ValidationRxModuleSpace implements RxModuleContract {
 	
 	@Managed
 	private Validation validation(String domainId) {
-		Validation bean = new Validation(platform.serviceDomains().byId(domainId).cmdResolver());
+		Validation bean = new Validation(platform.serviceDomains().byId(domainId).systemCmdResolver());
 		return bean;
 	}
 

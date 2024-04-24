@@ -56,7 +56,7 @@ public class RxRequestDispatcher implements ServiceProcessor<ServiceRequest, Obj
 	}
 	
 	private ServiceProcessor<ServiceRequest, Object> buildEnrichedProcessor(ServiceRequest request) {
-		EntityMdResolver mdResolver = serviceDomain.cmdResolver().getMetaData().entityType(request.entityType());
+		EntityMdResolver mdResolver = serviceDomain.systemCmdResolver().getMetaData().entityType(request.entityType());
 		
 		ServiceProcessor<ServiceRequest, Object> processor = resolveProcessor(mdResolver, request);
 		

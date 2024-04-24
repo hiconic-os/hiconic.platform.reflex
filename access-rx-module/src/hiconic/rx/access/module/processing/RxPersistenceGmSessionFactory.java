@@ -1,0 +1,80 @@
+package hiconic.rx.access.module.processing;
+
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+import com.braintribe.cfg.Required;
+import com.braintribe.common.attribute.AttributeContext;
+import com.braintribe.model.access.IncrementalAccess;
+import com.braintribe.model.generic.eval.Evaluator;
+import com.braintribe.model.generic.session.exception.GmSessionException;
+import com.braintribe.model.processing.meta.cmd.CmdResolver;
+import com.braintribe.model.processing.service.common.context.UserSessionAspect;
+import com.braintribe.model.processing.session.api.persistence.PersistenceGmSession;
+import com.braintribe.model.processing.session.api.persistence.PersistenceGmSessionFactory;
+import com.braintribe.model.processing.session.impl.persistence.BasicPersistenceGmSession;
+import com.braintribe.model.processing.session.impl.persistence.auth.BasicSessionAuthorization;
+import com.braintribe.model.service.api.ServiceRequest;
+import com.braintribe.model.user.User;
+import com.braintribe.model.usersession.UserSession;
+
+import hiconic.rx.module.api.service.ConfiguredModel;
+
+public class RxPersistenceGmSessionFactory implements PersistenceGmSessionFactory {
+	private Supplier<AttributeContext> attributeContextSupplier;
+	private RxAccesses accesses;
+	private Function<AttributeContext, Evaluator<ServiceRequest>> evaluatorSupplier;
+
+	@Required
+	public void setAccesses(RxAccesses accesses) {
+		this.accesses = accesses;
+	}
+	
+	@Required
+	public void setAttributeContextSupplier(Supplier<AttributeContext> attributeContextSupplier) {
+		this.attributeContextSupplier = attributeContextSupplier;
+	}
+	
+	@Required
+	public void setEvaluatorSupplier(Function<AttributeContext, Evaluator<ServiceRequest>> evaluatorSupplier) {
+		this.evaluatorSupplier = evaluatorSupplier;
+	}
+	
+	@Override
+	public PersistenceGmSession newSession(String accessId) throws GmSessionException {
+		RxAccess access = accesses.getAccess(accessId);
+		IncrementalAccess incrementalAccess = access.incrementalAccess();
+		ConfiguredModel configuredModel = access.configuredModel();
+		AttributeContext attributeContext = attributeContextSupplier.get();
+		CmdResolver cmdResolver = configuredModel.cmdResolver(attributeContext);
+		
+		BasicPersistenceGmSession session = new BasicPersistenceGmSession();
+		session.setAccessId(accessId);
+		session.setIncrementalAccess(incrementalAccess);
+		session.setEquivalentSessionFactory(() -> newSession(accessId));
+		session.setModelAccessory(new RxModelAccessory(cmdResolver));
+		
+		session.setRequestEvaluator(evaluatorSupplier.apply(attributeContext));
+		session.setDescription("AccessContract PersistenceGmSession accessId=" + accessId + " model="+ configuredModel.modelName() + " accessType=" + access.access().entityType().getTypeSignature());
+		
+		UserSession userSession = attributeContext.getAttribute(UserSessionAspect.class);
+		
+		if (userSession != null) {
+			BasicSessionAuthorization sessionAuthorization = new BasicSessionAuthorization();
+			User user = userSession.getUser();
+			
+			sessionAuthorization.setSessionId(userSession.getSessionId());
+			sessionAuthorization.setUserId(user.getId());
+			sessionAuthorization.setUserName(user.getName());
+			sessionAuthorization.setUserRoles(userSession.getEffectiveRoles());
+			
+			session.setSessionAuthorization(sessionAuthorization);	
+		}
+
+		// TODO: how to apply Resource support
+		session.setResourcesAccessFactory(null);
+		
+		return session;
+	}
+
+}

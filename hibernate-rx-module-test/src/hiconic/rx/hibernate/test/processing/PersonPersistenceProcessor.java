@@ -16,15 +16,12 @@ import hiconic.rx.hibernate.test.model.api.GetPersons;
 public class PersonPersistenceProcessor implements PersistenceProcessor<GetPersons, Object> {
 
 	@PersistenceService(TransactionMode.READ)
-	public Maybe<List<Person>> getPerson(PersistenceContext context, Session session, GetPersons request) {
-		return null;
-	}
-	
-	@PersistenceService(TransactionMode.READ)
 	public Maybe<List<Person>> getPersons(PersistenceContext context, Session session, GetPersons request) {
-		List<Person> list = session.createQuery("from Person").list();
+		
+		List<Person> list = session.createQuery("from Person", Person.class).list();
 		
 		return Maybe.complete(list);
+		
 	}
 
 }

@@ -1,11 +1,4 @@
 buildscript {
-    configurations.all {
-        resolutionStrategy {
-            cacheDynamicVersionsFor 3650, 'days'
-            cacheChangingModulesFor 3650, 'days'
-        }
-    }
-
     ext.configureBuildscript = { c -> buildscript c }
     apply from: 'buildscript.gradle'
 

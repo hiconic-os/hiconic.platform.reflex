@@ -39,7 +39,7 @@ public class HibernateRxModuleSpace implements RxModuleContract, HibernateContra
 	
 	@Override
 	public HibernatePersistence persistence(ConfiguredModel configuredModel, DataSource dataSource) {
-		return persistences().acquirePersistence(configuredModel.cmdResolver(), dataSource);
+		return persistences().acquirePersistence(configuredModel.systemCmdResolver(), dataSource);
 	}
 	
 	@Override

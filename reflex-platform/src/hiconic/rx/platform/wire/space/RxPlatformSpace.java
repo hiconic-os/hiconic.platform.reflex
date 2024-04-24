@@ -34,12 +34,12 @@ import com.braintribe.wire.api.annotation.Managed;
 import com.braintribe.wire.api.context.WireContext;
 import com.braintribe.wire.api.context.WireContextConfiguration;
 
+import hiconic.rx.module.api.service.ConfiguredModel;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.module.api.wire.RxProcessLaunchContract;
 import hiconic.rx.platform.loading.RxModuleLoader;
 import hiconic.rx.platform.models.RxCmdResolverManager;
-import hiconic.rx.platform.models.RxConfiguredModel;
 import hiconic.rx.platform.models.RxConfiguredModels;
 import hiconic.rx.platform.models.RxModelConfigurations;
 import hiconic.rx.platform.service.ContextualizingServiceRequestEvaluator;
@@ -89,9 +89,9 @@ public class RxPlatformSpace implements RxPlatformContract, RxProcessLaunchContr
 		// run all collected model meta data configurers
 		// TODO: parallelize metadata editing per model as models are isolated
 		// TODO: do that based on configuration because there is a tradeoff between bootstrap time and bootstrap completeness
-		for (RxConfiguredModel configuredModel: configuredModels().list()) {
+		for (ConfiguredModel configuredModel: configuredModels().list()) {
 			// TODO: trigger eager configuration
-			configuredModel.cmdResolver();
+			configuredModel.systemCmdResolver();
 		}
 
 		// notify all modules about application being ready for action
@@ -135,8 +135,9 @@ public class RxPlatformSpace implements RxPlatformContract, RxProcessLaunchContr
 		return bean;
 	}
 	
+	@Override
 	@Managed
-	private Supplier<AttributeContext> systemAttributeContextSupplier() {
+	public Supplier<AttributeContext> systemAttributeContextSupplier() {
 		return () -> AttributeContexts.derivePeek().set(UserSessionAspect.class, systemUserSession()).build();
 	}
 	
@@ -256,6 +257,14 @@ public class RxPlatformSpace implements RxPlatformContract, RxProcessLaunchContr
 		ConfigurableServiceRequestEvaluator bean = new ConfigurableServiceRequestEvaluator();
 		bean.setExecutorService(executorService());
 		bean.setServiceProcessor(rootServiceProcessor());
+		return bean;
+	}
+	
+	@Override
+	public ContextualizingServiceRequestEvaluator evaluator(AttributeContext attributeContext) {
+		ContextualizingServiceRequestEvaluator bean = new ContextualizingServiceRequestEvaluator();
+		bean.setDelegate(evaluator());
+		bean.setAttributeContextProvider(() -> attributeContext);
 		return bean;
 	}
 	

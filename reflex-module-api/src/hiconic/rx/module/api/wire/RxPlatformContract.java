@@ -1,6 +1,7 @@
 package hiconic.rx.module.api.wire;
 
 import java.util.concurrent.ExecutorService;
+import java.util.function.Supplier;
 
 import com.braintribe.codec.marshaller.api.MarshallerRegistry;
 import com.braintribe.common.attribute.AttributeContext;
@@ -24,15 +25,24 @@ import hiconic.rx.module.api.service.ServiceDomains;
  */
 public interface RxPlatformContract extends WireSpace {
 	/**
-	 * Returns the root service evaluator
+	 * Returns the service evaluator
 	 */
 	Evaluator<ServiceRequest> evaluator();
 	
 	/**
-	 * Returns the root system service evaluator which uses a prepared {@link AttributeContext} (e.g. to support a system user authorization when executing requests)
+	 * Returns the system service evaluator which uses a prepared {@link AttributeContext} (e.g. to support a system user authorization when executing requests)
 	 */
 	Evaluator<ServiceRequest> systemEvaluator();
+	
+	/**
+	 * Returns the service evaluator using the given {@link AttributeContext}
+	 */
+	Evaluator<ServiceRequest> evaluator(AttributeContext attributeContext);
 
+	/**
+	 * The AttributeContext that is equipped with the system user's {@link UserSession}.
+	 */
+	Supplier<AttributeContext> systemAttributeContextSupplier();
 
 	/**
 	 * Returns the {@link ConfiguredModels}.
@@ -70,4 +80,5 @@ public interface RxPlatformContract extends WireSpace {
 	 * General purpose thread pool.
 	 */
 	ExecutorService executorService();
+
 }

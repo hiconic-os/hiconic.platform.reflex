@@ -12,6 +12,7 @@ import org.jboss.logging.Logger;
 
 import com.braintribe.cfg.Configurable;
 import com.braintribe.cfg.DestructionAware;
+import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.service.api.ServiceProcessor;
 import com.braintribe.model.service.api.ServiceRequest;
@@ -20,6 +21,8 @@ import com.braintribe.utils.lcd.LazyInitialized;
 import hiconic.rx.hibernate.service.api.HibernatePersistence;
 import hiconic.rx.hibernate.service.api.PersistenceDispatching;
 import hiconic.rx.hibernate.service.api.PersistenceProcessor;
+import hiconic.rx.hibernate.service.api.PersistenceServiceProcessor;
+import hiconic.rx.hibernate.service.api.QueryProcessorArg;
 import hiconic.rx.hibernate.service.impl.ConfigurableDispatchingPersistenceServiceProcessor;
 
 public class HibernatePersistences implements DestructionAware {
@@ -93,6 +96,16 @@ public class HibernatePersistences implements DestructionAware {
 		public <P extends ServiceRequest, R> ServiceProcessor<P, R> asServiceProcessor(
 				PersistenceProcessor<P, R> processor) {
 			return asServiceProcessor(PersistenceProcessorDispatching.create(processor));
+		}
+		
+		public <P extends ServiceRequest, R> ServiceProcessor<P, R> asServiceProcessor(PersistenceServiceProcessor<P, R> processor) {
+			return new PersistenceAdapterServiceProcessor<>(lazySessionFactory, processor);
+		}
+		
+		@Override
+		public <P extends ServiceRequest, R> ServiceProcessor<P, R> queryProcessor(EntityType<P> requestType,
+				String queryString, QueryProcessorArg... args) {
+			return asServiceProcessor(new QueryProcessor<>(queryString, args));
 		}
 		
 		@Override

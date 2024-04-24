@@ -10,6 +10,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import hiconic.rx.hibernate.model.test.Person;
+import hiconic.rx.hibernate.test.model.api.GetPersonByName;
 import hiconic.rx.hibernate.test.model.api.GetPersons;
 import hiconic.rx.hibernate.test.wire.contract.HibernateTestContract;
 import hiconic.rx.test.common.AbstractRxTest;
@@ -49,8 +50,16 @@ public class HibernateTest extends AbstractRxTest {
 		
 		GetPersons getPersons = GetPersons.T.create();
 		List<Person> list = getPersons.eval(evaluator).get();
-		
 		System.out.println(list);
+		
+		GetPersonByName getPersonByName = GetPersonByName.T.create();
+		getPersonByName.setName("Hans");
+		
+		Person person = getPersonByName.eval(evaluator).get();
+		
+
+		Assertions.assertThat(person.getName()).isEqualTo(name);
+		
 
 	}
 }

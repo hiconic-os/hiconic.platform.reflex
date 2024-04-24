@@ -93,6 +93,6 @@ public class CliRxModuleSpace implements RxModuleContract {
 		if (domain == null)
 			return null;
 		
-		return domain.cmdResolver();
+		return domain.systemCmdResolver();
 	}
 }

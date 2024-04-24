@@ -10,6 +10,8 @@ import hiconic.platform.reflex._HibernateTestModel_;
 import hiconic.rx.db.module.api.DatabaseContract;
 import hiconic.rx.hibernate.module.api.HibernateContract;
 import hiconic.rx.hibernate.service.api.HibernatePersistence;
+import hiconic.rx.hibernate.service.api.QueryProcessorArg;
+import hiconic.rx.hibernate.test.model.api.GetPersonByName;
 import hiconic.rx.hibernate.test.model.api.GetPersons;
 import hiconic.rx.hibernate.test.processing.PersonPersistenceProcessor;
 import hiconic.rx.hibernate.test.wire.contract.HibernateTestContract;
@@ -51,6 +53,12 @@ public class HibernateRxTestModuleSpace implements RxModuleContract, HibernateTe
 	
 	@Override
 	public void configureMainServiceDomain(ServiceDomainConfiguration configuration) {
-		configuration.bindRequest(GetPersons.T, () -> hibernate.mainPersistence().asServiceProcessor(processor()));
+		HibernatePersistence mainPersistence = hibernate.mainPersistence();
+		
+		configuration.bindRequest(GetPersons.T, //
+				() -> mainPersistence.asServiceProcessor(processor()));
+		
+		configuration.bindRequest(GetPersonByName.T, // 
+				() -> mainPersistence.queryProcessor(GetPersonByName.T, "from Person where name = :name"));
 	}
 }

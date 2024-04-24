@@ -22,6 +22,8 @@ import hiconic.rx.module.api.wire.RxPlatformContract;
 @Managed
 public class DbRxModuleSpace implements RxModuleContract, DatabaseContract {
 
+	private static final String DATABASE_NAME_MAIN = "main-db";
+
 	@Import
 	private RxPlatformContract platform;
 	
@@ -45,6 +47,11 @@ public class DbRxModuleSpace implements RxModuleContract, DatabaseContract {
 		HikariDataSources bean = new HikariDataSources();
 		bean.setDatabaseConfiguration(platform.readConfig(DatabaseConfiguration.T).get());
 		return bean;
+	}
+	
+	@Override
+	public Maybe<DataSource> mainDataSource() {
+		return dataSource(DATABASE_NAME_MAIN);
 	}
 	
 }

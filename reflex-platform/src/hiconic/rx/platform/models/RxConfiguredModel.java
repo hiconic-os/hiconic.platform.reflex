@@ -19,7 +19,6 @@ import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.Model;
 import com.braintribe.model.meta.GmMetaModel;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
-import com.braintribe.model.processing.meta.cmd.CmdResolverImpl;
 import com.braintribe.model.processing.meta.configuration.ConfigurationModels;
 import com.braintribe.model.processing.meta.configured.ConfigurationModelBuilder;
 import com.braintribe.model.processing.meta.editor.BasicModelMetaDataEditor;
@@ -32,6 +31,7 @@ import com.braintribe.model.processing.service.api.ServiceInterceptorProcessor;
 import com.braintribe.model.processing.service.api.ServiceProcessor;
 import com.braintribe.model.processing.service.impl.ServiceProcessors;
 import com.braintribe.model.service.api.ServiceRequest;
+import com.braintribe.utils.collection.impl.AttributeContexts;
 import com.braintribe.utils.lcd.LazyInitialized;
 
 import hiconic.rx.model.service.processing.md.AroundProcessWith;
@@ -45,18 +45,16 @@ import hiconic.rx.module.api.service.ModelConfiguration;
 import hiconic.rx.module.api.service.ModelReference;
 import hiconic.rx.platform.service.RxInterceptor;
 
-public class RxConfiguredModel implements ModelConfiguration, ConfiguredModel {
+public class RxConfiguredModel extends AbstractRxConfiguredModel implements ModelConfiguration {
 	private String name;
 	private ConfigurationModelBuilder configurationModelBuilder;
 	private List<Consumer<ModelMetaDataEditor>> modelConfigurers = Collections.synchronizedList(new ArrayList<>());
 	private Set<GmMetaModel> models = new LinkedHashSet<>();
 	private List<InterceptorEntry> interceptors = Collections.synchronizedList(new ArrayList<>());
-	private LazyInitialized<CmdResolver> cmdResolver = new LazyInitialized<>(this::configureModel);
-	private RxConfiguredModels configuredModels;
 	
 	public RxConfiguredModel(RxConfiguredModels configuredModels, String modelName) {
+		super(configuredModels);
 		this.name = modelName;
-		this.configuredModels = configuredModels;
 		configurationModelBuilder = ConfigurationModels.create(modelName);;
 	}
 	
@@ -65,40 +63,19 @@ public class RxConfiguredModel implements ModelConfiguration, ConfiguredModel {
 		return name;
 	}
 	
-	private CmdResolver configureModel() {
+	@Override
+	protected ModelOracle buildModelOracle() {
 		GmMetaModel gmMetaModel = configurationModelBuilder.get();
 		if (gmMetaModel.getDependencies().isEmpty())
 			addModel(_RootModel_.reflection);
-			
+		
 		BasicModelMetaDataEditor editor = new BasicModelMetaDataEditor(gmMetaModel);
-
+		
 		for (Consumer<ModelMetaDataEditor> configurer : modelConfigurers) {
 			configurer.accept(editor);
 		}
 		
-		BasicModelOracle oracle = new BasicModelOracle(gmMetaModel);
-		CmdResolver cmdResolver = CmdResolverImpl.create(oracle).done();
-		return cmdResolver;
-	}
-	
-	@Override
-	public CmdResolver cmdResolver() {
-		return cmdResolver.get();
-	}
-	
-	@Override
-	public CmdResolver cmdResolver(AttributeContext attributeContext) {
-		return configuredModels.cmdResolver(attributeContext, modelOracle());
-	}
-
-	@Override
-	public CmdResolver systemCmdResolver() {
-		return configuredModels.systemCmdResolver(modelOracle());
-	}
-	
-	@Override
-	public ModelOracle modelOracle() {
-		return cmdResolver().getModelOracle();
+		return new BasicModelOracle(gmMetaModel);
 	}
 	
 	private void configureInterceptors(ModelMetaDataEditor editor) {
@@ -178,14 +155,14 @@ public class RxConfiguredModel implements ModelConfiguration, ConfiguredModel {
 	
 	@Override
 	public void addModel(ModelReference modelReference) {
-		RxConfiguredModel configuredModel = configuredModels.acquire(modelReference);
-		GmMetaModel gmMetaModel = configuredModel.configurationModelBuilder.get();
-		addModel(gmMetaModel);
+		AbstractRxConfiguredModel configuredModel = configuredModels.acquire(modelReference);
+		addModel(configuredModel);
 	}
 
 	@Override
 	public void configureModel(Consumer<ModelMetaDataEditor> configurer) {
-		cmdResolver.close();
+		lazyModelOracle.close();
+		lazySystemCmdResolver.close();
 		modelConfigurers.add(configurer);
 	}
 	

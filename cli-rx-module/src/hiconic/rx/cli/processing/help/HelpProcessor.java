@@ -99,7 +99,7 @@ public class HelpProcessor implements ServiceProcessor<Help, Neutral> {
 	}
 	
 	private CommandsReflection commandsReflection(ServiceDomain serviceDomain) {
-		ModelMdResolver mdResolver = serviceDomain.cmdResolver().getMetaData().useCases(USE_CASE_HELP, USE_CASE_EXECUTION);
+		ModelMdResolver mdResolver = serviceDomain.systemCmdResolver().getMetaData().useCases(USE_CASE_HELP, USE_CASE_EXECUTION);
 		CommandsReflection cr = new CommandsReflection(serviceDomain.modelOracle(), mdResolver);
 		return cr;
 	}
@@ -415,7 +415,7 @@ public class HelpProcessor implements ServiceProcessor<Help, Neutral> {
 	}
 	
 	private ConsoleOutput generateServiceDomainOverview(Help request, ServiceDomain serviceDomain) {
-		ModelMdResolver mdResolver = serviceDomain.cmdResolver().getMetaData().useCases(USE_CASE_HELP, USE_CASE_EXECUTION);
+		ModelMdResolver mdResolver = serviceDomain.systemCmdResolver().getMetaData().useCases(USE_CASE_HELP, USE_CASE_EXECUTION);
 		CommandsReflection cr = new CommandsReflection(serviceDomain.modelOracle(), mdResolver);
 		CommandsOverview commandsOverview = cr.getCommandsOverview();
 		
