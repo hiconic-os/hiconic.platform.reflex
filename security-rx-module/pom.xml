@@ -6,7 +6,7 @@
         <version>[1.0,1.1)</version>
     </parent>
     <artifactId>security-rx-module</artifactId>
-    <version>1.0.6</version>
+    <version>1.0.7</version>
     <properties/>
     <dependencies>
         <dependency>
