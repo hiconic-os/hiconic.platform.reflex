@@ -87,7 +87,7 @@ public class WebApiServerRxModuleSpace implements RxModuleContract {
 		if (domain == null)
 			return null;
 		
-		return domain.cmdResolver();
+		return domain.contextCmdResolver();
 	}
 	
 	private ApiV1RestServletUtils servletUtils() {
