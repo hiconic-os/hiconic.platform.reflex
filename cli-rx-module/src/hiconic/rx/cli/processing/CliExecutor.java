@@ -284,7 +284,7 @@ public class CliExecutor implements EndpointInput {
 		Reason error = null;
 		
 		if (options.getProtocolCharset() != null) {
-			Charset charset = Charset.forName(options.getProtocolCharset(), null);
+			Charset charset = Charset.forName(options.getProtocolCharset(), (Charset)null);
 			
 			if (charset == null) {
 				error = Reasons.build(NotFound.T) //
