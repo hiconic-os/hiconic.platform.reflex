@@ -13,7 +13,7 @@
     <dependencies>
         <dependency>
             <groupId>com.braintribe.gm</groupId>
-            <artifactId>boot-model</artifactId>
+            <artifactId>root-model</artifactId>
             <version>${V.com.braintribe.gm}</version>
             <?tag asset?>
         </dependency>

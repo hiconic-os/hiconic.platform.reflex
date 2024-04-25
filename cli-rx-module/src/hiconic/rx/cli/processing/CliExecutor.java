@@ -13,15 +13,17 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
-import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -39,6 +41,7 @@ import com.braintribe.common.attribute.common.CallerEnvironment;
 import com.braintribe.common.attribute.common.impl.BasicCallerEnvironment;
 import com.braintribe.console.Console;
 import com.braintribe.console.ConsoleConfiguration;
+import com.braintribe.console.PlainSysoutConsole;
 import com.braintribe.console.PrintStreamConsole;
 import com.braintribe.console.VoidConsole;
 import com.braintribe.exception.Exceptions;
@@ -48,6 +51,7 @@ import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
+import com.braintribe.gm.model.reason.essential.NotFound;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.eval.EvalContext;
 import com.braintribe.model.generic.eval.Evaluator;
@@ -58,6 +62,7 @@ import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.model.service.api.result.Neutral;
 import com.braintribe.utils.collection.impl.AttributeContexts;
 import com.braintribe.utils.lcd.StringTools;
+import com.braintribe.utils.stream.NullOutputStream;
 
 import hiconic.rx.module.api.endpoint.EndpointInput;
 import hiconic.rx.module.api.endpoint.EndpointInputAttribute;
@@ -68,6 +73,8 @@ import hiconic.rx.platform.cli.model.api.Options;
 public class CliExecutor implements EndpointInput {
 	private static final List<String> FILE_INDICATORS = Arrays.asList(".", "/", "\\", ":");
 	private static Logger logger = System.getLogger(CliExecutor.class.getName());
+	private static PrintStream stdout = System.out;
+	private static PrintStream stderr = System.err;
 	
 	private String[] args;
 	private PosixCommandLineParser parser;
@@ -164,10 +171,20 @@ public class CliExecutor implements EndpointInput {
 	}
 	
 	private int processContextualized() throws Exception {
+		// preliminary console
 		Reason error = loadRequestAndOptions();
 		
-		configureProtocolling(options);
+		installConsole(new SuppliedPrintStreamConsole(() -> System.out, options.getColored(), false));
 		
+		if (error != null) {
+			printErrorMessage(error);
+			return 1;
+		}
+
+		// preliminary console
+		
+		error = configureProtocolling(options);
+
 		if (error != null) {
 			printErrorMessage(error);
 			return 1;
@@ -221,38 +238,29 @@ public class CliExecutor implements EndpointInput {
 	}
 	
 	public Reason configureProtocolling(Options options) {
-		String protocolTo = options.getProtocol();
+		String protocolTo = Optional.ofNullable(options.getProtocol()).orElse(OutputChannels.NONE);
 		
-		if (protocolTo != null) {
-			switch (protocolTo) {
-				case OutputChannels.STDOUT:
-					ensureCharsetAndInstallProtocolOutput(() -> System.out);
-					break;
-				case OutputChannels.STDERR:
-					ensureCharsetAndInstallProtocolOutput(() -> System.err);
-					break;
-				case OutputChannels.NONE:
-					installConsole(VoidConsole.INSTANCE);
-					break;
-				default:
-					Reason error = checkChannelValue(protocolTo, "protocol");
-					
-					if (error != null)
-						return error;
+		switch (protocolTo) {
+			case OutputChannels.STDOUT:
+				return ensureCharsetAndInstallProtocolOutput(stdout);
+			case OutputChannels.STDERR:
+				return ensureCharsetAndInstallProtocolOutput(stderr);
+			case OutputChannels.NONE:
+				return ensureCharsetAndInstallProtocolOutput(new PrintStream(NullOutputStream.getInstance()));
+			default:
+				Reason error = checkChannelValue(protocolTo, "protocol");
+				
+				if (error != null)
+					return error;
 
-					try {
-						PrintStream printStream = new PrintStream(new FileOutputStream(protocolTo), true, "UTF-8");
-						closeAtExit(printStream);
-						ensureCharsetAndInstallProtocolOutput(() -> printStream);
-					} catch (IOException e) {
-						throw new UncheckedIOException(e);
-					}
-			}
-		} else {
-			installConsole(VoidConsole.INSTANCE);
+				try {
+					PrintStream printStream = new PrintStream(new FileOutputStream(protocolTo), true, "UTF-8");
+					closeAtExit(printStream);
+					return ensureCharsetAndInstallProtocolOutput(printStream);
+				} catch (IOException e) {
+					throw new UncheckedIOException(e);
+				}
 		}
-		
-		return null;
 	}
 	
 	private void installConsole(Console console) {
@@ -272,27 +280,25 @@ public class CliExecutor implements EndpointInput {
 	}
 
 
-	private void ensureCharsetAndInstallProtocolOutput(Supplier<PrintStream> psSupplier) {
-		try {
-			final Console console;
-			if (options.getProtocolCharset() != null) {
-				DelegateOutputStream delegatingOut = new DelegateOutputStream(psSupplier);
-				
-				// reconstruct PrintStream to change charset 
-				@SuppressWarnings("resource")
-				PrintStream printStream = new PrintStream(delegatingOut, false, options.getProtocolCharset());
-				
-				console = new PrintStreamConsole(printStream, options.getColored(), false);
-			}
-			else {
-				console = new SuppliedPrintStreamConsole(psSupplier, options.getColored(), false);
-			}
-
-			installConsole(console);
+	private Reason ensureCharsetAndInstallProtocolOutput(PrintStream stream) {
+		Reason error = null;
+		
+		if (options.getProtocolCharset() != null) {
+			Charset charset = Charset.forName(options.getProtocolCharset(), null);
 			
-		} catch (UnsupportedEncodingException e) {
-			throw new UncheckedIOException(e);
+			if (charset == null) {
+				error = Reasons.build(NotFound.T) //
+					.text("Charset configured with Options.protocolCharset not found: " + options.getProtocolCharset()) //
+					.toReason();
+				charset = StandardCharsets.UTF_8;
+			}
+			
+			stream = new PrintStream(stream, false, charset);
 		}
+		
+		System.setOut(stream);
+		
+		return error;
 	}
 
 	public static OutputProvider configureResponding(Options options) {
@@ -302,10 +308,10 @@ public class CliExecutor implements EndpointInput {
 
 		switch (respondTo) {
 			case OutputChannels.STDOUT:
-				return new PrintStreamProvider(System.out);
+				return new PrintStreamProvider(stdout);
 
 			case OutputChannels.STDERR:
-				return new PrintStreamProvider(System.err);
+				return new PrintStreamProvider(stderr);
 
 			case OutputChannels.NONE:
 				return null;

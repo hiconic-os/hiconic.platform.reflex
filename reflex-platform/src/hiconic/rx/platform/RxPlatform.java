@@ -107,6 +107,11 @@ public class RxPlatform implements AutoCloseable {
 				logger.log(Level.ERROR, "Unexpected interruption", e);
 			}
 		}
+		catch (Exception e) {
+            // Handle errors during configuration
+            System.err.print("Error starting application: ");
+            e.printStackTrace(System.err);
+		}
 	}
 	
 	private void start() {
