@@ -5,7 +5,7 @@
 * Eclipse IDE **_(1)_**
 * JDK 21+ installed with `JAVA_HOME` configured appropriately
 
-**_(1)_** Sorry about that. While you currently need _Eclipse_ because of our own plugins (I know), we're already working on supporting all IDEs using standard tools (_Gradle_).
+**_(1)_** Sorry about that. While you currently need _Eclipse_ because of our own plugins (I know), we're already working on supporting all IDEs using standard tools.
 
 > ⚠️If you are new to _Eclipse_ make sure to change the _Java_ version to 21 in [preferences](https://stackoverflow.com/a/4881124/1696307) - under `Java` configure two things -  proper JDK under `Installed JREs`, and compiler level as 21 under `Compiler`.
 
@@ -21,7 +21,7 @@ We need to prepare the `devrock-sdk`, which is a folder that besides actual proj
 Note that we have added two CLI tools to our path:
 
 * _jinni_ - allows creation of new projects based on templates, among other things 
-* _dr_ - is a simple wrapper for the underlying build tools - _Gradle_ and _Ant_ - to make things simpler
+* _hc_ - is a simple tool for building
 
 > We use the term `Devrock` as a brand name for our tooling, such as our build tools or _Eclipse_ plugins.
 
@@ -101,15 +101,13 @@ And initialize the group:
 jinni create-group
 ```
 
-This creates a _parent_ for the _group_ as well as _Gradle_ files used for building multiple artifacts at the same time. (Individual artifacts have their own ant scripts, for now). 
+This creates a _parent_ for the _group_ as well as some technical files like `.gitignore`. 
 
 Expected folder structure (excluding files starting with '.'):
 ```
 parent/
   build.xml
   pom.xml
-build.gradle
-buildscript.gradle
 ```
 
 ## Creating an Application
@@ -153,12 +151,10 @@ This creates the following three artifacts:
 
 To start the application from a command line we have to build it first. Call:
 ```cli
-dr +range .
+hc .
 ```
 
-> This runs our build tool. `range` is the parameter specifying which artifacts we want to build and `.` is a special value that means everything.
-
-> NOTE that downloading all the dependencies might take _Gradle_ a few minutes the very first time.
+> This runs our build tool. The first parameter is `range` specifying which artifacts we want to build and `.` is a special value that means everything. We have omitted the name `range` as this parameter is mapped to the first position.
 
 The previous step has, among other things, prepared launch scripts for our application. Let's navigate to:
 ```cli
@@ -175,6 +171,8 @@ Our application should start at the default port `8080`.
 To verify, open [http://localhost:8080/api/main/Greet?name=Someone](http://localhost:8080/api/main/Greet?name=Someone)
 
 Your browser should display "Hello Someone".
+
+Stop the application again by pressing `CTRL` + `C`.
 
 ## Installing Eclipse Plugins
 
