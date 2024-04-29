@@ -53,7 +53,7 @@ _dev-env_ (which obviously stands for Development Environment) is a directory in
 
 Let's create a _dev-evn_ called `demo`.
 
-On command line, navigate to `devrock-sdk/env`, end enter:
+On command line, navigate to `devrock-sdk/env`, and enter:
 ```cli
 jinni create-dev-env demo
 ```
