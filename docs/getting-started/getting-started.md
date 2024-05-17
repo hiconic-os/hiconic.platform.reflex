@@ -11,11 +11,11 @@
 
 ## Preparing the Environment
 
-We need to prepare the `devrock-sdk`, which is a folder that besides actual projects contains development tools, environment configuration and so on:
+We need to prepare the `hiconic-sdk`, which is a folder that besides actual projects contains development tools, environment configuration and so on:
 
-* Download [devrock-sdk.zip](https://api.hiconic-os.org/download-sdk.php)
-* Unpack the `devrock-sdk` root folder from the zip
-* Add `devrock-sdk/tools/jinni/bin` to your `PATH` environment variable
+* Download [hiconic-sdk.zip](https://api.hiconic-os.org/dowload-latest-artifact-part.php?groupId=tribefire.extension.setup&artifactId=hiconic-sdk&type=zip)
+* Unpack the `hiconic-sdk` root folder from the zip
+* Add `hiconic-sdk/tools/jinni/bin` to your `PATH` environment variable
 * Generate a [Personal Access Token (classic)](https://github.com/settings/tokens) with `read:packages` scope and copy its value (`ghp_AbcD3FGh1jK...`) to an environment variable `GITHUB_READ_PACKAGES_TOKEN`
 
 Note that we have added two CLI tools to our path:
@@ -23,7 +23,7 @@ Note that we have added two CLI tools to our path:
 * _jinni_ - allows creation of new projects based on templates, among other things 
 * _hc_ - is a simple tool for building
 
-> We use the term `Devrock` as a brand name for our tooling, such as our build tools or _Eclipse_ plugins.
+> We use the term `Devrock` as a brand name for our _Eclipse_ plugins.
 
 To verify the `PATH` is configured properly go to the command line and run:
 
@@ -43,17 +43,17 @@ get help with: jinni help
 DONE
 ```
 
-> ⚠️On _Windows_, we have observed performance problems due to scanning the `devrock-sdk` directory. In such case consider adding this directory to the exception list in `Windows Security` / `Virus & threat protection`.
+> ⚠️On _Windows_, we have observed performance problems due to scanning the `hiconic-sdk` directory. In such case consider adding this directory to the exception list in `Windows Security` / `Virus & threat protection`.
 
 ## Create a dev-env
 
-_dev-env_ (which obviously stands for Development Environment) is a directory inside `devrock-sdk/env` which contains the code and configuration of your project, including an _Eclipse_ workspace.
+_dev-env_ (which obviously stands for Development Environment) is a directory inside `hiconic-sdk/env` which contains the code and configuration of your project, including an _Eclipse_ workspace.
 
 > Having multiple _dev-envs_ is useful when working on multiple independent projects, but you can do all your work in just one.
 
 Let's create a _dev-evn_ called `demo`.
 
-On command line, navigate to `devrock-sdk/env`, and enter:
+On command line, navigate to `hiconic-sdk/env`, and enter:
 ```cli
 jinni create-dev-env demo
 ```
@@ -196,7 +196,7 @@ Let's now import our projects in _Eclipse_ and run the application (in debug mod
 
 > Make sure to stop the application with `CTRL+C` if it's still running from the command line.
 
-Let's open the _Eclipse_ workspace in our _dev-env_, located under `devrock-sdk/env/demo/eclipse-workspace`.
+Let's open the _Eclipse_ workspace in our _dev-env_, located under `hiconic-sdk/env/demo/eclipse-workspace`.
 
 > If you're new to _Eclipse_ and the IDE has opened without you specifying a workspace, you need to click on `File` / `Switch Workspace` / `Other...` to select the workspace.
 
