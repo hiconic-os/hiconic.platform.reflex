@@ -27,9 +27,6 @@ import java.util.regex.Pattern;
 import com.braintribe.cfg.Configurable;
 import com.braintribe.ddra.TypeTraversal;
 import com.braintribe.ddra.TypeTraversalResult;
-import com.braintribe.ddra.endpoints.api.api.v1.ApiV1EndpointContext;
-import com.braintribe.ddra.endpoints.api.api.v1.SingleDdraMapping;
-import com.braintribe.gm.model.reason.essential.InternalError;
 import com.braintribe.logging.Logger;
 import com.braintribe.model.ddra.endpoints.OutputPrettiness;
 import com.braintribe.model.ddra.endpoints.TypeExplicitness;
@@ -46,10 +43,6 @@ import com.braintribe.model.processing.meta.cmd.builders.ModelMdResolver;
 import com.braintribe.model.processing.meta.oracle.ModelOracle;
 import com.braintribe.model.processing.rpc.commons.impl.RpcMarshallingStreamManagement;
 import com.braintribe.model.processing.rpc.commons.impl.RpcUnmarshallingStreamManagement;
-import com.braintribe.model.processing.session.api.managed.ModelAccessory;
-import com.braintribe.model.processing.session.api.managed.ModelAccessoryFactory;
-import com.braintribe.model.processing.web.rest.DecoderTargetRegistry;
-import com.braintribe.model.processing.web.rest.HttpExceptions;
 import com.braintribe.model.resource.Resource;
 import com.braintribe.model.resource.api.MimeTypeRegistry;
 import com.braintribe.model.resource.source.TransientSource;
@@ -64,6 +57,11 @@ import com.braintribe.web.multipart.api.FormDataWriter;
 import com.braintribe.web.multipart.api.MutablePartHeader;
 import com.braintribe.web.multipart.api.PartReader;
 import com.braintribe.web.multipart.impl.Multiparts;
+
+import dev.hiconic.servlet.ddra.endpoints.api.api.v1.ApiV1EndpointContext;
+import dev.hiconic.servlet.ddra.endpoints.api.api.v1.SingleDdraMapping;
+import dev.hiconic.servlet.decoder.api.DecoderTargetRegistry;
+import dev.hiconic.servlet.decoder.api.HttpExceptions;
 
 public class ApiV1RestServletUtils {
 	private final static Logger logger = Logger.getLogger(ApiV1RestServletUtils.class);
@@ -132,7 +130,7 @@ public class ApiV1RestServletUtils {
 		return !typeSignature.contains(".");
 	}
 
-	public EntityType<? extends ServiceRequest> resolveTypeFromSignature(String serviceDomain, String typeSignature, ModelOracle modelOracle) {
+	public EntityType<? extends ServiceRequest> resolveTypeFromSignature(String typeSignature, ModelOracle modelOracle) {
 		EntityType<? extends ServiceRequest> entityType = GMF.getTypeReflection().findType(typeSignature);
 		if (entityType != null || !isSimpleTypeName(typeSignature))
 			return entityType;
@@ -142,7 +140,7 @@ public class ApiV1RestServletUtils {
 			return null;
 
 		if (matchingTypes.size() > 1) {
-			notFound("Cannot find service request with type signature %s, but multiple requests found with given simple name.", typeSignature,
+			notFound("Cannot find request with type signature %s, but multiple requests found with given simple name.", typeSignature,
 					matchingTypes.toString());
 		}
 

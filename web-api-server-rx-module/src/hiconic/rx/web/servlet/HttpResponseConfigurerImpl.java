@@ -15,11 +15,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import javax.servlet.http.HttpServletResponse;
-
-import com.braintribe.model.processing.service.api.HttpResponseConfigurer;
+import dev.hiconic.servlet.ddra.endpoints.api.context.HttpResponseConfigurer;
+import jakarta.servlet.http.HttpServletResponse;
 
 public class HttpResponseConfigurerImpl implements HttpResponseConfigurer {
+
 	Map<Object, Consumer<HttpServletResponse>> registry = new HashMap<>();
 
 	public HttpResponseConfigurerImpl() {
@@ -30,8 +30,10 @@ public class HttpResponseConfigurerImpl implements HttpResponseConfigurer {
 	public void applyFor(Object response, Consumer<HttpServletResponse> consumer) {
 		registry.put(response, consumer);
 	}
-	
+
 	public void consume(Object serviceResponse, HttpServletResponse htttpResponse) {
-		registry.getOrDefault(serviceResponse, r -> {/* noop */}).accept(htttpResponse);
+		// @formatter:off
+		registry.getOrDefault(serviceResponse, r -> { /* NOOP */}).accept(htttpResponse);
+		// @formatter:on
 	}
 }

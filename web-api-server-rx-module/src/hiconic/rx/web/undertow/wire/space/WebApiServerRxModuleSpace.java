@@ -1,21 +1,12 @@
 package hiconic.rx.web.undertow.wire.space;
 
-import static com.braintribe.console.ConsoleOutputs.cyan;
-import static com.braintribe.console.ConsoleOutputs.println;
-import static com.braintribe.console.ConsoleOutputs.sequence;
-import static com.braintribe.console.ConsoleOutputs.text;
-
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.List;
 
-import javax.servlet.ServletException;
-
 import org.jboss.logging.Logger;
 
-import com.braintribe.ddra.endpoints.api.api.v1.DdraMappings;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.resource.api.MimeTypeRegistry;
 import com.braintribe.model.resource.utils.MimeTypeRegistryImpl;
@@ -25,27 +16,14 @@ import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 import com.braintribe.wire.api.context.WireContextConfiguration;
 
+import dev.hiconic.servlet.ddra.endpoints.api.api.v1.DdraMappings;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.web.server.api.WebServerContract;
-import hiconic.rx.web.server.model.config.StaticFilesystemResourceMapping;
-import hiconic.rx.web.server.model.config.StaticWebServerConfiguration;
-import hiconic.rx.web.server.model.config.WebServerConfiguration;
 import hiconic.rx.web.servlet.ApiV1RestServletUtils;
 import hiconic.rx.web.servlet.DdraEndpointsExceptionHandler;
 import hiconic.rx.web.servlet.WebApiV1Server;
-import io.undertow.Handlers;
-import io.undertow.Undertow;
-import io.undertow.server.HttpHandler;
-import io.undertow.server.handlers.PathHandler;
-import io.undertow.server.handlers.resource.FileResourceManager;
-import io.undertow.server.handlers.resource.ResourceHandler;
-import io.undertow.servlet.Servlets;
-import io.undertow.servlet.api.DeploymentInfo;
-import io.undertow.servlet.api.DeploymentManager;
-import io.undertow.servlet.api.ServletInfo;
-import io.undertow.servlet.util.ImmediateInstanceFactory;
 
 @Managed
 public class WebApiServerRxModuleSpace implements RxModuleContract {
@@ -104,6 +82,7 @@ public class WebApiServerRxModuleSpace implements RxModuleContract {
 	}
 	
 	private List<String> readMimeExtensionsProperties() {
+		// TODO 28.2.2023 This file also exists in platform-api under com/braintribe/mimetype/mime-extensions.properties
 		try (InputStream in = getClass().getResource("mime-extensions.properties").openStream()) {
 			return StringTools.readLinesFromInputStream(in, "UTF-8", false);
 
@@ -111,9 +90,9 @@ public class WebApiServerRxModuleSpace implements RxModuleContract {
 			throw new UncheckedIOException("Error while reading mime-extensions.properties", e);
 		}
 	}
-	
+
+	@SuppressWarnings("unused")
 	private MimeTypeRegistry configureMimeTypeRegistry(MimeTypeRegistryImpl bean) {
-		// TODO 28.2.2023 This file also exists in platform-api under com/braintribe/mimetype/mime-extensions.properties
 		List<String> lines = readMimeExtensionsProperties();
 
 		for (String line : lines) {

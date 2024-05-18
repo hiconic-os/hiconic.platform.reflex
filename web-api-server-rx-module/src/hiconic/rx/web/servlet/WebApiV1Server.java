@@ -11,7 +11,7 @@
 // ============================================================================
 package hiconic.rx.web.servlet;
 
-import static com.braintribe.ddra.endpoints.api.DdraEndpointsUtils.getPathInfo;
+import static dev.hiconic.servlet.ddra.endpoints.api.DdraEndpointsUtils.getPathInfo;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -31,9 +31,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.apache.commons.lang.StringUtils;
 
 import com.braintribe.cfg.Configurable;
@@ -43,11 +40,6 @@ import com.braintribe.codec.marshaller.api.CharsetOption;
 import com.braintribe.codec.marshaller.api.EntityVisitorOption;
 import com.braintribe.codec.marshaller.api.GmDeserializationOptions;
 import com.braintribe.codec.marshaller.api.Marshaller;
-import com.braintribe.ddra.endpoints.api.DdraEndpointAspect;
-import com.braintribe.ddra.endpoints.api.DdraEndpointsUtils;
-import com.braintribe.ddra.endpoints.api.api.v1.ApiV1EndpointContext;
-import com.braintribe.ddra.endpoints.api.api.v1.DdraMappings;
-import com.braintribe.ddra.endpoints.api.api.v1.SingleDdraMapping;
 import com.braintribe.exception.Exceptions;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reason;
@@ -67,7 +59,6 @@ import com.braintribe.model.ddra.DdraUrlMethod;
 import com.braintribe.model.ddra.endpoints.api.v1.ApiV1DdraEndpoint;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.eval.EvalContext;
-import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.generic.pr.criteria.TraversingCriterion;
 import com.braintribe.model.generic.reflection.BaseType;
 import com.braintribe.model.generic.reflection.CollectionType;
@@ -80,19 +71,10 @@ import com.braintribe.model.processing.meta.cmd.builders.ModelMdResolver;
 import com.braintribe.model.processing.meta.oracle.ModelOracle;
 import com.braintribe.model.processing.rpc.commons.api.RpcConstants;
 import com.braintribe.model.processing.rpc.commons.impl.RpcUnmarshallingStreamManagement;
-import com.braintribe.model.processing.service.api.HttpRequestSupplier;
-import com.braintribe.model.processing.service.api.HttpRequestSupplierAspect;
-import com.braintribe.model.processing.service.api.HttpResponseConfigurerAspect;
 import com.braintribe.model.processing.service.api.TraversingCriterionAspect;
 import com.braintribe.model.processing.service.api.aspect.HttpStatusCodeNotification;
 import com.braintribe.model.processing.service.api.aspect.RequestTransportPayloadAspect;
 import com.braintribe.model.processing.session.api.managed.NotFoundException;
-import com.braintribe.model.processing.web.rest.HttpExceptions;
-import com.braintribe.model.processing.web.rest.HttpRequestEntityDecoder;
-import com.braintribe.model.processing.web.rest.HttpRequestEntityDecoderOptions;
-import com.braintribe.model.processing.web.rest.StandardHeadersMapper;
-import com.braintribe.model.processing.web.rest.UrlPathCodec;
-import com.braintribe.model.processing.web.rest.impl.QueryParamDecoder;
 import com.braintribe.model.resource.CallStreamCapture;
 import com.braintribe.model.resource.Resource;
 import com.braintribe.model.resource.source.ResourceSource;
@@ -114,7 +96,23 @@ import com.braintribe.web.multipart.impl.MultipartSubFormat;
 import com.braintribe.web.multipart.impl.Multiparts;
 import com.braintribe.web.multipart.impl.SequentialParallelFormDataWriter;
 
+import dev.hiconic.servlet.ddra.endpoints.api.DdraEndpointAspect;
+import dev.hiconic.servlet.ddra.endpoints.api.DdraEndpointsUtils;
+import dev.hiconic.servlet.ddra.endpoints.api.api.v1.ApiV1EndpointContext;
+import dev.hiconic.servlet.ddra.endpoints.api.api.v1.DdraMappings;
+import dev.hiconic.servlet.ddra.endpoints.api.api.v1.SingleDdraMapping;
+import dev.hiconic.servlet.ddra.endpoints.api.context.HttpRequestSupplier;
+import dev.hiconic.servlet.ddra.endpoints.api.context.HttpRequestSupplierAspect;
+import dev.hiconic.servlet.ddra.endpoints.api.context.HttpResponseConfigurerAspect;
+import dev.hiconic.servlet.decoder.api.HttpExceptions;
+import dev.hiconic.servlet.decoder.api.HttpRequestEntityDecoder;
+import dev.hiconic.servlet.decoder.api.HttpRequestEntityDecoderOptions;
+import dev.hiconic.servlet.decoder.api.StandardHeadersMapper;
+import dev.hiconic.servlet.decoder.api.UrlPathCodec;
+import dev.hiconic.servlet.decoder.impl.QueryParamDecoder;
 import hiconic.rx.web.servlet.ApiV1RestServletUtils.DecodingTargetTraversalResult;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * The HttpServlet for the /api/v1 path.
@@ -131,7 +129,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 			HttpRequestEntityDecoder.SERIALIZED_REQUEST);
 
 	private static final StandardHeadersMapper<DdraEndpointHeaders> ENDPOINT_MAPPER = StandardHeadersMapper.mapToProperties(DdraEndpointHeaders.T);
-	private static final UrlPathCodec<DdraBaseUrlPathParameters> URL_CODEC = UrlPathCodec.create(DdraBaseUrlPathParameters.T) //
+	private static final UrlPathCodec<DdraBaseUrlPathParameters> URL_CODEC = UrlPathCodec.<DdraBaseUrlPathParameters> create() //
 			.mappedSegment("serviceDomain", true) //
 			.mappedSegment("typeSignature");
 
@@ -153,7 +151,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 	private Function<String, CmdResolver> mdResolverProvider;
 	
 	private static DdraConfiguration defaultConfiguration = DdraConfiguration.T.create(c -> c.setLastChangeTimestamp(Long.toString(System.currentTimeMillis())));
-	private Supplier<DdraConfiguration> ddraConfigurationProvider = () -> defaultConfiguration;
+	private final Supplier<DdraConfiguration> ddraConfigurationProvider = () -> defaultConfiguration;
 
 	private ApiV1RestServletUtils restServletUtils;
 
@@ -584,7 +582,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 			Object projectedResponse = restServletUtils.project(context, endpoint, response);
 
 			if (context.isResourceDownloadResponse()) {
-				handleResourceDownloadResponse(context, service, projectedResponse, responseContentType);
+				handleResourceDownloadResponse(context, projectedResponse, responseContentType);
 			} else {
 				context.ensureContentDispositionHeader(null);
 				writeResponse(context, projectedResponse, endpoint, false);
@@ -646,7 +644,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 		HttpResponseConfigurerImpl httpResponseConfigurer = new HttpResponseConfigurerImpl();
 
 		//@formatter:off
-		EvalContext<Object> evalContext = getEvaluator(service, context)
+		EvalContext<Object> evalContext = evaluator
 			.eval(service)
 			.with(DdraEndpointAspect.class, endpoint)
 			.with(TraversingCriterionAspect.class, criterion)
@@ -668,12 +666,8 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 		return maybe;
 	}
 
-	private Evaluator<ServiceRequest> getEvaluator(ServiceRequest service, ApiV1EndpointContext context) {
-		return this.evaluator;
-	}
-
-	private void handleResourceDownloadResponse(ApiV1EndpointContext context, ServiceRequest service, Object projectedResponse,
-			String responseContentType) throws IOException {
+	private void handleResourceDownloadResponse(ApiV1EndpointContext context, Object projectedResponse, String responseContentType)
+			throws IOException {
 
 		if (projectedResponse instanceof Resource) {
 			Resource resource = (Resource) projectedResponse;
@@ -738,12 +732,12 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 		
 		// get the entity type from the type signature
 		ModelOracle modelOracle = mdResolverProvider.apply(serviceDomain).getModelOracle();
-		EntityType<? extends ServiceRequest> entityType = restServletUtils.resolveTypeFromSignature(serviceDomain, typeSignature, modelOracle);
+		EntityType<? extends ServiceRequest> entityType = restServletUtils.resolveTypeFromSignature(typeSignature, modelOracle);
 		if (entityType == null) {
-			HttpExceptions.notFound("Cannot find service request with type signature %s", typeSignature);
+			HttpExceptions.notFound("Cannot find request %s", typeSignature);
 		}
 		if (!ServiceRequest.T.isAssignableFrom(entityType)) {
-			HttpExceptions.badRequest("Generic Entity %s is not a ServiceRequest.", typeSignature);
+			HttpExceptions.badRequest("Entity %s is not a ServiceRequest.", typeSignature);
 		}
 
 		context.setServiceRequestType(entityType);

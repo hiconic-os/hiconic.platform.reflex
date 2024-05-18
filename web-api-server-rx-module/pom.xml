@@ -16,16 +16,6 @@
 			<version>${V.com.braintribe.common}</version>
 		</dependency>    
 		<dependency>
-			<groupId>tribefire.extension.web-api</groupId>
-			<artifactId>web-api-endpoints-api</artifactId>
-			<version>${V.tribefire.extension.web-api}</version>
-		</dependency>
-		<dependency>
-			<groupId>tribefire.extension.web-api</groupId>
-			<artifactId>web-api-endpoints-model</artifactId>
-			<version>${V.tribefire.extension.web-api}</version>
-		</dependency>		    
-		<dependency>
 			<groupId>com.braintribe.gm</groupId>
 			<artifactId>reason-meta-data-model</artifactId>
 			<version>${V.com.braintribe.gm}</version>
@@ -39,6 +29,16 @@
 			<groupId>com.braintribe.gm</groupId>
 			<artifactId>resources-support</artifactId>
 			<version>${V.com.braintribe.gm}</version>
+		</dependency>
+		<dependency>
+			<groupId>tribefire.extension.web-api</groupId>
+			<artifactId>web-api-endpoints-api</artifactId>
+			<version>${V.tribefire.extension.web-api}</version>
+		</dependency>
+		<dependency>
+			<groupId>tribefire.extension.web-api</groupId>
+			<artifactId>web-api-endpoints-model</artifactId>
+			<version>${V.tribefire.extension.web-api}</version>
 		</dependency>
 		<dependency>
 			<groupId>tribefire.extension.web-api</groupId>

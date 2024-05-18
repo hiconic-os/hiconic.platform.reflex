@@ -1,9 +1,9 @@
 package hiconic.platform.reflex.web_rpc.wire.space;
 
-import com.braintribe.model.processing.webrpc.server.GmWebRpcServer;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
+import dev.hiconic.servlet.webrpc.server.GmWebRpcServer;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 

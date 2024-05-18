@@ -7,24 +7,23 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Locale;
 
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import com.braintribe.cfg.Configurable;
 import com.braintribe.common.attribute.AttributeContext;
 import com.braintribe.common.attribute.common.CallerAcceptedLocales;
 import com.braintribe.model.processing.service.api.aspect.RequestedEndpointAspect;
 import com.braintribe.model.processing.service.api.aspect.RequestorAddressAspect;
 import com.braintribe.model.processing.service.api.aspect.RequestorIdAspect;
-import com.braintribe.util.servlet.HttpFilter;
-import com.braintribe.util.servlet.HttpServletArguments;
-import com.braintribe.util.servlet.HttpServletArgumentsAttribute;
-import com.braintribe.util.servlet.remote.DefaultRemoteClientAddressResolver;
-import com.braintribe.util.servlet.remote.RemoteClientAddressResolver;
 import com.braintribe.utils.StringTools;
 import com.braintribe.utils.collection.impl.AttributeContexts;
+
+import dev.hiconic.servlet.api.HttpServletArguments;
+import dev.hiconic.servlet.api.HttpServletArgumentsAttribute;
+import dev.hiconic.servlet.api.remote.RemoteClientAddressResolver;
+import dev.hiconic.servlet.impl.remote.DefaultRemoteClientAddressResolver;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Smartly extracts client ip address from special headers to avoid proxy masking of remote address and pushes an

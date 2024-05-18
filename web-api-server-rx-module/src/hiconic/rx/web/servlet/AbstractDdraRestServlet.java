@@ -13,20 +13,11 @@ package hiconic.rx.web.servlet;
 
 import java.io.IOException;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import com.braintribe.cfg.Configurable;
 import com.braintribe.cfg.Required;
 import com.braintribe.codec.marshaller.api.Marshaller;
 import com.braintribe.codec.marshaller.api.MarshallerRegistry;
 import com.braintribe.common.lcd.Pair;
-import com.braintribe.ddra.endpoints.api.DdraEndpointContext;
-import com.braintribe.ddra.endpoints.api.DdraEndpointsUtils;
-import com.braintribe.ddra.endpoints.api.DdraTraversingCriteriaMap;
-import com.braintribe.ddra.endpoints.api.api.v1.ApiV1EndpointContext;
 import com.braintribe.exception.Exceptions;
 import com.braintribe.logging.Logger;
 import com.braintribe.model.DdraEndpoint;
@@ -35,12 +26,20 @@ import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.generic.reflection.BaseType;
 import com.braintribe.model.generic.reflection.GenericModelType;
 import com.braintribe.model.processing.service.api.aspect.RequestorAddressAspect;
-import com.braintribe.model.processing.session.api.persistence.PersistenceGmSessionFactory;
 import com.braintribe.model.processing.web.rest.HttpExceptions;
 import com.braintribe.model.service.api.ServiceRequest;
-import com.braintribe.util.servlet.util.ServletTools;
 import com.braintribe.utils.collection.impl.AttributeContexts;
 import com.braintribe.utils.lcd.StopWatch;
+
+import dev.hiconic.servlet.ddra.endpoints.api.DdraEndpointContext;
+import dev.hiconic.servlet.ddra.endpoints.api.DdraEndpointsUtils;
+import dev.hiconic.servlet.ddra.endpoints.api.DdraTraversingCriteriaMap;
+import dev.hiconic.servlet.ddra.endpoints.api.api.v1.ApiV1EndpointContext;
+import dev.hiconic.servlet.impl.util.ServletTools;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 public abstract class AbstractDdraRestServlet<Context extends DdraEndpointContext<? extends DdraEndpoint>> extends HttpServlet {
 

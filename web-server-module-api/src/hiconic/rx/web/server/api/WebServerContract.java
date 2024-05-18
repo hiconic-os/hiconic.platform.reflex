@@ -1,10 +1,9 @@
 package hiconic.rx.web.server.api;
 
-import javax.servlet.DispatcherType;
-import javax.servlet.Filter;
-import javax.servlet.http.HttpServlet;
-
 import hiconic.rx.module.api.wire.RxExportContract;
+import jakarta.servlet.DispatcherType;
+import jakarta.servlet.Filter;
+import jakarta.servlet.http.HttpServlet;
 
 public interface WebServerContract extends RxExportContract {
 	void addServlet(String name, String path, HttpServlet servlet);

@@ -192,11 +192,6 @@ public class UrlEncodingMarshaller implements CharacterMarshaller {
 	}
 
 	private GenericEntity createEntity(String sourceKey, ListMap<String, String> source, EntityType<?> type, GmDeserializationOptions options) {
-		return createEntity(sourceKey, source, type, options, null);
-	}
-
-	private GenericEntity createEntity(String sourceKey, ListMap<String, String> source, EntityType<?> type, GmDeserializationOptions options,
-			GenericEntity entityTemplate) {
 		GenericEntity entity;
 
 		if (sourceKey == null && rootEntityTemplateFactory != null) {

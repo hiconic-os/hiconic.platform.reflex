@@ -17,6 +17,7 @@
         <V.tribefire.extension.web-api>[1.0,1.1)</V.tribefire.extension.web-api>
 		<V.tribefire.extension.hibernate>[2.0,2.1)</V.tribefire.extension.hibernate>
         <V.com.braintribe.servlet>[2.0,2.1)</V.com.braintribe.servlet>
-        <V.io.undertow>1.2.11.Final</V.io.undertow>
+        <V.io.undertow>2.3.13.Final</V.io.undertow>
+        <V.jakarta.servlet>6.0.0</V.jakarta.servlet>
 	</properties>
 </project>

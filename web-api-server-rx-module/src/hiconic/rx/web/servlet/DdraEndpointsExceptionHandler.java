@@ -15,20 +15,20 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 
-import javax.servlet.http.HttpServletResponse;
-
 import com.braintribe.cfg.Configurable;
 import com.braintribe.cfg.Required;
 import com.braintribe.codec.marshaller.api.GmSerializationOptions;
 import com.braintribe.codec.marshaller.api.Marshaller;
 import com.braintribe.codec.marshaller.api.OutputPrettiness;
-import com.braintribe.ddra.endpoints.api.DdraEndpointContext;
 import com.braintribe.exception.AuthorizationException;
 import com.braintribe.exception.HttpException;
 import com.braintribe.logging.Logger;
 import com.braintribe.model.processing.securityservice.api.exceptions.SecurityServiceException;
 import com.braintribe.model.processing.service.common.FailureConverter;
 import com.braintribe.model.service.api.result.Failure;
+
+import dev.hiconic.servlet.ddra.endpoints.api.DdraEndpointContext;
+import jakarta.servlet.http.HttpServletResponse;
 
 public class DdraEndpointsExceptionHandler {
 

@@ -7,11 +7,6 @@ import static com.braintribe.console.ConsoleOutputs.text;
 
 import java.io.File;
 
-import javax.servlet.DispatcherType;
-import javax.servlet.Filter;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
@@ -33,6 +28,10 @@ import io.undertow.servlet.api.DeploymentManager;
 import io.undertow.servlet.api.FilterInfo;
 import io.undertow.servlet.api.ServletInfo;
 import io.undertow.servlet.util.ImmediateInstanceFactory;
+import jakarta.servlet.DispatcherType;
+import jakarta.servlet.Filter;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
 
 /**
  * This module's javadoc is yet to be written.
@@ -121,9 +120,9 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 		
 		println(
 				sequence(
-						text("Web Server running on: "),
-						cyan("http://" + configuration().getHostName() + ":"),
-						text("" + configuration().getPort())
+						text("Web Server running. "),
+						cyan("URL:"),
+						text(" http://" + configuration().getHostName() + ":" + configuration().getPort())
 				)
 		);
 	}

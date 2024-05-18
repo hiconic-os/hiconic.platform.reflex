@@ -18,12 +18,13 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
-import javax.servlet.http.HttpServletRequest;
-
-import com.braintribe.model.processing.service.api.HttpRequestSupplier;
 import com.braintribe.model.service.api.ServiceRequest;
 
+import dev.hiconic.servlet.ddra.endpoints.api.context.HttpRequestSupplier;
+import jakarta.servlet.http.HttpServletRequest;
+
 public class HttpRequestSupplierImpl implements HttpRequestSupplier {
+
 	Map<String, HttpServletRequest> registry = new HashMap<>();
 
 	public HttpRequestSupplierImpl() {
