@@ -22,33 +22,35 @@ import hiconic.rx.platform.models.RxConfiguredModel;
 import hiconic.rx.platform.models.RxModelConfigurations;
 
 public class RxServiceDomains implements ServiceDomains {
-	private Map<String, RxServiceDomain> domains = new ConcurrentHashMap<>();
+
 	private ConfigurableDispatchingServiceProcessor fallbackProcessor;
 	private Evaluator<ServiceRequest> contextEvaluator;
-	private LazyInitialized<Map<GmMetaModel, List<RxServiceDomain>>> domainsByModel = new LazyInitialized<>(this::indexDependers);
 	private ExecutorService executorService;
 	private RxModelConfigurations modelConfigurations;
-	
+
+	private final Map<String, RxServiceDomain> domains = new ConcurrentHashMap<>();
+	private final LazyInitialized<Map<GmMetaModel, List<RxServiceDomain>>> domainsByModel = new LazyInitialized<>(this::indexDependers);
+
 	@Required
 	public void setModelConfigurations(RxModelConfigurations modelConfigurations) {
 		this.modelConfigurations = modelConfigurations;
 	}
-	
+
 	@Required
 	public void setExecutorService(ExecutorService executorService) {
 		this.executorService = executorService;
 	}
-	
+
 	@Required
 	public void setContextEvaluator(Evaluator<ServiceRequest> contextEvaluator) {
 		this.contextEvaluator = contextEvaluator;
 	}
-	
+
 	@Required
 	public void setFallbackProcessor(ConfigurableDispatchingServiceProcessor fallbackProcessor) {
 		this.fallbackProcessor = fallbackProcessor;
 	}
-	
+
 	@Override
 	public RxServiceDomain main() {
 		return byId("main");
@@ -58,34 +60,33 @@ public class RxServiceDomains implements ServiceDomains {
 	public RxServiceDomain byId(String domainId) {
 		return domains.get(domainId);
 	}
-	
+
 	@Override
 	public List<? extends ServiceDomain> listDependers(GmMetaModel model) {
 		return domainsByModel.get().getOrDefault(model, Collections.emptyList());
 	}
-	
+
 	private Map<GmMetaModel, List<RxServiceDomain>> indexDependers() {
 		Map<GmMetaModel, List<RxServiceDomain>> index = new HashMap<>();
 
-		for (RxServiceDomain domain: list()) {
+		for (RxServiceDomain domain : list()) {
 			domain.modelOracle().getDependencies() //
-				.includeSelf() //
-				.transitive() //
-				.asGmMetaModels() //
-				.forEach(m -> index.computeIfAbsent(m, k -> new ArrayList<>()).add(domain));
+					.includeSelf() //
+					.transitive() //
+					.asGmMetaModels() //
+					.forEach(m -> index.computeIfAbsent(m, k -> new ArrayList<>()).add(domain));
 		}
 		return index;
-	} 
-	
+	}
+
 	public RxServiceDomain acquire(String domainId) {
 		return domains.computeIfAbsent(domainId, this::createServiceDomain);
 	}
-	
+
 	private RxServiceDomain createServiceDomain(String domainId) {
 		RxConfiguredModel configuredModel = modelConfigurations.byName(_ReflexPlatform_.groupId + ":configured-" + domainId + "-api-model");
-		
-		RxServiceDomain domain = new RxServiceDomain(domainId, configuredModel, executorService, contextEvaluator, fallbackProcessor);
-		return domain;
+
+		return new RxServiceDomain(domainId, configuredModel, executorService, contextEvaluator, fallbackProcessor);
 	}
 
 	@Override

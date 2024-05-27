@@ -23,9 +23,10 @@ import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.service.ModelReference;
 
 public class RxConfiguredModels implements ConfiguredModels {
-	private Map<String, RxConfiguredModel> models = new ConcurrentHashMap<>();
-	private Map<String, RxPlatformModel> platformModels = new ConcurrentHashMap<>();
-	private LazyInitialized<Map<GmMetaModel, List<AbstractRxConfiguredModel>>> dependersByModel = new LazyInitialized<>(this::indexDependers);
+
+	private final Map<String, RxConfiguredModel> models = new ConcurrentHashMap<>();
+	private final Map<String, RxPlatformModel> platformModels = new ConcurrentHashMap<>();
+	private final LazyInitialized<Map<GmMetaModel, List<AbstractRxConfiguredModel>>> dependersByModel = new LazyInitialized<>(this::indexDependers);
 	private Supplier<AttributeContext> systemAttributeContextSupplier;
 	private RxCmdResolverManager cmdResolverManager;
 	
@@ -74,7 +75,7 @@ public class RxConfiguredModels implements ConfiguredModels {
 		if (GMF.getTypeReflection().findModel(modelName) != null) 
 			throw new IllegalArgumentException("Configured models must not have a platform model name: " + modelName);
 
-		return (RxConfiguredModel)models.computeIfAbsent(modelName, n -> new RxConfiguredModel(this, n));
+		return models.computeIfAbsent(modelName, n -> new RxConfiguredModel(this, n));
 	}
 	
 	public RxConfiguredModel acquire(ModelReference modelReference) {

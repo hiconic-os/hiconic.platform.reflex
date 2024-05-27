@@ -49,6 +49,7 @@ public class RxModuleLoader implements LifecycleAware {
 	private List<WireContext<RxModuleContract>> contexts;
 	private RxContractSpaceResolverConfigurator resolverConfigurator;
 
+	@SuppressWarnings("unused")
 	private ExecutorService executorService;
 
 	@Required

@@ -14,71 +14,54 @@ import com.braintribe.model.usersession.UserSession;
 import com.braintribe.wire.api.space.WireSpace;
 
 import hiconic.rx.module.api.service.ConfiguredModels;
-import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.service.ServiceDomains;
 
 /**
- * Wire contract that exposes general features of the reflex platform to be accessed by any reflex module. To access the features
- * you have to import this contract in your wire space. See example in the documentation of {@link RxModuleContract}.
+ * Wire contract that exposes general features of the reflex platform to be accessed by any reflex module. To access the features you have to import
+ * this contract in your wire space. See example in the documentation of {@link RxModuleContract}.
  * 
  * @author dirk.scheffler
  */
 public interface RxPlatformContract extends WireSpace {
-	/**
-	 * Returns the service evaluator
-	 */
+
+	/** Standard request {@link Evaluator}. */
 	Evaluator<ServiceRequest> evaluator();
-	
+
 	/**
-	 * Returns the system service evaluator which uses a prepared {@link AttributeContext} (e.g. to support a system user authorization when executing requests)
+	 * {@link Evaluator} backed by {@link #systemAttributeContextSupplier()}, thus having system user (i.e. full) authorization when evaluating
+	 * requests.
 	 */
 	Evaluator<ServiceRequest> systemEvaluator();
-	
-	/**
-	 * Returns the service evaluator using the given {@link AttributeContext}
-	 */
+
+	/** {@link Evaluator} backed by given {@link AttributeContext}, which can e..g. */
 	Evaluator<ServiceRequest> evaluator(AttributeContext attributeContext);
 
-	/**
-	 * The AttributeContext that is equipped with the system user's {@link UserSession}.
-	 */
+	/** {@link AttributeContext} equipped with the system user's {@link UserSession}. */
 	Supplier<AttributeContext> systemAttributeContextSupplier();
 
-	/**
-	 * Returns the {@link ConfiguredModels}.
-	 */
+	/** Returns the {@link ConfiguredModels}. */
 	ConfiguredModels configuredModels();
 
-	
-	/**
-	 * Returns the {@link ServiceDomains}.
-	 */
+	/** Returns the {@link ServiceDomains}. */
 	ServiceDomains serviceDomains();
-	
-	/**
-	 * Returns the {@link MarshallerRegistry}
-	 */
+
+	/** Returns the {@link MarshallerRegistry} */
 	MarshallerRegistry marshallers();
-	
-	/**
-	 * The name of the application which the platform is hosting given by the applicationName property in META-INF/rx-app.properties
-	 */
+
+	/** The name of the application which the platform is hosting given by the applicationName property in META-INF/rx-app.properties */
 	String applicationName();
-	
-	/**
-	 * The nodeId of this instance in distributed systems 
-	 */
+
+	/** The nodeId of this instance in distributed systems */
 	String nodeId();
-	
+
 	/**
-	 *	Returns a configuration for the given type or a reason why the configuration could not be retrieved.
-	 *	If an explicit configuration cannot be found a default initialized instance of the configType will be returned. 
+	 * Returns a configuration for the given type or a reason why the configuration could not be retrieved.
+	 * <p>
+	 * If an explicit configuration cannot be found a default initialized instance of the configType will be returned.
 	 */
 	<C extends GenericEntity> Maybe<C> readConfig(EntityType<C> configType);
 
-	/**
-	 * General purpose thread pool.
-	 */
+	/** General purpose thread pool. */
 	ExecutorService executorService();
 
 }

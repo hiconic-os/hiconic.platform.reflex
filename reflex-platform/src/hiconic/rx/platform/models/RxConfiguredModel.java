@@ -12,13 +12,11 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import com.braintribe.common.artifact.ArtifactReflection;
-import com.braintribe.common.attribute.AttributeContext;
 import com.braintribe.gm._RootModel_;
 import com.braintribe.model.generic.GMF;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.Model;
 import com.braintribe.model.meta.GmMetaModel;
-import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.meta.configuration.ConfigurationModels;
 import com.braintribe.model.processing.meta.configured.ConfigurationModelBuilder;
 import com.braintribe.model.processing.meta.editor.BasicModelMetaDataEditor;
@@ -31,31 +29,29 @@ import com.braintribe.model.processing.service.api.ServiceInterceptorProcessor;
 import com.braintribe.model.processing.service.api.ServiceProcessor;
 import com.braintribe.model.processing.service.impl.ServiceProcessors;
 import com.braintribe.model.service.api.ServiceRequest;
-import com.braintribe.utils.collection.impl.AttributeContexts;
-import com.braintribe.utils.lcd.LazyInitialized;
 
 import hiconic.rx.model.service.processing.md.AroundProcessWith;
 import hiconic.rx.model.service.processing.md.InterceptWith;
 import hiconic.rx.model.service.processing.md.PostProcessWith;
 import hiconic.rx.model.service.processing.md.PreProcessWith;
 import hiconic.rx.model.service.processing.md.ProcessWith;
-import hiconic.rx.module.api.service.ConfiguredModel;
 import hiconic.rx.module.api.service.InterceptorBuilder;
 import hiconic.rx.module.api.service.ModelConfiguration;
 import hiconic.rx.module.api.service.ModelReference;
 import hiconic.rx.platform.service.RxInterceptor;
 
 public class RxConfiguredModel extends AbstractRxConfiguredModel implements ModelConfiguration {
-	private String name;
-	private ConfigurationModelBuilder configurationModelBuilder;
-	private List<Consumer<ModelMetaDataEditor>> modelConfigurers = Collections.synchronizedList(new ArrayList<>());
-	private Set<GmMetaModel> models = new LinkedHashSet<>();
-	private List<InterceptorEntry> interceptors = Collections.synchronizedList(new ArrayList<>());
+
+	private final String name;
+	private final ConfigurationModelBuilder configurationModelBuilder;
+	private final List<Consumer<ModelMetaDataEditor>> modelConfigurers = Collections.synchronizedList(new ArrayList<>());
+	private final Set<GmMetaModel> models = new LinkedHashSet<>();
+	private final List<InterceptorEntry> interceptors = Collections.synchronizedList(new ArrayList<>());
 	
 	public RxConfiguredModel(RxConfiguredModels configuredModels, String modelName) {
 		super(configuredModels);
 		this.name = modelName;
-		configurationModelBuilder = ConfigurationModels.create(modelName);;
+		configurationModelBuilder = ConfigurationModels.create(modelName);
 	}
 	
 	@Override
@@ -219,7 +215,7 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 				return this;
 			}
 			
-			private <R extends ServiceRequest> void register(InterceptorEntry interceptorEntry) {
+			private void register(InterceptorEntry interceptorEntry) {
 				addModel(interceptorEntry.requestType.getModel());
 				synchronized (interceptors) {
 					if (insertIdentification != null) {
@@ -241,11 +237,6 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 		Supplier<ServiceInterceptorProcessor> interceptorSupplier;
 		EntityType<? extends ServiceRequest> requestType;
 		Predicate<ServiceRequest> predicate;
-		
-		
-		public InterceptorEntry(String identifier, EntityType<? extends ServiceRequest> requestType, Supplier<ServiceInterceptorProcessor> interceptorSupplier) {
-			this(identifier, requestType, r -> true, interceptorSupplier);
-		}
 		
 		public InterceptorEntry(String identifier, EntityType<? extends ServiceRequest> requestType, Predicate<ServiceRequest> predicate, Supplier<ServiceInterceptorProcessor> interceptorSupplier) {
 			this.identification = identifier;

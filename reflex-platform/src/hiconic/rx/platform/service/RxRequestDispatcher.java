@@ -44,21 +44,10 @@ public class RxRequestDispatcher implements ServiceProcessor<ServiceRequest, Obj
 		return enrichedProcessor.process(requestContext, request);
 	}
 
-	private ServiceProcessor<ServiceRequest, Object> resolveProcessor(EntityMdResolver mdResolver, ServiceRequest request) {
-		ProcessWith processWith = mdResolver.meta(ProcessWith.T).exclusive();
-		
-		if (processWith == null)
-			return fallbackProcessor;
-		
-		ServiceProcessor<ServiceRequest, Object> processor = processWith.getAssociate();
-		
-		return Objects.requireNonNull(processor, "ProcessWith misses assigned processor: " + processWith);
-	}
-	
 	private ServiceProcessor<ServiceRequest, Object> buildEnrichedProcessor(ServiceRequest request) {
 		EntityMdResolver mdResolver = serviceDomain.systemCmdResolver().getMetaData().entityType(request.entityType());
 		
-		ServiceProcessor<ServiceRequest, Object> processor = resolveProcessor(mdResolver, request);
+		ServiceProcessor<ServiceRequest, Object> processor = resolveProcessor(mdResolver);
 		
 		final InterceptingServiceProcessorBuilder interceptionBuilder;
 		
@@ -74,8 +63,18 @@ public class RxRequestDispatcher implements ServiceProcessor<ServiceRequest, Obj
 
 		return interceptionBuilder.build();
 	}
-	
-	
+
+	private ServiceProcessor<ServiceRequest, Object> resolveProcessor(EntityMdResolver mdResolver) {
+		ProcessWith processWith = mdResolver.meta(ProcessWith.T).exclusive();
+		
+		if (processWith == null)
+			return fallbackProcessor;
+		
+		ServiceProcessor<ServiceRequest, Object> processor = processWith.getAssociate();
+		
+		return Objects.requireNonNull(processor, "ProcessWith misses assigned processor: " + processWith);
+	}
+
 	private void enrichWithInterceptors(ServiceRequest request, EntityMdResolver mdResolver, ServiceInterceptionChainBuilder interceptionBuilder) {
 		List<InterceptWith> interceptWiths = mdResolver.meta(InterceptWith.T).list();
 
