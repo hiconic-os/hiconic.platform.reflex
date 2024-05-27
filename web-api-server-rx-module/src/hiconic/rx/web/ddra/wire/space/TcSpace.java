@@ -5,7 +5,7 @@
 // To this file the Braintribe License Agreement applies.
 // ============================================================================
 
-package hiconic.rx.web.undertow.wire.space;
+package hiconic.rx.web.ddra.wire.space;
 
 import static com.braintribe.model.generic.typecondition.TypeConditions.isKind;
 import static com.braintribe.model.generic.typecondition.TypeConditions.orTc;

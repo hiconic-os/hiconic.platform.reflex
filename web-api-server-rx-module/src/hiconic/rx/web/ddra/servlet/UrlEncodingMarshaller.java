@@ -1,5 +1,5 @@
 // ============================================================================
-package hiconic.rx.web.servlet;
+package hiconic.rx.web.ddra.servlet;
 
 import java.io.IOException;
 import java.io.InputStream;

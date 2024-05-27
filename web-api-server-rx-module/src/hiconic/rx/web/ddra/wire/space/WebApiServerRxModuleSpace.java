@@ -1,4 +1,4 @@
-package hiconic.rx.web.undertow.wire.space;
+package hiconic.rx.web.ddra.wire.space;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,10 +20,10 @@ import dev.hiconic.servlet.ddra.endpoints.api.api.v1.DdraMappings;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
+import hiconic.rx.web.ddra.servlet.ApiV1RestServletUtils;
+import hiconic.rx.web.ddra.servlet.DdraEndpointsExceptionHandler;
+import hiconic.rx.web.ddra.servlet.WebApiV1Server;
 import hiconic.rx.web.server.api.WebServerContract;
-import hiconic.rx.web.servlet.ApiV1RestServletUtils;
-import hiconic.rx.web.servlet.DdraEndpointsExceptionHandler;
-import hiconic.rx.web.servlet.WebApiV1Server;
 
 @Managed
 public class WebApiServerRxModuleSpace implements RxModuleContract {

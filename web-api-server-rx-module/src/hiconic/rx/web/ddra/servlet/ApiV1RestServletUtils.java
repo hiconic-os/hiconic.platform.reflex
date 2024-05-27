@@ -9,7 +9,7 @@
 // 
 // You should have received a copy of the GNU Lesser General Public License along with this library; See http://www.gnu.org/licenses/.
 // ============================================================================
-package hiconic.rx.web.servlet;
+package hiconic.rx.web.ddra.servlet;
 
 import static com.braintribe.model.processing.web.rest.HttpExceptions.notFound;
 import static com.braintribe.utils.lcd.CollectionTools2.first;

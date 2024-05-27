@@ -9,7 +9,7 @@
 // 
 // You should have received a copy of the GNU Lesser General Public License along with this library; See http://www.gnu.org/licenses/.
 // ============================================================================
-package hiconic.rx.web.servlet;
+package hiconic.rx.web.ddra.servlet;
 
 import java.util.Collection;
 import java.util.HashMap;

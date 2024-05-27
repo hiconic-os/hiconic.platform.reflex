@@ -9,7 +9,7 @@
 // 
 // You should have received a copy of the GNU Lesser General Public License along with this library; See http://www.gnu.org/licenses/.
 // ============================================================================
-package hiconic.rx.web.servlet;
+package hiconic.rx.web.ddra.servlet;
 
 import static dev.hiconic.servlet.ddra.endpoints.api.DdraEndpointsUtils.getPathInfo;
 
@@ -110,7 +110,7 @@ import dev.hiconic.servlet.decoder.api.HttpRequestEntityDecoderOptions;
 import dev.hiconic.servlet.decoder.api.StandardHeadersMapper;
 import dev.hiconic.servlet.decoder.api.UrlPathCodec;
 import dev.hiconic.servlet.decoder.impl.QueryParamDecoder;
-import hiconic.rx.web.servlet.ApiV1RestServletUtils.DecodingTargetTraversalResult;
+import hiconic.rx.web.ddra.servlet.ApiV1RestServletUtils.DecodingTargetTraversalResult;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
