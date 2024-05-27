@@ -99,7 +99,7 @@ public class RxConfiguredModels implements ConfiguredModels {
 		}
 		return index;
 	}
-	
+
 	@Override
 	public List<? extends ConfiguredModel> listDependers(GmMetaModel model) {
 		return dependersByModel.get().getOrDefault(model, Collections.emptyList());

@@ -125,7 +125,22 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 		
 		return it;
 	}
-	
+
+	@Override
+	public void addModel(ArtifactReflection modelArtifactReflection) {
+		addModelByName(modelArtifactReflection.name());
+	}
+
+	@Override
+	public void addModelByName(String modelName) {
+		addModel(GMF.getTypeReflection().getModel(modelName));
+	}
+
+	@Override
+	public void addModel(Model model) {
+		addModel((GmMetaModel) model.getMetaModel());
+	}
+
 	@Override
 	public void addModel(GmMetaModel gmModel) {
 		synchronized (models) {
@@ -134,21 +149,6 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 		}
 	}
 
-	@Override
-	public void addModel(ArtifactReflection modelArtifactReflection) {
-		addModelByName(modelArtifactReflection.name());
-	}
-	
-	@Override
-	public void addModel(Model model) {
-		addModel((GmMetaModel)model.getMetaModel());
-	}
-	
-	@Override
-	public void addModelByName(String modelName) {
-		addModel(GMF.getTypeReflection().getModel(modelName));
-	}
-	
 	@Override
 	public void addModel(ModelReference modelReference) {
 		AbstractRxConfiguredModel configuredModel = configuredModels.acquire(modelReference);
@@ -164,17 +164,22 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 	
 	@Override
 	public <R extends ServiceRequest> void bindRequest(EntityType<R> requestType, Supplier<ServiceProcessor<? super R, ?>> serviceProcessorSupplier) {
-		addModel(requestType.getModel());
+		addModelIfNotNull(requestType.getModel());
 		configureModel(editor -> editor.onEntityType(requestType).addMetaData(ProcessWith.create(serviceProcessorSupplier.get())));
 	}
 	
 	@Override
 	public <R extends ServiceRequest> void bindRequestMapped(EntityType<R> requestType,
 			Supplier<MappingServiceProcessor<? super R, ?>> serviceProcessorSupplier) {
-		addModel(requestType.getModel());
+		addModelIfNotNull(requestType.getModel());
 		configureModel(editor -> editor.onEntityType(requestType).addMetaData(ProcessWith.create(ServiceProcessors.dispatcher(serviceProcessorSupplier.get()))));
 	}
-	
+
+	/* package */ void addModelIfNotNull(Model model) {
+		if (model != null)
+			addModel(model);
+	}
+
 	@Override
 	public InterceptorBuilder bindInterceptor(String identification) {
 		return new InterceptorBuilder() {
@@ -216,15 +221,14 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 			}
 			
 			private void register(InterceptorEntry interceptorEntry) {
-				addModel(interceptorEntry.requestType.getModel());
+				addModelIfNotNull(interceptorEntry.requestType.getModel());
+
 				synchronized (interceptors) {
-					if (insertIdentification != null) {
+					if (insertIdentification != null)
 						requireInterceptorIterator(insertIdentification, before).add(interceptorEntry);
-					}
-					else {
+					else
 						interceptors.add(interceptorEntry);
-					}
-					
+
 					if (interceptors.size() == 1)
 						configureModel(RxConfiguredModel.this::configureInterceptors);
 				}

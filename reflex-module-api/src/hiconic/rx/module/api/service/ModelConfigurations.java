@@ -13,7 +13,7 @@ public interface ModelConfigurations {
 	ModelConfiguration byReference(ModelReference reference);
 	
 	/**
-	 * Acquires a {@link ModelConfiguration} via {@link #byReference(String)} using {@link #mainPersistenceModelRef}  
+	 * Acquires a {@link ModelConfiguration} via {@link #byReference} using {@link #mainPersistenceModelRef}  
 	 */
 	ModelConfiguration mainPersistenceModel();
 

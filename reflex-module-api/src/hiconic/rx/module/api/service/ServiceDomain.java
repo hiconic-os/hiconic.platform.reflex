@@ -35,13 +35,13 @@ public interface ServiceDomain {
 	
 	/**
 	 * The {@link Evaluator} that is configured via the {@link #contextCmdResolver()} for {@link ServiceProcessor} bindings 
-	 * @return
 	 */
 	Evaluator<ServiceRequest> evaluator();
 	
 	/**
 	 * The {@link ServiceRequest} that should be executed for this domain if no {@link ServiceRequest} was supplied.
-	 * An example usecase is, when a CLI application is started without any parameter and should execute a default request on a default {@link ServiceDomain}
+	 * An example use-case is, when a CLI application is started without any parameter and should execute a default request on a default {@link ServiceDomain}
 	 */
 	ServiceRequest defaultRequest();
+
 }

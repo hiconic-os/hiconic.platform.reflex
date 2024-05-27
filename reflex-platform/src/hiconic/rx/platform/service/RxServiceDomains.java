@@ -1,8 +1,9 @@
 package hiconic.rx.platform.service;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
+import static com.braintribe.utils.lcd.CollectionTools2.acquireList;
+import static java.util.Collections.emptyList;
+
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -10,6 +11,8 @@ import java.util.concurrent.ExecutorService;
 
 import com.braintribe.cfg.Required;
 import com.braintribe.model.generic.eval.Evaluator;
+import com.braintribe.model.generic.reflection.EntityType;
+import com.braintribe.model.generic.reflection.Model;
 import com.braintribe.model.meta.GmMetaModel;
 import com.braintribe.model.processing.service.common.ConfigurableDispatchingServiceProcessor;
 import com.braintribe.model.service.api.ServiceRequest;
@@ -29,7 +32,8 @@ public class RxServiceDomains implements ServiceDomains {
 	private RxModelConfigurations modelConfigurations;
 
 	private final Map<String, RxServiceDomain> domains = new ConcurrentHashMap<>();
-	private final LazyInitialized<Map<GmMetaModel, List<RxServiceDomain>>> domainsByModel = new LazyInitialized<>(this::indexDependers);
+	private final LazyInitialized<Map<GmMetaModel, List<RxServiceDomain>>> domainsByModel = new LazyInitialized<>(this::indexGmModelToDomains);
+	private final LazyInitialized<Map<EntityType<?>, List<RxServiceDomain>>> domainsByReqType = new LazyInitialized<>(this::indexReqTypeToDomains);
 
 	@Required
 	public void setModelConfigurations(RxModelConfigurations modelConfigurations) {
@@ -62,20 +66,43 @@ public class RxServiceDomains implements ServiceDomains {
 	}
 
 	@Override
-	public List<? extends ServiceDomain> listDependers(GmMetaModel model) {
-		return domainsByModel.get().getOrDefault(model, Collections.emptyList());
+	public List<? extends ServiceDomain> listDomains(EntityType<? extends ServiceRequest> requestType) {
+		Model model = requestType.getModel();
+		if (model != null)
+			return listDomains(model.<GmMetaModel> getMetaModel());
+		else
+			return domainsByReqType.get().getOrDefault(requestType, emptyList());
 	}
 
-	private Map<GmMetaModel, List<RxServiceDomain>> indexDependers() {
-		Map<GmMetaModel, List<RxServiceDomain>> index = new HashMap<>();
+	@Override
+	public List<? extends ServiceDomain> listDomains(GmMetaModel model) {
+		return domainsByModel.get().getOrDefault(model, emptyList());
+	}
 
-		for (RxServiceDomain domain : list()) {
+	private Map<GmMetaModel, List<RxServiceDomain>> indexGmModelToDomains() {
+		Map<GmMetaModel, List<RxServiceDomain>> index = new IdentityHashMap<>();
+
+		for (RxServiceDomain domain : list())
 			domain.modelOracle().getDependencies() //
 					.includeSelf() //
 					.transitive() //
 					.asGmMetaModels() //
-					.forEach(m -> index.computeIfAbsent(m, k -> new ArrayList<>()).add(domain));
-		}
+					.forEach(gmModel -> acquireList(index, gmModel).add(domain));
+
+		return index;
+	}
+
+	private Map<EntityType<?>, List<RxServiceDomain>> indexReqTypeToDomains() {
+		Map<EntityType<?>, List<RxServiceDomain>> index = new IdentityHashMap<>();
+
+		for (RxServiceDomain domain : list())
+			domain.modelOracle().getEntityTypeOracle(ServiceRequest.T) //
+					.getSubTypes() //
+					.transitive() //
+					.onlyInstantiable() //
+					.asTypes() //
+					.forEach(reqType -> acquireList(index, (EntityType<?>) reqType).add(domain));
+
 		return index;
 	}
 

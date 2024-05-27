@@ -13,7 +13,7 @@ import com.braintribe.model.processing.service.api.ServiceProcessor;
 import com.braintribe.model.service.api.ServiceRequest;
 
 public interface ModelConfiguration extends ModelReference {
-	
+
 	/**
 	 * @param modelName
 	 *            A fully qualified model name, i.e. "${groupId}:${artifactId}"``
@@ -25,18 +25,19 @@ public interface ModelConfiguration extends ModelReference {
 	 *            {@link ArtifactReflection} for a model artifact.
 	 */
 	void addModel(ArtifactReflection modelArtifactReflection);
-	
+
 	void addModel(GmMetaModel gmModel);
-	
+
 	void addModel(Model model);
-	
+
 	void addModel(ModelReference modelReference);
-	
+
 	void configureModel(Consumer<ModelMetaDataEditor> configurer);
-	
+
 	<R extends ServiceRequest> void bindRequest(EntityType<R> requestType, Supplier<ServiceProcessor<? super R, ?>> serviceProcessorSupplier);
-	
-	<R extends ServiceRequest> void bindRequestMapped(EntityType<R> requestType, Supplier<MappingServiceProcessor<? super R, ?>> serviceProcessorSupplier);
-	
+
+	<R extends ServiceRequest> void bindRequestMapped(EntityType<R> requestType,
+			Supplier<MappingServiceProcessor<? super R, ?>> serviceProcessorSupplier);
+
 	InterceptorBuilder bindInterceptor(String identification);
 }
