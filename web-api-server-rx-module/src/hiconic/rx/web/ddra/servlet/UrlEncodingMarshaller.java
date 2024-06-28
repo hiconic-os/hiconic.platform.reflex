@@ -33,6 +33,7 @@ import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.reflection.CollectionType;
 import com.braintribe.model.generic.reflection.DateType;
 import com.braintribe.model.generic.reflection.EntityType;
+import com.braintribe.model.generic.reflection.EssentialTypes;
 import com.braintribe.model.generic.reflection.GenericModelType;
 import com.braintribe.model.generic.reflection.GenericModelTypeReflection;
 import com.braintribe.model.generic.reflection.MapType;
@@ -153,7 +154,7 @@ public class UrlEncodingMarshaller implements CharacterMarshaller {
 			}
 		}
 
-		GenericModelType inferredRootType = MapType.TYPE_MAP;
+		GenericModelType inferredRootType = EssentialTypes.TYPE_MAP;
 
 		if (options != null && options.getInferredRootType() != null) {
 			inferredRootType = options.getInferredRootType();

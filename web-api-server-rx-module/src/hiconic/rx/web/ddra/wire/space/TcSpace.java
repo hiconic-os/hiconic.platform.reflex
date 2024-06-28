@@ -31,22 +31,21 @@ public class TcSpace implements WireSpace {
 		return map;
 	}
 	
-	@Managed
 	private TraversingCriterion tcReachable() {
-		TraversingCriterion bean = TC.create().negation().joker().done();
-		return bean;
+		return TC.create().negation().joker().done();
 	}
 	
-	@Managed
 	private TraversingCriterion tcShallow() {
+		// @formatter:off
 		return TC.create()
-		.conjunction()
-		.property()
-		.typeCondition(orTc(
-			isKind(TypeKind.collectionType),
-			isKind(TypeKind.entityType)
-		))
-		.close()
-		.done();
+			.conjunction()
+				.property()
+				.typeCondition(orTc(
+					isKind(TypeKind.collectionType),
+					isKind(TypeKind.entityType)
+				))
+			.close()
+			.done();
+		// @formatter:on
 	}
 }
