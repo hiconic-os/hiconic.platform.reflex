@@ -11,7 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-// ============================================================================
 package hiconic.rx.model.service.processing.md;
 
 import com.braintribe.model.generic.annotation.meta.Description;

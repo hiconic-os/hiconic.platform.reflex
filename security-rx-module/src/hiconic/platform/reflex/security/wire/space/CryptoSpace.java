@@ -11,7 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-// ============================================================================
 package hiconic.platform.reflex.security.wire.space;
 
 import static com.braintribe.wire.api.util.Maps.entry;

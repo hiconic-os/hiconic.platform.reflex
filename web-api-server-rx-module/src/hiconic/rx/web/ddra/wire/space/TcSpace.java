@@ -1,4 +1,6 @@
 // ============================================================================
+// Copyright BRAINTRIBE TECHNOLOGY GMBH, Austria, 2002-2022
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,13 +13,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-// ============================================================================
-// Braintribe IT-Technologies GmbH - www.braintribe.com
-// Copyright Braintribe IT-Technologies GmbH, Austria, 2002-2019 - All Rights Reserved
-// It is strictly forbidden to copy, modify, distribute or use this code without written permission
-// To this file the Braintribe License Agreement applies.
-// ============================================================================
-
 package hiconic.rx.web.ddra.wire.space;
 
 import static com.braintribe.model.generic.typecondition.TypeConditions.isKind;
