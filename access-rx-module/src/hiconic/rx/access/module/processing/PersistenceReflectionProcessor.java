@@ -14,7 +14,7 @@ import com.braintribe.model.processing.service.impl.DispatchConfiguration;
 import hiconic.rx.access.model.configuration.Access;
 import hiconic.rx.module.api.service.ConfiguredModel;
 
-public class PeristenceReflectionProcessor extends AbstractDispatchingServiceProcessor<PersistenceReflectionRequest, Object>{
+public class PersistenceReflectionProcessor extends AbstractDispatchingServiceProcessor<PersistenceReflectionRequest, Object>{
 	
 	private RxAccesses accesses;
 	

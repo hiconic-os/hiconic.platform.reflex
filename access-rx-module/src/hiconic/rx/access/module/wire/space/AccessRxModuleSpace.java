@@ -15,15 +15,10 @@ package hiconic.rx.access.module.wire.space;
 
 import static com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling.getOrTunnel;
 
-import java.util.function.Predicate;
-import java.util.function.Supplier;
-
 import com.braintribe.common.attribute.AttributeContext;
 import com.braintribe.gm.model.persistence.reflection.api.PersistenceReflectionRequest;
 import com.braintribe.model.generic.reflection.EntityType;
-import com.braintribe.model.processing.service.api.ServiceInterceptorProcessor;
 import com.braintribe.model.service.api.PlatformRequest;
-import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.utils.collection.impl.AttributeContexts;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
@@ -34,6 +29,7 @@ import hiconic.rx.access.model.configuration.AccessConfiguration;
 import hiconic.rx.access.module.api.AccessContract;
 import hiconic.rx.access.module.api.AccessExpert;
 import hiconic.rx.access.module.api.AccessExpertContract;
+import hiconic.rx.access.module.processing.PersistenceReflectionProcessor;
 import hiconic.rx.access.module.processing.RxAccessModelConfigurations;
 import hiconic.rx.access.module.processing.RxAccesses;
 import hiconic.rx.access.module.processing.RxPersistenceGmSessionFactory;
@@ -59,7 +55,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 	
 	@Override
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
-		configurations.byId(PlatformRequest.platformDomainId).bindRequest(PersistenceReflectionRequest.T, null);
+		configurations.byId(PlatformRequest.platformDomainId).bindRequest(PersistenceReflectionRequest.T, this::persistenceReflectionProcessor);
 	}
 	
 	@Override
@@ -107,6 +103,13 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		RxPersistenceGmSessionFactory bean = new RxPersistenceGmSessionFactory();
 		bean.setAttributeContextSupplier(platform.systemAttributeContextSupplier());
 		configure(bean);
+		return bean;
+	}
+	
+	@Managed 
+	public PersistenceReflectionProcessor persistenceReflectionProcessor() {
+		PersistenceReflectionProcessor bean = new PersistenceReflectionProcessor();
+		bean.setAccesses(accesses());
 		return bean;
 	}
 	
