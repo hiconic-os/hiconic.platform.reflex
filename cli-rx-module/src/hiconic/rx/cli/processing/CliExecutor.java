@@ -168,8 +168,6 @@ public class CliExecutor implements EndpointInput {
 	private int _process() throws Exception {
 		AttributeContextBuilder contextBuilder = AttributeContexts.derivePeek();
 		
-		contextBuilder.set(OutputConfigAspect.class, new BasicOutputConfig(options.getVerbose()));
-		contextBuilder.setAttribute(CallerEnvironment.class, callerEnvironment());
 		contextBuilder.set(EndpointInputAttribute.class, this);
 		
 		AttributeContext attributeContext = contextBuilder.build();
@@ -348,7 +346,7 @@ public class CliExecutor implements EndpointInput {
 	}
 	
 	private Reason evalAndHandleResponse() throws IOException {
-		Maybe<?> maybe = request.eval(evaluator).getReasoned();
+		Maybe<?> maybe = evalRequest();
 		
 		if (maybe.isUnsatisfied())
 			return maybe.whyUnsatisfied();
@@ -364,7 +362,6 @@ public class CliExecutor implements EndpointInput {
 		EvalContext<?> evalContext = request.eval(evaluator);
 		evalContext.setAttribute(OutputConfigAspect.class, new BasicOutputConfig(options.getVerbose()));
 		evalContext.setAttribute(CallerEnvironment.class, callerEnvironment());
-		evalContext.setAttribute(EndpointInputAttribute.class, this);
 
 		// evaluate the request
 		return evalContext.getReasoned();

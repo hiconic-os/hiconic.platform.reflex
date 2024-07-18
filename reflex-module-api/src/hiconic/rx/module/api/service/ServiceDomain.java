@@ -25,6 +25,11 @@ public interface ServiceDomain {
 	 * The id that identifies this {@link ServiceDomain} internally and externally (e.g. can become part of a URL path)
 	 */
 	String domainId();
+	
+	/**
+	 * The associated {@link ConfiguredModel}.
+	 */
+	ConfiguredModel configuredModel();
 
 	/**
 	 * The system {@link CmdResolver} taken from the associated {@link ConfiguredModel} via {@link ConfiguredModel#systemCmdResolver()}

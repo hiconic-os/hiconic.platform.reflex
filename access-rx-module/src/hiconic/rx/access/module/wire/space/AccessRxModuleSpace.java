@@ -19,8 +19,10 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import com.braintribe.common.attribute.AttributeContext;
+import com.braintribe.gm.model.persistence.reflection.api.PersistenceReflectionRequest;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.processing.service.api.ServiceInterceptorProcessor;
+import com.braintribe.model.service.api.PlatformRequest;
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.utils.collection.impl.AttributeContexts;
 import com.braintribe.wire.api.annotation.Import;
@@ -36,6 +38,7 @@ import hiconic.rx.access.module.processing.RxAccessModelConfigurations;
 import hiconic.rx.access.module.processing.RxAccesses;
 import hiconic.rx.access.module.processing.RxPersistenceGmSessionFactory;
 import hiconic.rx.module.api.service.ModelConfigurations;
+import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 
@@ -52,6 +55,11 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		for (Access access: accessConfiguration.getAccesses()) {
 			deploy(access);
 		}
+	}
+	
+	@Override
+	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
+		configurations.byId(PlatformRequest.platformDomainId).bindRequest(PersistenceReflectionRequest.T, null);
 	}
 	
 	@Override
@@ -111,6 +119,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 	private RxAccesses accesses() {
 		RxAccesses bean = new RxAccesses();
 		bean.setConfiguredModels(platform.configuredModels());
+		bean.setServiceDomains(platform.serviceDomains());
 		bean.setContextSessionFactory(contextSessionFactory());
 		bean.setSystemSessionFactory(systemSessionFactory());
 		return bean;

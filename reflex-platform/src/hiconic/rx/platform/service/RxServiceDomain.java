@@ -27,6 +27,7 @@ import com.braintribe.model.processing.service.api.ServiceProcessor;
 import com.braintribe.model.processing.service.common.eval.ConfigurableServiceRequestEvaluator;
 import com.braintribe.model.service.api.ServiceRequest;
 
+import hiconic.rx.module.api.service.ConfiguredModel;
 import hiconic.rx.module.api.service.DelegatingModelConfiguration;
 import hiconic.rx.module.api.service.ModelConfiguration;
 import hiconic.rx.module.api.service.ServiceDomain;
@@ -59,6 +60,11 @@ public class RxServiceDomain implements ServiceDomain, ServiceDomainConfiguratio
 	
 	@Override
 	public ModelConfiguration modelConfiguration() {
+		return modelConfiguration;
+	}
+	
+	@Override
+	public ConfiguredModel configuredModel() {
 		return modelConfiguration;
 	}
 	

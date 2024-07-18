@@ -41,6 +41,7 @@ import hiconic.rx.module.api.service.ConfiguredModels;
 import hiconic.rx.module.api.service.ModelConfiguration;
 import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
+import hiconic.rx.module.api.service.ServiceDomains;
 
 public class RxAccesses {
 	private Map<String, LazyInitialized<RxAccess>> accesses = new ConcurrentHashMap<>();
@@ -50,10 +51,16 @@ public class RxAccesses {
 	private ServiceDomainConfigurations serviceDomainConfigurations;
 	private PersistenceGmSessionFactory systemSessionFactory;
 	private PersistenceGmSessionFactory contextSessionFactory;
+	private ServiceDomains serviceDomains;
 	
 	@Required
 	public void setServiceDomainConfigurations(ServiceDomainConfigurations serviceDomainConfigurations) {
 		this.serviceDomainConfigurations = serviceDomainConfigurations;
+	}
+	
+	@Required
+	public void setServiceDomains(ServiceDomains serviceDomains) {
+		this.serviceDomains = serviceDomains;
 	}
 	
 	@Required
@@ -127,6 +134,7 @@ public class RxAccesses {
 		String dataModelName = access.getDataModelName();
 		
 		ConfiguredModel dataModel = configuredModels.byName(dataModelName);
+		ConfiguredModel serviceModel = serviceDomains.byId(access.getServiceDomainId()).configuredModel();
 		
 		// TODO: work with reasons here
 		Objects.requireNonNull(dataModel, "Access.dataModelName = '" + dataModelName + "' not found for access: " + access.getAccessId());
@@ -154,6 +162,8 @@ public class RxAccesses {
 			incrementalAccess = aopAccess;
 		}
 		
-		return new RxAccess(access, incrementalAccess, dataModel);
+		return new RxAccess(access, incrementalAccess, dataModel, serviceModel);
 	}
+
+	
 }

@@ -57,7 +57,7 @@ public class RxPersistenceGmSessionFactory implements PersistenceGmSessionFactor
 	public PersistenceGmSession newSession(String accessId) throws GmSessionException {
 		RxAccess access = accesses.getAccess(accessId);
 		IncrementalAccess incrementalAccess = access.incrementalAccess();
-		ConfiguredModel configuredModel = access.configuredModel();
+		ConfiguredModel configuredModel = access.configuredDataModel();
 		AttributeContext attributeContext = attributeContextSupplier.get();
 		CmdResolver cmdResolver = configuredModel.cmdResolver(attributeContext);
 		
