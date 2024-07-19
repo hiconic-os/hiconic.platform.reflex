@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <!--
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,7 +18,7 @@ limitations under the License.
         <version>[1.0,1.1)</version>
     </parent>
     <artifactId>access-rx-module</artifactId>
-    <version>1.0.4</version>
+    <version>1.0.5</version>
     <properties/>
     <licenses>
         <license>
