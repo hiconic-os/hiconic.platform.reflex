@@ -31,7 +31,7 @@ public class PersonPersistenceProcessor implements PersistenceProcessor<GetPerso
 	@PersistenceService(TransactionMode.READ)
 	public Maybe<List<Person>> getPersons(PersistenceContext context, Session session, GetPersons request) {
 		
-		List<Person> list = session.createQuery("from Person p fetch join p.addresses", Person.class).list();
+		List<Person> list = session.createQuery("from Person", Person.class).list();
 		
 		return Maybe.complete(list);
 		
