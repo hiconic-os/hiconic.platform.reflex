@@ -13,14 +13,11 @@
 // ============================================================================
 package hiconic.rx.platform.cli.model.api;
 
-import java.util.Map;
-
 import com.braintribe.model.generic.annotation.meta.Description;
 import com.braintribe.model.generic.eval.EvalContext;
 import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
-import com.braintribe.model.meta.GmMetaModel;
 import com.braintribe.model.service.api.ServiceRequest;
 
 @Description("Returns a map from service domain name to its model.")
@@ -29,6 +26,6 @@ public interface ReflectServiceDomains extends CliRequest {
 	EntityType<ReflectServiceDomains> T = EntityTypes.T(ReflectServiceDomains.class);
 
 	@Override
-	EvalContext<Map<String, GmMetaModel>> eval(Evaluator<ServiceRequest> evaluator);
+	EvalContext<ServiceDomainsDescription> eval(Evaluator<ServiceRequest> evaluator);
 
 }

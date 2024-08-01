@@ -13,6 +13,10 @@
 // ============================================================================
 package com.braintribe.gm.cli.posix.parser;
 
+import static com.braintribe.console.ConsoleOutputs.println;
+import static com.braintribe.console.ConsoleOutputs.yellow;
+import static com.braintribe.utils.lcd.CollectionTools2.newList;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -34,29 +38,48 @@ import com.braintribe.utils.lcd.LazyInitialized;
 import com.braintribe.utils.lcd.StringTools;
 
 public class CommandLineParserTypeIndex implements AutoCloseable {
-	private Map<EntityType<?>, Map<String, Property>> propertyNameIndex = new HashMap<>();
-	private LazyInitialized<Map<String, EntityType<?>>> shortcuts = new LazyInitialized<>(this::buildShortcuts);
-	private CmdResolver cmdResolver; 
+	private final Map<EntityType<?>, Map<String, Property>> propertyNameIndex = new HashMap<>();
+	private final LazyInitialized<Map<String, EntityType<?>>> shortcuts = new LazyInitialized<>(this::buildShortcuts);
+	private final CmdResolver cmdResolver; 
 	
 	public CommandLineParserTypeIndex(CmdResolver cmdResolver) {
-		super();
 		this.cmdResolver = cmdResolver;
 	}
 	
 	@Override
 	public void close() throws Exception {
+		// NOOP
 	}
 	
-	Property findProperty(EntityType<?> entityType, String identifier) {
+	/*package*/ Property findProperty(EntityType<?> entityType, String identifier) {
 		return propertyNameIndex.computeIfAbsent(entityType, this::generateIndex).get(identifier);
 	}
 	
-	List<Property> getPositionalArguments(EntityType<?> entityType) {
-		PositionalArguments positionalArguments = cmdResolver.getMetaData().entityType(entityType).meta(PositionalArguments.T).exclusive();
-		
-		return positionalArguments != null?
-				positionalArguments.getProperties().stream().map(entityType::getProperty).collect(Collectors.toList()):
-				Collections.emptyList();
+	/* package */ List<Property> getPositionalArguments(EntityType<?> entityType) {
+		PositionalArguments positionalArguments = cmdResolver.getMetaData() //
+				.entityType(entityType) //
+				.meta(PositionalArguments.T) //
+				.exclusive();
+
+		if (positionalArguments == null)
+			return Collections.emptyList();
+
+		List<String> propNames = positionalArguments.getProperties();
+
+		List<Property> result = newList(propNames.size());
+
+		for (String propName : propNames) {
+			Property property = entityType.findProperty(propName);
+			if (property == null) {
+				// TODO this won't be seen, as there is no console at this point. 
+				println(yellow("WARNING: Positional argument '" + propName + "' not found for type " + entityType.getShortName()));
+				return Collections.emptyList();
+			}
+
+			result.add(property);
+		}
+
+		return result;
 	}
 	
 	private Map<String, Property> generateIndex(EntityType<?> entityType) {
@@ -76,11 +99,9 @@ public class CommandLineParserTypeIndex implements AutoCloseable {
 	
 	public EntityType<?> findEntityType(String identifier) {
 		EntityTypeOracle entityTypeOracle = cmdResolver.getModelOracle().findEntityTypeOracle(identifier);
-		
-		if (entityTypeOracle != null) {
+		if (entityTypeOracle != null) 
 			return entityTypeOracle.asType();
-		}
-		
+
 		return shortcuts.get().get(identifier);
 	}
 	

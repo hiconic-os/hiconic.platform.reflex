@@ -25,8 +25,9 @@ import com.braintribe.model.processing.service.api.ServiceRequestContext;
 
 import hiconic.rx.module.api.service.ServiceDomains;
 import hiconic.rx.platform.cli.model.api.ReflectServiceDomains;
+import hiconic.rx.platform.cli.model.api.ServiceDomainsDescription;
 
-public class ReflectServiceDomainsProcessor implements ServiceProcessor<ReflectServiceDomains, Map<String, GmMetaModel>> {
+public class ReflectServiceDomainsProcessor implements ServiceProcessor<ReflectServiceDomains, ServiceDomainsDescription> {
 
 	private ServiceDomains serviceDomains;
 
@@ -36,7 +37,14 @@ public class ReflectServiceDomainsProcessor implements ServiceProcessor<ReflectS
 	}
 
 	@Override
-	public Map<String, GmMetaModel> process(ServiceRequestContext context, ReflectServiceDomains request) {
+	public ServiceDomainsDescription process(ServiceRequestContext context, ReflectServiceDomains request) {
+		ServiceDomainsDescription result = ServiceDomainsDescription.T.create();
+		result.setDomainNameToModel(indexDomains());
+
+		return result;
+	}
+
+	private Map<String, GmMetaModel> indexDomains() {
 		return serviceDomains.list().stream() //
 				.collect(Collectors.toMap( //
 						sd -> sd.domainId(), sd -> sd.modelOracle().getGmMetaModel() //
