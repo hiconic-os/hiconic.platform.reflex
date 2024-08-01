@@ -30,7 +30,7 @@ import hiconic.rx.module.api.service.ConfiguredModels;
 import hiconic.rx.module.api.service.ServiceDomains;
 
 /**
- * Wire contract that exposes general features of the reflex platform to be accessed by any reflex module. To access the features you have to import
+ * Wire contract that exposes general features of the reflex platform available to reflex modules. To access the features you have to import
  * this contract in your wire space. See example in the documentation of {@link RxModuleContract}.
  * 
  * @author dirk.scheffler

@@ -13,31 +13,22 @@
 // ============================================================================
 package hiconic.rx.platform.cli.model.api;
 
-import com.braintribe.model.generic.GenericEntity;
-import com.braintribe.model.generic.annotation.Abstract;
-import com.braintribe.model.generic.annotation.Initializer;
-import com.braintribe.model.generic.annotation.meta.Alias;
+import java.util.Map;
+
 import com.braintribe.model.generic.annotation.meta.Description;
-import com.braintribe.model.generic.annotation.meta.Mandatory;
+import com.braintribe.model.generic.eval.EvalContext;
+import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
+import com.braintribe.model.meta.GmMetaModel;
+import com.braintribe.model.service.api.ServiceRequest;
 
-@Abstract
-public interface From extends GenericEntity {
+@Description("Returns a map from service domain name to its model.")
+public interface ReflectServiceDomains extends CliRequest {
 
-	EntityType<From> T = EntityTypes.T(From.class);
+	EntityType<ReflectServiceDomains> T = EntityTypes.T(ReflectServiceDomains.class);
 
-	@Description("The mimetype defining the serialization format for the file input. "
-			+ "Possible values: text/yaml, application/x-yaml, text/xml, application/json, gm/bin, gm/jse, gm/man")
-	@Alias("m")
-	@Initializer("'application/json'")
-	@Mandatory
-	String getMimeType();
-	void setMimeType(String mimeType);
-	
-	@Description("Entities are created without initialized property default values to exactly reproduce a specific entity.")
-	@Alias("r")
-	boolean getReproduce();
-	void setReproduce(boolean reproduce);
+	@Override
+	EvalContext<Map<String, GmMetaModel>> eval(Evaluator<ServiceRequest> evaluator);
 
 }

@@ -38,7 +38,6 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 import com.braintribe.cfg.Required;
 import com.braintribe.codec.marshaller.api.CharacterMarshaller;
@@ -54,9 +53,6 @@ import com.braintribe.common.attribute.common.CallerEnvironment;
 import com.braintribe.common.attribute.common.impl.BasicCallerEnvironment;
 import com.braintribe.console.Console;
 import com.braintribe.console.ConsoleConfiguration;
-import com.braintribe.console.PlainSysoutConsole;
-import com.braintribe.console.PrintStreamConsole;
-import com.braintribe.console.VoidConsole;
 import com.braintribe.exception.Exceptions;
 import com.braintribe.gm.cli.posix.parser.PosixCommandLineParser;
 import com.braintribe.gm.cli.posix.parser.api.ParsedCommandLine;
@@ -99,7 +95,7 @@ public class CliExecutor implements EndpointInput {
 	private ParsedCommandLine commandLine;
 	private ServiceDomains serviceDomains;
 	private Function<EntityType<?>, GenericEntity> entityFactory;
-	private List<Runnable> runAtExit = new ArrayList<>();
+	private final List<Runnable> runAtExit = new ArrayList<>();
 	
 	@Required
 	public void setMarshallerRegistry(MarshallerRegistry marshallerRegistry) {
@@ -434,10 +430,6 @@ public class CliExecutor implements EndpointInput {
 		println(Exceptions.stringify(e));
 	}
 
-	private void printShortErrorMessage(Exception e) {
-		printErrorMessage(getErrorMessage(e));
-	}
-	
 	private void printErrorMessage(Reason error) {
 		printErrorMessage(error.stringify());
 	}
@@ -447,6 +439,13 @@ public class CliExecutor implements EndpointInput {
 	}
 	
 
+	// TODO these are unused. Delete them?
+
+	@SuppressWarnings("unused")
+	private void printShortErrorMessage(Exception e) {
+		printErrorMessage(getErrorMessage(e));
+	}
+	
 	private static String getErrorMessage(Throwable e) {
 		String message = e.getMessage();
 

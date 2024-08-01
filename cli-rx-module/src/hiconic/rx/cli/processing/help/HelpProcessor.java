@@ -102,21 +102,12 @@ public class HelpProcessor implements ServiceProcessor<Help, Neutral> {
 		return NEUTRAL;
 	}
 	
-	private CommandsReflection commandsReflection(ServiceDomain serviceDomain) {
-		ModelMdResolver mdResolver = serviceDomain.systemCmdResolver().getMetaData().useCases(USE_CASE_HELP, USE_CASE_EXECUTION);
-		CommandsReflection cr = new CommandsReflection(serviceDomain.modelOracle(), mdResolver);
-		return cr;
-	}
-
 	private void getRequestDetails(ServiceRequestContext context, Help request) {
-		
 		GmEntityType type = null;
 		CommandsReflection cr = null;
 		
 		for (ServiceDomain serviceDomain: serviceDomains.list()) {
 			cr = commandsReflection(serviceDomain);
-
-			CommandsOverview overview = cr.getCommandsOverview();
 
 			type = cr.resolveTypeFromCommandName(request.getType());
 			
@@ -130,16 +121,13 @@ public class HelpProcessor implements ServiceProcessor<Help, Neutral> {
 			if (type != null)
 				break;
 		}
-		
-		
+
 		if (type == null)
 			throw new IllegalArgumentException("unknown type: " + request.getType());
-
 
 		println(sequence(
 				// yellow("command line options:\n"),
 				format(context, request, type, false, cr)));
-
 	}
 
 	private ConsoleOutput format(ServiceRequestContext context, Help request, GmEntityType requestType, boolean propertiesOnly, CommandsReflection cr) {
@@ -361,7 +349,7 @@ public class HelpProcessor implements ServiceProcessor<Help, Neutral> {
 		return sequence;
 	}
 
-	private int resolveLineWidth(ServiceRequestContext context) {
+	private int resolveLineWidth(@SuppressWarnings("unused") ServiceRequestContext context) {
 		return 160;
 	}
 
@@ -376,7 +364,7 @@ public class HelpProcessor implements ServiceProcessor<Help, Neutral> {
 				values = Stream.of("true", "false");
 				break;
 			case enumType:
-				values = Stream.of(((EnumType) type).getEnumValues()).map(Enum::name);
+				values = Stream.of(((EnumType<?>) type).getEnumValues()).map(Enum::name);
 				break;
 			default:
 				break;
@@ -454,13 +442,13 @@ public class HelpProcessor implements ServiceProcessor<Help, Neutral> {
 
 		if (commands.size() > 0 && includeUpToDate) {
 			overview.append(text("\n\n"));
-			overview.append(yellow(serviceDomain.domainId() + " commands:\n"));
+			overview.append(yellow(serviceDomain.domainId() + " commands:"));
 			overview.append(commands);
 		}
 
 		if (deprecatedCommands.size() > 0 && includeDeprecated) {
 			overview.append(text("\n\n"));
-			overview.append(yellow(serviceDomain.domainId() + " deprecated commands:\n"));
+			overview.append(yellow(serviceDomain.domainId() + " deprecated commands:"));
 			overview.append(deprecatedCommands);
 		}
 		
@@ -468,7 +456,6 @@ public class HelpProcessor implements ServiceProcessor<Help, Neutral> {
 	}
 
 	private void getRequestOverview(Help request) {
-
 		boolean includeUpToDate = request.getUpToDate();
 		
 		CommandsReflection cr = commandsReflection(serviceDomains.byId("cli"));
@@ -483,17 +470,26 @@ public class HelpProcessor implements ServiceProcessor<Help, Neutral> {
 		// @formatter:off
 		ConfigurableConsoleOutputContainer overview = configurableSequence().append(
 			sequence(
-				yellow("\nusage example: "), brightWhite(launchScript + " "), cyan("<command> "), text("--property "), cyan("value "),
-					text("... "), text("[ : "), cyan("options "), text("--property "), cyan("value "), text("...] \n"),
-					
-				yellow("get help for a type (e.g. command): "),
-				brightWhite(launchScript + " "),
-				cyan("help "),
-				cyan("<type>\n"),
-				yellow("get help for options: "),
-				brightWhite(launchScript + " "),
-				cyan("help "),
-				cyan("options\n")
+				// Usage examples:
+				yellow("\nUsage examples:\n"),
+
+				//     $launchScript <command> --property value ... [ : options --property value ...]
+				text("    "), brightWhite(launchScript + " "), cyan("<command> "), text("--property "), cyan("value "), text("... "), 
+					text("[ : "), cyan("options "), text("--property "), cyan("value "), text("...]\n"),
+
+				//     $launchScript <command> --property @valueId ... :valueId from-file some-file.yaml
+				text("    "), brightWhite(launchScript + " "), cyan("<command> "), text("--property "), cyan("@valueId "), text("... "), 
+					text(":valueId "), cyan("from-file "), text("some-file.yaml\n"),
+
+				//get help for a type (e.g. command):
+				//    $launchScript help <type>
+				yellow("get help for a type (e.g. command):\n"),
+				text("    "), brightWhite(launchScript + " "), cyan("help "), cyan("<type>\n"), 
+				
+				// get help for options:
+				//     $launchScript help options
+				yellow("get help for options:\n"),
+				text("    "), brightWhite(launchScript + " "), cyan("help "), cyan("options\n")
 			)
 		);
 		// @formatter:on
@@ -509,6 +505,11 @@ public class HelpProcessor implements ServiceProcessor<Help, Neutral> {
 		}
 		
 		println(overview);
+	}
+
+	private CommandsReflection commandsReflection(ServiceDomain serviceDomain) {
+		ModelMdResolver mdResolver = serviceDomain.systemCmdResolver().getMetaData().useCases(USE_CASE_HELP, USE_CASE_EXECUTION);
+		return new CommandsReflection(serviceDomain.modelOracle(), mdResolver);
 	}
 
 	private String cmdOutputLine(String c) {

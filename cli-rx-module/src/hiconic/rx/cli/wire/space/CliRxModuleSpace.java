@@ -23,6 +23,7 @@ import com.braintribe.wire.api.annotation.Managed;
 import hiconic.rx.cli.processing.CliExecutor;
 import hiconic.rx.cli.processing.EntityFactory;
 import hiconic.rx.cli.processing.IntroductionProcessor;
+import hiconic.rx.cli.processing.ReflectServiceDomainsProcessor;
 import hiconic.rx.cli.processing.help.HelpProcessor;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.service.ServiceDomainConfiguration;
@@ -33,33 +34,42 @@ import hiconic.rx.module.api.wire.RxProcessLaunchContract;
 import hiconic.rx.platform.cli.model.api.Help;
 import hiconic.rx.platform.cli.model.api.Introduce;
 import hiconic.rx.platform.cli.model.api.Options;
+import hiconic.rx.platform.cli.model.api.ReflectServiceDomains;
 
 @Managed
 public class CliRxModuleSpace implements RxModuleContract {
 	@Import
 	private RxPlatformContract platform;
-	
+
 	@Import
 	private RxProcessLaunchContract processLaunch;
-	
+
 	@Override
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
 		ServiceDomainConfiguration configuration = configurations.byId("cli");
-		
+
 		configuration.bindRequest(Introduce.T, this::introductionProcessor);
 		configuration.bindRequest(Help.T, this::helpProcessor);
+		configuration.bindRequest(ReflectServiceDomains.T, this::reflectServiceDomainsProcessor);
 	}
-	
+
 	@Override
 	public void onApplicationReady() {
 		// start parsing, configuring and execution of cli inputs
 		executor().process();
 	}
-	
+
 	@Managed
 	private HelpProcessor helpProcessor() {
 		HelpProcessor bean = new HelpProcessor();
 		bean.setLaunchScript(processLaunch.launchScriptName());
+		bean.setServiceDomains(platform.serviceDomains());
+		return bean;
+	}
+
+	@Managed
+	private ReflectServiceDomainsProcessor reflectServiceDomainsProcessor() {
+		ReflectServiceDomainsProcessor bean = new ReflectServiceDomainsProcessor();
 		bean.setServiceDomains(platform.serviceDomains());
 		return bean;
 	}
@@ -70,7 +80,7 @@ public class CliRxModuleSpace implements RxModuleContract {
 		bean.setApplicationName(platform.applicationName());
 		return bean;
 	}
-	
+
 	@Managed
 	private CliExecutor executor() {
 		CliExecutor bean = new CliExecutor();
@@ -84,7 +94,7 @@ public class CliRxModuleSpace implements RxModuleContract {
 		bean.setEntityFactory(inputEntityFactory());
 		return bean;
 	}
-	
+
 	@Managed
 	private PosixCommandLineParser parser() {
 		// TODO: better reasoning for type and domain lookup
@@ -92,20 +102,20 @@ public class CliRxModuleSpace implements RxModuleContract {
 		bean.setEntityFactory(inputEntityFactory());
 		return bean;
 	}
-	
+
 	@Managed
 	private EntityFactory inputEntityFactory() {
 		EntityFactory bean = new EntityFactory();
 		bean.registerSingleton(Options.T, getOrTunnel(platform.readConfig(Options.T)));
 		return bean;
 	}
-	
+
 	private CmdResolver cmdResolverForDomain(String domainId) {
 		ServiceDomain domain = platform.serviceDomains().byId(domainId);
-		
+
 		if (domain == null)
 			return null;
-		
+
 		return domain.systemCmdResolver();
 	}
 }

@@ -1,7 +1,7 @@
 #!/bin/bash
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 INST_DIR=$DIR/../
-LAUNCH_SCRIPT=script_name=$(basename "$0")
+LAUNCH_SCRIPT=$(basename "$0")
 
 SHARED_LIB_PATH=$INST_DIR/../shared-lib
 PRIVATE_LIB_PATH=$INST_DIR/lib
