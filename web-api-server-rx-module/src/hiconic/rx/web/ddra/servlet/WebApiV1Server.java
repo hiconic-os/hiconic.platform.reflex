@@ -215,10 +215,12 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 
 	@Override
 	protected ApiV1EndpointContext createContext(HttpServletRequest request, HttpServletResponse response) {
-		return new ApiV1EndpointContext(request, response, defaultServiceDomain);
+		ApiV1EndpointContext apiV1EndpointContext = new ApiV1EndpointContext(request, response, defaultServiceDomain);
+		apiV1EndpointContext.setMarshaller(marshallerRegistry.getMarshaller("application/json"));
+		return apiV1EndpointContext;
 	}
 
-	@Override
+	@Override	
 	protected boolean fillContext(ApiV1EndpointContext context) {
 		// check and load mappings if needed
 		if (pollMappings)
@@ -271,7 +273,8 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 			service = createDefaultRequest(serviceRequestType, context.getMapping());
 			decodeQueryAndFillContext(service, context);
 		} else {
-			throw new UnsatisfiedMaybeTunneling(Reasons.build(InvalidArgument.T).text("Missing service request type").toMaybe());
+			writeUnsatisfied(context, Reasons.build(InvalidArgument.T).text("Missing service request type").toMaybe(), 400);
+			return;
 		}
 
 		// TODO
@@ -332,7 +335,14 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 						"Illegal Request: Content-Type was 'multipart/form-data' but without the mandatory 'boundary' parameter.");
 			}
 
-			service = parseMultipartRequest(boundary, context);
+			Maybe<ServiceRequest> serviceMaybe = parseMultipartRequest(boundary, context);
+			
+			if (serviceMaybe.isUnsatisfied()) {
+				writeUnsatisfied(context, serviceMaybe, 400);
+				return;
+			}
+			
+			service = serviceMaybe.get();
 		} else {
 
 			if ("application/x-www-form-urlencoded".equals(endpoint.getContentType())) {
@@ -363,7 +373,15 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 				}
 				try (InputStream in = requestIn) {
 					// Unmarshall the request from the body
-					service = (ServiceRequest) inMarshaller.unmarshall(in, options);
+					
+					Maybe<?> serviceMaybe = inMarshaller.unmarshallReasoned(in, options);
+					
+					if (serviceMaybe.isUnsatisfied()) {
+						writeUnsatisfied(context, serviceMaybe, 400);
+						return;
+					}
+					
+					service = (ServiceRequest) serviceMaybe.get();
 				}
 			}
 		}
@@ -392,7 +410,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 		return serviceRequestType.create();
 	}
 
-	private ServiceRequest parseMultipartRequest(String boundary, ApiV1EndpointContext context) {
+	private Maybe<ServiceRequest> parseMultipartRequest(String boundary, ApiV1EndpointContext context) {
 		final ServiceRequest service;
 		RpcUnmarshallingStreamManagement streamManagement = context.getRequestStreamManagement();
 		EntityType<? extends ServiceRequest> serviceRequestType = context.getServiceRequestType();
@@ -411,7 +429,13 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 							.set(EntityVisitorOption.class, streamManagement.getMarshallingVisitor()) //
 							.build();
 
-					service = (ServiceRequest) marshaller.unmarshall(in, options);
+					Maybe<?> serviceMaybe = marshaller.unmarshallReasoned(in, options);
+					
+					if (serviceMaybe.isUnsatisfied()) {
+						return serviceMaybe.whyUnsatisfied().asMaybe();
+					}
+					
+					service = (ServiceRequest) serviceMaybe.get();
 				}
 
 				part = formDataReader.next();
@@ -453,7 +477,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 				String partName = part.getName();
 
 				if (requestAssemblyPartNames.contains(partName)) {
-					throw new IllegalStateException("Duplicate request assembly part: " + part);
+					return Reasons.build(InvalidArgument.T).text("Duplicate request assembly part in multipart message: " + part).toMaybe();
 				}
 
 				TransientSource transientSourceWithId = streamManagement.getTransientSourceWithId(partName);
@@ -491,7 +515,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 		}
 
 		streamManagement.checkPipeSatisfaction();
-		return service;
+		return Maybe.complete(service);
 	}
 
 	private Resource createEmptyTransientResource() {
@@ -555,7 +579,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 				Object projectedResponse = restServletUtils.project(context, endpoint, response);
 				writeResponse(context, projectedResponse, endpoint, false);
 			} else {
-				writeUnsatisfied(context, endpoint, maybe);
+				writeUnsatisfied(context, maybe);
 			}
 
 			// writing transient resources
@@ -592,11 +616,15 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 				writeResponse(context, projectedResponse, endpoint, false);
 			}
 		} else {
-			writeUnsatisfied(context, endpoint, maybe);
+			writeUnsatisfied(context, maybe);
 		}
 	}
 
-	private void writeUnsatisfied(ApiV1EndpointContext context, ApiV1DdraEndpoint endpoint, Maybe<?> maybe) throws IOException {
+	private void writeUnsatisfied(ApiV1EndpointContext context, Maybe<?> maybe) throws IOException {
+		writeUnsatisfied(context, maybe, null);
+	}
+	
+	private void writeUnsatisfied(ApiV1EndpointContext context, Maybe<?> maybe, Integer httpStatusCode) throws IOException {
 		Reason reason = maybe.whyUnsatisfied();
 
 		String domainId = context.getServiceDomain();
@@ -620,14 +648,17 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 
 		// status code determination
 		if (!context.getResponse().isCommitted()) {
-			Optional<HttpStatusCode> statusOptional = Optional.ofNullable(reasonMdResolver.meta(HttpStatusCode.T).exclusive());
-			int httpStatusCode = statusOptional.map(HttpStatusCode::getCode).orElse(500);
+			
+			if (httpStatusCode == null) {
+				Optional<HttpStatusCode> statusOptional = Optional.ofNullable(reasonMdResolver.meta(HttpStatusCode.T).exclusive());
+				httpStatusCode = statusOptional.map(HttpStatusCode::getCode).orElse(500);
+			}
 
 			context.getResponse().setStatus(httpStatusCode);
 		}
 
 		// marshaling reason
-		writeResponse(context, Unsatisfied.from(maybe), endpoint, true);
+		writeResponse(context, Unsatisfied.from(maybe), Unsatisfied.T, true);
 	}
 
 	private com.braintribe.logging.Logger.LogLevel translateLogLevel(LogLevel logLevel) {

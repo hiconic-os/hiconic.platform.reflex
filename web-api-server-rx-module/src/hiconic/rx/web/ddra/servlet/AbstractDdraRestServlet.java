@@ -66,7 +66,11 @@ public abstract class AbstractDdraRestServlet<Context extends DdraEndpointContex
 		} else {
 			responseType = BaseType.INSTANCE;
 		}
-
+		
+		writeResponse(context, result, responseType, full);
+	}
+	
+	protected void writeResponse(ApiV1EndpointContext context, Object result, GenericModelType responseType, boolean full) throws IOException {
 		DdraEndpointsUtils.writeResponse(traversingCriteriaMap, context, result, responseType, full);
 	}
 

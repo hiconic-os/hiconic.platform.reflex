@@ -40,4 +40,9 @@ public interface From extends GenericEntity {
 	boolean getReproduce();
 	void setReproduce(boolean reproduce);
 
+	@Description("The expected type of the value read from some input")
+	@Initializer("'object'")
+	@Alias("i")
+	String getInferredType();
+	void setInferredType(String inferredType);
 }

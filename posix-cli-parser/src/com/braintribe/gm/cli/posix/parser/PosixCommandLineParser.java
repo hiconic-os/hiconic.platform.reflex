@@ -15,7 +15,6 @@ package com.braintribe.gm.cli.posix.parser;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -24,12 +23,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import com.braintribe.common.lcd.Pair;
 import com.braintribe.gm.cli.posix.parser.api.CliEntityEvaluator;
 import com.braintribe.gm.cli.posix.parser.api.ParsedCommandLine;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
+import com.braintribe.gm.model.reason.essential.InvalidArgument;
 import com.braintribe.gm.model.reason.essential.NotFound;
 import com.braintribe.gm.model.reason.essential.ParseError;
 import com.braintribe.model.generic.GMF;
@@ -41,15 +40,11 @@ import com.braintribe.model.generic.reflection.GenericModelType;
 import com.braintribe.model.generic.reflection.LinearCollectionType;
 import com.braintribe.model.generic.reflection.MapType;
 import com.braintribe.model.generic.reflection.Property;
-import com.braintribe.model.generic.reflection.TypeCode;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 
 
 public class PosixCommandLineParser extends AbstractCommandLineParser {
 	private static final List<String> booleanValues = Arrays.asList(Boolean.TRUE.toString(), Boolean.FALSE.toString());
-	private static class ForwardReference {
-		List<Consumer<Object>> consumers = new ArrayList<>(2);
-	}
 	
 	private Map<String, Maybe<CommandLineParserTypeIndex>> typeIndices = new ConcurrentHashMap<>();
 	private Function<String, CmdResolver> cmdResolverProvider;
@@ -71,8 +66,11 @@ public class PosixCommandLineParser extends AbstractCommandLineParser {
 		CmdResolver cmdResolver = cmdResolverProvider.apply(domainId);
 		if (cmdResolver != null)
 			return Maybe.complete(new CommandLineParserTypeIndex(cmdResolver));
-		else
-			return Reasons.build(NotFound.T).text("Unkown domain " + domainId).toMaybe();
+		else {
+			return Reasons.build(NotFound.T) //
+					.text("Unkown domain " + domainId) //
+					.toMaybe();			
+		}
 	}
 	
 	enum RawArgumentKind {
@@ -98,27 +96,35 @@ public class PosixCommandLineParser extends AbstractCommandLineParser {
 			if (rawOption.options.isEmpty())
 				continue;
 			
-			Maybe<GenericEntity> entityMaybe = new StatefulParser(rawOption.options, defaultDomains, variables).parseReasoned();
+			Maybe<?> parsedMaybe = new StatefulParser(rawOption.index, rawOption.options, defaultDomains, variables).parseReasoned();
 			
-			if (entityMaybe.isUnsatisfied())
-				return entityMaybe.whyUnsatisfied().asMaybe();
+			if (parsedMaybe.isUnsatisfied())
+				return parsedMaybe.whyUnsatisfied().asMaybe();
 
-			GenericEntity entity = entityMaybe.get();
+			Object parsed = parsedMaybe.get();
+			
+			
+			//GenericEntity entity = parsedMaybe.get();
 
 			if (rawOption.name != null) {
 				variables.compute(rawOption.name, (k, v) -> {
 					if (v != null) {
 						if (v.getClass() == ForwardReference.class) {
-							((ForwardReference)v).consumers.forEach(c -> c.accept(entity));
+							((ForwardReference)v).consumers.forEach(c -> c.accept(parsed));
 						}
 						else
 							throw parseError("duplicate variable definition:" + k);
 					}
-					return entity;
+					return parsed;
 				});
 			}
 			else {
-				parsedCommandLine.addEntity(entity);
+				if (parsed instanceof GenericEntity entity)
+					parsedCommandLine.addEntity(entity);
+				else
+					return Reasons.build(InvalidArgument.T) //
+							.text("Non entity values are only accepted for named sections values") //
+							.toMaybe();
 			}
 		}
 		
@@ -146,6 +152,7 @@ public class PosixCommandLineParser extends AbstractCommandLineParser {
 	
 	private static class RawOptions {
 		private String name;
+		private int index;
 		private List<String> options = new ArrayList<>();
 	}
 
@@ -155,9 +162,11 @@ public class PosixCommandLineParser extends AbstractCommandLineParser {
 		RawOptions currentOptions = new RawOptions();
 		optionsList.add(currentOptions);
 		
+		int index = 0;
 		for (String arg: args) {
 			if (arg.startsWith(":")) {
 				currentOptions = new RawOptions();
+				currentOptions.index = index + 1;
 				if (arg.length() > 1) {
 					currentOptions.name = arg.substring(1);
 				}
@@ -166,19 +175,23 @@ public class PosixCommandLineParser extends AbstractCommandLineParser {
 			else {
 				currentOptions.options.add(arg);
 			}
+			
+			index++;
 		}
 		
 		return optionsList;
 	}
 
 	
-	private class StatefulParser {
+	private class StatefulParser implements CliArgumentParser {
 		
 		private GenericEntity options;
 		private GenericEntity evaluable;
 		
 		private List<String> args;
+		private CliArgument currentArg;
 		private int argIndex = 0;
+		private int argOffset;
 		
 		private Map<String, Object> variables;
 		
@@ -187,15 +200,34 @@ public class PosixCommandLineParser extends AbstractCommandLineParser {
 		private CommandLineParserTypeIndex currentTypeIndex;
 		private List<String> defaultDomains;
 		
-		StatefulParser(List<String> args, List<String> defaultDomains, Map<String, Object> variables) {
+		StatefulParser(int argOffset, List<String> args, List<String> defaultDomains, Map<String, Object> variables) {
+			this.argOffset = argOffset;
 			this.args = args;
 			this.defaultDomains = defaultDomains;
 			this.variables = variables;
 		}
 		
+		@Override
+		public ParseException parseError(String msg) {
+			String location = " at " + currentArg;
+			return new ParseException(msg + location);
+		}
+		
 		private String nextRawArg() {
-			if (argIndex < args.size())
-				return args.get(argIndex++);
+			CliArgument argument = nextCliArgument();
+			
+			if (argument == null)
+				return null;
+			
+			return argument.getInput();
+		}
+		
+		private CliArgument nextCliArgument() {
+			if (argIndex < args.size()) {
+				String rawArg = args.get(argIndex++);
+				currentArg = new CliArgument(argOffset + argIndex, rawArg);
+				return currentArg;
+			}
 			else
 				return null;
 		}
@@ -204,7 +236,7 @@ public class PosixCommandLineParser extends AbstractCommandLineParser {
 			argIndex--;
 		}
 		
-		Maybe<GenericEntity> parseReasoned() {
+		Maybe<Object> parseReasoned() {
 			try {
 				return Maybe.complete(parse());
 			} catch (ParseException e) {
@@ -214,7 +246,7 @@ public class PosixCommandLineParser extends AbstractCommandLineParser {
 			}
 		}
 		
-		GenericEntity parse() {
+		Object parse() {
 			if (!parseInstantiation())
 				return null;
 			
@@ -223,7 +255,7 @@ public class PosixCommandLineParser extends AbstractCommandLineParser {
 			parseNamedArguments();
 			
 			if (evaluable != null && evaluable == options) {
-				options = entityEvaluator.evaluate(evaluable);
+				return entityEvaluator.evaluate(evaluable);
 			}
 			
 			return options;
@@ -264,7 +296,7 @@ public class PosixCommandLineParser extends AbstractCommandLineParser {
 				Maybe<CommandLineParserTypeIndex> indexMaybe = findTypeIndex(domainId);
 				
 				if (indexMaybe.isUnsatisfied()) {
-					throw parseError("Unknown service domain: " + domainId);
+					throw parseError("Unknown service domain [" + domainId + "]");
 				}
 				
 				CommandLineParserTypeIndex index = indexMaybe.get();
@@ -277,72 +309,21 @@ public class PosixCommandLineParser extends AbstractCommandLineParser {
 				}
 			}
 			
-			throw parseError("Unsupported type: " + typeIdentifier);
+			throw parseError("Unsupported type [" + typeIdentifier + "]");
 		}
 		
-		private Consumer<Object> getValueConsumer(GenericEntity entity, Property property) {
-			TypeCode typeCode = property.getType().getTypeCode();
-			switch (typeCode) {
-				case mapType: {
-					Map<Object, Object> map = (Map<Object, Object>)property.get(entity);
-					map.clear();
-					return v -> {
-						Pair<Object, Object> entry = (Pair<Object, Object>)v;
-						Object key = entry.first();
-						Object value = entry.second();
-						
-						int deferred = 0;
-						
-						if (key != null && key.getClass() == ForwardReference.class)
-							deferred |= 1;
-
-						if (value != null && value.getClass() == ForwardReference.class)
-							deferred |= 2;
-						
-						
-						if (deferred == 0) {
-							map.put(key, value);
-						}
-						else {
-							MapEntryForwardListener.install(map, key, value, deferred);
-						}
-					};
+		private Consumer<Object> getAssigner(GenericEntity entity, Property property) {
+			return v -> {
+				if (v != null && v.getClass() == ForwardReference.class) {
+					ForwardReference forwardReference = (ForwardReference)v;
+					forwardReference.consumers.add(d -> property.set(entity, d));
 				}
-				case listType:
-				case setType: {
-					Collection<Object> collection = (Collection<Object>)property.get(entity);
-					collection.clear();
-					return v -> {
-						if (v != null && v.getClass() == ForwardReference.class) {
-							ForwardReference forwardReference = (ForwardReference)v;
-							if (typeCode == TypeCode.listType) {
-								List<Object> list = (List<Object>)collection;
-								int pos = collection.size();
-								list.add(null);
-								forwardReference.consumers.add(d -> list.set(pos, d));
-							}
-							else {
-								forwardReference.consumers.add(d -> collection.add(d));
-							}
-						}
-						else {
-							collection.add(v);
-						}
-					};
+				else {
+					property.set(entity, v);
 				}
-				default:
-					return v -> {
-						if (v != null && v.getClass() == ForwardReference.class) {
-							ForwardReference forwardReference = (ForwardReference)v;
-							forwardReference.consumers.add(d -> property.set(entity, d));
-						}
-						else {
-							property.set(entity, v);
-						}
-					};
-			}
+			};
 		}
-
+		
 		private void parsePropertyShorthands(GenericEntity entity, String shorthands) {
 			GenericModelType propertyType = null;
 			Consumer<Object> consumer = null; 
@@ -354,17 +335,17 @@ public class PosixCommandLineParser extends AbstractCommandLineParser {
 				Property property = oracle.findProperty(entity.entityType(), String.valueOf(s));
 				
 				if (property == null)
-					throw parseError(entity.entityType() + " has no argument with name: " + s);
+					throw parseError(entity.entityType() + " has no property with name [" + s +"]");
 				
 				if (propertyType == null) {
 					propertyType = property.getType();
-					consumer = getValueConsumer(entity, property);
+					consumer = getAssigner(entity, property);
 				}
 				else {
 					if (propertyType != property.getType())
-						throw parseError("Singe character arguments with different type cannot combined: " + shorthands);
+						throw parseError("Single character arguments with different types cannot combined");
 					
-					consumer = consumer.andThen(getValueConsumer(entity, property));
+					consumer = consumer.andThen(getAssigner(entity, property));
 				}
 			}
 			
@@ -379,9 +360,9 @@ public class PosixCommandLineParser extends AbstractCommandLineParser {
 			Property property = getOracle().findProperty(entity.entityType(), propertyName);
 			
 			if (property == null)
-				throw parseError(entity.entityType() + " has no argument with name: " + propertyName);
+				throw parseError(entity.entityType() + " has no property [" + propertyName +"]");
 
-			Consumer<Object> consumer = getValueConsumer(entity, property);
+			Consumer<Object> consumer = getAssigner(entity, property);
 			parseValues(consumer, property.getType());
 		}
 		
@@ -397,24 +378,12 @@ public class PosixCommandLineParser extends AbstractCommandLineParser {
 					return;
 					
 				case mapType: {
-					MapType mapType = (MapType)inferredType;
-					GenericModelType keyType = mapType.getKeyType();
-					GenericModelType valueType = mapType.getValueType();
-					Object key;
-					Object value;
-					
-					while ((key = parseOptionalValue(keyType, null)) != noValue) {
-						value = parseValue(valueType);
-						consumer.accept(Pair.of(key, value));
-					}
+					new MapAccumulator(this, consumer, (MapType)inferredType).parse();
 					return;
 				}
 				case listType:
 				case setType:
-					Object value;
-					while ((value = parseOptionalValue(((LinearCollectionType)inferredType).getCollectionElementType(), null)) != noValue) {
-						consumer.accept(value);
-					}
+					new LinearCollectionAccumulator(this, consumer, (LinearCollectionType)inferredType).parse();
 					return;
 					
 				default:
@@ -422,39 +391,65 @@ public class PosixCommandLineParser extends AbstractCommandLineParser {
 					return;
 			}
 		}
+		
+		@Override
+		public CliArgument parseArgumentValue(GenericModelType inferredType) {
+			CliArgument argument = nextCliArgument();
+			
+			if (argument == null)
+				throw parseError("Unexpected end of arguments when reading an argument");
+			
+			Object value = parseValue(inferredType, argument.getInput());
+			argument.setValue(value);
+			return argument;
+		}
+		
+		@Override
+		public CliArgument parseOptionalArgumentValue(GenericModelType inferredType, List<String> positiveValues) {
 
-		private Object parseOptionalValue(GenericModelType inferredType, List<String> positiveValues) {
-			String rawArg = nextRawArg();
+			CliArgument argument = nextCliArgument();
 			
-			if (rawArg == null)
-				return noValue;
+			if (argument == null)
+				return null;
 			
-			if (getKind(rawArg) == RawArgumentKind.value) {
+			String input = argument.getInput();
+			
+			if (getKind(input) == RawArgumentKind.value) {
 				if (positiveValues != null) {
-					if (positiveValues.contains(rawArg)) {
-						return parseValue(inferredType, rawArg);
+					if (positiveValues.contains(input)) {
+						Object value = parseValue(inferredType, input);
+						argument.setValue(value);
+						return argument;
 					}
 					else {
 						rewindOneRawArg();
-						return noValue;
+						return null;
 					}
 				}
-				else
-					return parseValue(inferredType, rawArg);
+				else {
+					Object value = parseValue(inferredType, input);
+					argument.setValue(value);
+					return argument;
+				}
 			}
 			else {
 				rewindOneRawArg();
-				return noValue;
+				return null;
 			}
+		}
+
+		private Object parseOptionalValue(GenericModelType inferredType, List<String> positiveValues) {
+			CliArgument argument = parseOptionalArgumentValue(inferredType, positiveValues);
+			
+			if (argument == null)
+				return noValue;
+			
+			return argument.getValue();
 		}
 		
 		private Object parseValue(GenericModelType inferredType) {
-			String rawArg = nextRawArg();
-			
-			if (rawArg == null)
-				throw parseError("Unexpected end of arguments when reading an argument");
-			
-			return parseValue(inferredType, rawArg);
+			CliArgument argument = parseArgumentValue(inferredType);
+			return argument.getValue();
 		}
 		
 		private Object parseValue(GenericModelType inferredType, String rawArg) {
@@ -490,7 +485,12 @@ public class PosixCommandLineParser extends AbstractCommandLineParser {
 			}
 			
 			if (rawArg.equals("+")) {
-				options = entityEvaluator.evaluate(evaluable);
+				Object evaluated = entityEvaluator.evaluate(evaluable);
+				
+				if (!(evaluated instanceof GenericEntity entity))
+					throw parseError("+ is only allowed on entities");
+				
+				options = entity;
 				evaluable = null;
 				parseNamedArguments();
 				return true;
@@ -540,7 +540,7 @@ public class PosixCommandLineParser extends AbstractCommandLineParser {
 					parsePropertyShorthands(options, rawArg.substring(1));
 					return true;
 				default:
-					throw parseError("Expected a named argument but got: " + rawArg);
+					throw parseError("Expected a named argument");
 			}
 		}
 
@@ -549,53 +549,6 @@ public class PosixCommandLineParser extends AbstractCommandLineParser {
 			return getOracle().getPositionalArguments(options.entityType());
 		}
 		
-	}
-	
-	private static class MapEntryForwardListener {
-		int deferred;
-		Object key;
-		Object value;
-		Map<Object, Object> map;
-		
-		MapEntryForwardListener(Map<Object, Object> map, int deferred) {
-			this.map = map;
-			this.deferred = deferred;
-		}
-		
-		public static void install(Map<Object, Object> map, Object key, Object value, int deferred) {
-			MapEntryForwardListener listener = new MapEntryForwardListener(map, deferred);
-			switch (deferred) {
-				case 1:
-					listener.value = value;
-					((ForwardReference)key).consumers.add(listener::onKey);
-					break;
-				case 2:
-					listener.key = key;
-					((ForwardReference)value).consumers.add(listener::onValue);
-					break;
-				case 3:
-					((ForwardReference)key).consumers.add(listener::onKey);
-					((ForwardReference)value).consumers.add(listener::onValue);
-					break;
-			}
-		}
-		
-		void onKey(Object key) {
-			this.key = key;
-			deferred ^= 1;
-			checkComplete();
-		}
-		
-		void onValue(Object value) {
-			this.value = value;
-			deferred ^= 2;
-			checkComplete();
-		}
-		
-		void checkComplete() {
-			if (deferred == 0)
-				map.put(key, value);
-		}
 	}
 	
 	private ParseException parseError(String msg) {

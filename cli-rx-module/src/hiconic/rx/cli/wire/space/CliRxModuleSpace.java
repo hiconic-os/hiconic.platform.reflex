@@ -22,6 +22,7 @@ import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.cli.processing.CliExecutor;
 import hiconic.rx.cli.processing.EntityFactory;
+import hiconic.rx.cli.processing.FromEvaluator;
 import hiconic.rx.cli.processing.IntroductionProcessor;
 import hiconic.rx.cli.processing.ReflectServiceDomainsProcessor;
 import hiconic.rx.cli.processing.help.HelpProcessor;
@@ -100,9 +101,16 @@ public class CliRxModuleSpace implements RxModuleContract {
 		// TODO: better reasoning for type and domain lookup
 		PosixCommandLineParser bean = new PosixCommandLineParser(this::cmdResolverForDomain);
 		bean.setEntityFactory(inputEntityFactory());
+		bean.setEntityEvaluator(fromEvaluator());
 		return bean;
 	}
 
+	@Managed
+	private FromEvaluator fromEvaluator() {
+		FromEvaluator bean = new FromEvaluator();
+		bean.setMarshallerRegistry(platform.marshallers());
+		return bean;
+	}
 	@Managed
 	private EntityFactory inputEntityFactory() {
 		EntityFactory bean = new EntityFactory();

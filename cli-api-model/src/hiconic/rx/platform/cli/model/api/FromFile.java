@@ -31,4 +31,9 @@ public interface FromFile extends From {
 	@Mandatory
 	FileResource getFile();
 	void setFile(FileResource file);
+	
+	@Description("Support variables such as ${config.base} or ${env.YOUR_ENV_VAR} in a given yaml file.")
+	@Alias("v")
+	boolean getHasVars();
+	void setHasVars(boolean hasVars);
 }

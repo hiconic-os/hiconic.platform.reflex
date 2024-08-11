@@ -11,21 +11,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package com.braintribe.gm.cli.posix.parser;
+package hiconic.platform.reflex.cli.parser.test.model;
 
-import com.braintribe.gm.cli.posix.parser.api.CliEntityEvaluator;
-import com.braintribe.model.generic.GenericEntity;
+import com.braintribe.model.generic.base.EnumBase;
+import com.braintribe.model.generic.reflection.EnumType;
+import com.braintribe.model.generic.reflection.EnumTypes;
 
-public class EmptyCliEntityEvaluator implements CliEntityEvaluator {
-	public static final CliEntityEvaluator INSTANCE = new EmptyCliEntityEvaluator();
-	
+public enum TestEnum implements EnumBase<TestEnum> {
+	ONE,
+	TWO,
+	THREE;
+
+	public static final EnumType<TestEnum> T = EnumTypes.T(TestEnum.class);
+
 	@Override
-	public Object evaluate(GenericEntity entity) {
-		throw new UnsupportedOperationException();
+	public EnumType<TestEnum> type() {
+		return T;
 	}
-	
-	@Override
-	public boolean isEvaluable(GenericEntity entity) {
-		return false;
-	}
+
 }

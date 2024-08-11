@@ -145,7 +145,9 @@ public class CoreServicesSpace implements CoreServicesContract {
 
 	@Managed
 	protected JsonStreamMarshaller jsonMarshaller() {
-		return new JsonStreamMarshaller();
+		JsonStreamMarshaller bean = new JsonStreamMarshaller();
+		bean.setUseBufferingDecoder(true);
+		return bean;
 	}
 
 	@Managed

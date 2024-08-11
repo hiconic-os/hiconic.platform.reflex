@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>hiconic.platform.reflex</groupId>
+        <artifactId>parent</artifactId>
+        <version>[1.0,1.1)</version>
+    </parent>
+    <artifactId>posix-cli-parser-test</artifactId>
+    <version>1.0.1</version>
+    <properties/>
+    <dependencies>
+        <dependency>
+            <groupId>com.braintribe.testing</groupId>
+            <artifactId>unit-test-deps</artifactId>
+            <version>${V.com.braintribe.testing}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>itw-gm-own-cl</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>posix-cli-parser</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>posix-cli-parser-test-model</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+            <?tag asset ?>
+        </dependency>
+        <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>cascading-meta-data</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>gm-core4-jvm</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
+    </dependencies>
+</project>
