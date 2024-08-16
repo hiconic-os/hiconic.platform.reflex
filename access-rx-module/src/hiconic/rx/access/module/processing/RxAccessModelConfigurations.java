@@ -13,6 +13,8 @@
 // ============================================================================
 package hiconic.rx.access.module.processing;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -43,5 +45,10 @@ public class RxAccessModelConfigurations implements AccessModelConfigurations {
 	@Override
 	public AccessModelConfiguration byReference(ModelReference modelReference) {
 		return byConfiguration(modelConfigurations.byReference(modelReference));
+	}
+	
+	@Override
+	public List<AccessModelConfiguration> listConfigurations() {
+		return List.copyOf(accessModelConfigurations.values());
 	}
 }

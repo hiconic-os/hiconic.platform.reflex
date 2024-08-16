@@ -27,6 +27,7 @@ import com.braintribe.wire.api.context.WireContextConfiguration;
 import hiconic.rx.access.model.configuration.Access;
 import hiconic.rx.access.model.configuration.AccessConfiguration;
 import hiconic.rx.access.module.api.AccessContract;
+import hiconic.rx.access.module.api.AccessDomains;
 import hiconic.rx.access.module.api.AccessExpert;
 import hiconic.rx.access.module.api.AccessExpertContract;
 import hiconic.rx.access.module.processing.PersistenceReflectionProcessor;
@@ -78,6 +79,11 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 	@Override
 	public void deploy(Access access) {
 		accesses().deploy(access);
+	}
+	
+	@Override
+	public AccessDomains accessDomains() {
+		return accesses();
 	}
 
 	@Override

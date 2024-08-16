@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.braintribe.cfg.Required;
@@ -35,6 +36,8 @@ import com.braintribe.utils.lcd.LazyInitialized;
 
 import hiconic.rx.access.model.configuration.Access;
 import hiconic.rx.access.model.md.InterceptAccessWith;
+import hiconic.rx.access.module.api.AccessDomain;
+import hiconic.rx.access.module.api.AccessDomains;
 import hiconic.rx.access.module.api.AccessExpert;
 import hiconic.rx.module.api.service.ConfiguredModel;
 import hiconic.rx.module.api.service.ConfiguredModels;
@@ -43,7 +46,7 @@ import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.module.api.service.ServiceDomains;
 
-public class RxAccesses {
+public class RxAccesses implements AccessDomains {
 	private Map<String, LazyInitialized<RxAccess>> accesses = new ConcurrentHashMap<>();
 	private MutableDenotationMap<Access, AccessExpert<?>> experts = new PolymorphicDenotationMap<Access, AccessExpert<?>>(true);
 	private ConfiguredModels configuredModels;
@@ -84,6 +87,22 @@ public class RxAccesses {
 	
 	public <A extends Access> void registerExpert(EntityType<A> accessType, AccessExpert<A> expert) {
 		experts.put(accessType, expert);
+	}
+
+	@Override
+	public Set<String> domainIds() {
+		return Set.copyOf(accesses.keySet());
+	}
+	
+	@Override
+	public boolean hasDomain(String domainId) {
+		return accesses.containsKey(domainId);
+	}
+	
+	@Override
+	public AccessDomain byId(String domainId) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 	
 	public void deploy(Access access) {

@@ -79,6 +79,8 @@ public class HibernateModelSessionFactoryBuilder {
 		properties.put(Environment.INTERCEPTOR, new GmAdaptionInterceptor());
 		properties.put(Environment.TC_CLASSLOADER, itwOrModuleClassLoader());
 		properties.put(Environment.HBM2DDL_AUTO, "update");
+		// comment out if not needed
+		properties.put(Environment.SHOW_SQL, "true");
 
 		if (dialectAutoSense != null)
 			properties.put(Environment.DIALECT, dialectAutoSense.senseDialect(dataSource));
