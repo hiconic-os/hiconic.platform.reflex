@@ -51,6 +51,7 @@ import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
 import com.braintribe.gm.model.reason.essential.InternalError;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
+import com.braintribe.gm.model.reason.essential.ParseError;
 import com.braintribe.gm.model.reason.meta.HttpStatusCode;
 import com.braintribe.gm.model.reason.meta.LogReason;
 import com.braintribe.logging.Logger;
@@ -373,15 +374,17 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 				}
 				try (InputStream in = requestIn) {
 					// Unmarshall the request from the body
+					Maybe<?> maybeService = inMarshaller.unmarshallReasoned(in, options);
 					
-					Maybe<?> serviceMaybe = inMarshaller.unmarshallReasoned(in, options);
-					
-					if (serviceMaybe.isUnsatisfied()) {
-						writeUnsatisfied(context, serviceMaybe, 400);
+					if (maybeService.isUnsatisfied()) {
+						Maybe<Object> maybe = Reasons.build(InvalidArgument.T).text("Invalid HTTP request body").cause(maybeService.whyUnsatisfied()).toMaybe();
+						Integer statusCode = maybeService.isUnsatisfiedBy(ParseError.T)? 400: 500;
+						
+						writeUnsatisfied(context, maybe, statusCode);
 						return;
 					}
 					
-					service = (ServiceRequest) serviceMaybe.get();
+					service = (ServiceRequest) maybeService.get();
 				}
 			}
 		}
@@ -646,7 +649,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 			}
 		}
 
-		// status code determination
+		// status code handling
 		if (!context.getResponse().isCommitted()) {
 			
 			if (httpStatusCode == null) {

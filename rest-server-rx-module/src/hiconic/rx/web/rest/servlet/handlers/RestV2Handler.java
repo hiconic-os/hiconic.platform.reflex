@@ -1,4 +1,6 @@
 // ============================================================================
+// Copyright BRAINTRIBE TECHNOLOGY GMBH, Austria, 2002-2022
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,21 +13,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.access.module.api;
+package hiconic.rx.web.rest.servlet.handlers;
 
-import java.util.List;
+import java.io.IOException;
 
-import hiconic.rx.module.api.service.ModelConfiguration;
-import hiconic.rx.module.api.service.ModelReference;
+import com.braintribe.model.ddra.endpoints.v2.RestV2Endpoint;
 
-public interface AccessModelConfigurations {
+import hiconic.rx.web.rest.servlet.RestV2EndpointContext;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+public interface RestV2Handler<E extends RestV2Endpoint> {
+
+	void handle(RestV2EndpointContext<E> context) throws IOException;
 	
-	AccessModelConfiguration byName(String modeName);
-	
-	AccessModelConfiguration byReference(ModelReference modelReference);
-	
-	AccessModelConfiguration byConfiguration(ModelConfiguration modelConfiguration);
-	
-	List<AccessModelConfiguration> listConfigurations();
-	
+	RestV2EndpointContext<E> createContext(HttpServletRequest request, HttpServletResponse response);
 }

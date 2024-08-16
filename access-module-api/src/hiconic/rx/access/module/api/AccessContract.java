@@ -31,6 +31,7 @@ public interface AccessContract extends RxExportContract {
 	
 	PersistenceGmSessionFactory sessionFactory(AttributeContext attributeContext);
 	
+	AccessDomains accessDomains();
 }
 
 /*

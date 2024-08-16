@@ -55,7 +55,7 @@ public class HibernateAccessTest extends AbstractRxTest {
 		Assertions.assertThat(p.getName()).isEqualTo(name);
 		Assertions.assertThat(p.getLastName()).isEqualTo(lastName);
 	}
-
+	
 	private PersistenceGmSession newSession() {
 		AccessContract contract = platform.getWireContext().contract(AccessContract.class);
 		return contract.systemSessionFactory().newSession("main-access");
