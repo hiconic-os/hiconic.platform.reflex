@@ -1,0 +1,12 @@
+Detailed Copyright Information
+
+Copyright BRAINTRIBE TECHNOLOGY GMBH, Austria, 2002-2022
+
+  affects the following classes:
+
+  hiconic.platform.reflex.websocket_server.processing.\
+    WsClientInfo
+    WsException
+    WsRegistry
+    WsServer
+    WsVerificationException

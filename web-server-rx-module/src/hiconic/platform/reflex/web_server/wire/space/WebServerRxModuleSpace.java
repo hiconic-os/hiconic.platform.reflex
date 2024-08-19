@@ -19,6 +19,9 @@ import static com.braintribe.console.ConsoleOutputs.sequence;
 import static com.braintribe.console.ConsoleOutputs.text;
 
 import java.io.File;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.util.List;
 
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
@@ -33,6 +36,7 @@ import hiconic.rx.web.server.model.config.StaticWebServerConfiguration;
 import hiconic.rx.web.server.model.config.WebServerConfiguration;
 import io.undertow.Handlers;
 import io.undertow.Undertow;
+import io.undertow.Undertow.ListenerInfo;
 import io.undertow.server.handlers.PathHandler;
 import io.undertow.server.handlers.resource.FileResourceManager;
 import io.undertow.server.handlers.resource.ResourceHandler;
@@ -84,6 +88,18 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 		return "caller-info";
 	}
 
+	@Override
+	public int getEffectiveServerPort() {
+		Undertow server = undertowServer();
+		List<ListenerInfo> listenerInfo = server.getListenerInfo();
+		
+		if (listenerInfo.isEmpty())
+			return -1;
+				
+		InetSocketAddress address = (InetSocketAddress) listenerInfo.get(0).getAddress();
+		return address.getPort();
+	}
+	
 	@Managed
 	private DeploymentInfo deploymentInfo() {
 		DeploymentInfo bean = Servlets.deployment() //
@@ -177,5 +193,5 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 			path.addPrefixPath(mapping.getPath(), resourceHandler);
 		}
 	}
-
+	
 }

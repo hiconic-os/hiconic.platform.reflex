@@ -35,19 +35,16 @@ import com.braintribe.model.generic.reflection.EnumType;
 import com.braintribe.model.generic.reflection.GenericModelException;
 import com.braintribe.model.generic.reflection.Property;
 import com.braintribe.model.generic.reflection.ScalarType;
-import com.braintribe.model.processing.query.fluent.EntityQueryBuilder;
-import com.braintribe.model.processing.session.api.managed.ModelAccessory;
-import com.braintribe.model.processing.session.api.managed.ModelAccessoryFactory;
-import com.braintribe.model.processing.session.api.persistence.PersistenceGmSession;
+import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSessionFactory;
 import com.braintribe.model.processing.web.rest.HttpExceptions;
 import com.braintribe.model.processing.web.rest.UrlPathCodec;
 import com.braintribe.model.processing.web.rest.impl.HttpRequestEntityDecoderUtils;
-import com.braintribe.model.query.EntityQuery;
 import com.braintribe.utils.StringTools;
 
+import hiconic.rx.access.module.api.AccessDomain;
 import hiconic.rx.access.module.api.AccessDomains;
-import hiconic.rx.access.module.api.AccessModelConfigurations;
+import hiconic.rx.module.api.service.ConfiguredModel;
 import hiconic.rx.web.rest.servlet.handlers.RestV2Handler;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -107,11 +104,9 @@ public class RestV2Server extends AbstractDdraRestServlet<RestV2EndpointContext<
 		return url.toString();
 	}
 
-	private ModelAccessoryFactory modelAccessoryFactory;
-
 	private Predicate<String> accessAvailability = a -> true;
 
-	private Map<String, RestV2Handler<RestV2Endpoint>> handlers;
+	private Map<RestHandlerKey, RestV2Handler<?>> handlers;
 	
 	private PersistenceGmSessionFactory systemSessionFactory;
 	
@@ -138,7 +133,7 @@ public class RestV2Server extends AbstractDdraRestServlet<RestV2EndpointContext<
 	}
 
 	private RestV2Handler<RestV2Endpoint> getHandler(String url, String method) {
-		return handlers.get(method.concat(":").concat(url));
+		return (RestV2Handler<RestV2Endpoint>) handlers.get(new RestHandlerKey(method, url));
 	}
 
 	@Override
@@ -244,14 +239,18 @@ public class RestV2Server extends AbstractDdraRestServlet<RestV2EndpointContext<
 	}
 
 	private EntityType<?> getBySimpleName(DdraUrlPathParameters parameters) {
-		ModelAccessory accessory = modelAccessoryFactory.getForAccess(parameters.getAccessId());
+		AccessDomain accessDomain = accessDomains.byId(parameters.getAccessId());
+		
+		ConfiguredModel dataModel = accessDomain.configuredDataModel();
+		CmdResolver cmdResolver = dataModel.contextCmdResolver();
+		
 		String suffix = "." + parameters.getTypeSignature();
-		List<EntityType<?>> types = accessory.getOracle().getTypes().onlyEntities().filter(type -> type.getTypeSignature().endsWith(suffix))
+		List<EntityType<?>> types = cmdResolver.getModelOracle().getTypes().onlyEntities().filter(type -> type.getTypeSignature().endsWith(suffix))
 				.<EntityType<?>> asTypes().collect(Collectors.toList());
 
 		if (types.isEmpty()) {
 			HttpExceptions.notFound("Cannot find entity type with simple name %s in model %s", parameters.getTypeSignature(),
-					accessory.getModel().getName());
+					dataModel.modelName());
 		}
 		if (types.size() > 1) {
 			HttpExceptions.badRequest("Found multiple (at least 2) entities with simple name %s in access %s: %s and %s",
@@ -276,8 +275,8 @@ public class RestV2Server extends AbstractDdraRestServlet<RestV2EndpointContext<
 	}
 
 	private ScalarType getIdType(RestV2EndpointContext<RestV2Endpoint> context) {
-		ModelAccessory accessory = modelAccessoryFactory.getForAccess(context.getParameters().getAccessId());
-		return accessory.getCmdResolver().getIdType(context.getEntityType().getTypeSignature());
+		CmdResolver cmdResolver = accessDomains.byId(context.getParameters().getAccessId()).configuredDataModel().contextCmdResolver();
+		return cmdResolver.getIdType(context.getEntityType().getTypeSignature());
 	}
 
 	private void computePropertyIfNecessary(RestV2EndpointContext<RestV2Endpoint> context) {
@@ -375,28 +374,13 @@ public class RestV2Server extends AbstractDdraRestServlet<RestV2EndpointContext<
 
 	@Required
 	@Configurable
-	public void setModelAccessoryFactory(ModelAccessoryFactory modelAccessoryFactory) {
-		this.modelAccessoryFactory = modelAccessoryFactory;
-	}
-
-	@Required
-	@Configurable
-	public void setHandlers(Map<String, RestV2Handler<RestV2Endpoint>> handlers) {
+	public void setHandlers(Map<RestHandlerKey, RestV2Handler<?>> handlers) {
 		this.handlers = handlers;
-	}
-
-	public Map<String, RestV2Handler<RestV2Endpoint>> getHandlers() {
-		return handlers;
 	}
 
 	@Configurable
 	public void setAccessAvailability(Predicate<String> accessAvailability) {
 		this.accessAvailability = accessAvailability;
-	}
-
-	@Configurable
-	public void setCortexAccessId(String cortexAccessId) {
-		this.cortexAccessId = cortexAccessId;
 	}
 
 	@Override

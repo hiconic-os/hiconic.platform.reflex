@@ -19,6 +19,7 @@ import jakarta.servlet.Filter;
 import jakarta.servlet.http.HttpServlet;
 
 public interface WebServerContract extends RxExportContract {
+	int getEffectiveServerPort();
 	void addServlet(String name, String path, HttpServlet servlet);
 	void addFilter(String name, Filter filter);
 	String callerInfoFilterName();

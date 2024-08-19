@@ -27,22 +27,22 @@ import com.braintribe.model.ddra.endpoints.v2.RestV2Endpoint;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.meta.data.constraint.TypeSpecification;
+import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.meta.cmd.builders.PropertyMdResolver;
 import com.braintribe.model.processing.query.fluent.AbstractQueryBuilder;
 import com.braintribe.model.processing.query.fluent.EntityQueryBuilder;
 import com.braintribe.model.processing.query.fluent.JunctionBuilder;
-import com.braintribe.model.processing.session.api.managed.ModelAccessory;
-import com.braintribe.model.processing.session.api.managed.ModelAccessoryFactory;
 import com.braintribe.model.query.EntityQuery;
 
 import dev.hiconic.servlet.decoder.api.HttpRequestEntityDecoderOptions;
 import dev.hiconic.servlet.decoder.api.PropertyTypeResolver;
+import hiconic.rx.access.module.api.AccessDomains;
 import hiconic.rx.web.rest.servlet.RestV2EndpointContext;
 import hiconic.rx.web.rest.servlet.RestV2EntityQueryBuilder;
 
 public abstract class AbstractEntityQueryingHandler<E extends RestV2Endpoint> extends AbstractQueryingHandler<E> {
 
-	private ModelAccessoryFactory modelAccessoryFactory;
+	private AccessDomains accessDomains;
 	private final Map<EntityType<?>, EntityType<?>> typeToInstantiableSubType = new ConcurrentHashMap<>();
 	
 	protected AbstractQueryBuilder<EntityQuery> decodeEntityQueryBuilder(RestV2EndpointContext<E> context) {
@@ -68,9 +68,9 @@ public abstract class AbstractEntityQueryingHandler<E extends RestV2Endpoint> ex
 	
 	private EntityType<?> findInstantiableSubType(EntityType<?> et, RestV2EndpointContext<?> context) {
 		String accessId = context.getParameters().getAccessId();
-		ModelAccessory modelAccessory = modelAccessoryFactory.getForAccess(accessId);
+		CmdResolver cmdResolver = accessDomains.byId(accessId).configuredDataModel().contextCmdResolver();
 		
-		Set<EntityType<?>> instantiableSubTypes = modelAccessory.getOracle().getEntityTypeOracle(et).getSubTypes().onlyInstantiable().asTypes();
+		Set<EntityType<?>> instantiableSubTypes = cmdResolver.getModelOracle().getEntityTypeOracle(et).getSubTypes().onlyInstantiable().asTypes();
 		return instantiableSubTypes.isEmpty() ? null : first(instantiableSubTypes);
 	}
 
@@ -95,10 +95,10 @@ public abstract class AbstractEntityQueryingHandler<E extends RestV2Endpoint> ex
 	}
 
 	private PropertyTypeResolver getPropertyResolver(String accessId) {
-		ModelAccessory accessory = modelAccessoryFactory.getForAccess(accessId);
+		CmdResolver cmdResolver = accessDomains.byId(accessId).configuredDataModel().contextCmdResolver();
 
 		return (entityType, property) -> {
-			PropertyMdResolver mdResolver = accessory.getMetaData().entityType(entityType).property(property.getName());
+			PropertyMdResolver mdResolver = cmdResolver.getMetaData().entityType(entityType).property(property.getName());
 			TypeSpecification ts = mdResolver.meta(TypeSpecification.T).exclusive();
 			return ts != null ? ts.getType().reflectionType() : null;
 		};
@@ -106,7 +106,7 @@ public abstract class AbstractEntityQueryingHandler<E extends RestV2Endpoint> ex
 
 	@Required
 	@Configurable
-	public void setModelAccessoryFactory(ModelAccessoryFactory modelAccessoryFactory) {
-		this.modelAccessoryFactory = modelAccessoryFactory;
+	public void setAccessDomains(AccessDomains accessDomains) {
+		this.accessDomains = accessDomains;
 	}
 }
