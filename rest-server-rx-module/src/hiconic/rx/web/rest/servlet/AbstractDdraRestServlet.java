@@ -57,8 +57,6 @@ public abstract class AbstractDdraRestServlet<Context extends DdraEndpointContex
 
 	protected DdraTraversingCriteriaMap traversingCriteriaMap;
 
-	protected String cortexAccessId = "cortex";
-
 	protected void writeResponse(ApiV1EndpointContext context, Object result, DdraEndpoint endpoint, boolean full) throws IOException {
 		GenericModelType responseType;
 		if (endpoint.getInferResponseType()) {

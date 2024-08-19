@@ -101,8 +101,7 @@ public class RxAccesses implements AccessDomains {
 	
 	@Override
 	public AccessDomain byId(String domainId) {
-		// TODO Auto-generated method stub
-		return null;
+		return getAccess(domainId);
 	}
 	
 	public void deploy(Access access) {

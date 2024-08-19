@@ -27,7 +27,6 @@ import com.braintribe.codec.marshaller.api.GmDeserializationOptions;
 import com.braintribe.codec.marshaller.api.MarshallException;
 import com.braintribe.codec.marshaller.api.Marshaller;
 import com.braintribe.codec.marshaller.api.MarshallerRegistry;
-import com.braintribe.ddra.endpoints.api.DdraTraversingCriteriaMap;
 import com.braintribe.logging.Logger;
 import com.braintribe.model.DdraEndpointHeaders;
 import com.braintribe.model.accessapi.ManipulationRequest;
@@ -49,6 +48,7 @@ import com.braintribe.utils.ThrowableTools;
 
 import dev.hiconic.servlet.ddra.endpoints.api.DdraEndpointContext;
 import dev.hiconic.servlet.ddra.endpoints.api.DdraEndpointsUtils;
+import dev.hiconic.servlet.ddra.endpoints.api.DdraTraversingCriteriaMap;
 import dev.hiconic.servlet.decoder.api.HttpRequestEntityDecoder;
 import dev.hiconic.servlet.decoder.api.HttpRequestEntityDecoderOptions;
 import dev.hiconic.servlet.decoder.api.StandardHeadersMapper;
