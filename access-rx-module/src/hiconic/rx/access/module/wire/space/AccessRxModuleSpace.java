@@ -16,7 +16,9 @@ package hiconic.rx.access.module.wire.space;
 import static com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling.getOrTunnel;
 
 import com.braintribe.common.attribute.AttributeContext;
+import com.braintribe.gm._AccessApiModel_;
 import com.braintribe.gm.model.persistence.reflection.api.PersistenceReflectionRequest;
+import com.braintribe.model.accessapi.PersistenceRequest;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.service.api.PlatformRequest;
 import com.braintribe.utils.collection.impl.AttributeContexts;
@@ -34,6 +36,8 @@ import hiconic.rx.access.module.processing.PersistenceReflectionProcessor;
 import hiconic.rx.access.module.processing.RxAccessModelConfigurations;
 import hiconic.rx.access.module.processing.RxAccesses;
 import hiconic.rx.access.module.processing.RxPersistenceGmSessionFactory;
+import hiconic.rx.access.module.processing.RxPersistenceProcessor;
+import hiconic.rx.module.api.service.ModelConfiguration;
 import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.module.api.wire.RxModuleContract;
@@ -61,8 +65,19 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 	
 	@Override
 	public void configureModels(ModelConfigurations configurations) {
+		ModelConfiguration mc = configurations.byName("access-base");
+		mc.addModel(_AccessApiModel_.reflection);
+		mc.bindRequest(PersistenceRequest.T, this::persistenceProcessor);
+
 		accesses().initModelConfigurations(configurations);
 		accessModelConfigurations().initModelConfigurations(configurations);
+	}
+	
+	@Managed
+	private RxPersistenceProcessor persistenceProcessor() {
+		RxPersistenceProcessor bean = new RxPersistenceProcessor();
+		bean.setAccessDomains(accesses());
+		return bean;
 	}
 	
 	@Override

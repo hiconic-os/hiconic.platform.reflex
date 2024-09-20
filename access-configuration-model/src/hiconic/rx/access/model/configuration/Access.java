@@ -32,14 +32,8 @@ public interface Access extends GenericEntity {
 	void setDataModelName(String dataModelName);
 	
 	/**
-	 * Optional model for PersistenceRequest binding
+	 * Optional, otherwise it is generated from the accessId: configured-<accessId>-api-model
 	 */
 	String getServiceModelName();
 	void setServiceModelName(String serviceModelName);
-	
-	/**
-	 * Optional id for a ServiceDomain for PersistenceRequest binding
-	 */
-	String getServiceDomainId();
-	void setServiceDomainId(String serviceDomainId);
 }

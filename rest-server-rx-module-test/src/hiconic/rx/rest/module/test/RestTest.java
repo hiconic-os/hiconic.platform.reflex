@@ -13,14 +13,12 @@
 // ============================================================================
 package hiconic.rx.rest.module.test;
 
-import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 
-import org.assertj.core.api.Assertions;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -47,12 +45,13 @@ public class RestTest extends AbstractRxTest {
 		generateData();
 		
 		HttpClient httpClient = HttpClient.newBuilder().build();
-		URI uri = URI.create("http://localhost:" + getPort() + "/rest/main-access/Person");
+		URI uri = URI.create("http://localhost:" + getPort() + "/rest/entities/main-access/Person");
 		HttpRequest request = HttpRequest.newBuilder(uri).GET().build();
 		HttpResponse<String> response = httpClient.send(request, BodyHandlers.ofString());
 		
 		String body = response.body();
 		
+		System.out.println("Status Code was: " + response.statusCode());
 		System.out.println(body);
 	}
 	

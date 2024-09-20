@@ -25,6 +25,9 @@ import java.util.stream.Collectors;
 import com.braintribe.cfg.Configurable;
 import com.braintribe.cfg.Required;
 import com.braintribe.ddra.endpoints.api.rest.v2.CrudRequestTarget;
+import com.braintribe.gm.model.reason.Maybe;
+import com.braintribe.gm.model.reason.Reasons;
+import com.braintribe.gm.model.reason.essential.InvalidArgument;
 import com.braintribe.logging.Logger;
 import com.braintribe.model.ddra.endpoints.v2.DdraUrlPathParameters;
 import com.braintribe.model.ddra.endpoints.v2.RestV2Endpoint;
@@ -45,6 +48,7 @@ import com.braintribe.utils.StringTools;
 import hiconic.rx.access.module.api.AccessDomain;
 import hiconic.rx.access.module.api.AccessDomains;
 import hiconic.rx.module.api.service.ConfiguredModel;
+import hiconic.rx.web.rest.servlet.handlers.PathErrorHandler;
 import hiconic.rx.web.rest.servlet.handlers.RestV2Handler;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -124,30 +128,46 @@ public class RestV2Server extends AbstractDdraRestServlet<RestV2EndpointContext<
 
 	@Override
 	protected void handle(RestV2EndpointContext<RestV2Endpoint> context) throws IOException {
-		String method = context.getRequest().getMethod();
-		String url = context.getTarget().getUrl();
-		RestV2Handler<RestV2Endpoint> handler = getHandler(url, method);
-		if (handler == null)
-			HttpExceptions.methodNotAllowed("Unsupported method %s", method);
+		RestV2Handler<RestV2Endpoint> handler = context.getHandler();
 		handler.handle(context);
 	}
 
-	private RestV2Handler<RestV2Endpoint> getHandler(String url, String method) {
-		return (RestV2Handler<RestV2Endpoint>) handlers.get(new RestHandlerKey(method, url));
+	private RestV2Handler<? extends RestV2Endpoint> getHandler(String url, String method) {
+		RestV2Handler<? extends RestV2Endpoint> handler = handlers.get(new RestHandlerKey(method, url));
+		
+		if (handler != null)
+			return handler;
+			
+		return new PathErrorHandler(marshallerRegistry, Reasons.build(InvalidArgument.T).text("Unsupported method " + method + " for path segment " + url ).toMaybe());
 	}
 
 	@Override
 	protected RestV2EndpointContext<RestV2Endpoint> createContext(HttpServletRequest request, HttpServletResponse response) {
-		String url = getRequestTarget(request).getUrl();
-		RestV2Handler<RestV2Endpoint> handler = getHandler(url, request.getMethod());
-		RestV2EndpointContext<RestV2Endpoint> context = handler.createContext(request, response);
+		Maybe<CrudRequestTarget> maybeTarget = getRequestTarget(request);
+		
+		final RestV2Handler<? extends RestV2Endpoint> handler;
+		final CrudRequestTarget target;
+		
+		if (maybeTarget.isUnsatisfied()) {
+			handler = new PathErrorHandler(marshallerRegistry, maybeTarget);
+			target = null;
+		}
+		else {
+			target = maybeTarget.get();
+			String url = target.getUrl();
+			String method = request.getMethod();
+			handler = getHandler(url, method);
+		}
+			
+		RestV2EndpointContext<RestV2Endpoint> context = (RestV2EndpointContext<RestV2Endpoint>) handler.createContext(request, response);
 		context.setEvaluator(evaluator);
+		context.setTarget(target);
+		context.setHandler((RestV2Handler<RestV2Endpoint>) handler);
 		return context;
 	}
 
 	@Override
 	protected boolean fillContext(RestV2EndpointContext<RestV2Endpoint> context) {
-		context.setTarget(getRequestTarget(context.getRequest()));
 		computeUrlParameters(context);
 
 		if (isSwaggerTarget(context))
@@ -177,7 +197,13 @@ public class RestV2Server extends AbstractDdraRestServlet<RestV2EndpointContext<
 		if (pathInfo == null) {
 			return;
 		}
-		switch (context.getTarget()) {
+		
+		CrudRequestTarget target = context.getTarget();
+		
+		if (target == null)
+			return;
+		
+		switch (target) {
 			case ENTITY:
 				ENTITIES_URL_CODEC.decode(() -> parameters, pathInfo);
 				break;
@@ -280,7 +306,12 @@ public class RestV2Server extends AbstractDdraRestServlet<RestV2EndpointContext<
 	}
 
 	private void computePropertyIfNecessary(RestV2EndpointContext<RestV2Endpoint> context) {
-		if (context.getTarget() == CrudRequestTarget.ENTITY) {
+		CrudRequestTarget target = context.getTarget();
+		
+		if (target == null)
+			return;
+		
+		if (target == CrudRequestTarget.ENTITY) {
 			return;
 		}
 
@@ -299,43 +330,35 @@ public class RestV2Server extends AbstractDdraRestServlet<RestV2EndpointContext<
 		context.setProperty(property);
 	}
 
-	private CrudRequestTarget getRequestTarget(HttpServletRequest request) {
+	private Maybe<CrudRequestTarget> getRequestTarget(HttpServletRequest request) {
 		String path = getPathInfo(request);
 		
 		if (path == null) {
 			path = ENTITIES_BASE_PATH;
 		}
 		
-		// TODO: Get rid of this as soon as swagger is extracted to webapp
-		if (StringTools.countOccurrences(path, "/") == 1){
-			if (path.startsWith(ENTITIES_BASE_PATH)) 
-				return CrudRequestTarget.SWAGGER;
-			if (path.startsWith(PROPERTIES_BASE_PATH))
-				return CrudRequestTarget.SWAGGER_PROPERTIES;
+		int index = path.indexOf('/');
+		
+		if (index == -1)
+			index = path.length();
+		
+		String selector = path.substring(0, index);
+		
+		final CrudRequestTarget target; 
+		
+		switch (selector) {
+		case ENTITIES_BASE_PATH: target = CrudRequestTarget.ENTITY; break;
+		case PROPERTIES_BASE_PATH: target = CrudRequestTarget.PROPERTY; break;
+		default: target = null;
 		}
-			
-		if (path.startsWith(PROPERTIES_BASE_PATH)) {
-			return CrudRequestTarget.PROPERTY;
-		}
-		if (path.startsWith(ENTITIES_BASE_PATH)) {
-			return CrudRequestTarget.ENTITY;
-		}
-		if (path.startsWith(SWAGGER_BASE_PATH)) {
-			return CrudRequestTarget.SWAGGER;
-		}
-		if (path.startsWith(EXPORT_SWAGGER_BASE_PATH)) {
-			return CrudRequestTarget.EXPORT_SWAGGER;
-		}
-		if (path.startsWith(SWAGGER_PROPERTIES_BASE_PATH)) {
-			return CrudRequestTarget.SWAGGER_PROPERTIES;
-		}
-		if (path.startsWith(EXPORT_SWAGGER_PROPERTIES_BASE_PATH)) {
-			return CrudRequestTarget.EXPORT_SWAGGER_PROPERTIES;
-		}
-	
-
-		HttpExceptions.notFound("Expected URL of the form entities/... or properties/... but got: %s", path);
-		return null;
+		
+		if (target != null)
+			return Maybe.complete(target);
+		
+		return
+			Reasons.build(InvalidArgument.T) //
+				.text("Expected URL path of the form entities/... or properties/... but got: " + path) //
+				.toMaybe();
 	}
 
 	private String getPathInfo(HttpServletRequest request) {

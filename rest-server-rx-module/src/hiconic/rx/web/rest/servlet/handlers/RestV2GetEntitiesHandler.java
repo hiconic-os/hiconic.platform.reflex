@@ -72,8 +72,6 @@ public class RestV2GetEntitiesHandler extends AbstractEntityQueryingHandler<Ddra
 
 		DdraGetEntitiesEndpoint endpoint = decode(context);
 		
-		computeOutMarshallerFor(context);
-
 		EntityType<?> entityType = context.getEntityType();
 		EntityQueryBuilder builder = EntityQueryBuilder.from(entityType);
 		builder.tc(traversingCriteriasMap.getCriterion(endpoint.getComputedDepth()));

@@ -23,6 +23,7 @@ import com.braintribe.codec.marshaller.api.Marshaller;
 import com.braintribe.codec.marshaller.api.MarshallerRegistry;
 import com.braintribe.common.lcd.Pair;
 import com.braintribe.exception.Exceptions;
+import com.braintribe.exception.HttpException;
 import com.braintribe.logging.Logger;
 import com.braintribe.model.DdraEndpoint;
 import com.braintribe.model.generic.GMF;
