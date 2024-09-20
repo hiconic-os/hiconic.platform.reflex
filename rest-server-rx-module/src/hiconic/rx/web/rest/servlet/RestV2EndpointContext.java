@@ -10,6 +10,7 @@ import com.braintribe.model.generic.reflection.Property;
 import com.braintribe.model.service.api.ServiceRequest;
 
 import dev.hiconic.servlet.ddra.endpoints.api.DdraEndpointContext;
+import hiconic.rx.web.rest.servlet.handlers.RestV2Handler;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -24,6 +25,8 @@ public class RestV2EndpointContext<E extends RestV2Endpoint> extends DdraEndpoin
 	private Property property;
 	
 	protected Evaluator<ServiceRequest> evaluator;
+	
+	private RestV2Handler<E> handler;
 
 	public RestV2EndpointContext(HttpServletRequest request, HttpServletResponse response) {
 		super(request, response);
@@ -38,6 +41,10 @@ public class RestV2EndpointContext<E extends RestV2Endpoint> extends DdraEndpoin
 	
 	public void setTarget(CrudRequestTarget target) {
 		this.target = target;
+	}
+	
+	public void setHandler(RestV2Handler<E> handler) {
+		this.handler = handler;
 	}
 	
 	public CrudRequestTarget getTarget() {
@@ -58,6 +65,10 @@ public class RestV2EndpointContext<E extends RestV2Endpoint> extends DdraEndpoin
 	
 	public Property getProperty() {
 		return property;
+	}
+	
+	public RestV2Handler<E> getHandler() {
+		return handler;
 	}
 	
 	public void setEvaluator(Evaluator<ServiceRequest> evaluator) {

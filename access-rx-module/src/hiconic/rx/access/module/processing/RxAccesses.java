@@ -152,11 +152,9 @@ public class RxAccesses implements AccessDomains {
 		String dataModelName = access.getDataModelName();
 		
 		ConfiguredModel dataModel = configuredModels.byName(dataModelName);
-		String serviceDomainId = access.getServiceDomainId();
+		String serviceDomainId = access.getAccessId();
 		
-		ConfiguredModel serviceModel = serviceDomainId != null? 
-				serviceDomains.byId(serviceDomainId).configuredModel():
-				null;
+		ConfiguredModel serviceModel = serviceDomains.byId(serviceDomainId).configuredModel();
 		
 		// TODO: work with reasons here
 		Objects.requireNonNull(dataModel, "Access.dataModelName = '" + dataModelName + "' not found for access: " + access.getAccessId());
