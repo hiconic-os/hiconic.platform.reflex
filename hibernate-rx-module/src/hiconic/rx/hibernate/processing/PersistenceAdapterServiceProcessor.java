@@ -19,7 +19,6 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 
 import com.braintribe.gm.model.reason.Maybe;
-import com.braintribe.logging.Logger;
 import com.braintribe.model.mpc.ModelPathCondition;
 import com.braintribe.model.processing.service.api.ReasonedServiceProcessor;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
@@ -37,50 +36,48 @@ import hiconic.rx.hibernate.service.api.PersistenceContext;
 import hiconic.rx.hibernate.service.api.PersistenceServiceProcessor;
 
 public class PersistenceAdapterServiceProcessor<I extends ServiceRequest, O> implements ReasonedServiceProcessor<I, O> {
-	private Logger log = Logger.getLogger(PersistenceAdapterServiceProcessor.class);
-	private Supplier<SessionFactory> sessionFactorySupplier;
-	private PersistenceServiceProcessor<I, O> delegate;
-	
+
+	private final Supplier<SessionFactory> sessionFactorySupplier;
+	private final PersistenceServiceProcessor<I, O> delegate;
+
 	public PersistenceAdapterServiceProcessor(Supplier<SessionFactory> sessionFactorySupplier, PersistenceServiceProcessor<I, O> delegate) {
 		this.sessionFactorySupplier = sessionFactorySupplier;
 		this.delegate = delegate;
 	}
-	
+
 	@Override
 	public Maybe<? extends O> processReasoned(ServiceRequestContext context, I request) {
-
 		SessionFactory sessionFactory = sessionFactorySupplier.get();
 		Session session = sessionFactory.openSession();
-		
+
 		try {
 			PersistenceContext persistenceContext = new PersistenceContextImpl(context, sessionFactory);
-			
 			return delegate.process(persistenceContext, session, request);
-		}
-		finally {
+
+		} finally {
 			session.close();
 		}
 	}
-	
+
 	private class PersistenceContextImpl implements PersistenceContext {
-		private ServiceRequestContext requestContext;
-		private SessionFactory sessionFactory;
+		private final ServiceRequestContext requestContext;
+		private final SessionFactory sessionFactory;
 
 		public PersistenceContextImpl(ServiceRequestContext requestContext, SessionFactory sessionFactory) {
 			this.requestContext = requestContext;
 			this.sessionFactory = sessionFactory;
 		}
-		
+
 		@Override
 		public ServiceRequestContext requestContext() {
 			return requestContext;
 		}
-		
+
 		@Override
 		public SessionFactory sessionFactory() {
 			return sessionFactory;
 		}
-		
+
 		@Override
 		public <T> T detach(T value, ModelPathCondition condition) {
 			BasicModelWalkerCustomization basicCustomization = new BasicModelWalkerCustomization();
@@ -110,5 +107,3 @@ public class PersistenceAdapterServiceProcessor<I extends ServiceRequest, O> imp
 		}
 	}
 }
-
-

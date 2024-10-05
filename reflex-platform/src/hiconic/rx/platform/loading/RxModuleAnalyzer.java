@@ -67,7 +67,7 @@ public class RxModuleAnalyzer {
 	private void determinekDependency(RxModuleNode node, Class<? extends RxExportContract> importedContract) {
 		RxExportEntry exportEntry = analysis.exports.get(importedContract);
 		if (exportEntry == null)
-			throw new IllegalStateException("Cannot import " + importedContract.getClass().getName() + " to module "
+			throw new IllegalStateException("Cannot import " + importedContract.getName() + " to module "
 					+ node.module.getClass().getName() + " because it is not exported by any module present.");
 
 		RxModuleNode exporterNode = analysis.nodes.get(exportEntry.module);

@@ -24,11 +24,10 @@ import hiconic.rx.hibernate.service.api.PersistenceContext;
 import hiconic.rx.hibernate.service.api.PersistenceServiceProcessor;
 
 public class MethodHandlePersistenceServiceProcessor<P extends ServiceRequest, R> implements PersistenceServiceProcessor<P, R> {
-	
-	private MethodHandle methodHandle;
-	
+
+	private final MethodHandle methodHandle;
+
 	public MethodHandlePersistenceServiceProcessor(MethodHandle methodHandle) {
-		super();
 		this.methodHandle = methodHandle;
 	}
 
@@ -36,10 +35,11 @@ public class MethodHandlePersistenceServiceProcessor<P extends ServiceRequest, R
 	public Maybe<R> process(PersistenceContext context, Session session, P request) {
 		try {
 			return (Maybe<R>) methodHandle.invoke(context, session, request);
+
 		} catch (RuntimeException | Error e) {
 			throw e;
-		}
-		catch (Throwable e) {
+
+		} catch (Throwable e) {
 			throw new RuntimeException(e);
 		}
 	}
