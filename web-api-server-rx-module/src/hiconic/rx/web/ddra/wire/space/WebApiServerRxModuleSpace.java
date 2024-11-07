@@ -69,6 +69,7 @@ public class WebApiServerRxModuleSpace implements RxModuleContract {
 		bean.setRestServletUtils(servletUtils());
 		bean.setStreamPipeFactory(StreamPipes.simpleFactory());
 		bean.setTraversingCriteriaMap(tc.criteriaMap());
+		bean.setAccessAvailability(s -> platform.serviceDomains().byId(s) != null);
 		return bean;
 	}
 	
