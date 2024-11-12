@@ -29,6 +29,7 @@ import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 
 import com.braintribe.cfg.LifecycleAware;
@@ -173,11 +174,10 @@ public class RxModuleLoader implements LifecycleAware {
 			return Maybe.complete(wireContext);
 
 		} catch (Exception e) {
-			logger.error("Error while loading module " + rxModule.moduleName());
-			return Reasons.build(ConfigurationError.T) //
-					.text("Could not load WireContext for WireModule " + rxModule.moduleName()) //
-					.cause(InternalError.from(e)) //
-					.toMaybe();
+			String tracebackId = UUID.randomUUID().toString();
+			String msg = "Error while loading module " + rxModule.moduleName() + " (tracebackId=" + tracebackId + ")";
+			logger.error(msg, e);
+			return InternalError.create(msg).asMaybe();
 		}
 	}
 

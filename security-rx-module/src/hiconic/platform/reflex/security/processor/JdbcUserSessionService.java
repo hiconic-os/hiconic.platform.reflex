@@ -24,8 +24,10 @@ import java.util.Map;
 
 import javax.sql.DataSource;
 
+import com.braintribe.cfg.Configurable;
 import com.braintribe.cfg.Required;
 import com.braintribe.exception.Exceptions;
+import com.braintribe.gm.jdbc.api.GmDb;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.security.reason.SessionNotFound;
@@ -39,10 +41,13 @@ import com.braintribe.model.usersession.UserSessionType;
 public class JdbcUserSessionService extends AbstractUserSessionService {
 
 	DataSource dataSource;
+	
+	private String tableName = "HC_USER_SESSION";
+	
+	static final Logger log = Logger.getLogger(JdbcUserSessionService.class);
 
-	// @formatter:off
-	private static final String CREATE_PERSISTENCE_USER_SESSION_STMT = //
-			"INSERT INTO TF_US_PERSISTENCE_USER_SESSION (" +
+	protected String getCreatePersistenceUserSessionStmt() {
+		return "INSERT INTO " + tableName + " (" +
 				"ID, "+
 				"USER_NAME, USER_FIRST_NAME, USER_LAST_NAME, USER_EMAIL, " +
 				"CREATION_DATE, FIXED_EXPIRY_DATE, EXPIRY_DATE, LAST_ACCESSED_DATE, " +
@@ -51,26 +56,63 @@ public class JdbcUserSessionService extends AbstractUserSessionService {
 			") VALUES ("+
 				"?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?"+
 			")";
-	// @formatter:on
-	private static final String FIND_PERSISTENCE_USER_SESSION_STMT = "SELECT * FROM TF_US_PERSISTENCE_USER_SESSION WHERE ID = ?";
-	private static final String FIND_PERSISTENCE_USER_SESSION_BY_ACQKEY_STMT = "SELECT * FROM TF_US_PERSISTENCE_USER_SESSION WHERE ACQUIRATION_KEY = ? ORDER BY CREATION_DATE DESC";
-	private static final String TOUCH_PERSISTENCE_USER_SESSION_STMT = "UPDATE TF_US_PERSISTENCE_USER_SESSION SET LAST_ACCESSED_DATE = ?, EXPIRY_DATE = ? WHERE ID = ?";
-	private static final String DELETE_PERSISTENCE_USER_SESSION_STMT = "DELETE FROM TF_US_PERSISTENCE_USER_SESSION WHERE ID = ?";
-	private static final String CLOSE_PERSISTENCE_USER_SESSION_STMT = "UPDATE TF_US_PERSISTENCE_USER_SESSION SET CLOSED = ?, EXPIRY_DATE = ? WHERE ID = ?";
-
-	static final Logger log = Logger.getLogger(JdbcUserSessionService.class);
+	}
+	
+	protected String getFindPersistenceUserSessionStmt() {
+		return "SELECT * FROM " + tableName + " WHERE ID = ?";
+	}
+	
+	protected String getFindPersistenceUserSessionByAcqkeyStmt() {
+		return "SELECT * FROM " + tableName + " WHERE ACQUIRATION_KEY = ? ORDER BY CREATION_DATE DESC";
+	}
+	
+	protected String getTouchPersistenceUserSessionStmt() {
+		return "UPDATE " + tableName + " SET LAST_ACCESSED_DATE = ?, EXPIRY_DATE = ? WHERE ID = ?";
+	}
+	
+	protected String getDeletePersistenceUserSessionStmt() {
+		return "DELETE FROM " + tableName + " WHERE ID = ?";
+	}
+	
+	protected String getClosePersistenceUserSessionStmt() {
+		return "UPDATE " + tableName + " SET CLOSED = ?, EXPIRY_DATE = ? WHERE ID = ?";
+	}
 
 	@Required
 	public void setDataSource(DataSource dataSource) {
 		this.dataSource = dataSource;
 	}
+	
+	@Configurable
+	public void setTableName(String tableName) {
+		this.tableName = tableName;
+	}
 
 	protected Connection openJdbcConnection() throws SecurityServiceException {
+
+		final Connection connection; 
+		
 		try {
-			return dataSource.getConnection();
+			connection = dataSource.getConnection();
 		} catch (Exception e) {
 			throw Exceptions.unchecked(e, "Failed to obtain the JDBC connection from the provider");
 		}
+		
+		try {
+			GmDb gmDb = GmDb.newDb(dataSource).done();
+			UserSessionJdbcTableDefinition td = new UserSessionJdbcTableDefinition(gmDb, tableName);
+			td.gmTable.ensure();
+		}
+		catch (Exception e) {
+			try {
+				connection.close();
+			} catch (SQLException e1) {
+				log.error("error while closing connection", e);
+			}
+			throw Exceptions.unchecked(e, "Failed to ensure " + tableName + " table");
+		}
+		
+		return connection;
 	}
 
 	@Override
@@ -83,7 +125,7 @@ public class JdbcUserSessionService extends AbstractUserSessionService {
 		PersistenceUserSession pUserSession = initPersistenceUserSession(PersistenceUserSession.T.create(), user, maxIdleTime, maxAge,
 				fixedExpiryDate, internetAddress, properties, acquirationKey, blocksAuthenticationAfterLogout, userSessionType, now);
 
-		try (Connection conn = openJdbcConnection(); PreparedStatement stmt = conn.prepareStatement(CREATE_PERSISTENCE_USER_SESSION_STMT)) {
+		try (Connection conn = openJdbcConnection(); PreparedStatement stmt = conn.prepareStatement(getCreatePersistenceUserSessionStmt())) {
 			stmt.setString(1, pUserSession.getId());
 			stmt.setString(2, pUserSession.getUserName());
 			stmt.setString(3, pUserSession.getUserFirstName());
@@ -119,7 +161,7 @@ public class JdbcUserSessionService extends AbstractUserSessionService {
 	protected Maybe<PersistenceUserSession> findPersistenceUserSession(String sessionId) {
 		PersistenceUserSession pUserSession;
 		try (Connection conn = openJdbcConnection()) {
-			try (PreparedStatement stmt = conn.prepareStatement(FIND_PERSISTENCE_USER_SESSION_STMT)) {
+			try (PreparedStatement stmt = conn.prepareStatement(getFindPersistenceUserSessionStmt())) {
 				stmt.setString(1, sessionId);
 				pUserSession = mapQueryResultToPersistenceUserSession(stmt.executeQuery());
 			}
@@ -137,7 +179,7 @@ public class JdbcUserSessionService extends AbstractUserSessionService {
 	protected Maybe<PersistenceUserSession> findPersistenceUserSessionByAcquirationKey(String acquirationKey) {
 		PersistenceUserSession pUserSession;
 		try (Connection conn = openJdbcConnection()) {
-			try (PreparedStatement stmt = conn.prepareStatement(FIND_PERSISTENCE_USER_SESSION_BY_ACQKEY_STMT)) {
+			try (PreparedStatement stmt = conn.prepareStatement(getFindPersistenceUserSessionByAcqkeyStmt())) {
 				stmt.setString(1, acquirationKey);
 
 				try (ResultSet resultSet = stmt.executeQuery()) {
@@ -187,7 +229,7 @@ public class JdbcUserSessionService extends AbstractUserSessionService {
 	@Override
 	public void touchUserSession(String sessionId, Date lastAccessDate, Date expiryDate) {
 		try (Connection conn = openJdbcConnection()) {
-			try (PreparedStatement stmt = conn.prepareStatement(TOUCH_PERSISTENCE_USER_SESSION_STMT)) {
+			try (PreparedStatement stmt = conn.prepareStatement(getTouchPersistenceUserSessionStmt())) {
 				Timestamp expiryTimestamp = expiryDate != null ? new Timestamp(expiryDate.getTime()) : null;
 				stmt.setTimestamp(1, new Timestamp(lastAccessDate.getTime()));
 				stmt.setTimestamp(2, expiryTimestamp);
@@ -214,7 +256,7 @@ public class JdbcUserSessionService extends AbstractUserSessionService {
 	@Override
 	protected void closePersistenceUserSession(String sessionId) {
 		try (Connection conn = openJdbcConnection()) {
-			try (PreparedStatement stmt = conn.prepareStatement(CLOSE_PERSISTENCE_USER_SESSION_STMT)) {
+			try (PreparedStatement stmt = conn.prepareStatement(getClosePersistenceUserSessionStmt())) {
 				stmt.setBoolean(1, true);
 				stmt.setTimestamp(2, new Timestamp(System.currentTimeMillis()));
 				stmt.setString(3, sessionId);
@@ -228,7 +270,7 @@ public class JdbcUserSessionService extends AbstractUserSessionService {
 	@Override
 	protected void deletePersistenceUserSession(String sessionId) {
 		try (Connection conn = openJdbcConnection()) {
-			try (PreparedStatement stmt = conn.prepareStatement(DELETE_PERSISTENCE_USER_SESSION_STMT)) {
+			try (PreparedStatement stmt = conn.prepareStatement(getDeletePersistenceUserSessionStmt())) {
 				stmt.setString(1, sessionId);
 				stmt.executeUpdate();
 			}

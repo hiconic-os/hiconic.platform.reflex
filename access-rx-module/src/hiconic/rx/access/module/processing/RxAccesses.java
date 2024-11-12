@@ -108,27 +108,15 @@ public class RxAccesses implements AccessDomains {
 		Objects.requireNonNull(access.getDataModelName(), "Access.dataModelName must not be null");
 		String accessId = Objects.requireNonNull(access.getAccessId(), "Access.accessId must not be null");
 		String serviceModelName = access.getServiceModelName();
-		String serviceDomainId = access.getServiceDomainId();
 		
-		if (serviceModelName != null || serviceDomainId != null) {
-			ModelConfiguration serviceModelConfiguration = null;
-			
-			if (serviceModelName != null) {
-				serviceModelConfiguration = modelConfigurations.byName(serviceModelName);
-			}
-			
-			if (serviceDomainId != null) {
-				ModelConfiguration serviceDomainConfiguration = serviceDomainConfigurations.byId(serviceDomainId);
-				
-				if (serviceModelConfiguration != null)
-					serviceDomainConfiguration.addModel(serviceModelConfiguration);
-				else
-					serviceModelConfiguration = serviceDomainConfiguration;
-			}
-			
-			serviceModelConfiguration.bindRequest(PersistenceRequest.T, () -> getPersistenceProcessor(accessId));
-		}
+		if (serviceModelName == null)
+			serviceModelName = "configured-" + accessId + "-api-model";
 		
+		ModelConfiguration serviceModelConfiguration = modelConfigurations.byName(RxAccessConstants.ACCESS_BASE);
+		
+		ModelConfiguration serviceDomainConfiguration = serviceDomainConfigurations.byId(accessId);
+		serviceDomainConfiguration.addModel(serviceModelConfiguration);
+			
 		LazyInitialized<RxAccess> lazyAccess = new LazyInitialized<>(() -> deployNow(access));
 		if (accesses.putIfAbsent(accessId, lazyAccess) != null)
 			throw new IllegalArgumentException("Duplicate deployment of an Access with id: " + accessId);

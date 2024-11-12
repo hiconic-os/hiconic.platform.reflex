@@ -38,9 +38,6 @@ public class PersistenceReflectionProcessor extends AbstractDispatchingServicePr
 		
 		Access access = rxAccess.access();
 		
-		String domainId = access.getServiceDomainId();
-		access.getServiceModelName();
-		
 		ModelEnvironment modelEnvironment = ModelEnvironment.T.create();
 		
 		ConfiguredModel configuredDataModel = rxAccess.configuredDataModel();

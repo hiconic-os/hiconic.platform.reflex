@@ -50,7 +50,7 @@ public class RestV2GetEntitiesHandler extends AbstractEntityQueryingHandler<Ddra
 
 		QueryEntities request = QueryEntities.T.create();
 		request.setSessionId(endpoint.getSessionId());
-		request.setServiceId(parameters.getAccessId());
+		request.setDomainId(parameters.getAccessId());
 
 		builder.tc(traversingCriteriasMap.getCriterion(endpoint.getComputedDepth()));
 
@@ -86,7 +86,7 @@ public class RestV2GetEntitiesHandler extends AbstractEntityQueryingHandler<Ddra
 
 		QueryEntities request = QueryEntities.T.create();
 		request.setSessionId(endpoint.getSessionId());
-		request.setServiceId(parameters.getAccessId());
+		request.setDomainId(parameters.getAccessId());
 		request.setQuery(query);
 
 		EntityQueryResult result = evaluateQueryRequest(request, endpoint, true);

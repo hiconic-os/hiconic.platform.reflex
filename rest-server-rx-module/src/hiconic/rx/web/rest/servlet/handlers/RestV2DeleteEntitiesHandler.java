@@ -55,7 +55,7 @@ public class RestV2DeleteEntitiesHandler extends AbstractEntityQueryingHandler<D
 
 		QueryEntities queryRequest = QueryEntities.T.create();
 		queryRequest.setSessionId(endpoint.getSessionId());
-		queryRequest.setServiceId(parameters.getAccessId());
+		queryRequest.setDomainId(parameters.getAccessId());
 		queryRequest.setQuery(builder.done());
 
 		EntityQueryResult result = evaluateServiceRequest(queryRequest, true);

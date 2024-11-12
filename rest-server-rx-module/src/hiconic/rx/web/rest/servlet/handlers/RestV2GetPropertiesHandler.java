@@ -43,7 +43,7 @@ public class RestV2GetPropertiesHandler extends AbstractQueryingHandler<DdraGetP
 		
 		QueryProperty request = QueryProperty.T.create();
 		request.setSessionId(endpoint.getSessionId());
-		request.setServiceId(parameters.getAccessId());
+		request.setDomainId(parameters.getAccessId());
 		request.setQuery(query);
 		
 		PropertyQueryResult result = evaluateQueryRequest(request, endpoint, true);

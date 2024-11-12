@@ -20,13 +20,13 @@ import static com.braintribe.console.ConsoleOutputs.text;
 
 import java.io.File;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.util.List;
 
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.platform.reflex.web_server.processing.CallerInfoFilter;
+import hiconic.platform.reflex.web_server.processing.ReflexAccessLogReceiver;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.web.server.api.WebServerContract;
@@ -37,6 +37,7 @@ import io.undertow.Handlers;
 import io.undertow.Undertow;
 import io.undertow.Undertow.ListenerInfo;
 import io.undertow.server.handlers.PathHandler;
+import io.undertow.server.handlers.accesslog.AccessLogHandler;
 import io.undertow.server.handlers.resource.FileResourceManager;
 import io.undertow.server.handlers.resource.ResourceHandler;
 import io.undertow.servlet.Servlets;
@@ -171,9 +172,22 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 		WebServerConfiguration configuration = configuration();
 		Undertow bean = Undertow.builder()
 				.addHttpListener(configuration.getPort(), "0.0.0.0")
-				.setHandler(pathHandler())				      
+				.setHandler(accessLogHandler())				      
 				.build();
 		
+		return bean;
+	}
+	
+	@Managed
+	private AccessLogHandler accessLogHandler() {
+		String logFormat = "%h %l %u \"%r\" %s %b %Dms";
+		AccessLogHandler bean = new AccessLogHandler(pathHandler(), logReceiver(), logFormat, Undertow.class.getClassLoader());
+		return bean;
+	}
+
+	@Managed
+	private ReflexAccessLogReceiver logReceiver() {
+		ReflexAccessLogReceiver bean = new ReflexAccessLogReceiver();
 		return bean;
 	}
 	

@@ -28,18 +28,18 @@ public class RxPersistenceProcessor implements ReasonedServiceProcessor<Persiste
 		this.accessDomains = accessDomains;
 	}
 	
-	private Maybe<IncrementalAccess> getDelegate(PersistenceRequest request) {
-		AccessDomain accessDomain = accessDomains.byId(request.getServiceId());
+	private Maybe<IncrementalAccess> getDelegate(String domainId) {
+		AccessDomain accessDomain = accessDomains.byId(domainId);
 		
 		if (accessDomain != null)
 			return Maybe.complete(accessDomain.incrementalAccess());
 		
-		return Reasons.build(InvalidArgument.T).text("No such access: " + request.getServiceId()).toMaybe();
+		return Reasons.build(InvalidArgument.T).text("No such access: " + domainId).toMaybe();
 	}
 	
 	@Override
 	public Maybe<? extends Object> processReasoned(ServiceRequestContext context, PersistenceRequest request) {
-		Maybe<IncrementalAccess> accessMaybe = getDelegate(request);
+		Maybe<IncrementalAccess> accessMaybe = getDelegate(context.getDomainId());
 		
 		if (accessMaybe.isUnsatisfied())
 			return accessMaybe;

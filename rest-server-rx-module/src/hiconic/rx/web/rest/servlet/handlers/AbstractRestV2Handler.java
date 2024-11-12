@@ -161,7 +161,7 @@ public abstract class AbstractRestV2Handler<E extends RestV2Endpoint> implements
 
 	protected ManipulationRequest createManipulationRequestFor(DdraUrlPathParameters parameters, RestV2Endpoint endpoint) {
 		ManipulationRequest request = ManipulationRequest.T.create();
-		request.setServiceId(parameters.getAccessId());
+		request.setDomainId(parameters.getAccessId());
 		request.setSessionId(endpoint.getSessionId());
 
 		return request;

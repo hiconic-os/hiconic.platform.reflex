@@ -73,7 +73,7 @@ public abstract class AbstractManipulateEntitiesHandler extends AbstractRestV2Ha
 		DdraManipulateEntitiesEndpoint endpoint = decode(context);
 
 		ManipulationRequest request = ManipulationRequest.T.create();
-		request.setServiceId(parameters.getAccessId());
+		request.setDomainId(parameters.getAccessId());
 		request.setSessionId(endpoint.getSessionId());
 
 		ManipulationTransformer transformer = getManipulations(context, endpoint, entityType, allowMultipleEntities);
