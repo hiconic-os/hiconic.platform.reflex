@@ -33,6 +33,7 @@ import hiconic.rx.access.module.api.AccessDomains;
 import hiconic.rx.access.module.api.AccessExpert;
 import hiconic.rx.access.module.api.AccessExpertContract;
 import hiconic.rx.access.module.processing.PersistenceReflectionProcessor;
+import hiconic.rx.access.module.processing.RxAccessConstants;
 import hiconic.rx.access.module.processing.RxAccessModelConfigurations;
 import hiconic.rx.access.module.processing.RxAccesses;
 import hiconic.rx.access.module.processing.RxPersistenceGmSessionFactory;
@@ -44,7 +45,7 @@ import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 
 @Managed
-public class AccessRxModuleSpace implements RxModuleContract, AccessContract, AccessExpertContract {
+public class AccessRxModuleSpace implements RxModuleContract, AccessContract, AccessExpertContract, RxAccessConstants {
 
 	@Import
 	private RxPlatformContract platform;
@@ -65,7 +66,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 	
 	@Override
 	public void configureModels(ModelConfigurations configurations) {
-		ModelConfiguration mc = configurations.byName("access-base");
+		ModelConfiguration mc = configurations.byName(ACCESS_BASE);
 		mc.addModel(_AccessApiModel_.reflection);
 		mc.bindRequest(PersistenceRequest.T, this::persistenceProcessor);
 
