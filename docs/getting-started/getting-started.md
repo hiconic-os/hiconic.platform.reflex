@@ -13,7 +13,7 @@
 
 We need to prepare the `hiconic-sdk`, which is a folder that besides actual projects contains development tools, environment configuration and so on:
 
-* Download [hiconic-sdk.zip](https://api.hiconic-os.org/dowload-latest-artifact-part.php?groupId=tribefire.extension.setup&artifactId=hiconic-sdk&type=zip)
+* Download [hiconic-sdk.zip](https://api.hiconic.dev/dowload-latest-artifact-part.php?groupId=tribefire.extension.setup&artifactId=hiconic-sdk&type=zip)
 * Unpack the `hiconic-sdk` root folder from the zip
 * Add `hiconic-sdk/tools/jinni/bin` to your `PATH` environment variable
 * Generate a [Personal Access Token (classic)](https://github.com/settings/tokens) with `read:packages` scope and copy its value (`ghp_AbcD3FGh1jK...`) to an environment variable `GITHUB_READ_PACKAGES_TOKEN`
@@ -182,7 +182,7 @@ Follow these instruction in _Eclipse_:
 * open `Help`/`Install New Software`
 * click `Add...` to enter a new plugin repository
 * **Name:** `Hiconic OS` \
-**Location:** `https://eclipse.hiconic-os.org/beta`
+**Location:** `https://eclipse.hiconic.dev/beta`
 * From the list of `devrock's features` select the following:\
 `artifact-container` \
 `artifact-reflection-builder` \
