@@ -107,7 +107,14 @@ public interface RxModuleContract extends WireSpace {
 	}
 	
 	/**
-	 * Called when the platform application loaded and initialized all modules
+	 * Called when the platform application loaded and initialized all modules to allow module to deploy configurations
+	 */
+	default void onDeploy() {
+		// implement if needed
+	}
+	
+	/**
+	 * Called when the platform application loaded and initialized and deployed all modules
 	 */
 	default void onApplicationReady() {
 		// implement if needed

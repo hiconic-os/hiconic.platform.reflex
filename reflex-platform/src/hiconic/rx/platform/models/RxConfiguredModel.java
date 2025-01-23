@@ -165,7 +165,7 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 	@Override
 	public void addModel(ModelReference modelReference) {
 		AbstractRxConfiguredModel configuredModel = configuredModels.acquire(modelReference);
-		addModel(configuredModel);
+		addModel(configuredModel.modelOracle().getGmMetaModel());
 	}
 
 	@Override

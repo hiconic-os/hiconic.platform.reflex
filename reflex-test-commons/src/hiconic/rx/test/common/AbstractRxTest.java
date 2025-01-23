@@ -18,6 +18,7 @@ import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
 
+import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
 import com.braintribe.model.generic.eval.EvalContext;
 import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.service.api.ServiceRequest;
@@ -27,7 +28,6 @@ import hiconic.rx.platform.conf.RxProperties;
 import hiconic.rx.platform.conf.SystemProperties;
 
 public abstract class AbstractRxTest {
-	
 	protected RxPlatform platform;
 	protected Evaluator<ServiceRequest> evaluator;
 	
@@ -57,8 +57,13 @@ public abstract class AbstractRxTest {
 	
 	@Before
 	public void onBefore() {
-		platform = new RxPlatform(systemPropertyLookup(), applicationPropertyLookup());
-		evaluator = platform.getContract().evaluator();
+		try {
+			platform = new RxPlatform(systemPropertyLookup(), applicationPropertyLookup());
+			evaluator = platform.getContract().evaluator();
+		} catch (UnsatisfiedMaybeTunneling e) {
+			System.err.print(e.getMaybe().whyUnsatisfied().stringify());
+			throw e;
+		}
 	}
 	
 	@After

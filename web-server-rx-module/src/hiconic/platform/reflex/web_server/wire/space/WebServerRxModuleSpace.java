@@ -27,7 +27,11 @@ import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.platform.reflex.web_server.processing.CallerInfoFilter;
 import hiconic.platform.reflex.web_server.processing.DefaultRxServlet;
+import hiconic.platform.reflex.web_server.processing.InstanceEndpointConfigurator;
 import hiconic.platform.reflex.web_server.processing.ReflexAccessLogReceiver;
+import hiconic.platform.reflex.web_server.processing.SslConfig;
+import hiconic.platform.reflex.web_server.processing.cors.CorsFilter;
+import hiconic.platform.reflex.web_server.processing.cors.handler.BasicCorsHandler;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.web.server.api.WebServerContract;
@@ -36,6 +40,7 @@ import hiconic.rx.web.server.model.config.StaticWebServerConfiguration;
 import hiconic.rx.web.server.model.config.WebServerConfiguration;
 import io.undertow.Handlers;
 import io.undertow.Undertow;
+import io.undertow.Undertow.Builder;
 import io.undertow.Undertow.ListenerInfo;
 import io.undertow.server.handlers.PathHandler;
 import io.undertow.server.handlers.accesslog.AccessLogHandler;
@@ -47,10 +52,13 @@ import io.undertow.servlet.api.DeploymentManager;
 import io.undertow.servlet.api.FilterInfo;
 import io.undertow.servlet.api.ServletInfo;
 import io.undertow.servlet.util.ImmediateInstanceFactory;
+import io.undertow.websockets.jsr.WebSocketDeploymentInfo;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.Filter;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
+import jakarta.websocket.Endpoint;
+import jakarta.websocket.server.ServerEndpointConfig;
 
 /**
  * This module's javadoc is yet to be written.
@@ -83,7 +91,27 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	public void addFilterServletNameMapping(String filterName, String mapping, DispatcherType dispatcherType) {
 		deploymentInfo().addFilterServletNameMapping(filterName, mapping, dispatcherType);
 	}
-
+	
+	@Override
+	public void addEndpoint(String path, Endpoint endpoint) {
+		registerWsEndpoint(wsDeploymentInfo(), path, endpoint);
+	}
+	
+	private void registerFilter(DeploymentInfo deploymentInfo, String name, Filter filter) {
+		FilterInfo filterInfo = Servlets.filter(name, filter.getClass(), new ImmediateInstanceFactory<>(filter));
+		deploymentInfo.addFilter(filterInfo);
+		deploymentInfo().addFilter(filterInfo);
+	}
+	
+	private void registerWsEndpoint(WebSocketDeploymentInfo deploymentInfo, String path, Endpoint endpoint) {
+	    ServerEndpointConfig serverEndpointConfig = ServerEndpointConfig.Builder
+	            .create(endpoint.getClass(), path)
+	            .configurator(new InstanceEndpointConfigurator(endpoint))
+	            .build();
+	    
+	    deploymentInfo.addEndpoint(serverEndpointConfig);
+	}
+	
 	@Override
 	public String callerInfoFilterName() {
 		return "caller-info";
@@ -102,15 +130,39 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	}
 	
 	@Managed
+	private WebSocketDeploymentInfo wsDeploymentInfo() {
+        WebSocketDeploymentInfo bean = new WebSocketDeploymentInfo();
+        return bean;
+	}
+	
+	@Managed
 	private DeploymentInfo deploymentInfo() {
+        // Create the WebSocket deployment info
 		DeploymentInfo bean = Servlets.deployment() //
 				.setClassLoader(Undertow.class.getClassLoader()) //
+				.addServletContextAttribute(WebSocketDeploymentInfo.ATTRIBUTE_NAME, wsDeploymentInfo())
 				.setContextPath("/") //
 				.setDeploymentName("servlet-deployment");
-
-		addFilter(callerInfoFilterName(), callerInfoFilter());
-		addServlet("default-servlet", "/", defaultServlet());
-
+		
+		registerFilter(bean, callerInfoFilterName(), callerInfoFilter());
+		
+		if (configuration().getCorsConfiguration() != null)
+			registerFilter(bean, "cors", corsFilter());
+		
+		return bean;
+	}
+	
+	@Managed
+	private CorsFilter corsFilter() {
+		CorsFilter bean = new CorsFilter();
+		bean.setCorsHandler(corsHandler());
+		return bean;
+	}
+	
+	@Managed
+	private BasicCorsHandler corsHandler() {
+		BasicCorsHandler bean = new BasicCorsHandler();
+		bean.setConfiguration(configuration().getCorsConfiguration());
 		return bean;
 	}
 
@@ -175,10 +227,16 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	@Managed
 	private Undertow undertowServer() {
 		WebServerConfiguration configuration = configuration();
-		Undertow bean = Undertow.builder()
+		Builder builder = Undertow.builder()
 				.addHttpListener(configuration.getPort(), "0.0.0.0")
-				.setHandler(pathHandler()) //
-				.setHandler(accessLogHandler())				      
+				.setHandler(accessLogHandler());
+		
+		SslConfig sslConfig = SslConfig.buildFromConfig(configuration);
+		
+		if (sslConfig != null)
+			builder.addHttpsListener(sslConfig.port(), "0.0.0.0", sslConfig.sslContext());
+		
+		Undertow bean = builder				      
 				.build();
 
 		return bean;

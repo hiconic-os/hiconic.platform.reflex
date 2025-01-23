@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>hiconic.platform.reflex</groupId>
+		<artifactId>parent</artifactId>
+		<version>[1.0,1.1)</version>
+	</parent>
+	<artifactId>websocket-server-rx-module-test</artifactId>
+	<version>1.0.1</version>
+	<properties>
+	</properties>
+	<dependencies>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>reflex-test-commons</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>websocket-server-rx-module</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>web-server-rx-module</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>websocket-server-rx-module</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>demo-model</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+	</dependencies>
+</project>

@@ -24,7 +24,6 @@ import com.braintribe.model.service.api.PlatformRequest;
 import com.braintribe.utils.collection.impl.AttributeContexts;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
-import com.braintribe.wire.api.context.WireContextConfiguration;
 
 import hiconic.rx.access.model.configuration.Access;
 import hiconic.rx.access.model.configuration.AccessConfiguration;
@@ -51,7 +50,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 	private RxPlatformContract platform;
 	
 	@Override
-	public void onLoaded(WireContextConfiguration configuration) {
+	public void onDeploy() {
 		AccessConfiguration accessConfiguration = getOrTunnel(platform.readConfig(AccessConfiguration.T));
 		
 		for (Access access: accessConfiguration.getAccesses()) {
@@ -62,6 +61,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 	@Override
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
 		configurations.byId(PlatformRequest.platformDomainId).bindRequest(PersistenceReflectionRequest.T, this::persistenceReflectionProcessor);
+		accesses().initServiceDomainConfigurations(configurations);
 	}
 	
 	@Override

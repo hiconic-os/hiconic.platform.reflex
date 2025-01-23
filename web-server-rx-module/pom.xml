@@ -49,6 +49,16 @@ limitations under the License.
             <artifactId>undertow-servlet</artifactId>
             <version>${V.io.undertow}</version>
         </dependency>
+	    <dependency>
+	        <groupId>io.undertow</groupId>
+	        <artifactId>undertow-websockets-jsr</artifactId>
+	        <version>2.3.7.Final</version>
+	    </dependency>
+		<dependency>
+		    <groupId>jakarta.websocket</groupId>
+		    <artifactId>jakarta.websocket-api</artifactId>
+		    <version>2.2.0</version>
+		</dependency>	            
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>web-server-configuration-model</artifactId>

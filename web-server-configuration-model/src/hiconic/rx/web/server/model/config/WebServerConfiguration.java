@@ -15,6 +15,7 @@ package hiconic.rx.web.server.model.config;
 
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.annotation.Initializer;
+import com.braintribe.model.generic.annotation.meta.Confidential;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 
@@ -22,7 +23,10 @@ public interface WebServerConfiguration extends GenericEntity {
 	EntityType<WebServerConfiguration> T = EntityTypes.T(WebServerConfiguration.class);
 	
 	String port = "port";
+	String sslPort = "sslPort";
 	String hostName = "hostName";
+	String sslKeyStore = "sslKeyStore";
+	String sslKeyStorePassword = "sslKeyStorePassword";
 	
 	@Initializer("'localhost'")
 	String getHostName();
@@ -31,4 +35,17 @@ public interface WebServerConfiguration extends GenericEntity {
 	@Initializer("8080")
 	int getPort();
 	void setPort(int port);
+	
+	Integer getSslPort();
+	void setSslPort(Integer sslPort);
+	
+	String getSslKeyStore();
+	void setSslKeyStore(String sslKeyStore);
+	
+	@Confidential
+	String getSslKeyStorePassword();
+	void setSslKeyStorePassword(String sslKeyStorePassword);
+	
+	CorsConfiguration getCorsConfiguration();
+	void setCorsConfiguration(CorsConfiguration corsConfiguration);
 }

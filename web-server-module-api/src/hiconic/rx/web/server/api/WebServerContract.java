@@ -17,9 +17,11 @@ import hiconic.rx.module.api.wire.RxExportContract;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.Filter;
 import jakarta.servlet.http.HttpServlet;
+import jakarta.websocket.Endpoint;
 
 public interface WebServerContract extends RxExportContract {
 	int getEffectiveServerPort();
+	void addEndpoint(String path, Endpoint endpoint);
 	void addServlet(String name, String path, HttpServlet servlet);
 	void addFilter(String name, Filter filter);
 	String callerInfoFilterName();

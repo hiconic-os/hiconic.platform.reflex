@@ -57,11 +57,6 @@ public class RxAccesses implements AccessDomains {
 	private ServiceDomains serviceDomains;
 	
 	@Required
-	public void setServiceDomainConfigurations(ServiceDomainConfigurations serviceDomainConfigurations) {
-		this.serviceDomainConfigurations = serviceDomainConfigurations;
-	}
-	
-	@Required
 	public void setServiceDomains(ServiceDomains serviceDomains) {
 		this.serviceDomains = serviceDomains;
 	}
@@ -83,6 +78,10 @@ public class RxAccesses implements AccessDomains {
 
 	public void initModelConfigurations(ModelConfigurations modelConfigurations) {
 		this.modelConfigurations = modelConfigurations;
+	}
+	
+	public void initServiceDomainConfigurations(ServiceDomainConfigurations serviceDomainConfigurations) {
+		this.serviceDomainConfigurations = serviceDomainConfigurations;
 	}
 	
 	public <A extends Access> void registerExpert(EntityType<A> accessType, AccessExpert<A> expert) {
@@ -172,6 +171,4 @@ public class RxAccesses implements AccessDomains {
 		
 		return new RxAccess(access, incrementalAccess, dataModel, serviceModel);
 	}
-
-	
 }

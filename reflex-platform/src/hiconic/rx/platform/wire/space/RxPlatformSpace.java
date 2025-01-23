@@ -80,6 +80,11 @@ public class RxPlatformSpace extends CoreServicesSpace implements RxPlatformCont
 			configuredModel.systemCmdResolver();
 		}
 
+		// notify all modules about application being ready for the deployment inside modules
+		for (RxModuleContract moduleContract: moduleContracts) {
+			moduleContract.onDeploy();
+		}
+		
 		// notify all modules about application being ready for action
 		for (RxModuleContract moduleContract: moduleContracts) {
 			moduleContract.onApplicationReady();

@@ -4,4 +4,3 @@ accesses:
     #dataModelName: rx-test:configured-main-access-model
     dataModelName: hiconic.platform.reflex:hibernate-test-model
     databaseName: main-db
-    serviceDomainId: main-access
