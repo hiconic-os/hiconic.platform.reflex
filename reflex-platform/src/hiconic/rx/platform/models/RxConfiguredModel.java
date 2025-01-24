@@ -182,10 +182,10 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 	}
 	
 	@Override
-	public <R extends ServiceRequest> void bindRequestMapped(EntityType<R> requestType,
-			Supplier<MappingServiceProcessor<? super R, ?>> serviceProcessorSupplier) {
-		addModelIfNotNull(requestType.getModel());
-		configureModel(editor -> editor.onEntityType(requestType).addMetaData(ProcessWith.create(ServiceProcessors.dispatcher(serviceProcessorSupplier.get()))));
+	public <R extends ServiceRequest> void bindRequestMapped( //
+			EntityType<R> requestType, Supplier<MappingServiceProcessor<? super R, ?>> serviceProcessorSupplier) {
+
+		bindRequest(requestType, () -> ServiceProcessors.dispatcher(serviceProcessorSupplier.get()));
 	}
 
 	/* package */ void addModelIfNotNull(Model model) {
@@ -255,7 +255,9 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 		EntityType<? extends ServiceRequest> requestType;
 		Predicate<ServiceRequest> predicate;
 		
-		public InterceptorEntry(String identifier, EntityType<? extends ServiceRequest> requestType, Predicate<ServiceRequest> predicate, Supplier<ServiceInterceptorProcessor> interceptorSupplier) {
+		public InterceptorEntry(String identifier, EntityType<? extends ServiceRequest> requestType, Predicate<ServiceRequest> predicate,
+				Supplier<ServiceInterceptorProcessor> interceptorSupplier) {
+
 			this.identification = identifier;
 			this.predicate = predicate;
 			this.interceptorSupplier = interceptorSupplier;
