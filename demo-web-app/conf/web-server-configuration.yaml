@@ -1,0 +1,16 @@
+corsConfiguration: 
+	allowAnyOrigin: true
+	supportAnyHeader: true
+	supportedMethods:
+	- "GET"
+	- "POST"
+	- "PUT"
+	- "DELETE"
+	exposedHeaders:
+	- "gm-rpc-version"
+	- "gm-rpc-body"
+	- "gm-rpc-body-type"
+	- "gm-rpc-client-id"
+	- "gm-rpc-response-key"
+	- "gm-rpc-response-key-algo"
+	- "gm-rpc-reasoning"

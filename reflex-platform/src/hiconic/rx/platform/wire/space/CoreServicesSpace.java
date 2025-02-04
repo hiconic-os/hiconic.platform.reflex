@@ -26,6 +26,7 @@ import java.util.function.Supplier;
 import com.braintribe.codec.marshaller.common.BasicConfigurableMarshallerRegistry;
 import com.braintribe.codec.marshaller.jse.JseMarshaller;
 import com.braintribe.codec.marshaller.json.JsonStreamMarshaller;
+import com.braintribe.codec.marshaller.stax.StaxMarshaller;
 import com.braintribe.codec.marshaller.yaml.YamlMarshaller;
 import com.braintribe.common.attribute.AttributeContext;
 import com.braintribe.model.processing.service.common.ConfigurableDispatchingServiceProcessor;
@@ -142,9 +143,16 @@ public class CoreServicesSpace implements CoreServicesContract {
 		bean.registerMarshaller("text/yaml", yamlMarshaller());
 		bean.registerMarshaller("application/yaml", yamlMarshaller());
 		bean.registerMarshaller("gm/jse", jseMarshaller());
+		bean.registerMarshaller("gm/xml", xmlMarshaller());
 		return bean;
 	}
 
+	@Managed
+	protected StaxMarshaller xmlMarshaller() {
+		StaxMarshaller bean = new StaxMarshaller();
+		return bean;
+	}
+	
 	@Managed 
 	protected JseMarshaller jseMarshaller() {
 		JseMarshaller bean = new JseMarshaller();
