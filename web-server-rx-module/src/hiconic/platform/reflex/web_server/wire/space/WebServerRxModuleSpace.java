@@ -97,10 +97,10 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 		registerWsEndpoint(wsDeploymentInfo(), path, endpoint);
 	}
 	
-	private void registerFilter(DeploymentInfo deploymentInfo, String name, Filter filter) {
+	private void registerFilter(DeploymentInfo deploymentInfo, String name, Filter filter, String pathMapping, DispatcherType dispatcherType) {
 		FilterInfo filterInfo = Servlets.filter(name, filter.getClass(), new ImmediateInstanceFactory<>(filter));
 		deploymentInfo.addFilter(filterInfo);
-		deploymentInfo().addFilter(filterInfo);
+		deploymentInfo.addFilterUrlMapping(name, pathMapping, dispatcherType);
 	}
 	
 	private void registerWsEndpoint(WebSocketDeploymentInfo deploymentInfo, String path, Endpoint endpoint) {
@@ -144,10 +144,10 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 				.setContextPath("/") //
 				.setDeploymentName("servlet-deployment");
 		
-		registerFilter(bean, callerInfoFilterName(), callerInfoFilter());
+		registerFilter(bean, callerInfoFilterName(), callerInfoFilter(), "/*", DispatcherType.REQUEST);
 		
 		if (configuration().getCorsConfiguration() != null)
-			registerFilter(bean, "cors", corsFilter());
+			registerFilter(bean, "cors", corsFilter(), "/*", DispatcherType.REQUEST);
 		
 		return bean;
 	}
