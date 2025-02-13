@@ -25,4 +25,4 @@ else
     JAVA_EXECUTABLE="${JAVA_HOME}/bin/java"
 fi
 
-"$JAVA_EXECUTABLE" $REFLEX_OPTS -Dreflex.app.dir="$INST_DIR"  -Dreflex.launch.script=$LAUNCH_SCRIPT -jar "$LIB_PATH/launch.jar" "$@"
+"$JAVA_EXECUTABLE" $REFLEX_OPTS -Dreflex.app.dir="$INST_DIR"  -Dreflex.launch.script=$LAUNCH_SCRIPT -Djava.net.useSystemProxies=true -jar "$LIB_PATH/launch.jar" "$@"

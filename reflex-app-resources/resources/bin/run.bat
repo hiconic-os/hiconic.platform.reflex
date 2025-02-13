@@ -25,6 +25,6 @@ if exist "%PRIVATE_LIB_PATH%" (
     )
 )
 
-%JAVA_EXECUTABLE% %REFLEX_OPTS% -Dreflex.app.dir="%~dp0\.." -Dreflex.launch.script=%LAUNCH_SCRIPT% -jar "%LIB_PATH%\launch.jar" %*
+%JAVA_EXECUTABLE% %REFLEX_OPTS% -Dreflex.app.dir="%~dp0\.." -Dreflex.launch.script=%LAUNCH_SCRIPT% -Djava.net.useSystemProxies=true -jar "%LIB_PATH%\launch.jar" %*
 
 endlocal
