@@ -22,6 +22,8 @@ import static com.braintribe.console.ConsoleOutputs.text;
 import java.io.File;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -57,6 +59,8 @@ public class RxPlatform implements AutoCloseable {
 	private WireContext<RxPlatformContract> wireContext;
 
 	private boolean configureLogging = true;
+	
+	private Set<java.util.logging.Logger> persistedJulLoggers = new LinkedHashSet<>();
 
 	public RxPlatform() {
 		this(new String[] {});
@@ -204,7 +208,36 @@ public class RxPlatform implements AutoCloseable {
 		SLF4JBridgeHandler.removeHandlersForRootLogger();
 		// Add SLF4JBridgeHandler to j.u.l's root logger
 		SLF4JBridgeHandler.install();
+		
+		syncLogbackLevelsToJUL();
 	}
+	
+	private void syncLogbackLevelsToJUL() {
+        LoggerContext logbackContext = (LoggerContext) LoggerFactory.getILoggerFactory();
+
+        // Sync root/package/class-based Logback loggers to JUL
+        for (ch.qos.logback.classic.Logger logbackLogger : logbackContext.getLoggerList()) {
+    		var logger = java.util.logging.Logger.getLogger(logbackLogger.getName());
+    		persistedJulLoggers.add(logger);
+            setJULLoggerLevel(logger, logbackLogger.getEffectiveLevel());
+        }
+    }
+
+    private static void setJULLoggerLevel(java.util.logging.Logger julLogger, ch.qos.logback.classic.Level logbackLevel) {
+        java.util.logging.Level julLevel = convertLogbackToJUL(logbackLevel);
+        julLogger.setLevel(julLevel);
+    }
+
+    private static java.util.logging.Level convertLogbackToJUL(ch.qos.logback.classic.Level logbackLevel) {
+        if (logbackLevel == ch.qos.logback.classic.Level.ALL) return java.util.logging.Level.ALL;
+        if (logbackLevel == ch.qos.logback.classic.Level.TRACE) return java.util.logging.Level.FINEST;
+        if (logbackLevel == ch.qos.logback.classic.Level.DEBUG) return java.util.logging.Level.FINE;
+        if (logbackLevel == ch.qos.logback.classic.Level.INFO) return java.util.logging.Level.INFO;
+        if (logbackLevel == ch.qos.logback.classic.Level.WARN) return java.util.logging.Level.WARNING;
+        if (logbackLevel == ch.qos.logback.classic.Level.ERROR) return java.util.logging.Level.SEVERE;
+        return java.util.logging.Level.OFF;
+    }
+
 
 	private void eagerLoading() {
 		// GMF.getTypeReflection().getPackagedModels().forEach(m -> m.getMetaModel());
