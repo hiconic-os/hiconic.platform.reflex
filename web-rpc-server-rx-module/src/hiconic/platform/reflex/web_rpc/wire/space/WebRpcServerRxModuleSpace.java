@@ -13,6 +13,7 @@
 // ============================================================================
 package hiconic.platform.reflex.web_rpc.wire.space;
 
+import com.braintribe.utils.stream.api.StreamPipes;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 import com.braintribe.wire.api.context.WireContextConfiguration;
@@ -45,6 +46,7 @@ public class WebRpcServerRxModuleSpace implements RxModuleContract {
 		
 		bean.setEvaluator(platform.evaluator());
 		bean.setMarshallerRegistry(platform.marshallers());
+		bean.setStreamPipeFactory(StreamPipes.simpleFactory());
 		
 		return bean;
 	}
