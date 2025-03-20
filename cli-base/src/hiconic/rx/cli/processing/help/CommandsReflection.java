@@ -31,6 +31,7 @@ import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.meta.GmEntityType;
 import com.braintribe.model.meta.GmMetaModel;
 import com.braintribe.model.meta.GmProperty;
+import com.braintribe.model.meta.GmType;
 import com.braintribe.model.meta.data.mapping.Alias;
 import com.braintribe.model.meta.data.prompt.Visible;
 import com.braintribe.model.processing.meta.cmd.builders.EntityMdResolver;
@@ -155,13 +156,12 @@ public class CommandsReflection {
 				.asGmTypes();
 
 		for (GmEntityType gmEntityType : gmTypes) {
-			EntityType<?> entityType = gmEntityType.reflectionType();
 			String shortcut = CommandsReflection.toCommandName(gmEntityType);
 
 			if (commandName.equals(shortcut))
 				return gmEntityType;
 
-			List<Alias> aliases = mdResolver.entityType(entityType).meta(Alias.T).list();
+			List<Alias> aliases = mdResolver.entityType(gmEntityType).meta(Alias.T).list();
 
 			for (Alias alias : aliases)
 				if (commandName.equals(alias.getName()))
@@ -183,7 +183,8 @@ public class CommandsReflection {
 		private final EntityMdResolver requestTypeMdResolver;
 
 		private final GmMetaModel rootModel = declaringModelOf(GenericEntity.T);
-		private final GmMetaModel serviceApiModel = declaringModelOf(ServiceRequest.T);
+		private final GmEntityType serviceRequestGmType = gmEntityTypeOf(ServiceRequest.T);
+		private final GmMetaModel serviceApiModel = serviceRequestGmType.getDeclaringModel();
 
 		public RelevantPropertyResolver(GmEntityType requestType) {
 			this.requestType = requestType;
@@ -195,8 +196,18 @@ public class CommandsReflection {
 			return modelOracle.findEntityTypeOracle(et).asGmEntityType().getDeclaringModel();
 		}
 
+		private GmEntityType gmEntityTypeOf(EntityType<?> et) {
+			return modelOracle.findEntityTypeOracle(et).asGmEntityType();
+		}
+
 		private boolean isServiceRequest() {
-			return ServiceRequest.T.isAssignableFrom(requestType.reflectionType());
+			Set<GmType> superTypes = modelOracle.findEntityTypeOracle(requestType) //
+					.getSuperTypes() //
+					.transitive() //
+					.includeSelf() //
+					.asGmTypes();
+
+			return superTypes.contains(serviceRequestGmType);
 		}
 
 		private boolean notDeclaredInRootOrServiceApi(GmProperty p) {
