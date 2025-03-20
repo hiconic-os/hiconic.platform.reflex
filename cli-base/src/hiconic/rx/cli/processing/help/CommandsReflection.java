@@ -38,7 +38,7 @@ import com.braintribe.model.processing.meta.cmd.builders.ModelMdResolver;
 import com.braintribe.model.processing.meta.oracle.EntityTypeOracle;
 import com.braintribe.model.processing.meta.oracle.ModelOracle;
 import com.braintribe.model.service.api.ServiceRequest;
-import com.braintribe.utils.lcd.StringTools;
+import com.braintribe.utils.StringTools;
 
 import hiconic.rx.platform.cli.model.api.From;
 import hiconic.rx.platform.cli.model.api.Options;
@@ -85,7 +85,7 @@ public class CommandsReflection {
 		EntityTypeOracle fromOracle = modelOracle.findEntityTypeOracle(From.T);
 		EntityTypeOracle optionsOracle = modelOracle.findEntityTypeOracle(Options.T);
 
-		GmMetaModel serviceApiModel = serviceRequestOracle != null? serviceRequestOracle.asGmEntityType().declaringModel() : null;
+		GmMetaModel serviceApiModel = serviceRequestOracle != null ? serviceRequestOracle.asGmEntityType().declaringModel() : null;
 
 		List<GmEntityType> requestTypes = listTypes(serviceRequestOracle, serviceApiModel);
 		List<GmEntityType> inputTypes = listTypes(fromOracle, null);
@@ -97,7 +97,7 @@ public class CommandsReflection {
 	private List<GmEntityType> listTypes(EntityTypeOracle serviceRequestOracle, GmMetaModel exclusionModel) {
 		if (serviceRequestOracle == null)
 			return Collections.emptyList();
-		
+
 		return serviceRequestOracle.getSubTypes() //
 				.transitive() //
 				.includeSelf() //
@@ -251,6 +251,11 @@ public class CommandsReflection {
 	}
 
 	private static String toShortName(GmEntityType type) {
-		return type.<EntityType<?>> reflectionType().getShortName();
+		String s = type.getTypeSignature();
+		if (!s.contains("."))
+			return s;
+		else
+			return StringTools.getSubstringAfterLast(s, ".");
 	}
+
 }
