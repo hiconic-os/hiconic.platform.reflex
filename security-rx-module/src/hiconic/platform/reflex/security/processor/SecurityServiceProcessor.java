@@ -75,7 +75,7 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 	private boolean enableUserStatistics;
 	private TimeSpan sessionMaxIdleTime;
 	private TimeSpan sessionMaxAge;
-	private CredentialsHasher credentialsHasher = new CredentialsHasher();
+	private final CredentialsHasher credentialsHasher = new CredentialsHasher();
 	
 	@Required
 	@Configurable
@@ -134,22 +134,22 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 
 	@Override
 	protected void configureDispatching(DispatchConfiguration<SecurityRequest, Object> dispatching) {
-		dispatching.registerReasoned(OpenUserSession.T, this::openUserSession);
-		dispatching.registerReasoned(ValidateUserSession.T, this::validateUserSession);
-		dispatching.register(GetCurrentUser.T, this::getCurrentUser);
-		dispatching.register(Logout.T, this::logout);
-		dispatching.register(LogoutSession.T, this::logoutSession);
+		dispatching.registerReasoned(OpenUserSession.T, (c, r) -> openUserSession(c, r));
+		dispatching.registerReasoned(ValidateUserSession.T, (c, r) -> validateUserSession(c, r));
+		dispatching.register(GetCurrentUser.T, (c, r) -> getCurrentUser(c));
+		dispatching.register(Logout.T, (c, r) -> logout(c));
+		dispatching.register(LogoutSession.T, (c, r) -> logoutSession(r));
 	}
 
 	public UserInternalService getUserInternalService() {
 		return userService;
 	}
 
-	private boolean logoutSession(ServiceRequestContext context, LogoutSession request) {
+	private boolean logoutSession(LogoutSession request) {
 		return logout(request.getSessionId());
 	}
 
-	private boolean logout(ServiceRequestContext context, Logout request) {
+	private boolean logout(ServiceRequestContext context) {
 		return logout(context.getRequestorSessionId());
 	}
 
@@ -180,8 +180,10 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 		String acquirationKey = null;
 
 		if (credentials.acquirationSupportive()) {
-			// !
-			acquirationKey = credentialsHasher.hash(credentials, m -> requestContext.getRequestorAddress());
+			// The idea behind acquiring is that we don't open a new session but use an existing one in some cases
+			// E.g. when the client just always sends the same token (3rd party system)
+			// But when the requester address is different, i.e. it is the same user on a different device, we want a new session
+			acquirationKey = credentialsHasher.hash(credentials, m -> m.put("requestorAddress", requestContext.getRequestorAddress()));
 
 			Maybe<UserSession> acquiredUserSessionMaybe = acquireUserSession(requestContext, acquirationKey);
 
@@ -401,7 +403,7 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 		return Maybe.complete(userSession);
 	}
 
-	private User getCurrentUser(ServiceRequestContext requestContext, GetCurrentUser request) {
+	private User getCurrentUser(ServiceRequestContext requestContext) {
 		return requestContext.findAttribute(UserSessionAspect.class).map(UserSession::getUser).orElse(null);
 	}
 
