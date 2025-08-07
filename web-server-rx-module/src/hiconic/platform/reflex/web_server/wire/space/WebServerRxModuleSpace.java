@@ -137,16 +137,24 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	
 	@Managed
 	private DeploymentInfo deploymentInfo() {
+		WebServerConfiguration configuration = configuration();
         // Create the WebSocket deployment info
+		String endpointsBasePath = configuration.getEndpointsBasePath();
+		
+		if (endpointsBasePath == null)
+			endpointsBasePath = "/";
+		else 
+			endpointsBasePath = "/" + endpointsBasePath;
+		
 		DeploymentInfo bean = Servlets.deployment() //
 				.setClassLoader(Undertow.class.getClassLoader()) //
 				.addServletContextAttribute(WebSocketDeploymentInfo.ATTRIBUTE_NAME, wsDeploymentInfo())
-				.setContextPath("/") //
+				.setContextPath(endpointsBasePath) //
 				.setDeploymentName("servlet-deployment");
 		
 		registerFilter(bean, callerInfoFilterName(), callerInfoFilter(), "/*", DispatcherType.REQUEST);
 		
-		if (configuration().getCorsConfiguration() != null)
+		if (configuration.getCorsConfiguration() != null)
 			registerFilter(bean, "cors", corsFilter(), "/*", DispatcherType.REQUEST);
 		
 		return bean;

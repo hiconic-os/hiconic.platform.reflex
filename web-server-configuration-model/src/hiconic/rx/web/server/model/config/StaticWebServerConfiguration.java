@@ -23,7 +23,6 @@ public interface StaticWebServerConfiguration extends GenericEntity {
 	EntityType<StaticWebServerConfiguration> T = EntityTypes.T(StaticWebServerConfiguration.class);
 	
 	String resourceMapppings = "resourceMapppings";
-	String corsConfiguration = "corsConfiguration";
 
 	List<StaticFilesystemResourceMapping> getResourceMappings();
 	void setResourceMappings(List<StaticFilesystemResourceMapping> resourceMappings);

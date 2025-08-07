@@ -26,6 +26,7 @@ import com.braintribe.model.processing.service.api.ReasonedServiceAroundProcesso
 import com.braintribe.model.processing.service.api.ReasonedServiceProcessor;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
 import com.braintribe.model.processing.service.api.aspect.DomainIdAspect;
+import com.braintribe.model.service.api.DomainRequest;
 import com.braintribe.model.service.api.ServiceRequest;
 
 import hiconic.rx.module.api.service.ServiceDomain;
@@ -50,7 +51,7 @@ public class RxServiceDomainDispatcher implements ReasonedServiceProcessor<Servi
 	
 	@Override
 	public Maybe<? extends Object> processReasoned(ServiceRequestContext context, ServiceRequest request, ProceedContext proceedContext) {
-		String domainId = request.domainId();
+		String domainId = resolveDomainId(request); 
 
 		EntityType<? extends ServiceRequest> requestType = request.entityType();
 		
@@ -60,7 +61,6 @@ public class RxServiceDomainDispatcher implements ReasonedServiceProcessor<Servi
 				return wrongNumberOfDependers(dependers, requestType);
 
 			domainId =  dependers.get(0).domainId();
-
 		} else {
 			ServiceDomain serviceDomain = serviceDomains.byId(domainId);
 			if (serviceDomain == null)
@@ -77,6 +77,13 @@ public class RxServiceDomainDispatcher implements ReasonedServiceProcessor<Servi
 		ServiceRequestContext enrichedContext = context.derive().set(DomainIdAspect.class, domainId).build();
 		
 		return proceedContext.proceedReasoned(enrichedContext, request);
+	}
+	
+	private String resolveDomainId(ServiceRequest serviceRequest) {
+		if (serviceRequest instanceof DomainRequest dr)
+			return dr.getDomainId();
+		
+		return null;
 	}
 
 	private Maybe<? extends Object> wrongNumberOfDependers(List<? extends ServiceDomain> dependers, EntityType<? extends ServiceRequest> requestType) {

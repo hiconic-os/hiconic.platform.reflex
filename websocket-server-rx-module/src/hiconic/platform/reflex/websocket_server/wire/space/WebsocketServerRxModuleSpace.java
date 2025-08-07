@@ -26,6 +26,7 @@ public class WebsocketServerRxModuleSpace implements RxModuleContract, PushContr
 	@Override
 	public void onLoaded(WireContextConfiguration configuration) {
 		webServer.addEndpoint("/ws", server());
+		webServer.addEndpoint("/websocket", server());
 	}
 	
 	@Override

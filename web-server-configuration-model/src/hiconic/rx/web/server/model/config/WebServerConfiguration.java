@@ -16,6 +16,7 @@ package hiconic.rx.web.server.model.config;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.annotation.Initializer;
 import com.braintribe.model.generic.annotation.meta.Confidential;
+import com.braintribe.model.generic.annotation.meta.Description;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 
@@ -27,6 +28,7 @@ public interface WebServerConfiguration extends GenericEntity {
 	String hostName = "hostName";
 	String sslKeyStore = "sslKeyStore";
 	String sslKeyStorePassword = "sslKeyStorePassword";
+	String endpointsBasePath = "endpointsBasePath";
 	
 	@Initializer("'localhost'")
 	String getHostName();
@@ -48,4 +50,9 @@ public interface WebServerConfiguration extends GenericEntity {
 	
 	CorsConfiguration getCorsConfiguration();
 	void setCorsConfiguration(CorsConfiguration corsConfiguration);
+	
+	@Description("Optional path under which configured endpoints (websockets, servlets, filters) appear. "
+			+ "If not given those endpoints will appear at root level.")
+	String getEndpointsBasePath();
+	void setEndpointsBasePath(String endpointsBasePath);
 }
