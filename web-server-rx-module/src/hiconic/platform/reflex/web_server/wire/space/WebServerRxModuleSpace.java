@@ -91,27 +91,19 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	public void addFilterServletNameMapping(String filterName, String mapping, DispatcherType dispatcherType) {
 		deploymentInfo().addFilterServletNameMapping(filterName, mapping, dispatcherType);
 	}
-	
+
 	@Override
 	public void addEndpoint(String path, Endpoint endpoint) {
 		registerWsEndpoint(wsDeploymentInfo(), path, endpoint);
 	}
-	
-	private void registerFilter(DeploymentInfo deploymentInfo, String name, Filter filter, String pathMapping, DispatcherType dispatcherType) {
-		FilterInfo filterInfo = Servlets.filter(name, filter.getClass(), new ImmediateInstanceFactory<>(filter));
-		deploymentInfo.addFilter(filterInfo);
-		deploymentInfo.addFilterUrlMapping(name, pathMapping, dispatcherType);
-	}
-	
+
 	private void registerWsEndpoint(WebSocketDeploymentInfo deploymentInfo, String path, Endpoint endpoint) {
-	    ServerEndpointConfig serverEndpointConfig = ServerEndpointConfig.Builder
-	            .create(endpoint.getClass(), path)
-	            .configurator(new InstanceEndpointConfigurator(endpoint))
-	            .build();
-	    
-	    deploymentInfo.addEndpoint(serverEndpointConfig);
+		ServerEndpointConfig serverEndpointConfig = ServerEndpointConfig.Builder.create(endpoint.getClass(), path)
+				.configurator(new InstanceEndpointConfigurator(endpoint)).build();
+
+		deploymentInfo.addEndpoint(serverEndpointConfig);
 	}
-	
+
 	@Override
 	public String callerInfoFilterName() {
 		return "caller-info";
@@ -121,95 +113,19 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	public int getEffectiveServerPort() {
 		Undertow server = undertowServer();
 		List<ListenerInfo> listenerInfo = server.getListenerInfo();
-		
+
 		if (listenerInfo.isEmpty())
 			return -1;
-				
+
 		InetSocketAddress address = (InetSocketAddress) listenerInfo.get(0).getAddress();
 		return address.getPort();
-	}
-	
-	@Managed
-	private WebSocketDeploymentInfo wsDeploymentInfo() {
-        WebSocketDeploymentInfo bean = new WebSocketDeploymentInfo();
-        return bean;
-	}
-	
-	@Managed
-	private DeploymentInfo deploymentInfo() {
-		WebServerConfiguration configuration = configuration();
-        // Create the WebSocket deployment info
-		String endpointsBasePath = configuration.getEndpointsBasePath();
-		
-		if (endpointsBasePath == null)
-			endpointsBasePath = "/";
-		else 
-			endpointsBasePath = "/" + endpointsBasePath;
-		
-		DeploymentInfo bean = Servlets.deployment() //
-				.setClassLoader(Undertow.class.getClassLoader()) //
-				.addServletContextAttribute(WebSocketDeploymentInfo.ATTRIBUTE_NAME, wsDeploymentInfo())
-				.setContextPath(endpointsBasePath) //
-				.setDeploymentName("servlet-deployment");
-		
-		registerFilter(bean, callerInfoFilterName(), callerInfoFilter(), "/*", DispatcherType.REQUEST);
-		
-		if (configuration.getCorsConfiguration() != null)
-			registerFilter(bean, "cors", corsFilter(), "/*", DispatcherType.REQUEST);
-		
-		return bean;
-	}
-	
-	@Managed
-	private CorsFilter corsFilter() {
-		CorsFilter bean = new CorsFilter();
-		bean.setCorsHandler(corsHandler());
-		return bean;
-	}
-	
-	@Managed
-	private BasicCorsHandler corsHandler() {
-		BasicCorsHandler bean = new BasicCorsHandler();
-		bean.setConfiguration(configuration().getCorsConfiguration());
-		return bean;
-	}
-
-	@Managed
-	private DeploymentManager servletDeploymentManager() {
-		DeploymentManager manager = Servlets.defaultContainer() //
-				.addDeployment(deploymentInfo());
-		manager.deploy();
-
-		return manager;
-	}
-
-	@Managed
-	private CallerInfoFilter callerInfoFilter() {
-		return new CallerInfoFilter();
-	}
-
-	@Managed
-	private DefaultRxServlet defaultServlet() {
-		DefaultRxServlet bean = new DefaultRxServlet();
-		bean.setApplicationName(platform.applicationName());
-
-		return bean;
-	}
-
-	@Managed
-	private PathHandler pathHandler() {
-		PathHandler bean = Handlers.path();
-		configureResources(bean);
-		return bean;
 	}
 
 	@Override
 	public void onApplicationReady() {
-		try {
-			pathHandler().addPrefixPath("/", servletDeploymentManager().start());
-		} catch (ServletException e) {
-			throw new RuntimeException(e);
-		}
+
+		configureResourceHandlers();
+		configureEndpointsHandler();
 
 		undertowServer().start();
 
@@ -222,31 +138,41 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 		);
 	}
 
-	@Managed
-	private WebServerConfiguration configuration() {
-		return platform.readConfig(WebServerConfiguration.T).get();
+	private void configureResourceHandlers() {
+		PathHandler path = pathHandler();
+
+		for (StaticFilesystemResourceMapping mapping : webServerConfiguration().getResourceMappings()) {
+
+			// Create the ResourceHandler for serving static files
+			ResourceHandler resourceHandler = new ResourceHandler(new FileResourceManager(new File(mapping.getRootDir()), 100)) //
+					.setWelcomeFiles("index.html") //
+					.setDirectoryListingEnabled(false);
+
+			path.addPrefixPath(mapping.getPath(), resourceHandler);
+		}
 	}
 
-	@Managed
-	private StaticWebServerConfiguration webServerConfiguration() {
-		return platform.readConfig(StaticWebServerConfiguration.T).get();
+	private void configureEndpointsHandler() {
+		try {
+			pathHandler().addPrefixPath(endpointsBasePath(), servletDeploymentManager().start());
+		} catch (ServletException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	@Managed
 	private Undertow undertowServer() {
 		WebServerConfiguration configuration = configuration();
-		Builder builder = Undertow.builder()
-				.addHttpListener(configuration.getPort(), "0.0.0.0")
+
+		Builder builder = Undertow.builder() //
+				.addHttpListener(configuration.getPort(), "0.0.0.0") //
 				.setHandler(accessLogHandler());
-		
+
 		SslConfig sslConfig = SslConfig.buildFromConfig(configuration);
-		
 		if (sslConfig != null)
 			builder.addHttpsListener(sslConfig.port(), "0.0.0.0", sslConfig.sslContext());
-		
-		Undertow bean = builder				      
-				.build();
 
+		Undertow bean = builder.build();
 		return bean;
 	}
 
@@ -262,17 +188,103 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 		ReflexAccessLogReceiver bean = new ReflexAccessLogReceiver();
 		return bean;
 	}
-	
-	private void configureResources(PathHandler path) {
-		for (StaticFilesystemResourceMapping mapping : webServerConfiguration().getResourceMappings()) {
 
-			// Create the ResourceHandler for serving static files
-			ResourceHandler resourceHandler = new ResourceHandler(new FileResourceManager(new File(mapping.getRootDir()), 100)) //
-					.setWelcomeFiles("index.html") //
-					.setDirectoryListingEnabled(false);
-
-			path.addPrefixPath(mapping.getPath(), resourceHandler);
-		}
+	@Managed
+	private PathHandler pathHandler() {
+		PathHandler bean = Handlers.path();
+		return bean;
 	}
-	
+
+	private StaticWebServerConfiguration webServerConfiguration() {
+		return platform.readConfig(StaticWebServerConfiguration.T).get();
+	}
+
+	@Managed
+	private PathHandler pathHandler() {
+		PathHandler bean = Handlers.path();
+		return bean;
+	}
+
+	private StaticWebServerConfiguration webServerConfiguration() {
+		return platform.readConfig(StaticWebServerConfiguration.T).get();
+	}
+
+	@Managed
+	private DeploymentManager servletDeploymentManager() {
+		DeploymentManager manager = Servlets.defaultContainer() //
+				.addDeployment(deploymentInfo());
+		manager.deploy();
+
+		return manager;
+	}
+
+	@Managed
+	private DeploymentInfo deploymentInfo() {
+		WebServerConfiguration configuration = configuration();
+
+		String endpointsBasePath = endpointsBasePath();
+
+		DeploymentInfo bean = Servlets.deployment() //
+				.setClassLoader(Undertow.class.getClassLoader()) //
+				.addServletContextAttribute(WebSocketDeploymentInfo.ATTRIBUTE_NAME, wsDeploymentInfo()).setContextPath(endpointsBasePath) //
+				.setDeploymentName("servlet-deployment");
+
+		registerFilter(bean, callerInfoFilterName(), callerInfoFilter(), "/*", DispatcherType.REQUEST);
+
+		if (configuration.getCorsConfiguration() != null)
+			registerFilter(bean, "cors", corsFilter(), "/*", DispatcherType.REQUEST);
+
+		return bean;
+	}
+
+	private String endpointsBasePath() {
+		WebServerConfiguration configuration = configuration();
+		String path = configuration.getEndpointsBasePath();
+		return path == null ? "/" : "/" + path;
+	}
+
+	private WebServerConfiguration configuration() {
+		return platform.readConfig(WebServerConfiguration.T).get();
+	}
+
+	@Managed
+	private CallerInfoFilter callerInfoFilter() {
+		return new CallerInfoFilter();
+	}
+
+	private void registerFilter(DeploymentInfo deploymentInfo, String name, Filter filter, String pathMapping, DispatcherType dispatcherType) {
+		FilterInfo filterInfo = Servlets.filter(name, filter.getClass(), new ImmediateInstanceFactory<>(filter));
+		deploymentInfo.addFilter(filterInfo);
+		deploymentInfo.addFilterUrlMapping(name, pathMapping, dispatcherType);
+	}
+
+	@Managed
+	private CorsFilter corsFilter() {
+		CorsFilter bean = new CorsFilter();
+		bean.setCorsHandler(corsHandler());
+		return bean;
+	}
+
+	@Managed
+	private BasicCorsHandler corsHandler() {
+		BasicCorsHandler bean = new BasicCorsHandler();
+		bean.setConfiguration(configuration().getCorsConfiguration());
+		return bean;
+	}
+
+	@Managed
+	private WebSocketDeploymentInfo wsDeploymentInfo() {
+		WebSocketDeploymentInfo bean = new WebSocketDeploymentInfo();
+		return bean;
+	}
+
+	// UNUSED
+	@Managed
+	private DefaultRxServlet defaultServlet() {
+		DefaultRxServlet bean = new DefaultRxServlet();
+		bean.setApplicationName(platform.applicationName());
+
+		return bean;
+	}
+
 }
