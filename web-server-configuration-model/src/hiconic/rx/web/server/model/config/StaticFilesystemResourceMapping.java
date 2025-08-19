@@ -13,6 +13,8 @@
 // ============================================================================
 package hiconic.rx.web.server.model.config;
 
+import java.util.List;
+
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.annotation.meta.Mandatory;
 import com.braintribe.model.generic.reflection.EntityType;
@@ -23,6 +25,7 @@ public interface StaticFilesystemResourceMapping extends GenericEntity {
 	
 	String path = "path";
 	String rootDir = "rootDir";
+	String welcomeFiles = "welcomeFiles";
 	
 	@Mandatory
 	String getPath();
@@ -31,4 +34,8 @@ public interface StaticFilesystemResourceMapping extends GenericEntity {
 	@Mandatory
 	String getRootDir();
 	void setRootDir(String rootDir);
+
+	List<String> getWelcomeFiles();
+	void setWelcomeFiles(List<String> welcomeFiles);
+
 }

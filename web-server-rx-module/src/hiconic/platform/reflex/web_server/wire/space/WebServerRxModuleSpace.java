@@ -17,10 +17,12 @@ import static com.braintribe.console.ConsoleOutputs.cyan;
 import static com.braintribe.console.ConsoleOutputs.println;
 import static com.braintribe.console.ConsoleOutputs.sequence;
 import static com.braintribe.console.ConsoleOutputs.text;
+import static com.braintribe.utils.lcd.CollectionTools2.newConcurrentSet;
 
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.Set;
 
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
@@ -71,30 +73,60 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 
 	@Override
 	public void addServlet(String name, String path, HttpServlet servlet) {
+		addServlet(defaultEndpointsBasePath(), name, path, servlet);
+	}
+
+	@Override
+	public void addServlet(String basePath, String name, String path, HttpServlet servlet) {
 		ServletInfo servletInfo = Servlets.servlet(name, servlet.getClass(), new ImmediateInstanceFactory<>(servlet));
 		servletInfo.addMapping(path);
-		deploymentInfo().addServlet(servletInfo);
+		deploymentInfo(normalizeBasePath(basePath)).addServlet(servletInfo);
+	}
+
+	@Override
+	public void addStaticFileResource(String path, String rootDir, String... welcomeFiles) {
+		ResourceHandler resourceHandler = new ResourceHandler(new FileResourceManager(new File(rootDir), 100)) //
+				.setWelcomeFiles(welcomeFiles) //
+				.setDirectoryListingEnabled(false);
+
+		pathHandler().addPrefixPath(path, resourceHandler);
 	}
 
 	@Override
 	public void addFilter(String name, Filter filter) {
+		addFilter(defaultEndpointsBasePath(), name, filter);
+	}
+
+	public void addFilter(String basePath, String name, Filter filter) {
 		FilterInfo filterInfo = Servlets.filter(name, filter.getClass(), new ImmediateInstanceFactory<>(filter));
-		deploymentInfo().addFilter(filterInfo);
+		deploymentInfo(normalizeBasePath(basePath)).addFilter(filterInfo);
 	}
 
 	@Override
 	public void addFilterMapping(String filterName, String mapping, DispatcherType dispatcherType) {
-		deploymentInfo().addFilterUrlMapping(filterName, mapping, dispatcherType);
+		addFilterMapping(defaultEndpointsBasePath(), filterName, mapping, dispatcherType);
+	}
+
+	public void addFilterMapping(String basePath, String filterName, String mapping, DispatcherType dispatcherType) {
+		deploymentInfo(normalizeBasePath(basePath)).addFilterUrlMapping(filterName, mapping, dispatcherType);
 	}
 
 	@Override
 	public void addFilterServletNameMapping(String filterName, String mapping, DispatcherType dispatcherType) {
-		deploymentInfo().addFilterServletNameMapping(filterName, mapping, dispatcherType);
+		addFilterServletNameMapping(defaultEndpointsBasePath(), filterName, mapping, dispatcherType);
+	}
+
+	public void addFilterServletNameMapping(String basePath, String filterName, String mapping, DispatcherType dispatcherType) {
+		deploymentInfo(normalizeBasePath(basePath)).addFilterServletNameMapping(filterName, mapping, dispatcherType);
 	}
 
 	@Override
 	public void addEndpoint(String path, Endpoint endpoint) {
-		registerWsEndpoint(wsDeploymentInfo(), path, endpoint);
+		addEndpoint(defaultEndpointsBasePath(), path, endpoint);
+	}
+
+	public void addEndpoint(String basePath, String path, Endpoint endpoint) {
+		registerWsEndpoint(wsDeploymentInfo(normalizeBasePath(basePath)), path, endpoint);
 	}
 
 	private void registerWsEndpoint(WebSocketDeploymentInfo deploymentInfo, String path, Endpoint endpoint) {
@@ -123,9 +155,8 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 
 	@Override
 	public void onApplicationReady() {
-
 		configureResourceHandlers();
-		configureEndpointsHandler();
+		configureEndpointsHandlers();
 
 		undertowServer().start();
 
@@ -139,24 +170,20 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	}
 
 	private void configureResourceHandlers() {
-		PathHandler path = pathHandler();
-
-		for (StaticFilesystemResourceMapping mapping : webServerConfiguration().getResourceMappings()) {
-
-			// Create the ResourceHandler for serving static files
-			ResourceHandler resourceHandler = new ResourceHandler(new FileResourceManager(new File(mapping.getRootDir()), 100)) //
-					.setWelcomeFiles("index.html") //
-					.setDirectoryListingEnabled(false);
-
-			path.addPrefixPath(mapping.getPath(), resourceHandler);
-		}
+		for (StaticFilesystemResourceMapping mapping : webServerConfiguration().getResourceMappings())
+			addStaticFileResource( //
+					mapping.getPath(), //
+					mapping.getRootDir(), //
+					mapping.getWelcomeFiles().toArray(new String[0])//
+			);
 	}
 
-	private void configureEndpointsHandler() {
-		try {
-			pathHandler().addPrefixPath(endpointsBasePath(), servletDeploymentManager().start());
-		} catch (ServletException e) {
-			throw new RuntimeException(e);
+	private void configureEndpointsHandlers() {
+		for (String basePath : basePaths()) 
+			try {
+				pathHandler().addPrefixPath(basePath, servletDeploymentManager(basePath).start());
+			} catch (ServletException e) {
+				throw new RuntimeException(e);
 		}
 	}
 
@@ -200,34 +227,23 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	}
 
 	@Managed
-	private PathHandler pathHandler() {
-		PathHandler bean = Handlers.path();
-		return bean;
-	}
-
-	private StaticWebServerConfiguration webServerConfiguration() {
-		return platform.readConfig(StaticWebServerConfiguration.T).get();
-	}
-
-	@Managed
-	private DeploymentManager servletDeploymentManager() {
+	private DeploymentManager servletDeploymentManager(String basePath) {
 		DeploymentManager manager = Servlets.defaultContainer() //
-				.addDeployment(deploymentInfo());
+				.addDeployment(deploymentInfo(basePath));
 		manager.deploy();
 
 		return manager;
 	}
 
 	@Managed
-	private DeploymentInfo deploymentInfo() {
+	private DeploymentInfo deploymentInfo(String basePath) {
 		WebServerConfiguration configuration = configuration();
-
-		String endpointsBasePath = endpointsBasePath();
 
 		DeploymentInfo bean = Servlets.deployment() //
 				.setClassLoader(Undertow.class.getClassLoader()) //
-				.addServletContextAttribute(WebSocketDeploymentInfo.ATTRIBUTE_NAME, wsDeploymentInfo()).setContextPath(endpointsBasePath) //
-				.setDeploymentName("servlet-deployment");
+				.addServletContextAttribute(WebSocketDeploymentInfo.ATTRIBUTE_NAME, wsDeploymentInfo(basePath)) //
+				.setContextPath(basePath) //
+				.setDeploymentName("servlet-deployment-" + basePath.replace("/", "-"));
 
 		registerFilter(bean, callerInfoFilterName(), callerInfoFilter(), "/*", DispatcherType.REQUEST);
 
@@ -237,10 +253,21 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 		return bean;
 	}
 
-	private String endpointsBasePath() {
+	@Managed
+	private String defaultEndpointsBasePath() {
 		WebServerConfiguration configuration = configuration();
-		String path = configuration.getEndpointsBasePath();
-		return path == null ? "/" : "/" + path;
+		return configuration.getEndpointsBasePath();
+	}
+
+	private String normalizeBasePath(String path) {
+		if (path == null)
+			path = "/";
+
+		else if (!path.startsWith("/"))
+			path = "/" + path;
+
+		basePaths().add(path);
+		return path;
 	}
 
 	private WebServerConfiguration configuration() {
@@ -273,7 +300,7 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	}
 
 	@Managed
-	private WebSocketDeploymentInfo wsDeploymentInfo() {
+	private WebSocketDeploymentInfo wsDeploymentInfo(@SuppressWarnings("unused") /* DO NOT DELETE!!! */ String basePath) {
 		WebSocketDeploymentInfo bean = new WebSocketDeploymentInfo();
 		return bean;
 	}
@@ -287,4 +314,9 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 		return bean;
 	}
 
+	@Managed
+	private Set<String> basePaths() {
+		return newConcurrentSet();
+	}
+	
 }

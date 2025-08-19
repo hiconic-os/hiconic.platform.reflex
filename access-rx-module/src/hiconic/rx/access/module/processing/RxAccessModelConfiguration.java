@@ -22,7 +22,6 @@ import java.util.function.Supplier;
 
 import com.braintribe.model.processing.aop.api.aspect.AccessAspect;
 import com.braintribe.model.processing.meta.editor.ModelMetaDataEditor;
-import com.braintribe.model.service.api.ServiceRequest;
 
 import hiconic.rx.access.model.md.InterceptAccessWith;
 import hiconic.rx.access.module.api.AccessInterceptorBuilder;
@@ -31,8 +30,8 @@ import hiconic.rx.module.api.service.DelegatingModelConfiguration;
 import hiconic.rx.module.api.service.ModelConfiguration;
 
 public class RxAccessModelConfiguration implements AccessModelConfiguration, DelegatingModelConfiguration {
-	private ModelConfiguration modelConfiguration;
-	private List<AccessInterceptorEntry> interceptors = Collections.synchronizedList(new ArrayList<>());
+	private final ModelConfiguration modelConfiguration;
+	private final List<AccessInterceptorEntry> interceptors = Collections.synchronizedList(new ArrayList<>());
 
 	public RxAccessModelConfiguration(ModelConfiguration modelConfiguration) {
 		this.modelConfiguration = modelConfiguration;
@@ -69,7 +68,7 @@ public class RxAccessModelConfiguration implements AccessModelConfiguration, Del
 				return this;
 			}
 			
-			private <R extends ServiceRequest> void register(AccessInterceptorEntry interceptorEntry) {
+			private void register(AccessInterceptorEntry interceptorEntry) {
 				synchronized (interceptors) {
 					if (insertIdentification != null) {
 						requireInterceptorIterator(insertIdentification, before).add(interceptorEntry);

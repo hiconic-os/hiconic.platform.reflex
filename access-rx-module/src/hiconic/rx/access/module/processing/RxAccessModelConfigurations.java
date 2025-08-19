@@ -13,7 +13,6 @@
 // ============================================================================
 package hiconic.rx.access.module.processing;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,7 +25,7 @@ import hiconic.rx.module.api.service.ModelReference;
 
 public class RxAccessModelConfigurations implements AccessModelConfigurations {
 	private ModelConfigurations modelConfigurations;
-	private Map<ModelConfiguration, RxAccessModelConfiguration> accessModelConfigurations = new ConcurrentHashMap<>();
+	private final Map<ModelConfiguration, RxAccessModelConfiguration> accessModelConfigurations = new ConcurrentHashMap<>();
 	
 	public void initModelConfigurations(ModelConfigurations modelConfigurations) {
 		this.modelConfigurations = modelConfigurations;

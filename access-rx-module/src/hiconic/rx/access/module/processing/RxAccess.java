@@ -19,4 +19,10 @@ import hiconic.rx.access.model.configuration.Access;
 import hiconic.rx.access.module.api.AccessDomain;
 import hiconic.rx.module.api.service.ConfiguredModel;
 
-public record RxAccess(Access access, IncrementalAccess incrementalAccess, ConfiguredModel configuredDataModel, ConfiguredModel configuredServiceModel) implements AccessDomain {}
+public record RxAccess( //
+		Access access, //
+		IncrementalAccess incrementalAccess, //
+		ConfiguredModel configuredDataModel, //
+		ConfiguredModel configuredServiceModel //
+) implements AccessDomain {
+}

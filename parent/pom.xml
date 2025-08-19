@@ -25,10 +25,13 @@ limitations under the License.
         <V.com.braintribe.wire>[2.0,2.1)</V.com.braintribe.wire>
         <V.com.braintribe.gm>[2.0,2.1)</V.com.braintribe.gm>
         <V.com.braintribe.security>[2.0,2.1)</V.com.braintribe.security>
+        <V.com.braintribe.velocity>[2.0,2.1)</V.com.braintribe.velocity>
         <V.com.braintribe.devrock.templates>[2.0,2.1)</V.com.braintribe.devrock.templates>
         <V.tribefire.extension.web-api>[1.0,1.1)</V.tribefire.extension.web-api>
 		<V.tribefire.extension.hibernate>[2.0,2.1)</V.tribefire.extension.hibernate>
         <V.com.braintribe.servlet>[2.0,2.1)</V.com.braintribe.servlet>
+
+        <V.com.github.ben-manes.caffeine>3.2.0</V.com.github.ben-manes.caffeine>
         <V.io.undertow>2.3.13.Final</V.io.undertow>
         <V.jakarta.servlet>6.0.0</V.jakarta.servlet>
 	</properties>

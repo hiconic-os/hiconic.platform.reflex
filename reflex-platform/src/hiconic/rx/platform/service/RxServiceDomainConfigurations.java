@@ -32,11 +32,12 @@ public class RxServiceDomainConfigurations implements ServiceDomainConfiguration
 		return serviceDomains.acquire(domainId);
 	}
 
-	@Override
-	public RxServiceDomain main() {
-		return byId("main");
-	}
-
+	// @formatter:off
+	@Override public RxServiceDomain main() { return byId("main"); }
+	@Override public RxServiceDomain system() { return byId("system"); }
+	@Override public RxServiceDomain models() { return byId("models"); }
+	// @formatter:on
+	
 	public List<RxServiceDomain> list() {
 		return serviceDomains.list();
 	}

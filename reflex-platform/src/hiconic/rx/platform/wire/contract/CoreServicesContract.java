@@ -26,6 +26,7 @@ import com.braintribe.wire.api.space.WireSpace;
 import hiconic.rx.module.api.service.ConfiguredModels;
 import hiconic.rx.module.api.service.ServiceDomains;
 
+// Why does this contract exist? It's not imported by anyone...
 public interface CoreServicesContract extends WireSpace {
 
 	/** Standard service evaluator. */

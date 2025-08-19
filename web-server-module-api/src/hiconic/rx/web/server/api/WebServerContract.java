@@ -20,11 +20,20 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.websocket.Endpoint;
 
 public interface WebServerContract extends RxExportContract {
+
 	int getEffectiveServerPort();
+
 	void addEndpoint(String path, Endpoint endpoint);
+
 	void addServlet(String name, String path, HttpServlet servlet);
-	void addFilter(String name, Filter filter);
+	void addServlet(String basePath, String name, String path, HttpServlet servlet);
+
+	void addStaticFileResource(String path, String rootDir, String... welcomeFiles);
+
 	String callerInfoFilterName();
+
+	void addFilter(String name, Filter filter);
 	void addFilterServletNameMapping(String filterName, String mapping, DispatcherType dispatcherType);
 	void addFilterMapping(String filterName, String mapping, DispatcherType dispatcherType);
+
 }

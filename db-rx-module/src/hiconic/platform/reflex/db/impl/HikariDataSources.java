@@ -53,7 +53,7 @@ public class HikariDataSources {
 	
 	private DatabaseConfiguration databaseConfiguration;
 	
-	private LazyInitialized<Map<String, Database>> pools = new LazyInitialized<>(this::indexPools);
+	private final LazyInitialized<Map<String, Database>> pools = new LazyInitialized<>(this::indexPools);
 	
 	@Required
 	public void setDatabaseConfiguration(DatabaseConfiguration databaseConfiguration) {
@@ -85,12 +85,10 @@ public class HikariDataSources {
 	}
 	
 	/**
-	 * <p>
-	 * Creates a HikariCP {@link HikariDataSource} based on the given {@link HikariCpConnectionPool}.
-	 * 
 	 * @param connectionPool
-	 *            The {@link HikariCpConnectionPool} providing the necessary configuration for creating a HikariCP {@link HikariDataSource}.
-	 * @return A HikariCP {@link HikariDataSource} created based on the given {@link HikariCpConnectionPool}
+	 *            The {@link Database} providing the necessary configuration for creating a HikariCP {@link HikariDataSource}.
+	 * 
+	 * @return A HikariCP {@link HikariDataSource} created based on the given {@link Database}
 	 */
 	public synchronized HikariDataSource dataSource(Database connectionPool) {
 

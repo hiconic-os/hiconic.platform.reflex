@@ -85,12 +85,12 @@ public class RxModuleAnalyzer {
 	private static Set<Class<? extends RxExportContract>> importsOf(RxModule<?> rxModule) {
 		Set<Class<? extends RxExportContract>> exportContracts = new LinkedHashSet<>();
 
-		visit(rxModule.moduleSpaceClass(), exportContracts, new HashSet<>());
+		visitToFindImports(rxModule.moduleSpaceClass(), exportContracts, new HashSet<>());
 
 		return exportContracts;
 	}
 
-	private static void visit(Class<? extends WireSpace> space, Set<Class<? extends RxExportContract>> result,
+	private static void visitToFindImports(Class<? extends WireSpace> space, Set<Class<? extends RxExportContract>> result,
 			Set<Class<? extends WireSpace>> visited) {
 
 		if (!visited.add(space))
@@ -112,7 +112,7 @@ public class RxModuleAnalyzer {
 			} else if (type.isAssignableFrom(WireSpace.class)) {
 				Class<? extends WireSpace> importedSpaceClass = (Class<? extends WireSpace>) type;
 
-				visit(importedSpaceClass, result, visited);
+				visitToFindImports(importedSpaceClass, result, visited);
 			}
 		}
 	}

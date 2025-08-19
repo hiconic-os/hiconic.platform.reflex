@@ -14,6 +14,15 @@
 package hiconic.rx.module.api.service;
 
 public interface ServiceDomainConfigurations {
+
+	/**
+	 * Acquires a {@link ServiceDomainConfiguration} for given domainId. This means this method could potentially register a new {@link ServiceDomain}
+	 * in the platform.
+	 */
 	ServiceDomainConfiguration byId(String domainId);
+
 	ServiceDomainConfiguration main();
+	ServiceDomainConfiguration system();
+	ServiceDomainConfiguration models();
+
 }
