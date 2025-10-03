@@ -13,8 +13,6 @@
 // ============================================================================
 package hiconic.platform.reflex.security.wire.space;
 
-import java.util.Set;
-
 import com.braintribe.gm._UserModel_;
 import com.braintribe.model.meta.GmMetaModel;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
@@ -34,24 +32,29 @@ import hiconic.rx.module.api.wire.RxModuleContract;
 
 @Managed
 public class CredentialProcessorsSpace implements RxModuleContract {
+
 	@Import
 	private UserServicesSpace userServices;
 	
 	@Import
 	private CryptoSpace crypto;
+
+	@Import
+	private SecurityRxModuleSpace security;
 	
 	@Managed
 	public ExistingSessionCredentialsAuthenticationServiceProcessor existingSession() {
 		ExistingSessionCredentialsAuthenticationServiceProcessor bean = new ExistingSessionCredentialsAuthenticationServiceProcessor();
+		bean.setInternalRole(security.internalRole());
 		bean.setUserService(userServices.standardUserService());
 		return bean;
 	}
-	
+
 	@Managed
 	public GrantedCredentialsAuthenticationServiceProcessor granted() {
 		GrantedCredentialsAuthenticationServiceProcessor bean = new GrantedCredentialsAuthenticationServiceProcessor();
 		bean.setUserService(userServices.standardUserService());
-		bean.setGrantingRoles(Set.of("rx-admin", "rx-locksmith", "rx-internal"));
+		bean.setGrantingRoles(security.adminAndInternalRoles());
 		bean.setUnsupportedGrantingCredentialsTypes(null);
 		return bean;
 	}

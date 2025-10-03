@@ -18,6 +18,8 @@ import com.braintribe.model.generic.annotation.Initializer;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 
+import java.util.Set;
+
 public interface SecurityConfiguration extends GenericEntity {
 
 	EntityType<SecurityConfiguration> T = EntityTypes.T(SecurityConfiguration.class);
@@ -25,5 +27,12 @@ public interface SecurityConfiguration extends GenericEntity {
 	@Initializer("'user-sessions'")
 	String getUserSessionDb();
 	void setUserSessionDb(String userSessionDb);
-	
+
+	Set<String> getAdminRoles();
+	void setAdminRoles(Set<String> adminRoles);
+
+	@Initializer("'rx-internal'")
+	String getInternalRole();
+	void setInternalRole(String internalRole);
+
 }

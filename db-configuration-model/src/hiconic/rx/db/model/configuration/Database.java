@@ -49,9 +49,9 @@ public interface Database extends GenericEntity {
 	String getUrl();
 	void setUrl(String value);
 	
-	@Initializer("60000")
-	Integer getCheckoutTimeout();
-	void setCheckoutTimeout(Integer checkoutTimeout);
+	@Initializer("60000L")
+	Long getConnectionTimeout();
+	void setConnectionTimeout(Long connectionTimeout);
 
 	@Initializer("3")
 	Integer getMaxPoolSize();
@@ -67,9 +67,9 @@ public interface Database extends GenericEntity {
 	Integer getMaxStatements();
 	void setMaxStatements(Integer maxStatements);
 
-	@Initializer("60000")
-	Integer getMaxIdleTime();
-	void setMaxIdleTime(Integer maxIdleTime);
+	@Initializer("60000L")
+	Long getIdleTimeout();
+	void setIdleTimeout(Long idleTimeout);
 
 	@Initializer("10")
 	Integer getLoginTimeout();

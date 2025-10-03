@@ -195,7 +195,8 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 			// blocking
 			if (acquiredUserSessionMaybe.isUnsatisfiedBy(InvalidCredentials.T)) {
 				// In this case the credentials are blocked via the acquiration mechanism and a reauthentication is not possible
-				return acquiredUserSessionMaybe.whyUnsatisfied().asMaybe();
+				return acquiredUserSessionMaybe.propagateReason();
+
 			} else if (!acquiredUserSessionMaybe.isUnsatisfiedBy(SessionNotFound.T)) {
 				log.debug("Error while finding session via acquiration key: " + acquiredUserSessionMaybe.whyUnsatisfied().stringify());
 			}
@@ -208,7 +209,7 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 		Maybe<? extends AuthenticateCredentialsResponse> maybe = authenticateCredentials.eval(evaluator).getReasoned();
 
 		if (maybe.isUnsatisfied())
-			return Maybe.empty(maybe.whyUnsatisfied());
+			return maybe.propagateReason();
 
 		return buildUserSession(requestContext, openUserSession, maybe.get(), acquirationKey);
 	}
@@ -227,6 +228,7 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 
 	private Maybe<UserSession> buildUserSession(ServiceRequestContext context, OpenUserSession openUserSession,
 			AuthenticateCredentialsResponse authenticatedCredentialsResponse, String acquirationKey) {
+
 		if (authenticatedCredentialsResponse instanceof AuthenticatedUser) {
 			AuthenticatedUser authenticatedUser = (AuthenticatedUser) authenticatedCredentialsResponse;
 
@@ -262,7 +264,7 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 			this.logAuthentication(context, openUserSession, satisfied);
 
 			if (!satisfied)
-				return Maybe.empty(userSessionMaybe.whyUnsatisfied());
+				return userSessionMaybe.propagateReason();
 
 			collectStatisticsUponLogin(userSessionMaybe.get());
 
@@ -271,6 +273,7 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 		} else if (authenticatedCredentialsResponse instanceof AuthenticatedUserSession) {
 			AuthenticatedUserSession authenticatedUserSession = (AuthenticatedUserSession) authenticatedCredentialsResponse;
 			return Maybe.complete(authenticatedUserSession.getUserSession());
+
 		} else {
 			return Reasons.build(InternalError.T)
 					.text("Unsupported AuthenticateCredentialsResponse type: " + authenticatedCredentialsResponse.entityType().getTypeSignature())
@@ -379,12 +382,12 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 			Date now = new Date();
 
 			if (now.after(expiryDate)) {
-				return Reasons.build(SessionExpired.T).text("User session '" + userSession.getId() + "' has expired.").toMaybe();
+				return Reasons.build(SessionExpired.T).text("User session '" + userSession.getSessionId() + "' has expired.").toMaybe();
 			}
 		}
 
 		LazyInitialized<Reason> verifyReason = new LazyInitialized<>(
-				() -> Reasons.build(InvalidSession.T).text("User session '" + userSession.getId() + "' is invalid.").toReason());
+				() -> Reasons.build(InvalidSession.T).text("User session '" + userSession.getSessionId() + "' is invalid.").toReason());
 
 		if (userSessionAccessVerificationExperts != null && !userSessionAccessVerificationExperts.isEmpty()) {
 			for (UserSessionAccessVerificationExpert expert : userSessionAccessVerificationExperts) {
@@ -397,7 +400,7 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 
 		if (verifyReason.isInitialized()) {
 			log.debug(verifyReason.get().stringify());
-			return Reasons.build(InvalidSession.T).text("User session '" + userSession.getId() + "' is invalid.").toMaybe();
+			return Reasons.build(InvalidSession.T).text("User session '" + userSession.getSessionId() + "' is invalid.").toMaybe();
 		}
 
 		return Maybe.complete(userSession);

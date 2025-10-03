@@ -1,0 +1,83 @@
+
+#if (${deployablesMap} && ${deployablesMap.size()} > 0)
+
+	#foreach ($entry in $deployablesMap.entrySet())
+
+		#set ($instanceId = $entry.key)
+
+		<div class="node">
+			<b>Node ${instanceId}</b>
+		</div>
+
+		#set ($deployablesInfo = $entry.value)
+		
+		#set ($accessInfoList = $deployablesInfo.accessInfos)
+		
+		
+		<div class="aboutSectionWrapper">
+  			<div class="aboutSectionTitle">Accesses</div>
+  			<ul class="aboutSectionList">
+
+				<!-- Deployables -->
+				<li><span class="key">System Accesses (selected)</span>
+  				<span class="value">
+  					#foreach( $deployable in ${accessInfoList} )
+						#if(${deployable.name})Name: ${deployable.name}<br />#end
+						#if(${deployable.externalId})External Id: ${deployable.externalId}<br />#end
+						#if(${deployable.description})Description: ${deployable.description}<br />#end
+						#if(${deployable.cartridgeId})Cartridge Id: ${deployable.cartridgeId}<br />#end
+						Deployed: ${deployable.deployed}<br />
+						Hardwired: ${deployable.hardwired}<br />
+						
+						#set ($additionalInfoMap = $deployable.additonalInformation)
+						#if (${additionalInfoMap} && ${additionalInfoMap.size()} > 0)
+							#foreach ($aiEntry in $additionalInfoMap.entrySet())
+								#set ($aiName = $aiEntry.key)
+								#set ($aiValue = $aiEntry.value)
+								${aiName}: 
+								#if(${aiValue})${aiValue}<br />
+								#else
+								n/a<br />								
+								#end								
+							#end
+						#end
+						
+						#if( $foreach.hasNext )<br />#end
+					#end
+  				</span></li>
+				<br />
+			
+				
+  			</ul>
+  		</div>			
+		
+		
+		
+		#set ($deployableInfoList = $deployablesInfo.deployableInfos)
+
+		<div class="aboutSectionWrapper">
+  			<div class="aboutSectionTitle">Deployables</div>
+  			<ul class="aboutSectionList">
+
+				<!-- Deployables -->
+				<li><span class="key">Deployables List</span>
+  				<span class="value">
+  					#foreach( $deployable in ${deployableInfoList} )
+						#if(${deployable.name})Name: ${deployable.name}<br />#end
+						#if(${deployable.externalId})External Id: ${deployable.externalId}<br />#end
+						#if(${deployable.description})Description: ${deployable.description}<br />#end
+						#if(${deployable.cartridgeId})Cartridge Id: ${deployable.cartridgeId}<br />#end
+						Deployed: ${deployable.deployed}<br />
+						Hardwired: ${deployable.hardwired}<br />
+						#if( $foreach.hasNext )<br />#end
+					#end
+  				</span></li>
+				<br />
+			
+				
+  			</ul>
+  		</div>			
+
+	#end <!-- for loop over packagingMap map entries -->
+
+#end <!-- packagingMap available -->

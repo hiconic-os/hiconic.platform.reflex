@@ -14,10 +14,13 @@
 package hiconic.rx.platform.wire.contract;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Supplier;
 
 import com.braintribe.codec.marshaller.api.MarshallerRegistry;
 import com.braintribe.common.attribute.AttributeContext;
+import com.braintribe.common.concurrent.TaskScheduler;
+import com.braintribe.logging.ThreadRenamer;
 import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.model.usersession.UserSession;
@@ -26,6 +29,7 @@ import com.braintribe.wire.api.space.WireSpace;
 import hiconic.rx.module.api.service.ConfiguredModels;
 import hiconic.rx.module.api.service.ServiceDomains;
 
+// This is used when integrating into a different platform, e.g. Spring Boot
 public interface CoreServicesContract extends WireSpace {
 
 	/** Standard service evaluator. */
@@ -49,6 +53,20 @@ public interface CoreServicesContract extends WireSpace {
 
 	MarshallerRegistry marshallers();
 
+	/** The one ThreadRenamer used in the entire application. */
+	ThreadRenamer threadRenamer();
+
 	ExecutorService executorService();
+
+	ScheduledExecutorService scheduledExecutorService();
+
+	/**
+	 * {@link TaskScheduler} for tasks which should be run periodically.
+	 * <p>
+	 * This scheduler is shut down on server shutdown, but waits for the tasks running at the moment of shutdown to finish.
+	 * <p>
+	 * The time period as to how long it waits is configurable per task.
+	 */
+	TaskScheduler taskScheduler();
 
 }

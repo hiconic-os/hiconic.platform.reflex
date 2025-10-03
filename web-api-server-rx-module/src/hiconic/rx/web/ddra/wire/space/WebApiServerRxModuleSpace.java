@@ -27,36 +27,51 @@ import com.braintribe.utils.StringTools;
 import com.braintribe.utils.stream.api.StreamPipes;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
+import com.braintribe.wire.api.context.WireContext;
 import com.braintribe.wire.api.context.WireContextConfiguration;
 
 import dev.hiconic.servlet.ddra.endpoints.api.api.v1.DdraMappings;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
+import hiconic.rx.security.web.api.AuthFilters;
+import hiconic.rx.security.web.api.WebSecurityContract;
 import hiconic.rx.web.ddra.servlet.ApiV1RestServletUtils;
 import hiconic.rx.web.ddra.servlet.DdraEndpointsExceptionHandler;
 import hiconic.rx.web.ddra.servlet.WebApiV1Server;
 import hiconic.rx.web.server.api.WebServerContract;
+import jakarta.servlet.DispatcherType;
 
 @Managed
 public class WebApiServerRxModuleSpace implements RxModuleContract {
 	private static Logger logger = Logger.getLogger(WebApiServerRxModuleSpace.class);
 
 	private static final String MIME_TYPE_JSON = "application/json";
+
+	@Import
+	private WireContext<?> wireContext;
+
 	@Import
 	private RxPlatformContract platform;
-	
+
 	@Import
 	private TcSpace tc;
-	
+
 	@Import
 	private WebServerContract webServer;
-	
+
 	@Override
-	public void onLoaded(WireContextConfiguration configuration) {
+	public void onDeploy() {
 		webServer.addServlet("web-api", "/api/*", server());
+
+		if (appIncludesWebSecurity())
+			webServer.addFilterMapping(AuthFilters.lenientAuthFilter, "/api/*", DispatcherType.REQUEST);
 	}
-	
+
+	private boolean appIncludesWebSecurity() {
+		return wireContext.findContract(WebSecurityContract.class) != null;
+	}
+
 	@Managed
 	private WebApiV1Server server() {
 		WebApiV1Server bean = new WebApiV1Server();
@@ -72,29 +87,29 @@ public class WebApiServerRxModuleSpace implements RxModuleContract {
 		bean.setAccessAvailability(s -> platform.serviceDomains().byId(s) != null);
 		return bean;
 	}
-	
+
 	private CmdResolver cmdResolverForDomain(String domainId) {
 		ServiceDomain domain = platform.serviceDomains().byId(domainId);
-		
+
 		if (domain == null)
 			return null;
-		
-		return domain.contextCmdResolver();
+		else
+			return domain.contextCmdResolver();
 	}
-	
+
 	private ApiV1RestServletUtils servletUtils() {
 		ApiV1RestServletUtils bean = new ApiV1RestServletUtils();
 		bean.setMimeTypeRegistry(mimeTypeRegistry());
 		return bean;
 	}
-	
+
 	private MimeTypeRegistryImpl mimeTypeRegistry() {
 		MimeTypeRegistryImpl bean = new MimeTypeRegistryImpl();
 		// TODO: currently deactivated to reduce bootstrap impedance. Think how this could be improved
 		// configureMimeTypeRegistry(bean);
 		return bean;
 	}
-	
+
 	private List<String> readMimeExtensionsProperties() {
 		// TODO 28.2.2023 This file also exists in platform-api under com/braintribe/mimetype/mime-extensions.properties
 		try (InputStream in = getClass().getResource("mime-extensions.properties").openStream()) {
@@ -152,15 +167,15 @@ public class WebApiServerRxModuleSpace implements RxModuleContract {
 
 		return bean;
 	}
-	
+
 	@Managed
 	private DdraEndpointsExceptionHandler exceptionHandler() {
 		DdraEndpointsExceptionHandler bean = new DdraEndpointsExceptionHandler();
-		
+
 		bean.setDefaultMimeType(MIME_TYPE_JSON);
 		bean.setDefaultMarshaller(platform.marshallers().getMarshaller(MIME_TYPE_JSON));
 		bean.setIncludeDebugInformation(false);
-		
+
 		return bean;
 	}
 }

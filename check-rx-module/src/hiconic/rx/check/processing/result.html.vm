@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<title>Checks</title>
+
+	<style>
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+			font-size: 0.42cm;
+		}
+
+		body {
+			font-family: 'Roboto', sans-serif;
+			position: absolute;
+			height: 100%;
+			width: 100%;
+			background-color: #efefef;
+			font-size:0.8em;
+		}
+
+		.table-main {
+			position: relative;
+			width: 100%;
+			height: 100%;
+			padding: 0 2cm;
+		}
+
+		.div-wrapper {
+			height: 100%;
+			width: 100%;
+			padding: 0.5cm;
+			padding-top: 0.1cm;
+			border-radius: 0.4cm;
+			box-shadow: 10px 10px 5px lightgrey;
+			background-color: white;
+		}
+
+		.img-download {
+			height:8%;
+			width: 8%;
+		}
+
+		/* ****** */
+		/* Tables */
+		/* ****** */
+
+		.table-header {
+			width: 100%;
+			padding-top: 0.3cm;
+			padding-bottom: 0.1cm;
+		}
+
+		.table-header td{
+			vertical-align: bottom;
+		}
+
+		.td-header-label {
+			text-align: center;
+			color: #606060;
+			font-size: 1.2em;
+		}
+
+		.td-header-download {
+			text-align: right;
+			padding-right: 0.3cm;
+		}
+
+		.table-summary {
+			width:100%;
+			padding-bottom: 0.1cm;
+			border-bottom: 1px solid #d7d7d7;
+		}
+
+		.table-summary tr {
+			height: 0.6cm;
+		}
+
+		.td-summary-key {
+			max-width: 100%;
+			white-space: nowrap;
+		}
+
+		.td-summary-value {
+			width:100%;
+			padding-left: 0.3cm;
+		}
+
+		.td-summary-format {
+			padding-left: 0.1cm;
+			white-space: nowrap;
+		}
+
+		.table-status-time .td-stopwatch {
+			font-size:0.9em;
+			padding-right:0;
+		}
+
+		.table-status-time .td-elapsed-time {
+			color:black;
+			padding-left: 0;
+		}
+
+		.table-status-time .td-status-symbol {
+			padding-left: 0;
+		}
+
+		.time-styling {
+			border: 1px solid #d7d7d7;
+			border-radius: 5px;
+			padding-left: 0.15cm;
+			padding-right: 0.15cm;
+		}
+
+		.table-results {
+			width: 100%;
+			/*background-color: #ffffff;*/
+			table-layout:fixed;
+			border-spacing:0;
+		}
+
+		.table-results > tbody > tr > td {
+			padding: 0.13cm 0 0.13cm 0.1cm;
+			word-wrap:break-word;
+			box-sizing: content-box;
+		}
+		
+		.table-results .td-status {
+			vertical-align: top;
+			text-align:center;
+			width: 0.45cm;
+		}
+
+		.table-results pre {
+			font-family: 'Roboto', sans-serif;
+		}
+
+		.div-table .td-status {
+			width: 0.45cm;
+			text-align: center;
+		}
+
+		.div-table td {
+			padding: 0.13cm 0.1cm 0.13cm 0.1cm;
+			word-wrap: break-word;
+			box-sizing: content-box;
+		}
+
+		.td-details-details-label:hover {
+			text-decoration: underline;
+			cursor: pointer;
+		}
+
+		.td-details-details {
+			padding: 0.2cm;
+			margin-top: 0.25cm;
+			border: 1px solid #d7d7d7;
+			max-height: 15em;
+			overflow-y: auto;
+		}
+
+		.td-content {
+			height: 100%;
+			padding-bottom: 0.5cm;
+		}
+
+		.table-content {
+			width:100%;
+		}
+
+		.div-content-container {
+			height: 100%;
+			overflow-y:auto;
+		}
+
+		.td-header-download {
+			width: 5cm;
+		}
+
+		.td-header-empty {
+			width: 5cm;
+		}
+
+		.td-header-download a:link {
+			text-decoration: inherit;
+			color: inherit;
+		}
+
+		.td-header-download a:hover {
+			text-decoration: underline;
+			color: inherit;
+		}
+
+		.hover-cursor:hover {
+			cursor:pointer;
+		}
+
+		.status-symbol {
+			display:inline-block;
+		}
+
+		.td-header-download a:visited {
+			text-decoration: inherit;
+			color: inherit;
+		}
+
+		.table-results .td-details-expand {
+			width: 0.3cm;
+			text-align: center;
+			vertical-align: top;
+			padding-right:0;
+			padding-left: 0;
+		}
+
+		.div-aggregation-list {
+			color: #303030;
+		}
+
+		.div-table .td-arrow {
+			/*font-size: 0.8em;*/
+			width: 0.3cm;
+			text-align: center;
+			padding-left:0;
+			padding-right:0;
+		}
+
+		.div-summary {
+			color: #606060;
+		}
+		
+		.div-table-summary {
+			padding-bottom: 0.3cm;
+		}
+
+		.div-table {
+			cursor: pointer;
+			border-spacing: 0;
+		}
+
+		.div-padding {
+			padding-left:0.65cm;
+		}
+
+		.div-aggr-flat {
+			margin-bottom: 1cm;
+			background-color: #fcfcfc;
+		}
+
+		.div-aggr {
+			border-right:0;
+			border-bottom:0;
+		}
+
+		.div-last-level {
+			padding-bottom:0.1cm;
+		}
+
+		.div-aggr-0 {
+			border-left:0;
+			border-top:0;
+		}
+
+		.div-aggr-one-level {
+			margin: 0;
+			border-right:0;
+			border-bottom:0;
+		}
+		
+		.div-aggr > .div-table .td-result {
+		   /*font-size: 0.98em;*/
+		   padding-top: 0.1cm;
+		   padding-left: 0;
+		}
+		
+		.span-td-result-id-prefix-green {
+			color: #3AB57B;
+		}
+
+		.span-td-result-id-prefix-orange {
+			color: #EF911D;
+		}
+
+		.span-td-result-id-prefix-red {
+			color: #D3000C;
+		}
+
+		.result-name {
+			border: 1px solid #d7d7d7;
+			border-radius:5px;
+			padding-left:0.15cm;
+			padding-right:0.15cm;
+			background-color:#efefef;
+		}
+
+		.stopwatch-icon {
+			font-size:85%;
+			vertical-align:top;
+		}
+
+		#div-expand-all:hover {
+			text-decoration: underline;
+			cursor : pointer;
+		}
+		#div-collapse-all:hover {
+			text-decoration: underline;
+			cursor : pointer;
+		}
+
+		.div-markdown-content h1,h2,h3,h4,h5,h6 {
+			color: #555;
+			font-weight: 450;
+			padding: 0.2cm 0 0.2cm 0;
+		}
+
+		.div-markdown-content table > tbody > tr > td {
+			padding: 0.15cm;
+			border: 1px solid #d7d7d7;
+		}
+
+		.div-markdown-content > table {
+			border-collapse: collapse;
+		}
+		.div-markdown-content > table > tbody > tr:nth-of-type(even) {
+			background-color: #f9f9f9;
+		}
+
+		.div-markdown-content th {
+			background-color: #755;
+			color: white;
+			text-align: left;
+			font-weight: 450;
+			padding: 0.15cm;
+		}
+
+		.div-markdown-content pre {
+			border: 1px solid #ccc;
+			padding:0.3cm;
+			border-radius: 4px;
+			background-color: #f5f5f5;
+		}
+
+		.div-markdown-content > table > tbody > tr:first-child td {
+			border-top: 0;
+		}
+		.div-markdown-content > table > tbody > tr > td:first-child {
+			border-left: 0;
+		}
+		.div-markdown-content > table > tbody > tr:last-child td {
+			border-bottom: 0;
+		}
+		.div-markdown-content > table > tbody > tr td:last-child {
+			border-right: 0;
+		}
+
+		/* ****************** */
+		/* JavaScript related */
+		/* ****************** */
+
+		.hidden-section {
+		  display:none;
+			visibility:hidden;
+		}
+
+		.visible-section {
+		  visibility:visible;
+		}
+
+		.hidden-details-section {
+		  display:none;
+			visibility:hidden;
+		}
+
+		.visible-details-section {
+		  visibility:visible;
+		}
+
+		.table-status-time td {
+			padding: 0 0.1cm 0 0.1cm;
+			vertical-align: middle;
+		}
+
+		
+	</style>
+
+	<script>
+	  function toggleDetails(identification) {
+		var paddingDiv = 'div-padding-'+identification;
+		var arrowTd = 'td-arrow-'+identification;
+
+		if (document.getElementById(paddingDiv).classList=="div-padding hidden-section") {
+		  document.getElementById(paddingDiv).classList='div-padding visible-section';
+		  document.getElementById(arrowTd).innerHTML='&#45';	
+		  
+		} else {
+		  document.getElementById(paddingDiv).classList='div-padding hidden-section';
+		  document.getElementById(arrowTd).innerHTML='&#43';	
+		}
+
+	  }
+
+	  function expandCollapse(type) {
+			var details = document.getElementsByClassName("td-details-details");
+			var detailsArrowLabels = document.getElementsByClassName("td-details-details-expandable");
+			
+			var paddingDivs = document.getElementsByClassName("div-padding");
+			var arrowTds = document.getElementsByClassName("div-td-arrow");
+			var i;
+			
+		if(type == 'expand') {
+
+			for (i = 0; i < details.length; i++) {
+			  details[i].classList='td-details-details visible-details-section';
+			}
+			
+			for (i = 0; i < detailsArrowLabels.length; i++) {
+			  detailsArrowLabels[i].innerHTML = '&#45';
+			}
+			
+			for (i = 0; i < paddingDivs.length; i++) {
+			  paddingDivs[i].classList='div-padding visible-section';
+			}
+			
+			for (i = 0; i < arrowTds.length; i++) {
+			  arrowTds[i].innerHTML='&#45';
+			}
+			
+		} else {
+			for (i = 0; i < details.length; i++) {
+			  details[i].classList='td-details-details hidden-details-section';
+			}
+
+			for (i = 0; i < detailsArrowLabels.length; i++) {
+			  detailsArrowLabels[i].innerHTML = '&#43';
+			}
+			
+			for (i = 0; i < paddingDivs.length; i++) {
+			  paddingDivs[i].classList='div-padding hidden-section';
+			  arrowTds[i].innerHTML='&#43';
+			}
+			
+		}
+	  }
+
+	  function showAndHideDetails(identification) {
+		var labelTd = 'td-details-label-'+identification;
+		var detailsTd = 'td-details-details-'+identification;
+			
+		if (document.getElementById(detailsTd).classList=="td-details-details hidden-details-section") {
+			document.getElementById(detailsTd).classList='td-details-details visible-details-section';
+			document.getElementById(labelTd).innerHTML = '&#45';
+			
+		} else {
+			document.getElementById(detailsTd).classList='td-details-details hidden-details-section';
+			document.getElementById(labelTd).innerHTML = '&#43';
+		}
+	  }
+
+	  function initialize() {
+	  	initializeDownload();
+	  }
+
+	  function initializeDownload() {
+	  	document.getElementById("downloadLink").href = window.location.href;
+	  }
+	</script>
+
+</head>
+
+<body onload="initialize()">
+	#set($symbolOk = "<svg style='width:0.4cm;height:0.4cm;margin-top:0.05cm'><circle cx='0.2cm' cy='0.2cm' r='0.2cm' fill='#3AB57B' /></svg>")
+	#set($symbolWarn = "<svg style='width:0.4cm;height:0.4cm;margin-top:0.05cm' viewBox='0 0 10 10'><polygon fill='#EF911D' points='5,1 10,10 0,10' /></svg>")
+	#set($symbolFail = "<svg style='width:0.4cm;height:0.4cm;margin-top:0.05cm' viewBox='0 0 10 10'><polygon points='1,1 10,1 10,10 1,10' fill='#D3000C' /></svg>")
+	
+	<!-- Velocity Macros -->
+	#set($depth = 0)
+	#macro (render $element)
+	  #if($depth == 0 && $depth == $aggregatedByCount)
+	  <div class='div-aggr-flat'>
+	  #elseif($depth==0)
+	  <div class='div-aggr-0'>
+	  #elseif($aggregatedByCount==1)
+	  <div class='div-aggr-one-level'>
+	  #else
+	  <div class='div-aggr'>
+	  #end
+	  <!-- Again an Aggregatable -->
+
+	  #if($depth > 0)
+		  #set($status = $element.status)
+		  #if($status == 'ok') #set($color = 'green') #set($symbol = $symbolOk)
+		  #elseif($status == 'warn') #set($color = 'orange') #set($symbol = $symbolWarn)
+		  #else #set($color = 'red') #set($symbol = $symbolFail)
+		  #end
+		  <table class='div-table' onclick='event.stopPropagation(); toggleDetails($element.runtimeId())'>
+			  <tr>
+				  #if($status == 'ok')
+				  <td class='td-arrow'><div id='td-arrow-$element.runtimeId()' class='div-td-arrow'>&#43;</div></td>
+				  #else
+				  <td class='td-arrow'><div id='td-arrow-$element.runtimeId()' class='div-td-arrow'>&#45;</div></td>
+				  #end
+				  <td class='td-status'>$symbol</td>
+				  <td class='td-result'><span class='span-td-result-id-prefix-$color'>$tools.getIdPrefix($element)</span> $tools.getIdentification($element)</td>
+			  </tr>
+		  </table>
+		  <div id='div-padding-$element.runtimeId()' class='div-padding #if($status == 'ok')hidden-section#end' #if($depth == $aggregatedByCount)style='padding-left:0.95cm;'#end>
+	  #end
+
+	  #set($depth = $depth + 1)
+	  #foreach($a in $element.elements)
+		#if($a.isResult())
+		#set($isLastAggregationProcessor = false)
+		#set($processorName = $a.checkProcessorName)
+		#if($aggregatedByCount > 0)
+			#set($identification = $tools.getIdentification($element))
+			#set($isLastAggregationProcessor = $processorName == $identification)
+		#end
+			<table class='table-results'>
+				#set($result = $a.result)
+				#foreach($entry in $result.entries)
+					#set($detailsAvailable = $entry.details)
+					#set($status = $entry.checkStatus)
+					#if($status == 'ok') #set($color = 'green') #set($symbol = $symbolOk)
+					#elseif($status == 'warn') #set($color = 'orange') #set($symbol = $symbolWarn)
+					#else #set($color = 'red') #set($symbol = $symbolFail)
+					#end
+					<tr>
+						#if($detailsAvailable)
+						<td class='td-details-expand'>
+							<span id='td-details-label-$entry.runtimeId()' onclick='event.stopPropagation(); showAndHideDetails($entry.runtimeId())' class='td-details-details-expandable td-details-details-label'>&#43;</span>
+						</td>
+						#else
+						<td class='td-details-expand'>
+							<span id='td-details-label-$entry.runtimeId()' class='td-details-details-label'> </span>
+						</td>
+						#end
+						<td class='td-status'>
+							<div title='$status' #if($detailsAvailable)onclick='event.stopPropagation(); showAndHideDetails($entry.runtimeId())'#end class='#if($detailsAvailable)hover-cursor#end status-symbol'>$symbol</div>
+						</td>
+						<td class='td-details'>
+							<div class='td-details-message #if($detailsAvailable)hover-cursor#end' #if($detailsAvailable)onclick='event.stopPropagation(); showAndHideDetails($entry.runtimeId())'#end>
+								<span class='result-name'>#if(!$isLastAggregationProcessor)$tools.escape($processorName) -#end#if($entry.name) $tools.escape($entry.name)#else undefined#end</span>
+								#if($entry.message)
+									$tools.escape($entry.message)
+								#end
+							</div>
+							#if($detailsAvailable)
+ 							<div id='td-details-details-$entry.runtimeId()' class='td-details-details hidden-details-section'>
+								#set ($details = $entry.details)
+								#if($entry.detailsAsMarkdown)
+									<div class="div-markdown-content">$tools.parseMarkdown($details)</div>
+								#else
+									<pre>$tools.escape($details)</pre>
+								#end
+							</div>
+							#end
+						</td>
+					</tr>
+				#end
+			</table>
+		#else
+			#render($a)
+		#end
+	  #end 
+	  #set($depth = $depth - 1)
+
+	  #if($depth > 0)
+		</div>
+	  #end
+	</div>
+	#end <!-- End of macro -->
+
+	<table class='table-main'>
+		<tr>
+			<td>
+				<table class='table-header'>
+					<tr>
+						<td class='td-header-empty'></td>
+						<td class='td-header-label'>Check Results</td>
+						<td class='td-header-download'><a id="downloadLink" download="check-results.html" href="#">
+							<svg class='img-download' version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+								 viewBox="0 0 29.978 29.978" style="enable-background:new 0 0 29.978 29.978;" xml:space="preserve">
+							<g>
+								<path d="M25.462,19.105v6.848H4.515v-6.848H0.489v8.861c0,1.111,0.9,2.012,2.016,2.012h24.967c1.115,0,2.016-0.9,2.016-2.012
+									v-8.861H25.462z"/>
+								<path d="M14.62,18.426l-5.764-6.965c0,0-0.877-0.828,0.074-0.828s3.248,0,3.248,0s0-0.557,0-1.416c0-2.449,0-6.906,0-8.723
+									c0,0-0.129-0.494,0.615-0.494c0.75,0,4.035,0,4.572,0c0.536,0,0.524,0.416,0.524,0.416c0,1.762,0,6.373,0,8.742
+									c0,0.768,0,1.266,0,1.266s1.842,0,2.998,0c1.154,0,0.285,0.867,0.285,0.867s-4.904,6.51-5.588,7.193
+									C15.092,18.979,14.62,18.426,14.62,18.426z"/>
+								<g></g> <g></g> <g></g> <g></g> <g></g> <g></g> <g></g> <g></g> <g></g> <g></g> <g></g> <g></g> <g></g> <g></g> <g></g> </g><g>
+							</g><g> </g><g> </g><g> </g><g> </g><g> </g><g> </g><g> </g><g> </g><g> </g><g> </g><g> </g><g> </g><g> </g><g> </g>
+							</svg> Download</a>
+						</td>
+					</tr>
+				</table>
+			</td>
+		</tr>
+		<tr>
+			<td class='td-content'>
+					<div class='div-wrapper'>
+						<table class='table-content'>
+								<tr>
+									<td>
+										<div class='div-summary'>
+											<div class='div-table-summary'>
+												<table class='table-summary'>
+													<tbody>
+													  #if($overallStatus == 'ok') #set($color = 'green') #set($symbol = $symbolOk)
+													  #elseif($overallStatus == 'warn') #set($color = 'orange') #set($symbol = $symbolWarn)
+													  #else #set($color = 'red') #set($symbol = $symbolFail)
+													  #end
+														<tr>
+															<td class='td-summary-key'>Overall Status:</td>
+															<td class='td-summary-value'>
+																<table class="table-status-time">
+																	<tr>
+																		<td class="td-status-symbol">$symbol</td>
+																		<td class="td-stopwatch">
+																		<svg style="width:0.4cm;height:0.4cm;display:block" viewbox="0 0 10 10">
+																			<!-- stop button -->
+																			<rect x="4" y="0" width="2" height="0.75" fill="black" />
+																			<!-- central axis circle -->
+																			<circle cx="5" cy="5" r="0.5" fill="black" />
+																			<!-- clock circle -->
+																			<circle cx="5" cy="5" r="4" stroke="black" stroke-width="0.5" fill="transparent" />
+
+																			<!-- small pointer -->
+																			<line x1="5" y1="5" x2="6.25" y2="6.25" stroke="black" stroke-width="0.5" />
+																			<!-- large pointer -->
+																			<line x1="5" y1="5" x2="5" y2="2.5" stroke="black" stroke-width="0.5" />
+
+																			<!-- six o'clock ruler -->
+																			<line x1="5" y1="1" x2="5" y2="2" stroke="black" stroke-width="0.5" />
+																			<!-- three o'clock ruler -->
+																			<line x1="8" y1="5" x2="9" y2="5" stroke="black" stroke-width="0.5" />
+																			<!-- six o'clock ruler -->
+																			<line x1="5" y1="8" x2="5" y2="9" stroke="black" stroke-width="0.5" />
+																			<!-- nine o'clock ruler -->
+																			<line x1="1" y1="5" x2="2" y2="5" stroke="black" stroke-width="0.5" />
+																			</svg>
+																		
+																		</td>
+																		<td class="td-elapsed-time"><span class="time-styling">$tools.getPrettyElapsedTime($overallElapsedTime)</span> for $checkCount checks &nbsp;
+																			$symbolFail $failCount
+																			$symbolWarn $warnCount
+																			$symbolOk $okCount
+																		</td>
+																	</tr>
+																</table>
+															</td>
+															<td class='td-summary-icon'><div id='div-expand-all-icon' onclick='expandCollapse("expand")'>&#8862;</div></td>
+															<td class='td-summary-format'><div id='div-expand-all' onclick='expandCollapse("expand")'>Expand all</div></td>
+														</tr>
+														#if(${aggregationList} != '')
+														<tr>
+															<td class='td-summary-key'>Aggregated by:</td>
+															<td class='td-summary-value'><div class='div-aggregation-list'>${aggregationList}</div></td>
+															<td class='td-summary-icon'><div id='div-collapse-all-icon' onclick='expandCollapse("collapse")'>&#8863;</div></td>
+															<td class='td-summary-format'><div id='div-collapse-all' onclick='expandCollapse("collapse")'>Collapse all</div></td>
+														</tr>
+														#end
+													</tbody>
+												</table>
+											</div>
+										</div>
+									</td>
+								</tr>
+								<tr>
+									<td class='td-content'>
+										<div class='div-content-container'>
+											<div class='div-content'>
+												#if($response.elements.size() == 0)
+													<p>No checks found.</p>
+												#else
+													#render($response)
+												#end
+											</div>
+										</div>
+									</td>
+								</tr>
+						</table>
+					</div>
+			</td>
+		</tr>
+	</table>
+</body>
+</html>

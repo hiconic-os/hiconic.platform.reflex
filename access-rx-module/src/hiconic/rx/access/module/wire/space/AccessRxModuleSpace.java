@@ -17,10 +17,11 @@ import static com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling.getOrTunn
 
 import com.braintribe.common.attribute.AttributeContext;
 import com.braintribe.gm._AccessApiModel_;
+import com.braintribe.gm._ModelEnvironmentApiModel_;
 import com.braintribe.gm.model.persistence.reflection.api.PersistenceReflectionRequest;
+import com.braintribe.model.access.IncrementalAccess;
 import com.braintribe.model.accessapi.PersistenceRequest;
 import com.braintribe.model.generic.reflection.EntityType;
-import com.braintribe.model.service.api.PlatformRequest;
 import com.braintribe.utils.collection.impl.AttributeContexts;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
@@ -39,6 +40,7 @@ import hiconic.rx.access.module.processing.RxPersistenceGmSessionFactory;
 import hiconic.rx.access.module.processing.RxPersistenceProcessor;
 import hiconic.rx.module.api.service.ModelConfiguration;
 import hiconic.rx.module.api.service.ModelConfigurations;
+import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
@@ -48,53 +50,62 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 
 	@Import
 	private RxPlatformContract platform;
-	
+
 	@Override
 	public void onDeploy() {
 		AccessConfiguration accessConfiguration = getOrTunnel(platform.readConfig(AccessConfiguration.T));
-		
-		for (Access access: accessConfiguration.getAccesses()) {
+
+		for (Access access : accessConfiguration.getAccesses()) {
 			deploy(access);
 		}
 	}
-	
+
 	@Override
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
-		configurations.byId(PlatformRequest.platformDomainId).bindRequest(PersistenceReflectionRequest.T, this::persistenceReflectionProcessor);
+		ServiceDomainConfiguration persistenceSd = configurations.byId("persistence");
+
+		persistenceSd.addModel(_ModelEnvironmentApiModel_.reflection); // brings ModelEnvironmentRequests... 
+		persistenceSd.bindRequest(PersistenceReflectionRequest.T, this::persistenceReflectionProcessor);
+
 		accesses().initServiceDomainConfigurations(configurations);
 	}
-	
+
 	@Override
 	public void configureModels(ModelConfigurations configurations) {
-		ModelConfiguration mc = configurations.byName(ACCESS_BASE);
+		ModelConfiguration mc = configurations.byName(ACCESS_BASE_MODEL_NAME);
 		mc.addModel(_AccessApiModel_.reflection);
 		mc.bindRequest(PersistenceRequest.T, this::persistenceProcessor);
 
 		accesses().initModelConfigurations(configurations);
 		accessModelConfigurations().initModelConfigurations(configurations);
 	}
-	
+
 	@Managed
 	private RxPersistenceProcessor persistenceProcessor() {
 		RxPersistenceProcessor bean = new RxPersistenceProcessor();
 		bean.setAccessDomains(accesses());
 		return bean;
 	}
-	
+
 	@Override
 	@Managed
 	public RxAccessModelConfigurations accessModelConfigurations() {
 		return new RxAccessModelConfigurations();
 	}
-	
+
 	@Override
 	public <A extends Access> void registerAccessExpert(EntityType<A> accessType, AccessExpert<A> expert) {
 		accesses().registerExpert(accessType, expert);
 	}
-	
+
 	@Override
-	public void deploy(Access access) {
-		accesses().deploy(access);
+	public void deploy(Access accessDenotation) {
+		accesses().deploy(accessDenotation);
+	}
+
+	@Override
+	public void deploy(Access accessDenotation, IncrementalAccess access) {
+		accesses().deploy(accessDenotation, access);
 	}
 	
 	@Override
@@ -110,7 +121,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		configure(bean);
 		return bean;
 	}
-	
+
 	@Override
 	public RxPersistenceGmSessionFactory sessionFactory(AttributeContext attributeContext) {
 		RxPersistenceGmSessionFactory bean = new RxPersistenceGmSessionFactory();
@@ -118,7 +129,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		configure(bean);
 		return bean;
 	}
-	
+
 	@Override
 	@Managed
 	public RxPersistenceGmSessionFactory systemSessionFactory() {
@@ -127,19 +138,19 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		configure(bean);
 		return bean;
 	}
-	
-	@Managed 
+
+	@Managed
 	public PersistenceReflectionProcessor persistenceReflectionProcessor() {
 		PersistenceReflectionProcessor bean = new PersistenceReflectionProcessor();
 		bean.setAccesses(accesses());
 		return bean;
 	}
-	
+
 	private void configure(RxPersistenceGmSessionFactory bean) {
 		bean.setAccesses(accesses());
 		bean.setEvaluatorSupplier(platform::evaluator);
 	}
-	
+
 	@Managed
 	private RxAccesses accesses() {
 		RxAccesses bean = new RxAccesses();

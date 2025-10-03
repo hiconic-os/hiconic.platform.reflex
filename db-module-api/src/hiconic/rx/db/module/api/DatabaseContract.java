@@ -13,6 +13,8 @@
 // ============================================================================
 package hiconic.rx.db.module.api;
 
+import java.util.List;
+
 import javax.sql.DataSource;
 
 import com.braintribe.gm.model.reason.Maybe;
@@ -49,4 +51,10 @@ public interface DatabaseContract extends RxExportContract {
 	 * If the same {@link Database} instance is deployed another time, the same DataSource is returned.
 	 */
 	DataSource deploy(Database database);
+
+	/**
+	 * Reflects all configured {@link Database}s.
+	 */
+	List<Database> allDatabases();
+
 }

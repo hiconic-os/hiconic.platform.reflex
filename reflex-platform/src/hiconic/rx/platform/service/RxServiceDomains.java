@@ -21,8 +21,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
 
 import com.braintribe.cfg.Required;
+import com.braintribe.logging.Logger;
 import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.Model;
@@ -38,6 +40,8 @@ import hiconic.rx.platform.models.RxConfiguredModel;
 import hiconic.rx.platform.models.RxModelConfigurations;
 
 public class RxServiceDomains implements ServiceDomains {
+
+	private static final Logger log = Logger.getLogger(RxServiceDomains.class);
 
 	private ConfigurableDispatchingServiceProcessor fallbackProcessor;
 	private Evaluator<ServiceRequest> contextEvaluator;
@@ -69,11 +73,6 @@ public class RxServiceDomains implements ServiceDomains {
 	}
 
 	@Override
-	public RxServiceDomain main() {
-		return byId("main");
-	}
-
-	@Override
 	public RxServiceDomain byId(String domainId) {
 		return domains.get(domainId);
 	}
@@ -95,14 +94,29 @@ public class RxServiceDomains implements ServiceDomains {
 	private Map<GmMetaModel, List<RxServiceDomain>> indexGmModelToDomains() {
 		Map<GmMetaModel, List<RxServiceDomain>> index = new IdentityHashMap<>();
 
-		for (RxServiceDomain domain : list())
+		for (RxServiceDomain domain : list()) {
+			if (log.isDebugEnabled())
+				logModelsForDomain(domain);
+
 			domain.modelOracle().getDependencies() //
 					.includeSelf() //
 					.transitive() //
 					.asGmMetaModels() //
 					.forEach(gmModel -> acquireList(index, gmModel).add(domain));
+		}
 
 		return index;
+	}
+
+	private void logModelsForDomain(RxServiceDomain domain) {
+		String s = domain.modelOracle().getDependencies() //
+				.includeSelf() //
+				.transitive() //
+				.asGmMetaModels() //
+				.map(GmMetaModel::getName) //
+				.collect(Collectors.joining("\n\t", "Models for domain [" + domain.domainId() + "]\n\t", ""));
+
+		log.debug(s);
 	}
 
 	private Map<EntityType<?>, List<RxServiceDomain>> indexReqTypeToDomains() {

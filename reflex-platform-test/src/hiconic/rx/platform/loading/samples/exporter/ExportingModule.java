@@ -16,6 +16,8 @@ package hiconic.rx.platform.loading.samples.exporter;
 import hiconic.rx.module.api.wire.Exports;
 import hiconic.rx.module.api.wire.RxModule;
 import hiconic.rx.platform.loading.samples.api.ApiContract;
+import hiconic.rx.platform.loading.samples.api.ApiDeeperContract;
+import hiconic.rx.platform.loading.samples.api.ApiDeeperSpace;
 import hiconic.rx.platform.loading.samples.api.ApiSpace;
 
 /**
@@ -28,6 +30,7 @@ public enum ExportingModule implements RxModule<ExporterSpace> {
 	@Override
 	public void bindExports(Exports exports) {
 		exports.bind(ApiContract.class, ApiSpace.class);
+		exports.bind(ApiDeeperContract.class, ApiDeeperSpace.class);
 	}
 
 }

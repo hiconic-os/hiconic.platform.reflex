@@ -15,7 +15,6 @@ package hiconic.rx.access.hibernate.module.wire.space;
 
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
-import com.braintribe.wire.api.context.WireContextConfiguration;
 
 import hiconic.rx.access.hibernate.model.configuration.HibernateAccess;
 import hiconic.rx.access.hibernate.processing.HibernateAccessExpert;
@@ -44,7 +43,7 @@ public class HibernateAccessRxModuleSpace implements RxModuleContract {
 	private DatabaseContract database;
 	
 	@Override
-	public void onLoaded(WireContextConfiguration configuration) {
+	public void onDeploy() {
 		accessExpert.registerAccessExpert(HibernateAccess.T, hibernateAccessExpert());
 	}
 	

@@ -1,0 +1,156 @@
+
+#if (${packagingMap})
+
+	#foreach ($entry in $packagingMap.entrySet())
+
+		#set ($instanceId = $entry.key)
+
+		#set ($infoPair = $entry.value)
+
+		#set ($packagingInformation = $infoPair.first)
+		#set ($setupDescriptor = $infoPair.second)
+
+		#set ($packaging = $packagingInformation.packaging)
+		#set ($setupAsset = $packagingInformation.platformAsset)
+		#set ($classpathContainers = $packagingInformation.classpathContainers)
+		
+	  		<div class="node">
+				<b>Node ${instanceId.getNodeId()}, Application ${instanceId.getApplicationId()}</b>
+			</div>
+
+			#if(${setupDescriptor})
+			
+				<div class="aboutSectionWrapper">
+		  			<div class="aboutSectionTitle">Setup Information</div>
+		  			<ul class="aboutSectionList">
+		  				
+		  					<!-- Setup Artifact -->
+		  					<li><span class="key">Primary Setup Dependency</span>
+			  				<span class="value">
+			  					${setupDescriptor.primarySetupDependency}
+			  				</span></li>
+		  					<br />
+
+		  					<li><span class="key">Primary Setup Asset</span>
+			  				<span class="value">
+			  					${setupDescriptor.primarySetupAsset}
+			  				</span></li>
+		  					<br />
+
+		  					<li><span class="key">Setup Assets</span>
+			  				<span class="value">
+				  				#foreach( $sa in ${setupDescriptor.setupAssets} )
+			  						${sa}<br />
+			  					#end
+			  				</span></li>
+		  					<br />
+
+		  					<li><span class="key">Setup Details</span>
+			  				<span class="value">
+			  					#if(${setupDescriptor.setupDate})Timestamp: $DateTools.encode(${setupDescriptor.setupDate}, $DateToolsISO8601)<br />#end
+			  					#if(${setupDescriptor.setupBy})User: ${setupDescriptor.setupBy}<br />#end
+			  					#if(${setupDescriptor.setupHost})Host: ${setupDescriptor.setupHost}<br />#end
+			  					
+			  				</span></li>
+		  					<br />
+
+		  					<li><span class="key">Assets</span>
+			  				<span class="value">
+				  				#foreach( $sa in ${setupDescriptor.assets} )
+			  						${sa}<br />
+			  					#end
+			  				</span></li>
+		  					<br />
+
+		  			</ul>
+		  		</div>			
+			
+			#else
+			
+				#if(${setupAsset})
+		  		<div class="aboutSectionWrapper">
+		  			<div class="aboutSectionTitle">Setup Information</div>
+		  			<ul class="aboutSectionList">
+		  				
+		  					<!-- Setup Artifact -->
+		  					<li><span class="key">Setup Asset</span>
+			  				<span class="value">
+			  					${setupAsset.groupId}:<b>${setupAsset.name}#${setupAsset.version}.${setupAsset.resolvedRevision}</b>
+			  				</span></li>
+		  					<br />
+		  					<br />
+		  			</ul>
+		  		</div>
+		  		#end <!-- setupAsset -->
+		  		
+			#end <!-- no SetupDescriptor -->
+				  		
+			#if(${packaging})
+	  		<div class="aboutSectionWrapper">
+	  			<div class="aboutSectionTitle">Version Information</div>
+	  			<ul class="aboutSectionList">
+	  				
+	  					<!-- Terminal Artifact -->
+	  					#if(${packaging.terminalArtifact})
+	  					#set( $ta = ${packaging.terminalArtifact} )
+	  					<li><span class="key">Terminal Asset</span>
+		  				<span class="value">
+		  					#if(${ta.artifactId})${ta.artifactId}#end#if(${ta.version})-${ta.version}#end
+		  				</span></li>
+	  					#end <!-- Terminal Artifact -->
+
+	  					<br />
+	  					
+	  					<!-- Dependencies -->
+	  					#if(${packaging.dependencies} && ${packaging.dependencies.size()} > 0)
+	  					<li><span class="key">Detailed Versions</span>
+		  				<span class="value">
+							<table>
+		  					#foreach( $d in ${packaging.dependencies} )
+		  						#if(${d.artifactId})
+		  						<tr>
+			  						<td><div class="tooltip">${d.artifactId}<span class="tooltiptext">#if(${d.groupId})${d.groupId}.#end${d.artifactId}#${d.version}</span></div></td>#if(${d.version})<td>${d.version}</td>#end
+		  						</tr>
+		  						#end
+		  					#end
+		  					</table>
+		  				</span></li>
+	  					#end <!-- Dependencies -->
+	  					
+	  				<br/>
+	  			</ul>
+	  		</div>
+	  		#end <!-- Packaging -->
+	  
+	  
+	  
+	  		#if(${classpathContainers})
+	  		<div class="aboutSectionWrapper">
+	  			<div class="aboutSectionTitle">Classpaths</div>
+	  			<ul class="aboutSectionList">
+						#foreach($classpathContainer in ${classpathContainers})		
+	  					
+		  					<li><span class="key">${classpathContainer.containerName}</span>
+			  				<span class="value"></span></li>
+
+		  					<li><span class="key"></span>
+			  				<span class="value">
+								<table>
+			  					#foreach($d in ${classpathContainer.classpathEntries} )
+			  						<tr>
+				  						<td>${d}</td>
+			  						</tr>
+			  					#end
+			  					</table>
+			  				</span></li>
+		  					
+		  					
+	  					#end <!-- Classpath Containers Loop -->
+	  				<br/>
+	  			</ul>
+	  		</div>
+	  		#end <!-- classpathContainers -->
+
+	#end <!-- for loop over packagingMap map entries -->
+
+#end <!-- packagingMap available -->

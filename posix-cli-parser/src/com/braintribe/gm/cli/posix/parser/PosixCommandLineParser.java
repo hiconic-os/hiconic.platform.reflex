@@ -46,8 +46,8 @@ import com.braintribe.model.processing.meta.cmd.CmdResolver;
 public class PosixCommandLineParser extends AbstractCommandLineParser {
 	private static final List<String> booleanValues = Arrays.asList(Boolean.TRUE.toString(), Boolean.FALSE.toString());
 	
-	private Map<String, Maybe<CommandLineParserTypeIndex>> typeIndices = new ConcurrentHashMap<>();
-	private Function<String, CmdResolver> cmdResolverProvider;
+	private final Map<String, Maybe<CommandLineParserTypeIndex>> typeIndices = new ConcurrentHashMap<>();
+	private final Function<String, CmdResolver> cmdResolverProvider;
 	private Function<EntityType<?>, GenericEntity> entityFactory = EntityType::create;
 	
 	public PosixCommandLineParser(Function<String, CmdResolver> cmdResolverProvider) {
@@ -153,7 +153,7 @@ public class PosixCommandLineParser extends AbstractCommandLineParser {
 	private static class RawOptions {
 		private String name;
 		private int index;
-		private List<String> options = new ArrayList<>();
+		private final List<String> options = new ArrayList<>();
 	}
 
 	private List<RawOptions> splitOptions(List<String> args) {
@@ -188,17 +188,15 @@ public class PosixCommandLineParser extends AbstractCommandLineParser {
 		private GenericEntity options;
 		private GenericEntity evaluable;
 		
-		private List<String> args;
+		private final List<String> args;
 		private CliArgument currentArg;
 		private int argIndex = 0;
-		private int argOffset;
+		private final int argOffset;
 		
-		private Map<String, Object> variables;
-		
-		private String defaultDomainId;
+		private final Map<String, Object> variables;
 		
 		private CommandLineParserTypeIndex currentTypeIndex;
-		private List<String> defaultDomains;
+		private final List<String> defaultDomains;
 		
 		StatefulParser(int argOffset, List<String> args, List<String> defaultDomains, Map<String, Object> variables) {
 			this.argOffset = argOffset;

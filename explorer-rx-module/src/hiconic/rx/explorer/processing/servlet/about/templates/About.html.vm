@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html>
+<title>tribefire About</title>
+<head>
+  
+ 		<style>
+			footer {
+				clear: both;
+    				padding: 10px;
+		    		font-size: 0.8em;text-align:center;
+			}
+			* {
+				-webkit-font-smoothing: antialiased;
+				-moz-osx-font-smoothing: grayscale;
+				font-family: 'Lato', sans-serif;
+				font-style: normal;
+				font-size: 1em;
+				font-weight: 300;
+				text-align: left;
+				color: black;
+			}
+
+			html, body { 
+				padding: 0; 
+				margin: 0;
+				position: absolute;
+				width: 100%;
+				height: 100%;
+				
+				
+			}
+
+			.mainWrapper {
+				margin: 0 auto;
+				#padding-top:65px;
+				overflow-y: auto;
+				
+			}
+
+			.aboutSectionWrapper{
+				display:block;
+				min-height:50px;
+				padding-left:50px;
+				padding-top:5px;
+			}
+
+  			.aboutSectionWrapper:nth-child(odd){
+				background-color:rgb(230, 230, 230)
+			}
+
+			.aboutSectionWrapper:nth-child(even){
+				background-color:white;
+			}
+
+			.aboutSectionTitle{
+				color: #ffa500;
+				font-weight: bold;
+				padding: 5px;
+				text-transform: uppercase;
+			}
+
+			.aboutSection{
+
+			}
+			
+			.downloadImage {
+				padding-right: 5px;
+			}
+
+			.downloadArea {
+				cursor: pointer;
+				display: inline-block;
+				vertical-align: middle;
+				text-align: center;
+				padding: 4px 4px;
+				border-radius: 4px 4px 4px 4px;
+				border: 1px solid black;
+				color: black;
+				#bottom: 12%
+				right: 3%
+				transition: all 0.4s;
+				margin-bottom: 5px;
+				
+				display: inline-flex;
+				#justify-content: center; /* align horizontal */
+				align-items: center; /* align vertical */
+			}
+
+			#tf_header{
+				font-family: 'Open Sans', sans-serif;
+   			 	font-weight: 400;
+    			height: 50px;
+   				background: #fff;
+   				display:table;
+   				padding-left:10%;
+   				box-shadow: 1px 2px 5px rgba(0, 0, 0, 0.5);
+	    			width: 100%;
+    				position: fixed;
+			}
+
+			#tf_logo{
+				margin: 10px 0px 0px 15px;
+			}
+
+			ul{
+				list-style-type: none;
+				margin: 0;
+				padding-bottom: 15px;
+			}
+
+			li{
+				padding-top:5px;
+			}
+
+			.key, .value {display:inline-block;min-width:250px; max-width:500px;}
+
+			.key {color: black; text-transform: uppercase; vertical-align: top}
+
+			.value{color: grey}
+
+			.undefined{color: silver; font-style: italic}
+
+			#title{
+			    display: table-cell;
+    				color: black;
+   				height: 100%;
+    				vertical-align: middle;
+    				padding-left: 25px;
+    				font-size:12pt;
+    				text-transform:uppercase;
+    				width: 90%;
+			}
+			
+			#nav {
+			    padding: 1em;
+				border-right: 2px solid #e4e6e8;
+				color:grey;
+				width:9cm;
+				min-width:9cm;
+				vertical-align:top;
+			}
+
+			#img-tfs-logo {
+				#width:50%;
+				float:left;
+			}
+
+			#header-title {
+				color:grey;
+				float:left;	
+			}
+
+			.nav-header {
+				font-size:110%;
+				font-weight:bold;
+				color:grey;
+				margin-top:5%;
+				margin-bottom:5%;
+			}
+
+			.li-filter {
+				margin-bottom:3%;
+			}
+
+			.filter-select {
+				height:25px;
+	    			line-height:25px;
+			}
+
+
+			.filter {
+				width:100%;
+				position:relative;
+				border: 1px solid #e8e8e8;
+			}
+
+			.filter-input {
+				box-sizing:border-box;	
+				line-height:1.5em;
+			}
+
+			.filter-title {
+				margin-bottom:0.2em;
+			}
+
+			#button-search, #button-left, #button-action {
+				cursor: pointer;
+				background-color:#FFA500;
+				border-radius: 4px 4px 4px 4px;
+				color: white;
+				border:none;
+				padding:1%;
+	
+			}
+
+			#button-search {
+				float:right;
+			}
+
+			#button-left {
+				float:left;
+			}
+
+			#button-action {
+				background-color: white;
+				color: black;
+				border-style: solid;
+    				border-width: 1px;
+			}
+			
+			.node {
+				background-color: white;
+				color: black;
+				border-style: solid;
+    				border-width: 1px;
+				border-radius: 4px 4px 4px 4px;
+				padding:1%;
+				margin-bottom: 10px;
+			}
+
+			#nav-overview {
+				margin-top:20% !important;
+				padding:0;
+			}
+
+			#nav-actions {
+				margin-top:20% !important;
+				padding:0;
+			}
+
+			#main-table {
+				width:100%;
+				height:100%;
+			}
+
+			#nav-filters {
+				position:relative;
+				margin-top:0%;
+				margin-bottom:10%;
+			}
+			
+			#main {
+    				padding: 0.3cm;
+    				vertical-align: top;
+    				
+			}
+			
+			
+			#headerMessage {
+				border-color: #999;
+				padding: 2px 0 4px 33px;
+				background-position: 11px -126px;
+				color: #666666;
+				font-size: 0.9em;
+				text-align: center;
+				vertical-align: baseline;
+				cursor: auto !important;
+				outline: 0;
+			}
+			
+
+			.highlight_message {
+    				animation: glow .5s infinite alternate;
+			}
+
+			@keyframes glow {
+    				to {
+        				text-shadow: 0 0 10px red;
+    				}
+			}
+
+
+
+			/* Tooltip container */
+			.tooltip {
+				display: inline-block;
+			}
+
+			/* Tooltip text */
+			.tooltip .tooltiptext {
+				visibility: hidden;
+				background-color: black;
+				color: #fff;
+				text-align: center;
+				padding: 5px 5px;
+				border-radius: 6px;
+
+				/* Position the tooltip text */
+				position: absolute;
+			}
+
+			/* Show the tooltip text when you mouse over the tooltip container */
+			.tooltip:hover .tooltiptext {
+				visibility: visible;
+			}
+			
+			
+			
+			.hidden-section {
+ 				display:none;
+ 				visibility:hidden;
+			}
+			.visible-section {
+				display:;
+				visibility:visible;
+			}
+		</style>
+		
+  <script>
+  	
+	
+	function resetFilters() {
+		document.getElementById("nodeId").selectedIndex = 0;
+	}
+	
+	function getAbout(type, nodeId) {
+		document.getElementById("headerMessage").innerHTML = 'Loading...';
+		var xmlhttp = new XMLHttpRequest();
+
+		xmlhttp.onreadystatechange = function() {
+			if (xmlhttp.readyState == XMLHttpRequest.DONE ) {
+				document.getElementById("headerMessage").innerHTML = '&nbsp;';
+			
+				if (xmlhttp.status == 200) {
+						document.getElementById("aboutmain").innerHTML = xmlhttp.responseText;
+				}
+				else {
+					document.getElementById("headerMessage").innerHTML = "<span class='highlight_message'>The server returned an error. Please contact your administrator or check the log files.</span>";
+				}				
+			}
+		};
+
+		var url = "${aboutRequestUrl}?" + escapeUrlParameters({type:type, node:nodeId});
+		xmlhttp.open("GET", url, true);
+		xmlhttp.send();
+	}
+	
+	function downloadFromAbout(type, nodeId) {
+		document.getElementById("headerMessage").innerHTML = 'Loading...';
+		var xmlhttp = new XMLHttpRequest();
+
+		xmlhttp.onreadystatechange = function() {
+			if (xmlhttp.readyState == XMLHttpRequest.DONE ) {
+				if (xmlhttp.status == 200) {
+					document.getElementById("headerMessage").innerHTML = '&nbsp;';
+				
+					var filename = "";
+   	     			var disposition = xmlhttp.getResponseHeader('Content-Disposition');
+   	     			if (disposition && disposition.indexOf('attachment') !== -1) {
+   	         			var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+   	         			var matches = filenameRegex.exec(disposition);
+   	         			if (matches != null && matches[1]) filename = matches[1].replace(/['"]/g, '');
+   	     			}
+   	     
+   	     			if (filename) {
+        
+   	     				a = document.createElement('a');
+    		    				a.href = window.URL.createObjectURL(xmlhttp.response);
+    	    					// Give filename you wish to download
+        					a.download = filename;
+        					a.style.display = 'none';
+        					document.body.appendChild(a);
+        					a.click();
+        
+				
+					} else {
+					
+						var blob = xmlhttp.response;
+						document.getElementById("headerMessage").innerHTML = "<span class='highlight_message'>"+blobToString(blob)+"</span>";
+						
+						
+					}	
+				
+				}
+				else {
+					document.getElementById("headerMessage").innerHTML = "<span class='highlight_message'>The server returned an error. Please contact your administrator or check the log files.</span>";
+				}
+			}
+		};
+
+		var url = "${aboutRequestUrl}?" + escapeUrlParameters({type:type, node:nodeId});
+		xmlhttp.open("GET", url, true);
+		xmlhttp.responseType = 'blob';
+		xmlhttp.send();
+	}
+	
+	function blobToString(b) {
+    		var u, x;
+    		u = URL.createObjectURL(b);
+    		x = new XMLHttpRequest();
+    		x.open('GET', u, false); // although sync, you're not fetching over internet
+    		x.send();
+    		URL.revokeObjectURL(u);
+    		return x.responseText;
+	}
+
+	function download(type, nodeId) {
+		var url = "${aboutRequestUrl}?" + escapeUrlParameters({type:type, node:nodeId});
+		window.location.href = url;
+	}
+	
+	function toggleNav() {
+		var element = document.getElementById("nav");
+    		element.classList.toggle("hidden-section");
+	}
+	
+	function escapeUrlParameters(urlParams) {
+		var qs = "";
+		
+		for(var name in urlParams) {
+			var value = urlParams[name];
+				if (qs.length != 0)
+				qs += "&";
+
+		qs += escape(name) + "=" + escape(value);
+	
+		}
+	
+		return qs;
+	}
+	
+	
+  </script>
+</head>
+
+<body>
+<table id="main-table">
+
+<!--
+<tr>
+<td id="nav-toggle" colspan="3">
+	<a href="."><img src="webpages/logo-tf-orange-services.png" id="img-tfs-logo" alt="tf-services" width="185"></a>
+</td>
+</tr>
+-->
+<tr>
+
+#set( $msgNoValue = "/" )
+#set ($tfs = "tribefire-services" )
+
+<td id="nav" #if(${hideNav})class="hidden-section"#end>
+	
+	<div id="nav-filters">
+		<p class="nav-header">Cluster</p>
+		
+				<div class="filter-title">Node</div>
+				<select class="filter filter-select" id="nodeId">
+					<option selected="selected" value="${allNodes}">${allNodes}</option>
+					#foreach( $nodeId in ${nodes} )
+						<option #if($nodeId.equals(${selectedNodeId}))selected="selected"#end value="${nodeId}">
+							$nodeId
+						</option>
+					#end					
+				</select>
+				
+		<br />
+		<div title="#foreach($entry in ${serviceInstances})$entry#if($foreach.hasNext)&#013;&#010;#end#end">
+		<br />Live instances: ${serviceInstances.size()}
+		<br />Live nodes: ${nodes.size()}
+		</div>
+
+		<!-- <button id="button-left" onclick="resetFilters()">Reset Filter</button> -->	
+		
+	</div>
+
+	<div id="nav-actions">
+		<p class="nav-header">Actions</p>
+			
+			<div class="downloadArea" 
+				title="Shows information about the underlying system, the host container and tribefire."
+				onclick="getAbout('systeminformation', document.getElementById('nodeId').value)"><img class="downloadImage" src="webpages/images/about/business-report.svg" width="16" height="16"/>Show System Information</div><br />
+			<div class="downloadArea" 
+				title="Shows those threads that consume the most processing power."
+				onclick="getAbout('hotthreads', document.getElementById('nodeId').value)"><img class="downloadImage" src="webpages/images/about/fire.svg" width="16" height="16"/>Show Hot Threads</div><br />
+			<div class="downloadArea" 
+				title="Shows all processes running on the host environment."
+				onclick="getAbout('processes', document.getElementById('nodeId').value)"><img class="downloadImage" src="webpages/images/about/process.svg" width="16" height="16"/>Show Processes</div><br />
+			<div class="downloadArea" 
+				title="Show detailed information about the installed versions of all tribefire components."
+				onclick="getAbout('versions', document.getElementById('nodeId').value)"><img class="downloadImage" src="webpages/images/about/numbering-signs.svg" width="16" height="16"/>Show Packaging</div><br />
+			<div class="downloadArea" 
+				title="Show detailed information about the tribefire deployables."
+				onclick="getAbout('deployables', document.getElementById('nodeId').value)"><img class="downloadImage" src="webpages/images/about/gears.svg" width="16" height="16"/>Show Deployables</div><br />
+			<!--				
+			<div class="downloadArea" 
+				title="Retrieves a heap dump of the selected tribefire instance."
+				onclick="downloadFromAbout('heapdump', document.getElementById('nodeId').value)"><img class="downloadImage" src="webpages/images/about/ram.svg" width="16" height="16"/>Get Heap Dump</div><br />
+			-->
+			<div class="downloadArea" 
+				title="Retrieves a thread dump of one selected or all tribefire instances."
+				onclick="downloadFromAbout('threaddump', document.getElementById('nodeId').value)"><img class="downloadImage" src="webpages/images/about/note.svg" width="16" height="16"/>Get Thread Dump</div><br />
+			<div class="downloadArea" 
+				title="Creates a diagnostic package that contains the information displayed here along with log files and a thread dump." 
+				onclick="downloadFromAbout('diagnostic', document.getElementById('nodeId').value)"><img class="downloadImage" src="webpages/images/about/small_package.svg" width="16" height="16"/>Get Diagnostic Package</div><br />
+			<div class="downloadArea" 
+				title="Creates a diagnostic package with an additional heap dump. This operation may take some time and might block the JVM." 
+				onclick="downloadFromAbout('diagnosticExtended', document.getElementById('nodeId').value)"><img class="downloadImage" src="webpages/images/about/large_package.svg" width="16" height="16"/>Get Extended Diagnostic Package</div><br />
+			<div class="downloadArea"
+				title="Downloads the system information of one selected or all tribefire instances as a JSON file." 
+				onclick="downloadFromAbout('json', document.getElementById('nodeId').value)"><img class="downloadImage" src="webpages/images/about/json-file.svg" width="16" height="16"/>Get System Information as JSON</div><br />
+
+	</div>
+	
+	
+</td>
+<td style="vertical-align: top">
+<img onclick="toggleNav()" src="webpages/images/about/list.svg" width="16" height="16" title="Toggle the action panel."/>
+</td>
+<td id="main">
+<div id="headerMessage">&nbsp;</div> 
+
+<div id="aboutmain" class="mainWrapper">
+
+	#if(${initialLoad})
+	<script language="JavaScript">
+		getAbout('systeminformation', document.getElementById('nodeId').value);
+	</script>
+	#end
+		  					
+</div>
+
+</td>
+
+</tr>
+</table>
+</body>
+</html>

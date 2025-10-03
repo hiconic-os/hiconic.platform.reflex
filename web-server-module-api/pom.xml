@@ -1,4 +1,4 @@
-<!--
+<?xml version="1.0" encoding="UTF-8"?><!--
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -29,7 +29,6 @@ limitations under the License.
         </license>
     </licenses>
     <dependencies>
-        <!-- no dependencies -->
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>reflex-module-api</artifactId>
@@ -40,10 +39,15 @@ limitations under the License.
             <artifactId>jakarta.servlet-api</artifactId>
             <version>${V.jakarta.servlet}</version>
         </dependency>
-		<dependency>
-		    <groupId>jakarta.websocket</groupId>
-		    <artifactId>jakarta.websocket-client-api</artifactId>
-		    <version>2.2.0</version>
-		</dependency>		
+        <dependency>
+            <groupId>jakarta.websocket</groupId>
+            <artifactId>jakarta.websocket-client-api</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.braintribe.servlet</groupId>
+            <artifactId>servlet-tools-api</artifactId>
+            <version>${V.com.braintribe.servlet}</version>
+        </dependency>
     </dependencies>
 </project>

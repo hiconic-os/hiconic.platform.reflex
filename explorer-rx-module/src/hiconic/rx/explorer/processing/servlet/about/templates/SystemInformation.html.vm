@@ -1,0 +1,609 @@
+
+#if (${sysInfoMap})
+
+	#foreach ($entry in $sysInfoMap.entrySet())
+
+		#set ($node = $entry.key)
+		#set ($platform = $entry.value)
+		
+	  		<div class="node">
+				<b>Node ${node}</b>
+			</div>
+
+
+			#if(${platform.systemInfo})
+	  		<div class="aboutSectionWrapper">
+	  			<div class="aboutSectionTitle">Environment Info</div>
+	  			<ul class="aboutSectionList">
+
+	  					<!-- CPU -->
+	  					#if(${platform.systemInfo.cpu})
+	  					<li><span class="key">CPU</span>
+		  				<span class="value">
+		  					#set( $cpu = ${platform.systemInfo.cpu} )
+							#set( $cpuLoad = ${cpu.cpuLoad} )
+  							
+		  					#if(${cpu.name})${cpu.name}#end#if(${cpu.cpu64bit}), 64 Bit#end<br />
+		  					#if(${cpu.vendorFreqInGh})Vendor Frequency: ${cpu.vendorFreqInGh}&nbsp;GHz<br />#end
+		  					#if(${cpu.maxFreqInGh})Maximum Frequency: ${cpu.maxFreqInGh}&nbsp;GHz<br />#end
+		  					#if(${cpu.currentFrequencies} && ${cpu.currentFrequencies.size()} > 0)
+		  						Current Frequencies: 
+  								#foreach( $freq in ${cpu.currentFrequencies} )
+  									${freq}#if( $foreach.hasNext )&nbsp;#end
+	  							#end
+	  							<br />
+  							#end
+		  					#if(${cpu.family})Family:&nbsp;${cpu.family}#end#if(${cpu.model}), Model:&nbsp;${cpu.model}#end<br />
+  							#if(${cpu.vendor})Vendor: ${cpu.vendor}<br />#end
+  							#if(${cpu.identifier})Identifier: ${cpu.identifier}<br />#end
+  							#if(${cpu.systemSerialNumber})Serial Number: ${cpu.systemSerialNumber}<br />#end
+  							#if(${cpu.processorId})ProcessorId: ${cpu.processorId}<br />#end
+  							#if(${cpu.physicalProcessorCount})Physical Processor Count: ${cpu.physicalProcessorCount}<br />#end
+  							#if(${cpu.logicalProcessorCount})Logical Processor Count: ${cpu.logicalProcessorCount}<br />#end
+  							#if(${cpu.systemBootTime})System Boot Time: ${cpu.systemBootTime}<br />#end
+  							
+  							#if ($cpuLoad)
+  								#if(${cpuLoad.contextSwitches})Context Switches: ${cpuLoad.contextSwitches}<br />#end
+  								#if(${cpuLoad.interrupts})Interrupts: ${cpuLoad.interrupts}<br />#end
+  								#if(${cpuLoad.user})User: ${cpuLoad.user}%#end
+  								#if(${cpuLoad.nice}), Nice: ${cpuLoad.nice}%#end
+  								#if(${cpuLoad.sys}), Sys: ${cpuLoad.sys}%#end
+  								#if(${cpuLoad.idle}), Idle: ${cpuLoad.idle}%#end
+  								#if(${cpuLoad.ioWait}), IOWait: ${cpuLoad.ioWait}%#end
+  								#if(${cpuLoad.irq}), IRQ: ${cpuLoad.irq}%#end
+  								#if(${cpuLoad.softIrq}), SoftIRQ: ${cpuLoad.softIrq}%#end
+  								#if(${cpuLoad.steal}), Steal: ${cpuLoad.steal}%#end
+  								<br />
+  								#if(${cpuLoad.totalCpu})CPU Load: ${cpuLoad.totalCpu}%<br />#end
+	  							CPU Averages: #if(${cpuLoad.systemLoadAverage1Minute} && ${cpuLoad.systemLoadAverage1Minute} != -1) 1&nbsp;min:&nbsp;${cpuLoad.systemLoadAverage1Minute}#end#if(${cpuLoad.systemLoadAverage5Minutes} && ${cpuLoad.systemLoadAverage5Minutes} != -1), 5&nbsp;min:&nbsp;${cpuLoad.systemLoadAverage5Minutes}#end#if(${cpuLoad.systemLoadAverage15Minutes} && ${cpuLoad.systemLoadAverage15Minutes} != -1), 15&nbsp;min:&nbsp;${cpuLoad.systemLoadAverage15Minutes}#end<br />
+			  					#if(${cpuLoad.systemLoadPerProcessor} && ${cpuLoad.systemLoadPerProcessor.size()} > 0)
+			  						CPU Load per Processor: 
+	  								#foreach( $pp in ${cpuLoad.systemLoadPerProcessor} )
+	  									${pp}%#if( $foreach.hasNext )&nbsp;#end
+		  							#end
+		  							<br />
+	  							#end
+  							#end
+  							
+  							
+  							#if(${cpu.cpuTemperature} > 0)CPU Temperature: ${cpu.cpuTemperature}&nbsp;C<br />#end
+  							#if(${cpu.cpuVoltage} > 0)CPU Voltage: ${cpu.cpuVoltage}&nbsp;V<br />#end
+  							#if(${cpu.fanSpeeds} && ${cpu.fanSpeeds.size()} > 0)
+  								#foreach( $fanSpeed in ${cpu.fanSpeeds} )
+  									#if(${fanSpeed} > 0)Fan: ${fanSpeed} RPM<br />#end
+	  							#end
+  							#end
+
+		  				</span></li>
+	  					<br/>
+	  					#end <!-- CPU -->
+
+	  					<!-- Memory -->
+	  					#if(${platform.systemInfo.memory})
+	  					<li><span class="key">Memory</span>
+		  				<span class="value">
+		  					#set( $mem = ${platform.systemInfo.memory} )
+
+  							#if(${mem.totalInGb})Total: ${mem.totalInGb}&nbsp;GB<br />#end
+  							#if(${mem.availableInGb})Available: ${mem.availableInGb}&nbsp;GB<br />#end
+  							#if(${mem.swapTotalInGb})Swap Total: ${mem.swapTotalInGb}&nbsp;GB<br />#end
+  							#if(${mem.swapUsedInGb})Swap Used: ${mem.swapUsedInGb}&nbsp;GB<br />#end
+
+  							#if(${mem.memoryBanksInformation} && ${mem.memoryBanksInformation.size()} > 0)
+  								#foreach( $bank in ${mem.memoryBanksInformation} )
+  									${bank}<br />
+	  							#end
+  							#end
+
+		  				</span></li>
+	  					<br/>
+	  					#end <!-- Memory -->
+
+
+						<!-- Hardware -->
+	  					#if(${platform.systemInfo.computerSystem} )
+	  					<li><span class="key">Hardware</span>
+		  				<span class="value">
+		  					#set( $cs = ${platform.systemInfo.computerSystem} )
+
+		  					#if(${cs.manufacturer})Manufacturer: ${cs.manufacturer}<br />#end
+		  					#if(${cs.model})Model: ${cs.model}<br />#end
+		  					#if(${cs.serialNumber})Serial Number: ${cs.serialNumber}<br />#end
+
+		  					#set( $fw = ${cs.firmware} )
+		  					#if(${fw})Firmware:#if(${fw.manufacturer}) Manufacturer: ${fw.manufacturer}#end#if(${fw.name}), Name: ${fw.name}#end#if(${fw.description}), Description: ${fw.description}#end#if(${fw.version}), Version: ${fw.version}#end#if(${fw.releaseDate}), ReleaseDate: ${fw.releaseDate}#end<br />#end
+
+		  					#set( $bb = ${cs.baseboard} )
+		  					#if(${bb})Board: #if(${bb.manufacturer}) Manufacturer: ${bb.manufacturer}#end#if(${bb.model}), Model: ${bb.model}#end#if(${bb.version}), Version: ${bb.version}#end#if(${bb.serialNumber}), SerialNumber: ${bb.serialNumber}#end<br />#end
+
+		  				</span></li>
+	  					<br/>
+	  					#end <!-- Network Params -->
+
+
+
+
+	  					<!-- Operating System -->
+	  					#if(${platform.systemInfo.operatingSystem})
+	  					<li><span class="key">Operating System</span>
+		  				<span class="value">
+		  					#set( $os = ${platform.systemInfo.operatingSystem} )
+
+  							#if(${os.family})${os.family}#end#if(${os.manufacturer}) (${os.manufacturer})<br />#end
+  							#if(${os.version})Version: ${os.version}#end#if(${os.codeName}) - ${os.codeName}#end<br />
+  							#if(${os.buildNumber})Build Number: ${os.buildNumber}<br />#end
+  							#if(${os.architecture})Architecture: ${os.architecture}<br />#end
+
+							Bitness: ${os.bitness}<br />
+							Process Count: ${os.processCount}<br />
+							Thread Count: ${os.threadCount}<br />
+							Host System: ${os.hostSystem}<br />
+							System date/time (ISO-8601): ${os.systemTimeAsString}<br />
+							#if (${os.defaultLocale})
+							  #set( $locale = ${os.defaultLocale} )
+							  System default locale: 
+							  	${locale.name}#if(${locale.displayName}) (${locale.displayName})#end
+							  	#if(${locale.country}), Country: ${locale.country}#if(${locale.displayCountry}) (${locale.displayCountry})#end#end
+							  	#if(${locale.language}), Language: ${locale.language}#if(${locale.displayLanguage}) (${locale.displayLanguage})#end#end
+							  	 (available locales: ${os.numberOfAvailableLocales})
+							#end
+		  				</span></li>
+	  					<br/>
+	  					#end <!-- Operating System -->
+
+
+	  					<!-- Disks -->
+	  					#if(${platform.systemInfo.disks} && ${platform.systemInfo.disks.size()} > 0)
+	  					<li><span class="key">Disks</span>
+		  				<span class="value">
+	  						#foreach( $disk in ${platform.systemInfo.disks} )
+	  							#if(${disk.diskName}) Name: ${disk.diskName} <br /> #end
+	  							#if(${disk.model}) Model: ${disk.model} <br /> #end
+    							#if(${disk.serial}) Serial: ${disk.serial} <br /> #end
+
+
+    							#if(${disk.readBytes})Traffic: Read Bytes: ${disk.readBytes}#if(${disk.readBytesInGb}) (${disk.readBytesInGb} GB)#end#if(${disk.reads}) (\#Reads: ${disk.reads})#if(${disk.writeBytes}), Write Bytes: ${disk.writeBytes}#if(${disk.writeBytesInGb}) (${disk.writeBytesInGb} GB)#end#if(${disk.writes}) (\#Writes: ${disk.writes})#if(${disk.transferTime}) Time Spent r/w: ${disk.transferTime}ms#end#end#end#end <br /> #end
+    							#if(${disk.partitions})
+    								#foreach( $partition in ${disk.partitions} )
+    									#if(${partition.identification})${partition.identification}#end:&nbsp;#if(${partition.name})${partition.name}#end#if(${partition.mountPoint} && ${partition.mountPoint.length()} > 0), Mount:&nbsp;${partition.mountPoint}#end#if(${partition.sizeInGb}), ${partition.sizeInGb}&nbsp;GB#end#if(${partition.type}), Type:&nbsp;${partition.type}#end
+    									<br />
+    								#end
+    							#end
+    							#if( $foreach.hasNext )<br />#end
+  							#end
+		  				</span></li>
+	  					<br/>
+	  					#end <!-- Disks -->
+
+
+
+	  					<!-- File Systems -->
+	  					#if(${platform.systemInfo.fileSystems} && ${platform.systemInfo.fileSystems.size()} > 0)
+	  					<li><span class="key">File Systems</span>
+		  				<span class="value">
+	  						#foreach( $fileSystem in ${platform.systemInfo.fileSystems} )
+	  							#if(${fileSystem.root})${fileSystem.root}#if(${fileSystem.displayName}) ${fileSystem.displayName}#end#if(${fileSystem.capacityInGb}): Capacity: ${fileSystem.capacityInGb}&nbsp;GB#end#if(${fileSystem.freeSpaceInGb}), Available: ${fileSystem.freeSpaceInGb}&nbsp;GB#end#end
+    							<br />
+  							#end
+		  				</span></li>
+	  					<br/>
+	  					#end <!-- File Systems -->
+
+
+	  					<!-- File System Details -->
+	  					#if(${platform.systemInfo.fileSystemDetailInfo})
+	  					<li><span class="key">File System Details</span>
+		  				<span class="value">
+		  					#set( $fsd = ${platform.systemInfo.fileSystemDetailInfo} )
+  							#if(${fsd.openFileDescriptors})File Descriptors: Open: ${fsd.openFileDescriptors}#if(${fsd.maxFileDescriptors}) Max: ${fsd.maxFileDescriptors}#end#end<br />
+  							<br/>
+  							#foreach( $fsds in ${fsd.fileSystemDetailStores} )
+	  							#if(${fsds.mount}) ${fsds.mount}
+	  								#if(${fsds.volume})&nbsp;(${fsds.volume})#end
+	  								#if(${fsds.name}), ${fsds.name}#end
+  									#if(${fsds.description})&nbsp;${fsds.description}#end
+									#if(${fsds.type}) Type: ${fsds.type}#end
+									#if(${fsds.uuid}) UUID: ${fsds.uuid}#if(${fsds.usableSpaceInGb})#end
+									Space: Free: ${fsds.usableSpaceInGb} GB
+									#if(${fsds.totalSpaceInGb}) Total: ${fsds.totalSpaceInGb} GB#end
+									Inodes: Free ${fsds.freeInodes}, Total ${fsds.totalInodes}
+	  							#end
+	  						#end
+    							<br />
+  							#end
+  							
+  							  							
+  							#if(${platform.systemInfo.ioMeasurements})
+  								#foreach( $measurement in ${platform.systemInfo.ioMeasurements.measurements} )
+  									#if(${measurement.measurementType.name().equals("disk")})
+  										<br />
+  										${measurement.description}: ${measurement.speed}   
+  									#end
+  								#end
+  							#end
+  							
+		  				</span></li>
+	  					<br/>
+	  					#end <!-- File System Details -->
+
+
+
+
+						<!-- Network Interfaces -->
+	  					#if(${platform.systemInfo.networkInterfaces} && ${platform.systemInfo.networkInterfaces.size()} > 0)
+	  					<li><span class="key">Network Interfaces</span>
+		  				<span class="value">
+	  						#foreach( $ni in ${platform.systemInfo.networkInterfaces} )
+
+	  							#if(${ni.name})${ni.name}#if(${ni.displayName} && (!${ni.name} || !${ni.name.equals(${ni.displayName})})) (${ni.displayName})#end<br />#end
+	  							#if(!${ni.name})#if(${ni.displayName})${ni.displayName}#end#end
+	  							#if(${ni.macAddress})Mac Address: ${ni.macAddress}<br />#end
+	  							#if(${ni.bytesRecv})Transfer: Recv: ${ni.bytesRecv}#if(${ni.bytesRecvInGb}) (${ni.bytesRecvInGb} GB)#if(${ni.packetsRecv}) (\#Packages Recv: ${ni.packetsRecv})#if(${ni.bytesSent}) Sent: ${ni.bytesSent}#if(${ni.bytesSentInGb}) (${ni.bytesSentInGb} GB)#if(${ni.packetsSent}) (\#Packages Sent: ${ni.packetsSent})#end#end#end#end#end<br />#end
+	  							#if(${ni.speedDisplay})${ni.speedDisplay}#if(${ni.mtu} > 0) (MTU:&nbsp;${ni.mtu})#end<br />#end
+	  							#if(${ni.iPv4Addresses} && ${ni.iPv4Addresses.size()} > 0)
+	  								IPv4 Addresses: #foreach( $ipv4 in ${ni.iPv4Addresses} )${ipv4}#if( $foreach.hasNext ), #end#end<br />
+	  							#end
+	  							#if(${ni.iPv6Addresses} && ${ni.iPv6Addresses.size()} > 0)
+	  								IPv6 Addresses: #foreach( $ipv6 in ${ni.iPv6Addresses} )${ipv6}#if( $foreach.hasNext ), #end#end<br />
+	  							#end
+	  							#if( $foreach.hasNext )<br />#end
+  							#end
+  							
+  							#if(${platform.systemInfo.ioMeasurements})
+  								#foreach( $measurement in ${platform.systemInfo.ioMeasurements.measurements} )
+  									#if(${measurement.measurementType.name().equals("internet")})
+  										<br />
+  										${measurement.description}: ${measurement.speed}   
+  									#end
+  								#end
+  							#end
+  							
+		  				</span></li>
+	  					<br/>
+	  					#end <!-- Network Interfaces -->
+
+
+						<!-- Network Params -->
+	  					#if(${platform.systemInfo.networkParams} )
+	  					<li><span class="key">Network Parameter</span>
+		  				<span class="value">
+		  					#set( $param = ${platform.systemInfo.networkParams} )
+
+		  					#if(${param.hostName})Host Name: ${param.hostName}<br />#end
+		  					#if(${param.domainName})Domain Name: ${param.domainName}<br />#end
+		  					#if(${param.dnsServers} && ${param.dnsServers.size()} > 0)
+	  							DNS Servers: #foreach( $dnsServer in ${param.dnsServers} )${dnsServer}#if( $foreach.hasNext ), #end#end<br />
+	  						#end
+		  					#if(${param.ipv4DefaultGateway})IPv4 Default Gateway: ${param.ipv4DefaultGateway}<br />#end
+		  					#if(${param.ipv6DefaultGateway})IPv6 Default Gateway: ${param.ipv6DefaultGateway}<br />#end
+		  				</span></li>
+	  					<br/>
+	  					#end <!-- Network Params -->
+
+
+						<!-- Power Sources -->
+	  					#if(${platform.systemInfo.powerSources} &&
+	  						${platform.systemInfo.powerSources.size()} > 0 &&
+	  						${platform.systemInfo.powerSources.get(0).remainingCapacityInPercent} > 0)
+	  					<li><span class="key">Power Sources</span>
+		  				<span class="value">
+	  						#foreach( $ps in ${platform.systemInfo.powerSources} )
+
+	  							#if(${ps.name})${ps.name}<br />#end
+	  							#if(${ps.remainingCapacityInPercent})Remaining Capacity: ${ps.remainingCapacityInPercent}&nbsp;%<br />#end
+	  							Power Available Until: #if(${ps.timeRemainingInSeconds} == -1)Calculating#end#if(${ps.timeRemainingInSeconds} == -2)Unlimited#else#if(${ps.shutdownTime})${ps.shutdownTime}#end#end
+  							#end
+		  				</span></li>
+	  					<br/>
+	  					#end <!-- Power Sources -->
+
+
+						<!-- Fonts -->
+	  					#if(${platform.systemInfo.fontFamilies} && ${platform.systemInfo.fontFamilies.size()} > 0)
+	  					<li><span class="key">Font Families</span>
+		  				<span class="value">
+	  						#foreach( $ff in ${platform.systemInfo.fontFamilies} )
+								${ff}#if( $foreach.hasNext ), #end
+  							#end
+		  				</span></li>
+	  					<br/>
+	  					#end <!-- Power Sources -->
+
+
+
+						<!-- Connection Pools -->
+	  					#if(${platform.systemInfo.databaseInformation} &&
+	  						${platform.systemInfo.databaseInformation.connectionPools.size()} > 0)
+	  					<li><span class="key">Database Connection Pools</span>
+		  				<span class="value">
+		  				
+		  					#foreach( $cp in ${platform.systemInfo.databaseInformation.combinedConnectionInfo} )
+
+	  							Connection: ${cp.name}<br />
+	  							#if(${cp.url})Url: ${cp.url}<br />#end
+
+	  							#if(${cp.metrics})
+	  							#set( $metrics = ${cp.metrics} )
+	  							
+	  							#if(${metrics.activeConnections})Active Connections: ${metrics.activeConnections}<br />#end 
+	  							#if(${metrics.idleConnections})Idle Connections: ${metrics.idleConnections}<br />#end
+	  							#if(${metrics.threadsAwaitingConnections})Threads Awaiting Connections: ${metrics.threadsAwaitingConnections}<br />#end
+	  							#if(${metrics.totalConnections})Total Connections: ${metrics.totalConnections}<br />#end
+	  							#if(${metrics.leaseCount})Lease Count: ${metrics.leaseCount}<br />#end
+	  							#end
+	  							#if(${cp.minimumPoolSize})Minimum Poolsize: ${cp.minimumPoolSize}<br />#end
+	  							#if(${cp.maximumPoolSize})Maximum Poolsize: ${cp.maximumPoolSize}<br />#end
+	  							<br />
+  							#end
+  							
+  							<hr /><br />
+		  				
+	  						#foreach( $cp in ${platform.systemInfo.databaseInformation.connectionPools} )
+
+	  							Name: ${cp.name}<br />
+	  							#if(${cp.url})Url: ${cp.url}<br />#end
+	  							
+	  							#if(${cp.metrics})
+	  							#set( $metrics = ${cp.metrics} )
+	  							
+	  							#if(${metrics.activeConnections})Active Connections: ${metrics.activeConnections}<br />#end 
+	  							#if(${metrics.idleConnections})Idle Connections: ${metrics.idleConnections}<br />#end
+	  							#if(${metrics.threadsAwaitingConnections})Threads Awaiting Connections: ${metrics.threadsAwaitingConnections}<br />#end
+	  							#if(${metrics.totalConnections})Total Connections: ${metrics.totalConnections}<br />#end
+	  							#if(${cp.connectionTimeout})Connection Timeout: $StringTools.prettyPrintMilliseconds(${cp.connectionTimeout}, true, $ChronoUnitNanos)<br />#end
+	  							
+	  							#if(${metrics.waitTimeOneMinuteRate})Wait Time Rate (1 min): $StringTools.prettyPrintMilliseconds(${metrics.waitTimeOneMinuteRate}, true, $ChronoUnitNanos)<br />#end
+	  							#if(${metrics.waitTimeFiveMinutesRate})Wait Time Rate (5 min): $StringTools.prettyPrintMilliseconds(${metrics.waitTimeFiveMinutesRate}, true, $ChronoUnitNanos)<br />#end
+	  							#if(${metrics.waitTimeFifteenMinutesRate})Wait Time Rate (15 min): $StringTools.prettyPrintMilliseconds(${metrics.waitTimeFifteenMinutesRate}, true, $ChronoUnitNanos)<br />#end
+	  							#if(${metrics.waitTimeMeanRate})Wait Time Mean Rate: $StringTools.prettyPrintMilliseconds(${metrics.waitTimeMeanRate}, true, $ChronoUnitNanos)<br />#end
+	  							#if(${metrics.leaseCount})Lease Count: ${metrics.leaseCount}<br />#end
+	  							#if(${metrics.usageMinTime})Usage Time (min): ${metrics.usageMinTime} ms<br />#end
+	  							#if(${metrics.usageMaxTime})Usage Time (max): ${metrics.usageMaxTime} ms<br />#end
+	  							#if(${metrics.usageMedianTime})Usage Time (median): $StringTools.prettyPrintMilliseconds(${metrics.usageMedianTime}, true, $ChronoUnitNanos)<br />#end
+	  							#if(${metrics.usageMeanTime})Usage Time (mean): $StringTools.prettyPrintMilliseconds(${metrics.usageMeanTime}, true, $ChronoUnitNanos)<br />#end
+	  							#end
+	  							
+	  							#if(${cp.idleTimeout})Idle Timeout: $StringTools.prettyPrintMilliseconds(${cp.idleTimeout}, true, $ChronoUnitNanos)<br />#end
+	  							#if(${cp.maxLifetime})Max Lifetime: $StringTools.prettyPrintMilliseconds(${cp.maxLifetime}, true, $ChronoUnitNanos)<br />#end
+	  							#if(${cp.minimumPoolSize})Minimum Poolsize: ${cp.minimumPoolSize}<br />#end
+	  							#if(${cp.maximumPoolSize})Maximum Poolsize: ${cp.maximumPoolSize}<br />#end
+	  							<br />
+  							#end
+		  				</span></li>
+	  					<br/>
+	  					#end <!-- Connection Pools -->
+
+
+
+	  					<!-- Messaging -->
+	  					#if(${platform.systemInfo.messaging})
+	  					<li><span class="key">Messaging</span>
+		  				<span class="value">
+		  					#set( $messaging = ${platform.systemInfo.messaging} )
+
+		  					#if(${messaging.messagingDescription})${messaging.messagingDescription}#end<br />
+
+		  				</span></li>
+	  					<br/>
+	  					#end <!-- Messaging -->
+
+
+
+
+
+						<!-- Concurrency -->
+	  					#if(${platform.systemInfo.concurrency})
+
+	  					<!-- Lock Manager -->
+	  					#if(${platform.systemInfo.concurrency.lockManagerDescription})
+	  					<li><span class="key">Lock Manager</span>
+		  				<span class="value">
+		  					${platform.systemInfo.concurrency.lockManagerDescription}<br />
+		  				</span></li>
+	  					<br/>
+	  					#end <!-- Lock Manager -->
+
+	  					<!-- Leadership Manager -->
+	  					#if(${platform.systemInfo.concurrency.leadershipManagerDescription})
+	  					<li><span class="key">Leadership Manager</span>
+		  				<span class="value">
+		  					${platform.systemInfo.concurrency.leadershipManagerDescription}<br />
+		  				</span></li>
+	  					<br/>
+	  					#end <!-- Lock Manager -->
+
+						#end <!-- Concurrency -->
+						
+						
+						
+						
+						
+						
+						
+	  					
+						<!-- Java -->
+	  					#if(${platform.systemInfo.javaEnvironment})
+	  					#set( $j = ${platform.systemInfo.javaEnvironment} )
+	  					<li><span class="key">Java</span>
+		  				<span class="value">
+  							#if(${j.name})Id: ${j.name}<br />#end
+  							#if(${j.elevatedPrivileges})Running with elevated permissions: ${j.elevatedPrivileges}<br />#end
+  							#if(${j.specName})Specification: ${j.specName}#if(${j.specVersion}) ${j.specVersion}#end#if(${j.specVendor}) (${j.specVendor})#end<br />#end
+  							#if(${j.vmName})Virtual Machine: ${j.vmName}#if(${j.vmVersion}) ${j.vmVersion}#end#if(${j.vmVendor}) (${j.vmVendor})#end<br />#end
+  							#if(${j.javaHome})Java Home: ${j.javaHome}<br />#end
+  							#if(${j.javaVendor})Java Vendor: #if(${j.javaVendorUrl})<a href="${j.javaVendorUrl}" target="_blank">#end${j.javaVendor}#if(${j.javaVendorUrl})</a>#end<br />#end
+  							#if(${j.javaVersion})Java Version: ${j.javaVersion}<br />#end
+  							#if(${j.javaCompiler})Compiler: ${j.javaCompiler}<br />#end
+  							BootClassPath supported: ${j.bootClassPathSupported}<br />
+  							#if(${j.bootClassPath})BootClassPath: ${j.bootClassPath}<br />#end
+  							#if(${j.classPath})ClassPath: ${j.classPath}<br />#end
+  							#if(${j.libraryPath})LibraryPath: ${j.libraryPath}<br />#end
+  							#if(${j.javaClassVersion})Class Version: ${j.javaClassVersion}<br />#end
+  							#if(${j.managementSpecVersion})Management Specification Version: ${j.managementSpecVersion}<br />#end
+  							#if(${j.threadCount})Thread Count: ${j.threadCount}<br />#end
+  							<br />
+  							#if(${j.totalMemoryInGb})Allocated Memory: ${j.totalMemoryInGb} GB<br />#end
+  							#if(${j.maxMemoryInGb})Max Memory: ${j.maxMemoryInGb} GB<br />#end
+  							#if(${j.usedMemoryInGb})Used Memory: ${j.usedMemoryInGb} GB<br />#end
+  							#if(${j.freeMemoryInGb})Free Memory: ${j.freeMemoryInGb} GB<br />#end
+  							#if(${j.initMemoryInGb})Init Memory: #if(${j.initMemoryInGb} == -1.0) undefined #else ${j.initMemoryInGb} GB #end<br />#end
+  							#if(${j.totalMemoryNonHeapInGb})Allocated Memory NonHeap: ${j.totalMemoryNonHeapInGb} GB<br />#end
+  							#if(${j.maxMemoryNonHeapInGb})Max Memory NonHeap: #if(${j.maxMemoryNonHeapInGb} == -1.0) undefined #else ${j.maxMemoryNonHeapInGb} GB #end<br />#end
+  							#if(${j.usedMemoryNonHeapInGb})Used Memory NonHeap: ${j.usedMemoryNonHeapInGb} GB<br />#end
+  							#if(${j.initMemoryNonHeapInGb})Init Memory NonHeap: #if(${j.initMemoryNonHeapInGb} == -1.0) undefined #else ${j.initMemoryNonHeapInGb} GB #end<br />#end
+  							#if(${j.residentSetSizeInGb})Resident Set Size: #if(${j.residentSetSizeInGb} == -1.0) undefined #else ${j.residentSetSizeInGb} GB #end<br />#end
+  							#if(${j.virtualSizeInGb})Virtual Size: #if(${j.virtualSizeInGb} == -1.0) undefined #else ${j.virtualSizeInGb} GB #end<br />#end
+  							<br />
+  							#if(${j.startTime})Start Time: ${j.startTime}<br />#end
+  							#if(${j.uptimeDisplay})Uptime: ${j.uptimeDisplay}<br />#end
+  							#if(${j.tmpDir})Temporary Directory: ${j.tmpDir}<br />#end
+  							#if(${j.userHome})User Home: ${j.userHome}<br />#end
+  							#if(${j.username})User Name: ${j.username}<br />#end
+  							#if(${j.workingDir})Working Directory: ${j.workingDir}<br />#end
+  							#if(${j.availableProcessors})Available Processors: ${j.availableProcessors}<br />#end
+  							<br />
+  							#if(${j.inputArguments} && ${j.inputArguments.size()} > 0)
+	  							Input Arguments: #foreach( $arg in ${j.inputArguments} )${arg}#if( $foreach.hasNext ) #end#end<br />
+	  						#end
+	  						#if(${j.systemProperties} && ${j.systemProperties.size()} > 0)
+	  							System Properties: #foreach( $entry in ${j.systemProperties.entrySet()} )${entry.key}=${entry.value}#if( $foreach.hasNext ), #end#end<br />
+	  						#end
+	  						#if(${j.environmentVariables} && ${j.environmentVariables.size()} > 0)
+	  							Environment Variables: #foreach( $entry in ${j.environmentVariables.entrySet()} )${entry.key}=${entry.value}#if( $foreach.hasNext ), #end#end<br />
+	  						#end
+		  				</span></li>
+	  					<br/>
+	  					#end <!-- Java -->
+
+
+						<!-- Thread Pools -->
+	  					#if(${platform.systemInfo.threadPools} &&
+	  						${platform.systemInfo.threadPools.threadPools.size()} > 0)
+	  					<li><span class="key">Thread Pools</span>
+		  				<span class="value">
+	  						#foreach( $tp in ${platform.systemInfo.threadPools.threadPools} )
+
+	  							Name: ${tp.name}<br />
+	  							Active Threads: ${tp.activeThreads}<br />
+	  							Total Executions: ${tp.totalExecutions}<br />
+	  							Average Running Time: ${tp.averageRunningTimeMs} ms<br />
+	  							Pool Size: ${tp.poolSize}<br />
+	  							Core Pool Size: ${tp.corePoolSize}<br />
+	  							Maximum Pool Size: ${tp.maxPoolSize}<br />
+	  							Pending Tasks in Queue: ${tp.pendingTasksInQueue}<br />
+	  							Time Since Last Execution: ${tp.timeSinceLastExecutionMs}<br />
+	  							#if(${tp.averagePendingTimeInMs})Average Pending Time: $StringTools.prettyPrintMilliseconds(${tp.averagePendingTimeInMs}, true, $ChronoUnitNanos)<br />#end
+	  							<br />
+  							#end
+		  				</span></li>
+	  					<br/>
+	  					#end <!-- Thread Pools -->
+
+
+
+
+
+						<!-- Java Processes -->
+	  					#if(${platform.systemInfo.javaProcesses} && ${platform.systemInfo.javaProcesses.size()} > 0)
+	  					<li><span class="key">Java Processes</span>
+		  				<span class="value">
+	  						#foreach( $jp in ${platform.systemInfo.javaProcesses} )
+
+	  							#if(${jp.path})${jp.path}<br />#end
+	  							#if(${jp.processId} > 0)Process Id: #if(${jp.isCurrentProcess})<b>#end${jp.processId}#if(${jp.isCurrentProcess})</b> (Current Process)#end<br />#end
+	  							#if(${jp.parentProcessId} > 0)Parent Process Id: ${jp.parentProcessId}<br />#end
+	  							#if(${jp.priority} >= 0)Priority: ${jp.priority}<br />#end
+	  							#if(${jp.state})State: ${jp.state}<br />#end
+								#if(${jp.currentWorkingDirectory})Current Working Directory: ${jp.currentWorkingDirectory}<br />#end
+								#if(${jp.threadCount} >= 0)Thread Count: ${jp.threadCount}<br />#end
+								#if(${jp.openFiles} >= 0)Open Files: ${jp.openFiles}<br />#end
+								#if(${jp.kernelTimeDisplay})Kernel Time: ${jp.kernelTimeDisplay}<br />#end
+								#if(${jp.userTimeDisplay})User Time: ${jp.userTimeDisplay}<br />#end
+								#if(${jp.startTime})Start Time: ${jp.startTime}<br />#end
+								#if(${jp.uptimeDisplay})Uptime: ${jp.uptimeDisplay}<br />#end
+								#if(${jp.virtualSizeInGb})Virtual Size: ${jp.virtualSizeInGb}&nbsp;GB<br />#end
+								#if(${jp.commandLine})Command Line: ${jp.commandLine}<br />#end
+								#if(${jp.user})User/Group: ${jp.user}#if(${jp.userId})(${jp.userId})#end#if(${jp.group}), ${jp.group}#if(${jp.groupId})(${jp.groupId})#end#end<br />#end
+								#if(${jp.residentSetSizeInGb})RSS Size: ${jp.residentSetSizeInGb}&nbsp;GB<br />#end
+								#if(${jp.bytesReadInGb})Read From Disk: ${jp.bytesReadInGb}&nbsp;GB<br />#end
+								#if(${jp.bytesWrittenInGb})Write To Disk: ${jp.bytesWrittenInGb}&nbsp;GB<br />#end
+								#if( $foreach.hasNext )<br />#end
+  							#end
+		  				</span></li>
+	  					<br/>
+	  					#end <!-- Java Processes -->
+	  				<br/>
+	  			</ul>
+	  		</div>
+	  		#end <!-- System -->
+
+	  		<!-- Reflex App -->
+	  		#if(${platform.rxAppInfo})
+	  		#set($rx = ${platform.rxAppInfo})
+	  		<div class="aboutSectionWrapper">
+	  			<div class="aboutSectionTitle">Rx App Info</div>
+	  				<ul class="aboutSectionList">	  					
+	  					<li><span class="key">App Name:</span><span class="value">${rx.applicationName}</span></li>
+	  					<br/>
+	  					<li><span class="key">App Id:</span><span class="value">${rx.applicationId}</span></li>
+	  					<br/>
+
+						#if(${rx.moduleInfos})
+	  					<li><span class="key">Module Assets</span>
+	  					<span class="value">
+	  					#foreach ($moduleInfo in ${rx.moduleInfos})
+	  						${moduleInfo.groupId}:${moduleInfo.artifactId}#${moduleInfo.version}<br />
+	  					#end
+	  					<br/></span></li>
+	  					#end
+	  				
+
+	  					<!-- Stream Pipes -->
+	  					#if(${rx.streamPipeInfo})
+	  					#set($spi = ${rx.streamPipeInfo})
+	  					<li><span class="key">Stream Pipe Blocks</span>
+	  					<span class="value">
+	  						#foreach( $pool in $spi.poolList )
+						    	#blockPool($pool)
+						  	#end
+						  	<hr>
+	  						#blockPool($spi.inMemoryBlocks, "All In-Memory Blocks")
+	  						#blockPool($spi.total, "Total")
+	  					</span></li>
+	  					#end <!-- Stream Pipes -->
+
+	  					<!-- Temp Dir -->
+	  					#if(${rx.tempDirInfo})
+	  					<li><span class="key">Temporary Directory</span>
+	  					<span class="value">
+	  						Path: ${rx.tempDirInfo.path}<br />
+	  						Size: $MathTools.format($rx.tempDirInfo.size, "###,###,###,##0") bytes<br />
+	  						${rx.tempDirInfo.numFiles} files<br />
+	  						${rx.tempDirInfo.numFolders} directories<br />
+	  						${rx.tempDirInfo.numSymlinks} symbolic links<br />
+	  						${rx.tempDirInfo.numOthers} others<br />
+	  					</span></li>
+	  					#end <!-- Temp Dir -->
+	  				</ul>
+	  		</div>
+	  		#end	<!-- Reflex App -->
+
+	#end <!-- for loop over sysinfo map entries -->
+
+#end <!-- sysInfoMap available -->
+
+#macro( blockPool $blocks $name )
+  	#if(${blocks}) #if(${name}) ${name} #elseif(${blocks.inMemory}) In-Memory Block Pool #else File Block Pool #end <br />
+		#set($max = ${blocks.numMax})
+		#set($alloc = ${blocks.mbAllocatable})
+		&nbsp;&nbsp;$blocks.numUnused / $spi.fileBlocks.numTotal blocks unused #if(${blocks.blockSize} > 0) with ${blocks.blockSize} bytes each #end<br />
+		&nbsp;&nbsp;$blocks.mbUnused MB allocated by unused blocks<br />
+		&nbsp;&nbsp;$blocks.mbTotal MB allocated in total <!--(Also covers recyclable files from crashed previous tribefire runs)--><br />
+		&nbsp;#if(${max} == -1) No limit on theoretically allocatable blocks #else Might allocate up to $alloc MB in $max blocks #end <br />
+		#if(${blocks.poolKind} == "growing")&nbsp;&nbsp;Growing: Resources of this pool are kept available once they are instantiated and live until the server is shut down.<br /> #end
+		#if(${blocks.poolKind} == "dynamic")&nbsp;&nbsp;Dynamic: Resources of this pool may be freed again once they are not being actively used. <br /> #end
+		#if(${blocks.poolKind} == "softReferencing")&nbsp;&nbsp;Soft-Referencing: On high memory load resources of this pool are freed once they are not being actively used.<br /> #end
+		#if(${blocks.location})&nbsp;&nbsp;Location: $blocks.location<br /> #end
+		<br />
+	#end
+#end

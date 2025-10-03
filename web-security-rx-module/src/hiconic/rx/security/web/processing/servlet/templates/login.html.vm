@@ -1,0 +1,138 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>tribefire Login</title>
+<meta name="viewport" content="initial-scale=1, width=device-width, maximum-scale=1, minimum-scale=1, user-scalable=no">
+<link href='webpages/fonts/fonts.css' rel='stylesheet' type='text/css'>
+<link rel="shortcut icon" href="webpages/favicon.ico" type="image/x-icon"/>
+<link href="webpages/style-login.css" rel="stylesheet" type="text/css">
+
+
+
+<script>
+
+function bindForm() {
+ var form = document.getElementById("signinForm");
+ form.addEventListener("submit", function (event) {
+   event.preventDefault();
+   login(form);
+ });
+
+}
+
+function login() {
+
+	var loginData = new Object();
+	loginData.user = document.getElementById("input_user").value;
+	loginData.password = document.getElementById("input_password").value;
+	#if($offerStaySigned)
+	loginData.staySignedIn = document.getElementById("staySigned").checked;
+	#end
+
+    var loginDataJson= JSON.stringify(loginData);
+	
+	var request = new XMLHttpRequest();
+	
+ 	// Set up our request
+ 	request.open('POST', 'login/auth');
+	request.setRequestHeader("Content-Type","application/json");
+	request.setRequestHeader("Accept","application/json");
+	
+	// Define repsonse handling
+	request.onreadystatechange = function () {
+		
+		if(request.readyState == 4) {
+			
+			if (request.status == 200) {
+				var sessionId = request.responseText;
+				
+				var redirectLocation = "."; // default redirect to current page
+				#if ($continue)
+					redirectLocation = '$continue';
+				#end
+				
+				window.location = redirectLocation; // redirect to landing page
+			} else {
+				var failureMessage = "Could not sign in";
+				try {
+					var failure = JSON.parse(request.responseText);
+					var type = failure._type;
+					if (failure.text && failure.text.length > 0) {
+						failureMessage = failure.text;
+					}
+					if (type == 'com.braintribe.gm.model.security.reason.SecondFactorRequired') {
+						failureMessage = "Please verify your login with the token sent to you separately.";
+						var redirectUrl = failure.redirectUrl;
+						if (redirectUrl && redirectUrl.length > 0) {
+							window.location = redirectUrl;
+							return;
+						}			
+					}
+				
+				} catch (err) {
+					console.log("Could not parse response text");
+				}	
+				window.location = "login?message="+encodeURI(failureMessage);
+			}
+			
+		}
+	
+	}
+	
+ 	// Send login request
+ 	request.send(loginDataJson);
+	//request.send();
+}
+
+</script>
+
+</head>
+<body onLoad="bindForm()">
+
+  <div class="loginContent">
+	<a href="."><img src="webpages/logo-tf-orange.svg" alt="logo" width="240"></a>
+	<h2>Sign in to tribefire</h2>
+	
+	
+	<form id="signinForm" class="loginForm" accept-charset="UTF-8">
+			<div>				
+				<input id="input_user" type="text" name="user" placeholder="Username" autofocus>
+			</div>
+			<div>
+				<input id="input_password" type="password" name="password" placeholder="Password">
+			</div>
+			<div>
+				<button type="submit">Sign in</button>
+			</div>
+			#if($offerStaySigned)
+			<div>
+				<input id="staySigned" type="checkbox" name="staySigned" checked="checked" value="true" class="mycheckbox" />
+				<span style="font-size:12px">Stay signed in</span>
+			</div>
+			#end
+
+			<div>
+				#if ($messageStatus == "OK")
+					<div class="okMessage" align="center">
+				#else
+					<div class="errorMessage" align="center">
+				#end
+					#if($message)
+						$tools.escape($message)
+					#else
+						&nbsp;
+					#end
+				</div>
+			</div>
+			
+			#if ($continue)
+				<input type="hidden" name="continue" value="$tools.escape($continue)" />
+			#end
+	</form>
+	<h3><a href="http://www.braintribe.com" target="_blank">www.braintribe.com</a></h3> 
+  </div>
+  
+
+</body>
+</html>

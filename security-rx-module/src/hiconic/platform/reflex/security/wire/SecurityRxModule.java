@@ -14,8 +14,17 @@
 package hiconic.platform.reflex.security.wire;
 
 import hiconic.platform.reflex.security.wire.space.SecurityRxModuleSpace;
+import hiconic.rx.module.api.wire.Exports;
 import hiconic.rx.module.api.wire.RxModule;
+import hiconic.rx.security.api.SecurityContract;
 
 public enum SecurityRxModule implements RxModule<SecurityRxModuleSpace> {
+
 	INSTANCE;
+
+	@Override
+	public void bindExports(Exports exports) {
+		exports.bind(SecurityContract.class, SecurityRxModuleSpace.class);
+	}
+
 }

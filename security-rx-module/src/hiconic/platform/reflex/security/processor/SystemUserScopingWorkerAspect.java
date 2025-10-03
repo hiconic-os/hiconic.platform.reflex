@@ -1,0 +1,32 @@
+package hiconic.platform.reflex.security.processor;
+
+import com.braintribe.cfg.Required;
+import com.braintribe.model.processing.securityservice.api.UserSessionScope;
+import com.braintribe.model.processing.securityservice.api.UserSessionScoping;
+import com.braintribe.model.processing.worker.api.WorkerAspect;
+import com.braintribe.model.processing.worker.api.WorkerAspectContext;
+
+/**
+ * @author peter.gazdik
+ */
+public class SystemUserScopingWorkerAspect implements WorkerAspect {
+
+	private UserSessionScoping userSessionScoping;
+
+	@Required
+	public void setUserSessionScoping(UserSessionScoping userSessionScoping) {
+		this.userSessionScoping = userSessionScoping;
+	}
+
+	@Override
+	public Object run(WorkerAspectContext context) throws Exception {
+		UserSessionScope scope = userSessionScoping.forDefaultUser().push();
+		try {
+			return context.proceed();
+
+		} finally {
+			scope.pop();
+		}
+	}
+
+}

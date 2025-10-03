@@ -36,13 +36,13 @@ import hiconic.rx.platform.models.RxConfiguredModel;
 
 public class RxServiceDomain implements ServiceDomain, ServiceDomainConfiguration, DelegatingModelConfiguration {
 
-	private String domainId;
-	private ConfigurableServiceRequestEvaluator evaluator;
+	private final String domainId;
+	private final ConfigurableServiceRequestEvaluator evaluator;
 
-	private RxConfiguredModel modelConfiguration;
-	private RxRequestDispatcher dispatcher;
+	private final RxConfiguredModel modelConfiguration;
+	private final RxRequestDispatcher dispatcher;
 	
-	private List<Supplier<? extends ServiceRequest>> defaultRequestSuppliers = Collections.synchronizedList(new ArrayList<>());
+	private final List<Supplier<? extends ServiceRequest>> defaultRequestSuppliers = Collections.synchronizedList(new ArrayList<>());
 	
 	public RxServiceDomain(String domainId, RxConfiguredModel modelConfiguration, ExecutorService executorService, Evaluator<ServiceRequest> contextEvaluator, ServiceProcessor<ServiceRequest, Object> fallbackProcessor) {
 		this.domainId = domainId;
@@ -113,4 +113,10 @@ public class RxServiceDomain implements ServiceDomain, ServiceDomainConfiguratio
 	public void addDefaultRequestSupplier(Supplier<? extends ServiceRequest> serviceRequestSupplier) {
 		this.defaultRequestSuppliers.add(serviceRequestSupplier);
 	}
+
+	@Override
+	public String toString() {
+		return getClass().getSimpleName() + "[" + domainId + "]";
+	}
+
 }	

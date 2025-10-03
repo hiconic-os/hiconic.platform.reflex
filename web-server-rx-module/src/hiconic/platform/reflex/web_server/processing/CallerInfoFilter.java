@@ -28,6 +28,7 @@ import com.braintribe.model.processing.service.api.aspect.RequestorIdAspect;
 import com.braintribe.utils.StringTools;
 import com.braintribe.utils.collection.impl.AttributeContexts;
 
+import dev.hiconic.servlet.api.HttpFilter;
 import dev.hiconic.servlet.api.HttpServletArguments;
 import dev.hiconic.servlet.api.HttpServletArgumentsAttribute;
 import dev.hiconic.servlet.api.remote.RemoteClientAddressResolver;

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>hiconic.platform.reflex</groupId>
+        <artifactId>parent</artifactId>
+        <version>[1.0,1.1)</version>
+    </parent>
+    <artifactId>check-rx-module</artifactId>
+    <version>1.0.1</version>
+    <properties/>
+    <dependencies>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>check-module-api</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.braintribe.execution</groupId>
+            <artifactId>execution</artifactId>
+            <version>${V.com.braintribe.execution}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.braintribe.xml</groupId>
+            <artifactId>xml-utils</artifactId>
+            <version>${V.com.braintribe.xml}</version>
+        </dependency>
+        <!-- velocity -->
+        <dependency>
+            <groupId>com.braintribe.velocity</groupId>
+            <artifactId>velocity-tools</artifactId>
+            <version>${V.com.braintribe.velocity}</version>
+        </dependency>
+        <!-- Markdown Support -->
+        <dependency>
+            <groupId>com.vladsch.flexmark</groupId>
+            <artifactId>flexmark</artifactId>
+            <version>${V.com.vladsch.flexmark}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.vladsch.flexmark</groupId>
+            <artifactId>flexmark-ext-anchorlink</artifactId>
+            <version>${V.com.vladsch.flexmark}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.vladsch.flexmark</groupId>
+            <artifactId>flexmark-ext-toc</artifactId>
+            <version>${V.com.vladsch.flexmark}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.vladsch.flexmark</groupId>
+            <artifactId>flexmark-ext-tables</artifactId>
+            <version>${V.com.vladsch.flexmark}</version>
+        </dependency>
+    </dependencies>
+</project>

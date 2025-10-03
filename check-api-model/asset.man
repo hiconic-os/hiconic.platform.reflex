@@ -1,0 +1,1 @@
+$nature = !hiconic.rx.check.model.asset.natures.ModelPriming()

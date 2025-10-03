@@ -16,7 +16,6 @@ package hiconic.platform.reflex.web_rpc.wire.space;
 import com.braintribe.utils.stream.api.StreamPipes;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
-import com.braintribe.wire.api.context.WireContextConfiguration;
 
 import dev.hiconic.servlet.webrpc.server.GmWebRpcServer;
 import hiconic.rx.module.api.wire.RxModuleContract;
@@ -36,7 +35,7 @@ public class WebRpcServerRxModuleSpace implements RxModuleContract {
 	private WebServerContract webServer;
 	
 	@Override
-	public void onLoaded(WireContextConfiguration configuration) {
+	public void onDeploy() {
 		webServer.addServlet("web-rpc", "/rpc/*", webRpcServer());
 	}
 

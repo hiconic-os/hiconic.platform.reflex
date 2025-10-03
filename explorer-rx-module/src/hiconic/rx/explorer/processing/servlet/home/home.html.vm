@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>tribefire Services</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<script>
+
+{
+
+	var currentFullRef = window.location.href;
+	var currentRef = currentFullRef;
+	var paramIdx = currentFullRef.indexOf("?");
+	var params;
+	if (paramIdx > 0) {
+		currentRef = currentFullRef.substring(0,paramIdx);
+		params = currentFullRef.substring(paramIdx);
+	}
+	
+	var newRef = currentRef;
+
+	if (currentRef.includes("/home")){
+	
+		var idx = currentRef.indexOf("/home");
+		newRef = currentRef.substring(0,idx)+"/home";
+	
+	} else {
+		if (currentRef.endsWith("/")) {
+			newRef += "home";
+		} else {
+			newRef += "/home";
+		}
+		
+	}
+	
+	if (currentRef != newRef) {
+		if (params) {
+			newRef += params;
+		}
+		console.log("redirect from current ref: "+currentRef+" to: "+newRef);
+		window.location = newRef;
+	}
+
+}
+
+{
+
+// Close the dropdown menu if the user clicks outside of it
+window.onclick = function(event) {
+  if (!event.target.matches('.dropbtn')) {
+
+    var dropdowns = document.getElementsByClassName("dropdown-content");
+    var i;
+    for (i = 0; i < dropdowns.length; i++) {
+      var openDropdown = dropdowns[i];
+      if (openDropdown.classList.contains('show')) {
+        openDropdown.classList.remove('show');
+      }
+    }
+  }
+
+}
+
+}
+
+function loadContent(locationSrc) {
+	document.getElementById('tf_content').src = locationSrc;
+}
+	
+function openMenu() {
+	document.getElementById("usermenu").classList.toggle("show");
+}
+
+function logout() {
+	var request = new XMLHttpRequest();
+
+ 	// Set up our request
+ 	request.open('POST', 'logout');
+	request.setRequestHeader("Content-Type","application/json");
+	request.setRequestHeader("Accept","application/json");
+
+	// Define repsonse handling
+	request.onreadystatechange = function () {
+		if(request.readyState == 4) {
+			window.location = "."; // redirect to landing page			
+		}
+	}
+
+ 	// Send request
+ 	request.send();
+}
+
+
+	
+</script>
+<link rel="shortcut icon" href="webpages/favicon.ico" type="image/x-icon"/>
+<link rel="stylesheet" href="webpages/style-new.css">
+<style>
+	#menu_ul{
+		margin-top:0px !important;
+		margin-left:0px !important;
+		width:110px !important;
+		left: -50px !important;
+		box-shadow: 0px 2px 5px silver;
+	}
+	
+	.demo_li{
+		width: 100px !important;
+		height: 22px !important;
+		display: table !important;
+		margin: 5px;
+	}
+	
+	.menuLink{
+		background-color: transparent !important;
+		display: table-cell !important;
+		color: black !important;
+		font-size: 11px !important;
+		font-style: normal !important;
+		font-variant: normal !important;
+		font-weight: normal !important;
+		height: 16px !important;
+		line-height: 16px !important;
+		outline-color: rgb(34, 34, 34) !important;
+		outline-style: none !important;
+		outline-width: 0px !important;
+		padding: 0px !important;		
+		position: relative !important;
+		text-decoration: none !important;
+		white-space: nowrap !important;
+		width: 54px !important;
+		height: 22px !important;
+		vertical-align: middle;
+	}
+	
+	.demo_link:hover{
+		background-color:#FFC151 !important;
+	}
+	
+	.menuImage{
+		margin: 0 !important;
+		vertical-align: middle;
+		margin-top: 3px !important;
+	}
+	
+	.menuLink::after{
+		border: none !important;	
+	}
+	
+	#headerMessage {
+		/*border-color: #999;*/
+		/*padding: 2px 0 4px 33px;*/
+		/*background-position: 11px -126px;*/
+		background: red; /*#FFCCBF;*/
+		border: 0; /*1px solid #CCCCCC;*/
+		color: white; /*#666666;*/
+		font-size: 1.2em;
+		font-weight: 500;
+		text-align: center;
+		
+		/*vertical-align: baseline;*/
+		cursor: auto !important;
+		outline: 0;
+	}
+	
+	#tf_content {
+		width: 100%;
+		height: 100%;
+	    height: calc(100% - 110px);
+	    display: block;
+    }
+
+	#app_name {
+	    color: orange;
+	    font-size: 200%;
+	    top: 15px;
+	    left: 15px;
+	    position: relative;
+	}
+
+	em {
+		color: white;
+		font-style: normal;
+	}
+	
+	.release-artifact {
+		display: inline-block;
+	}
+	
+</style>
+</head>
+<body>
+	
+	<div id="tf_header">
+		<a href="."><span id="app_name" >${applicationName}</span></a>
+		
+		#if ($userSession)
+		<div id="tf_nav" class="dropdown">
+			<button class="dropbtn" onclick="openMenu()">
+				<img  src="user-image" width="32" height="32" alt="$!{userSession.user.name}" title="Username - $!{userSession.user.name}" />
+				<span style="left:10px; top:-10px; font-size:11px; 	word-wrap: break-word; display:inline">$tools.displayUserName($userSession.user.firstName,$userSession.user.lastName,$userSession.user.name,"No Name") </span>
+			</button>
+  			<div id="usermenu" class="dropdown-content">
+  				<div style="display: flex; justify-content:flex-start; align-items:center; border-bottom: 2px solid #efefef; min-height:70px">
+	  				<img style="float: left;" src="user-image" width="64px" height="64px" alt="$!{userSession.user.name}" title="Username: $!{userSession.user.name}" />
+					<div style="display:inline;left: 5%;">
+		    			<p class="dropdown-content-info">
+		    				<b>$tools.displayUserName($userSession.user.firstName,$userSession.user.lastName,$userSession.user.name,"No Name")</b>
+		    			</p>
+		    			#if (${userSession.user.email})
+		    			<p class="dropdown-content-info" style="font-size:10px">
+		    					$userSession.user.email <br/>
+		    			</p>
+		    			#end 
+					</div>						
+    			</div>
+    			
+    			<p class="dropdown-content-info" style="font-size:10px; margin-top:10px; text-align:center">
+    				Logged in since <br/> $tools.getDateAsString($userSession.creationDate)
+    			</p>
+    			
+				<div class="dropdown-content-link">
+					<p onclick="logout()">Sign Out</p>
+				</div>
+  			</div>
+		</div>
+		
+		#end
+	</div>
+
+	
+	#if ($userSession)
+	<div class="tf_tabmenu">
+		<div class="tf_tabmenuelements">
+			#if ($home.selectedTab)
+				<div class="tf_tabmenuelement"><a href="./home">OVERVIEW</a></div>
+				<div class="tf_tabmenuelement-selected">$!{home.selectedTab.displayName}</div>
+			#else
+				<div class="tf_tabmenuelement-selected">OVERVIEW</div>
+			#end
+		</div>
+	</div>
+	#end
+
+	#if ($home.selectedTab)	
+	<iframe id="tf_content" src="$!{home.selectedTab.url}" frameborder="0" ></iframe>
+	#else
+
+		#if ($userSession)
+		
+		<div class="wrap" style="padding-bottom:110px">
+			
+			
+				#set ($groups = $home.groups)
+				#foreach ($group in $groups)
+					#if (!$group.skip)
+						<div class="column">
+						
+								<div class="column-header">
+									#if($group.iconRef)
+										<img  src="$group.iconRef" style="opacity: 0.3; filter: alpha(opacity=50); "></img>
+									#end
+									<span>$!{group.name}</span>
+									#if ($group.openLink)
+									<a class="column-header" style="left: 90%;" href="$!{group.openLink.url}" target="$!{group.openLink.target}">
+										<img  src="$!{group.openLink.iconRef}" style="opacity: 0.7;"></img>
+									</a>
+									#end
+								</div>
+								
+								#if ($group.links.isEmpty()) 
+									
+									<div class="column-empty">No $!{group.name} available</div>
+															
+								#else
+									<div class="column-element-wrapper">
+									
+									#foreach ($groupElement in $group.links)
+										
+									
+										#if ($groupElement.entityType().typeSignature == 'hiconic.rx.explorer.home.model.LinkCollection')
+											#set ($linkCollection = $groupElement) 
+											
+											#set ($linkIconSrc = "webpages/arrow-grey.png")
+											#if ($linkCollection.iconRef)
+												#set ($linkIconSrc = $linkCollection.iconRef)
+											#end
+											
+											<div class="column-element">
+												#if( $linkCollection.displayName == "Cortex" || $linkCollection.displayName == "tribefire.js" || $linkCollection.displayName == "Default Domain" || $linkCollection.displayName == "Platform Domain")
+												<img src="$!{linkIconSrc}" width="16px" height="16px" style="left: 10px; opacity: 0.3; " />
+												#else
+												<img src="$!{linkIconSrc}" width="16px" height="16px" style="left: 10px" />
+												#end
+											
+												
+												<span style="left:25px">$!{linkCollection.displayName}</span>
+											</div>
+											
+											<div class="column-element-links">
+											#set ($cnt = 1)
+											#foreach($nestedLink in $linkCollection.nestedLinks)
+												#if ($cnt == 1)
+												<div  class="column-element-link" style="margin-left:55px"><a href="$!{nestedLink.url}" target="$nestedLink.target">$!{nestedLink.displayName}</a></div>
+												#else
+												<div  class="column-element-link" ><a href="$!{nestedLink.url}" target="$!{nestedLink.target}">$!{nestedLink.displayName}</a></div>
+												#end
+												#set( $cnt = $cnt+1)
+											#end
+											</div>
+										
+										#elseif ($groupElement.entityType().typeSignature == 'hiconic.rx.explorer.home.model.Link') 
+											#set ($link = $groupElement)
+											#set ($linkIconSrc = "webpages/arrow-grey.png")
+											#if ($link.iconRef)
+												#set ($linkIconSrc = $link.iconRef)
+											#end
+											
+											
+											<div class="column-element">
+												#if( $link.displayName == "Cortex" || $link.displayName == "tribefire.js" || $link.displayName == "Default Domain" || $link.displayName == "Platform Domain")
+												<img src="$!{linkIconSrc}" width="16px" height="16px" style="left: 10px; opacity: 0.3; " />
+												#else
+												<img src="$!{linkIconSrc}" width="16px" height="16px" style="left: 10px" />
+												#end
+												<a style="left:25px" href="$link.url" target="$!{link.target}">$!{link.displayName}</a>
+											</div>
+										#end
+										
+									#end
+									</div>
+								
+								#end
+								
+								
+						</div>
+					#end
+				#end
+				
+		</div>
+		
+		#else
+		
+		
+		<div id="tf_caption" style="top:20%; font-weight:300; font-size:3em">
+			<div>Welcome to Tribefire.</div>
+			<div style="font-size:20px">The Smart Data Platform.</div>
+			<div><a class="button" href="$!{loginUrl}" target="">Sign in</a></div>
+		</div>
+		
+		
+		#end		
+	
+	<div id="tf_footer">
+			<div class="tf_footer_content">
+				<div style="margin-left:25px; margin-right:25px;">
+
+				#if ($releaseArtifacts)
+					#set ($first = true)
+					#foreach ($artifact in $releaseArtifacts)
+						#if ($first) #set ($first = false) #else | #end
+						<div class="release-artifact" title="$artifact.asString()">
+							<span>$!{artifact.artifactId}</span> <em>$!{artifact.version}</em>
+						</div>
+					#end
+					#if ($hasMoreReleaseArtifacts)
+						 | ...
+					#end
+				#end
+					
+				</div>				
+			</div>
+	</div>
+
+	#end
+	
+	
+</body>
+</html>

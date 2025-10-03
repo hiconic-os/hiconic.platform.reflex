@@ -22,6 +22,7 @@ import com.braintribe.model.generic.reflection.Model;
 import com.braintribe.model.meta.GmMetaModel;
 import com.braintribe.model.processing.meta.editor.ModelMetaDataEditor;
 import com.braintribe.model.processing.service.api.MappingServiceProcessor;
+import com.braintribe.model.processing.service.api.Service;
 import com.braintribe.model.processing.service.api.ServiceProcessor;
 import com.braintribe.model.service.api.ServiceRequest;
 
@@ -49,6 +50,7 @@ public interface ModelConfiguration extends ModelReference {
 
 	<R extends ServiceRequest> void bindRequest(EntityType<R> requestType, Supplier<ServiceProcessor<? super R, ?>> serviceProcessorSupplier);
 
+	/** Bind method for {@link MappingServiceProcessor}s, i.e. ones where dispatching is generated based on methods annotated with {@link Service}. */
 	<R extends ServiceRequest> void bindRequestMapped(EntityType<R> requestType,
 			Supplier<MappingServiceProcessor<? super R, ?>> serviceProcessorSupplier);
 

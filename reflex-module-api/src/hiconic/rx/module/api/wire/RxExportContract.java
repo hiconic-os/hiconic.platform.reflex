@@ -19,8 +19,8 @@ import com.braintribe.wire.api.space.WireSpace;
  * Marker interface for {@link WireSpace contracts} that can be exported by one module and imported by another. This is the main mechanism how a
  * module offers an extension point for other modules to use.
  * <p>
- * Note that the importing module (typically) doesn't specify the module which exports the contract. It's up to the actual application to chose the
- * one it likes.
+ * Note that the importing module (typically) doesn't specify the module which exports the contract. It's up to the actual application to choose the
+ * module it likes.
  * 
  * <h2>Module Dependencies</h2>
  * 

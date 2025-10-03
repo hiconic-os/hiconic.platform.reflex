@@ -35,13 +35,11 @@ limitations under the License.
             <groupId>com.braintribe.gm</groupId>
             <artifactId>root-model</artifactId>
             <version>${V.com.braintribe.gm}</version>
-            <?tag asset?>
         </dependency>
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>access-configuration-model</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
-            <?tag asset ?>
         </dependency>
     </dependencies>
 </project>

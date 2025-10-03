@@ -26,6 +26,9 @@ import hiconic.rx.platform.loading.samples.api.ApiContract;
 public class ImporterSpace implements RxModuleContract {
 
 	@Import
-	private ApiContract simple;
+	private ApiContract api;
+
+	@Import
+	private ImporterDeeperSpace importerDeeper;
 
 }

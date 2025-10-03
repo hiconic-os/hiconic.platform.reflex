@@ -53,7 +53,7 @@ import hiconic.rx.platform.loading.RxModuleAnalysis.RxExportEntry;
 
 		if (entry.moduleWireContext == null)
 			throw new IllegalStateException("Cannot resolve contract " + contractClass.getName() + ", exposed by module " + entry.module.moduleName()
-					+ ", as that module is not loaded.");
+					+ ", as that module is not loaded yet.");
 
 		entry.space = (RxExportContract) entry.moduleWireContext.contract(contractClass);
 

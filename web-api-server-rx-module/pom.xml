@@ -1,4 +1,4 @@
-<!--
+<?xml version="1.0" encoding="UTF-8"?><!--
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -11,16 +11,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 --><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>hiconic.platform.reflex</groupId>
-		<artifactId>parent</artifactId>
-		<version>[1.0,1.1)</version>
-	</parent>
-	<artifactId>web-api-server-rx-module</artifactId>
-	<version>1.0.21</version>
-	<properties>
-	</properties>
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>hiconic.platform.reflex</groupId>
+        <artifactId>parent</artifactId>
+        <version>[1.0,1.1)</version>
+    </parent>
+    <artifactId>web-api-server-rx-module</artifactId>
+    <version>1.0.21</version>
+    <properties/>
     <licenses>
         <license>
             <name>Apache License, Version 2.0</name>
@@ -29,51 +28,56 @@ limitations under the License.
             <comments>A business-friendly OSS license</comments>
         </license>
     </licenses>
-	<dependencies>
-		<dependency>
-			<groupId>com.braintribe.common</groupId>
-			<artifactId>logging</artifactId>
-			<version>${V.com.braintribe.common}</version>
-		</dependency>    
-		<dependency>
-			<groupId>com.braintribe.gm</groupId>
-			<artifactId>reason-meta-data-model</artifactId>
-			<version>${V.com.braintribe.gm}</version>
-		</dependency>
-		<dependency>
-			<groupId>com.braintribe.gm</groupId>
-			<artifactId>gm-common-api</artifactId>
-			<version>${V.com.braintribe.gm}</version>
-		</dependency>
-		<dependency>
-			<groupId>com.braintribe.gm</groupId>
-			<artifactId>resources-support</artifactId>
-			<version>${V.com.braintribe.gm}</version>
-		</dependency>
-		<dependency>
-			<groupId>tribefire.extension.web-api</groupId>
-			<artifactId>web-api-endpoints-api</artifactId>
-			<version>${V.tribefire.extension.web-api}</version>
-		</dependency>
-		<dependency>
-			<groupId>tribefire.extension.web-api</groupId>
-			<artifactId>web-api-endpoints-model</artifactId>
-			<version>${V.tribefire.extension.web-api}</version>
-		</dependency>
-		<dependency>
-			<groupId>tribefire.extension.web-api</groupId>
-			<artifactId>web-api-commons</artifactId>
-			<version>${V.tribefire.extension.web-api}</version>
-		</dependency>		
-		<dependency>
-			<groupId>hiconic.platform.reflex</groupId>
-			<artifactId>reflex-module-api</artifactId>
-			<version>${V.hiconic.platform.reflex}</version>
-		</dependency>
-		<dependency>
-			<groupId>hiconic.platform.reflex</groupId>
-			<artifactId>web-server-rx-module</artifactId>
-			<version>${V.hiconic.platform.reflex}</version>
-		</dependency>
-	</dependencies>
+    <dependencies>
+        <dependency>
+            <groupId>com.braintribe.common</groupId>
+            <artifactId>logging</artifactId>
+            <version>${V.com.braintribe.common}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>reason-meta-data-model</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>gm-common-api</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>resources-support</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
+        <dependency>
+            <groupId>tribefire.extension.web-api</groupId>
+            <artifactId>web-api-endpoints-api</artifactId>
+            <version>${V.tribefire.extension.web-api}</version>
+        </dependency>
+        <dependency>
+            <groupId>tribefire.extension.web-api</groupId>
+            <artifactId>web-api-endpoints-model</artifactId>
+            <version>${V.tribefire.extension.web-api}</version>
+        </dependency>
+        <dependency>
+            <groupId>tribefire.extension.web-api</groupId>
+            <artifactId>web-api-commons</artifactId>
+            <version>${V.tribefire.extension.web-api}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>reflex-module-api</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>web-server-rx-module</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>web-security-module-api</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+    </dependencies>
 </project>

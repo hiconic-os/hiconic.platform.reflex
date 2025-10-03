@@ -1,0 +1,16 @@
+#if(${hotthreadsMap})
+			
+#foreach ($entry in $hotthreadsMap.entrySet())
+<div class="node">
+	<b>Node ${entry.key}</b>
+</div>
+<div class="aboutSectionWrapper">
+<pre>
+<span class="blackvalue">
+${entry.value}
+</span>
+</pre>
+</div>			
+#end
+#end <!-- Hot Threads -->
+	  

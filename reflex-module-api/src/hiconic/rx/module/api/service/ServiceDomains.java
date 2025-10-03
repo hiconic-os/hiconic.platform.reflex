@@ -20,18 +20,19 @@ import com.braintribe.model.meta.GmMetaModel;
 import com.braintribe.model.service.api.ServiceRequest;
 
 public interface ServiceDomains {
-	/**
-	 * Returns the main {@link ServiceDomain}
-	 */
-	ServiceDomain main();
-	/**
-	 * Returns the {@link ServiceDomain} for given domainId if available otherwise null
-	 */
+
+	// @formatter:off
+	/**Returns the main {@link ServiceDomain}*/
+	default ServiceDomain main() { return byId("main"); }
+	/**Returns the system {@link ServiceDomain}*/
+	default ServiceDomain system() { return byId("system"); }
+	// @formatter:on
+
+	
+	/** Returns the {@link ServiceDomain} for given domainId or <tt>null</tt> if no such domain exists. */
 	ServiceDomain byId(String domainId);
 	
-	/**
-	 * Enumerates all available ServiceDomains
-	 */
+	/**Lists all available {@link ServiceDomain}s */
 	List<? extends ServiceDomain> list();
 
 	List<? extends ServiceDomain> listDomains(EntityType<? extends ServiceRequest> requestType);

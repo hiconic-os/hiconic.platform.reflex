@@ -61,10 +61,10 @@ public class RxModuleAnalyzer {
 	private void determineDependencies() {
 		for (RxModuleNode node : analysis.nodes.values())
 			for (Class<? extends RxExportContract> importedContract : node.imports)
-				determinekDependency(node, importedContract);
+				determineDependency(node, importedContract);
 	}
 
-	private void determinekDependency(RxModuleNode node, Class<? extends RxExportContract> importedContract) {
+	private void determineDependency(RxModuleNode node, Class<? extends RxExportContract> importedContract) {
 		RxExportEntry exportEntry = analysis.exports.get(importedContract);
 		if (exportEntry == null)
 			throw new IllegalStateException("Cannot import " + importedContract.getName() + " to module "
@@ -85,12 +85,12 @@ public class RxModuleAnalyzer {
 	private static Set<Class<? extends RxExportContract>> importsOf(RxModule<?> rxModule) {
 		Set<Class<? extends RxExportContract>> exportContracts = new LinkedHashSet<>();
 
-		visit(rxModule.moduleSpaceClass(), exportContracts, new HashSet<>());
+		visitToFindImports(rxModule.moduleSpaceClass(), exportContracts, new HashSet<>());
 
 		return exportContracts;
 	}
 
-	private static void visit(Class<? extends WireSpace> space, Set<Class<? extends RxExportContract>> result,
+	private static void visitToFindImports(Class<? extends WireSpace> space, Set<Class<? extends RxExportContract>> result,
 			Set<Class<? extends WireSpace>> visited) {
 
 		if (!visited.add(space))
@@ -109,10 +109,10 @@ public class RxModuleAnalyzer {
 				if (RxExportContract.class.isAssignableFrom(type))
 					result.add((Class<? extends RxExportContract>) type);
 
-			} else if (type.isAssignableFrom(WireSpace.class)) {
+			} else if (WireSpace.class.isAssignableFrom(type)) {
 				Class<? extends WireSpace> importedSpaceClass = (Class<? extends WireSpace>) type;
 
-				visit(importedSpaceClass, result, visited);
+				visitToFindImports(importedSpaceClass, result, visited);
 			}
 		}
 	}

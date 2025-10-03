@@ -60,7 +60,7 @@ public class RxPlatform implements AutoCloseable {
 
 	private boolean configureLogging = true;
 	
-	private Set<java.util.logging.Logger> persistedJulLoggers = new LinkedHashSet<>();
+	private final Set<java.util.logging.Logger> persistedJulLoggers = new LinkedHashSet<>();
 
 	public RxPlatform() {
 		this(new String[] {});
@@ -237,7 +237,6 @@ public class RxPlatform implements AutoCloseable {
         if (logbackLevel == ch.qos.logback.classic.Level.ERROR) return java.util.logging.Level.SEVERE;
         return java.util.logging.Level.OFF;
     }
-
 
 	private void eagerLoading() {
 		// GMF.getTypeReflection().getPackagedModels().forEach(m -> m.getMetaModel());

@@ -1,0 +1,65 @@
+
+#if (${processesMap})
+
+	#foreach ($entry in $processesMap.entrySet())
+
+		#set ($node = $entry.key)
+		#set ($processes = $entry.value)
+		
+	  		<div class="node">
+				<b>Node ${node}</b>
+			</div>
+
+
+
+			<!-- Processes Overview -->
+			#if(${processes})
+	  		<div class="aboutSectionWrapper">
+			<li><span class="key">Processes Overview</span>
+			<span class="value" style="white-space: nowrap;">
+				#foreach( $process in ${processes.processes} )
+					#if(${process.name})<b><a href="#${node}-${process.processId}">${process.name}</a></b> - #if(${process.processId} > 0)#if(${process.isCurrentProcess})<b>#end(${process.processId})#if(${process.isCurrentProcess})</b> (Current Process)#end#end - #if(${process.uptimeDisplay}) ${process.uptimeDisplay}#end#end
+					<br />
+				#end
+			</span></li>
+			<br/>
+			</div>
+			#end <!-- Processes Overview -->
+
+		  <!-- Processes Details -->
+			#if(${processes})
+			<div class="aboutSectionWrapper">
+			<li><span class="key">Processes Details</span>
+			<span class="value">
+				#foreach( $process in ${processes.processes} )
+					<div id="${node}-${process.processId}"></div>
+					#if(${process.path})${process.path}<br />#end
+					#if(${process.name})Name: ${process.name}<br />#end
+					#if(${process.processId} > 0)Process Id: #if(${process.isCurrentProcess})<b>#end ${process.processId}#if(${process.isCurrentProcess})</b> (Current Process)#end<br />#end
+					#if(${process.parentProcessId} > 0)Parent Process Id: ${process.parentProcessId}<br />#end
+					#if(${process.priority} >= 0)Priority: ${process.priority}<br />#end
+					#if(${process.state})State: ${process.state}<br />#end
+					#if(${process.currentWorkingDirectory})Current Working Directory: ${process.currentWorkingDirectory}<br />#end
+					#if(${process.threadCount} >= 0)Thread Count: ${process.threadCount}<br />#end
+					#if(${process.openFiles} >= 0)Open Files: ${process.openFiles}<br />#end
+					#if(${process.kernelTimeDisplay})Kernel Time: ${process.kernelTimeDisplay}<br />#end
+					#if(${process.userTimeDisplay})User Time: ${process.userTimeDisplay}<br />#end
+					#if(${process.startTime})Start Time: ${process.startTime}<br />#end
+					#if(${process.uptimeDisplay})Uptime: ${process.uptimeDisplay}<br />#end
+					#if(${process.virtualSizeInGb})Virtual Size: ${process.virtualSizeInGb}&nbsp;GB<br />#end
+					#if(${process.commandLine})Command Line: ${process.commandLine}<br />#end
+					#if(${process.user})User/Group: ${process.user}#if(${process.userId})(${process.userId})#end#if(${process.group}), ${process.group}#if(${process.groupId})(${process.groupId})#end#end<br />#end
+					#if(${process.residentSetSizeInGb})RSS Size: ${process.residentSetSizeInGb}&nbsp;GB<br />#end
+					#if(${process.bytesReadInGb})Read From Disk: ${process.bytesReadInGb}&nbsp;GB<br />#end
+					#if(${process.bytesWrittenInGb})Write To Disk: ${process.bytesWrittenInGb}&nbsp;GB<br />#end
+					#if( $foreach.hasNext )<br />#end
+				#end
+			</span></li>
+			<br/>
+			</div>
+		  #end <!-- Processes Details -->
+
+
+	#end <!-- for loop over processesMap map entries -->
+
+#end <!-- processesMap available -->

@@ -14,6 +14,7 @@
 package hiconic.rx.access.module.api;
 
 import com.braintribe.common.attribute.AttributeContext;
+import com.braintribe.model.access.IncrementalAccess;
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSessionFactory;
 
 import hiconic.rx.access.model.configuration.Access;
@@ -21,16 +22,17 @@ import hiconic.rx.module.api.wire.RxExportContract;
 
 public interface AccessContract extends RxExportContract {
 
-	void deploy(Access access);
-	
+	void deploy(Access accessDenotation);
+	void deploy(Access accessDenotation, IncrementalAccess access);
+
 	AccessModelConfigurations accessModelConfigurations();
 
 	PersistenceGmSessionFactory contextSessionFactory();
-	
+
 	PersistenceGmSessionFactory systemSessionFactory();
-	
+
 	PersistenceGmSessionFactory sessionFactory(AttributeContext attributeContext);
-	
+
 	AccessDomains accessDomains();
 }
 

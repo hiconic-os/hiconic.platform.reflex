@@ -20,15 +20,24 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.SynchronousQueue;
 import java.util.function.Supplier;
 
+import com.braintribe.codec.marshaller.api.Marshaller;
+import com.braintribe.codec.marshaller.bin.Bin2Marshaller;
 import com.braintribe.codec.marshaller.common.BasicConfigurableMarshallerRegistry;
 import com.braintribe.codec.marshaller.jse.JseMarshaller;
 import com.braintribe.codec.marshaller.json.JsonStreamMarshaller;
 import com.braintribe.codec.marshaller.stax.StaxMarshaller;
 import com.braintribe.codec.marshaller.yaml.YamlMarshaller;
 import com.braintribe.common.attribute.AttributeContext;
+import com.braintribe.common.concurrent.TaskScheduler;
+import com.braintribe.common.concurrent.TaskSchedulerImpl;
+import com.braintribe.execution.ExtendedScheduledThreadPoolExecutor;
+import com.braintribe.execution.ExtendedThreadPoolExecutor;
+import com.braintribe.execution.ThreadPoolBuilder;
+import com.braintribe.execution.virtual.CountingVirtualThreadFactory;
+import com.braintribe.logging.ThreadRenamer;
 import com.braintribe.model.processing.service.common.ConfigurableDispatchingServiceProcessor;
 import com.braintribe.model.processing.service.common.context.UserSessionAspect;
 import com.braintribe.model.processing.service.common.eval.ConfigurableServiceRequestEvaluator;
@@ -144,6 +153,7 @@ public class CoreServicesSpace implements CoreServicesContract {
 		bean.registerMarshaller("application/yaml", yamlMarshaller());
 		bean.registerMarshaller("gm/jse", jseMarshaller());
 		bean.registerMarshaller("gm/xml", xmlMarshaller());
+		bean.registerMarshaller("gm/bin", binMarshaller());
 		return bean;
 	}
 
@@ -169,6 +179,13 @@ public class CoreServicesSpace implements CoreServicesContract {
 	@Managed
 	protected YamlMarshaller yamlMarshaller() {
 		return new YamlMarshaller();
+	}
+
+	@Managed
+	protected Marshaller binMarshaller() {
+		Bin2Marshaller bean = new Bin2Marshaller();
+		//bean.setRequiredTypesReceiver(requiredTypeEnsurer());
+		return bean;
 	}
 
 	@Override
@@ -223,8 +240,46 @@ public class CoreServicesSpace implements CoreServicesContract {
 
 	@Override
 	@Managed
+	public ThreadRenamer threadRenamer() {
+		ThreadRenamer bean = new ThreadRenamer(true);
+		return bean;
+	}
+	
+	@Override
+	@Managed
 	public ExecutorService executorService() {
-		return Executors.newCachedThreadPool();
+		// TODO use virtual thread executor (from WorkerRxModuleSpace)?
+		ExtendedThreadPoolExecutor bean = ThreadPoolBuilder.newPool() //
+				.poolSize(5, Integer.MAX_VALUE) //
+				.workQueue(new SynchronousQueue<>()) //
+				.threadNamePrefix("rx.platform-") //
+				.description("Rx Platform Thread-Pool") //
+				.build();
+		return bean;
 	}
 
+	@Override
+	@Managed
+	public ExtendedScheduledThreadPoolExecutor scheduledExecutorService() {
+		ExtendedScheduledThreadPoolExecutor bean = new ExtendedScheduledThreadPoolExecutor( //
+				5, //
+				new CountingVirtualThreadFactory("rx.scheduled-") //
+		);
+		bean.setAddThreadContextToNdc(true);
+		bean.allowCoreThreadTimeOut(true);
+		bean.setDescription("Rx Platform Scheduled Thread-Pool");
+
+		return bean;
+	}
+
+	@Override
+	@Managed
+	public TaskScheduler taskScheduler() {
+		TaskSchedulerImpl bean = new TaskSchedulerImpl();
+		bean.setName("Rx Platform-Task-Scheduler");
+		bean.setExecutor(scheduledExecutorService());
+
+		return bean;
+	}
+	
 }

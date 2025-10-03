@@ -13,6 +13,7 @@
 // ============================================================================
 package hiconic.platform.reflex.auth.processor;
 
+import com.braintribe.cfg.Required;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.security.reason.InvalidCredentials;
@@ -31,6 +32,13 @@ public class ExistingSessionCredentialsAuthenticationServiceProcessor
 		extends BasicAuthenticateCredentialsServiceProcessor<ExistingSessionCredentials> {
 
 	private static Logger log = Logger.getLogger(ExistingSessionCredentialsAuthenticationServiceProcessor.class);
+
+	private String internalRole;
+
+	@Required
+	public void setInternalRole(String internalRole) {
+		this.internalRole = internalRole;
+	}
 
 	@Override
 	protected Maybe<AuthenticateCredentialsResponse> authenticateCredentials(ServiceRequestContext context, AuthenticateCredentials request,
@@ -60,7 +68,7 @@ public class ExistingSessionCredentialsAuthenticationServiceProcessor
 			if (userMaybe.isUnsatisfied()) {
 
 				// An internal user session may not refer to a persisted user. We will use the one attached to the session instead
-				if (userSession.getEffectiveRoles().contains("tf-internal")) {
+				if (userSession.getEffectiveRoles().contains(internalRole)) {
 					return Maybe.complete(buildAuthenticatedUserFrom(userSession.getUser()));
 				}
 

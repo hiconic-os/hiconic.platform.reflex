@@ -11,27 +11,35 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 --><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<groupId>hiconic.platform.reflex</groupId>
-	<artifactId>parent</artifactId>
-	<version>1.0.14</version>
-	<packaging>pom</packaging>
-	<properties>
-		<java.version>21</java.version>
-		<V.hiconic.platform.reflex>[1.0,1.1)</V.hiconic.platform.reflex>
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>hiconic.platform.reflex</groupId>
+    <artifactId>parent</artifactId>
+    <version>1.0.14</version>
+    <packaging>pom</packaging>
+    <properties>
+        <java.version>21</java.version>
+        <V.hiconic.platform.reflex>[1.0,1.1)</V.hiconic.platform.reflex>
         <V.com.braintribe.common>[2.0,2.1)</V.com.braintribe.common>
         <V.com.braintribe.logging>[2.0,2.1)</V.com.braintribe.logging>
         <V.com.braintribe.testing>[2.0,2.1)</V.com.braintribe.testing>
         <V.com.braintribe.wire>[2.0,2.1)</V.com.braintribe.wire>
         <V.com.braintribe.gm>[2.0,2.1)</V.com.braintribe.gm>
         <V.com.braintribe.security>[2.0,2.1)</V.com.braintribe.security>
+        <V.com.braintribe.velocity>[2.0,2.1)</V.com.braintribe.velocity>
         <V.com.braintribe.devrock.templates>[2.0,2.1)</V.com.braintribe.devrock.templates>
         <V.tribefire.extension.web-api>[1.0,1.1)</V.tribefire.extension.web-api>
-		<V.tribefire.extension.hibernate>[2.0,2.1)</V.tribefire.extension.hibernate>
+        <V.tribefire.extension.hibernate>[2.0,2.1)</V.tribefire.extension.hibernate>
+        <V.com.braintribe.codec>[2.0,2.1)</V.com.braintribe.codec>
+        <V.com.braintribe.execution>[2.0,2.1)</V.com.braintribe.execution>
         <V.com.braintribe.servlet>[2.0,2.1)</V.com.braintribe.servlet>
-        <V.io.undertow>2.3.13.Final</V.io.undertow>
+        <V.com.braintribe.xml>[2.0,2.1)</V.com.braintribe.xml>
+
+        <V.com.github.ben-manes.caffeine>3.2.0</V.com.github.ben-manes.caffeine>
+        <V.com.github.oshi>6.9.0</V.com.github.oshi>
+        <V.com.vladsch.flexmark>0.64.8</V.com.vladsch.flexmark>
+        <V.io.undertow>2.3.18.Final</V.io.undertow>
         <V.jakarta.servlet>6.0.0</V.jakarta.servlet>
-	</properties>
+    </properties>
     <licenses>
         <license>
             <name>Apache License, Version 2.0</name>

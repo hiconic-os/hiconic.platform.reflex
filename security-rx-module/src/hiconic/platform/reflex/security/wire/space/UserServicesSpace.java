@@ -53,8 +53,9 @@ public class UserServicesSpace implements RxModuleContract {
 	private UsersConfiguration usersConfiguration() {
 		return getOrTunnel(platform.readConfig(UsersConfiguration.T));
 	}
-	
+
 	public UserSessionService userSessionService() {
+		// TODO why is the fallback not the main DB?
 		DataSource dataSource = database.findDataSource(configuration().getUserSessionDb());
 		
 		if (dataSource != null)

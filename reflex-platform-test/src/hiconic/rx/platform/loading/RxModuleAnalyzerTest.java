@@ -22,6 +22,7 @@ import hiconic.rx.module.api.wire.RxExportContract;
 import hiconic.rx.module.api.wire.RxModule;
 import hiconic.rx.platform.loading.RxModuleAnalysis.RxExportEntry;
 import hiconic.rx.platform.loading.samples.api.ApiContract;
+import hiconic.rx.platform.loading.samples.api.ApiDeeperContract;
 import hiconic.rx.platform.loading.samples.cycle_a.CycleAModule;
 import hiconic.rx.platform.loading.samples.cycle_b.CycleBModule;
 import hiconic.rx.platform.loading.samples.exporter.ExportingModule;
@@ -38,7 +39,7 @@ public class RxModuleAnalyzerTest {
 	public void simpleImportExport() throws Exception {
 		analyze(ExportingModule.INSTANCE, ImportingModule.INSTANCE);
 
-		assertDependency(ImportingModule.INSTANCE, ExportingModule.INSTANCE, ApiContract.class);
+		assertDependency(ImportingModule.INSTANCE, ExportingModule.INSTANCE, ApiContract.class, ApiDeeperContract.class);
 	}
 
 	@Test(expected = IllegalStateException.class)
@@ -50,7 +51,7 @@ public class RxModuleAnalyzerTest {
 		analysis = RxModuleAnalyzer.analyze(asList(modules));
 	}
 
-	private void assertDependency(RxModule<?> importer, RxModule<?> exporter, Class<? extends RxExportContract> contractClass) {
+	private void assertDependency(RxModule<?> importer, RxModule<?> exporter, Class<? extends RxExportContract>... contractClasses) {
 		RxModuleNode importerNode = analysis.nodes.get(importer);
 		assertThat(importerNode).isNotNull();
 
@@ -59,13 +60,15 @@ public class RxModuleAnalyzerTest {
 
 		assertThat(importerNode.dependencies).contains(exporterNode);
 
-		assertThat(importerNode.imports).contains(contractClass);
+		for (Class<? extends RxExportContract> contractClass : contractClasses) {
+			assertThat(importerNode.imports).as("Analyzer did not find an imported contract: " + contractClass.getName()).contains(contractClass);
 
-		RxExportEntry contractEntry = analysis.exports.get(contractClass);
-		assertThat(contractEntry).isNotNull();
+			RxExportEntry contractEntry = analysis.exports.get(contractClass);
+			assertThat(contractEntry).isNotNull();
 
-		assertThat(contractEntry.module).isEqualTo(exporter);
-		assertThat(contractEntry.spaceClass).isAssignableTo(contractClass);
+			assertThat(contractEntry.module).isEqualTo(exporter);
+			assertThat(contractEntry.spaceClass).isAssignableTo(contractClass);
+		}
 	}
 
 }

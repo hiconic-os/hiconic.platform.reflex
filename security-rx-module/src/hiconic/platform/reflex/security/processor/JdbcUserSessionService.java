@@ -32,7 +32,6 @@ import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.security.reason.SessionNotFound;
 import com.braintribe.gm.model.usersession.PersistenceUserSession;
-import com.braintribe.logging.Logger;
 import com.braintribe.model.processing.securityservice.api.exceptions.SecurityServiceException;
 import com.braintribe.model.time.TimeSpan;
 import com.braintribe.model.user.User;
@@ -44,8 +43,6 @@ public class JdbcUserSessionService extends AbstractUserSessionService {
 	
 	private String tableName = "HC_USER_SESSION";
 	
-	static final Logger log = Logger.getLogger(JdbcUserSessionService.class);
-
 	protected String getCreatePersistenceUserSessionStmt() {
 		return "INSERT INTO " + tableName + " (" +
 				"ID, "+
