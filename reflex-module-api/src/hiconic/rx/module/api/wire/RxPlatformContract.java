@@ -28,6 +28,7 @@ import com.braintribe.wire.api.space.WireSpace;
 
 import hiconic.rx.module.api.service.ConfiguredModels;
 import hiconic.rx.module.api.service.ServiceDomains;
+import hiconic.rx.module.api.state.RxApplicationStateManager;
 
 /**
  * Wire contract that exposes general features of the reflex platform available to reflex modules. To access the features you have to import
@@ -36,6 +37,7 @@ import hiconic.rx.module.api.service.ServiceDomains;
  * @author dirk.scheffler
  */
 public interface RxPlatformContract extends WireSpace {
+	RxApplicationStateManager stateManager();
 
 	/** Standard request {@link Evaluator}. */
 	Evaluator<ServiceRequest> evaluator();
@@ -66,7 +68,7 @@ public interface RxPlatformContract extends WireSpace {
 
 	/** The nodeId of this instance in distributed systems */
 	String nodeId();
-
+	
 	/**
 	 * Returns a configuration for the given type or a reason why the configuration could not be retrieved.
 	 * <p>

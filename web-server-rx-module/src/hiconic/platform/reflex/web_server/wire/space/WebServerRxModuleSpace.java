@@ -24,7 +24,9 @@ import java.util.List;
 
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
+import com.braintribe.wire.api.context.WireContextConfiguration;
 
+import hiconic.platform.reflex.web_server.processing.ApplicationStateGateHandler;
 import hiconic.platform.reflex.web_server.processing.CallerInfoFilter;
 import hiconic.platform.reflex.web_server.processing.DefaultRxServlet;
 import hiconic.platform.reflex.web_server.processing.InstanceEndpointConfigurator;
@@ -69,6 +71,19 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	@Import
 	private RxPlatformContract platform;
 
+	@Override
+	public void onLoaded(WireContextConfiguration configuration) {
+		undertowServer().start();
+
+		println( //
+				sequence( //
+						text("Web Server running. "), //
+						cyan("URL:"), //
+						text(" http://" + configuration().getHostName() + ":" + configuration().getPort()) //
+				) //
+		);
+	}
+	
 	@Override
 	public void addServlet(String name, String path, HttpServlet servlet) {
 		ServletInfo servletInfo = Servlets.servlet(name, servlet.getClass(), new ImmediateInstanceFactory<>(servlet));
@@ -197,29 +212,29 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	}
 
 	@Managed
-	private PathHandler pathHandler() {
+	private PathHandler applicationHandler() {
 		PathHandler bean = Handlers.path();
+		
 		configureResources(bean);
+
+		try {
+			bean.addPrefixPath("/", servletDeploymentManager().start()); 
+		} catch (ServletException e) {
+			throw new RuntimeException(e);
+		}
+		
+		return bean;
+	}
+	
+	@Managed
+	private ApplicationStateGateHandler applicationStateGateHandler() {
+		ApplicationStateGateHandler bean = new ApplicationStateGateHandler(platform.stateManager());
 		return bean;
 	}
 
 	@Override
 	public void onApplicationReady() {
-		try {
-			pathHandler().addPrefixPath("/", servletDeploymentManager().start());
-		} catch (ServletException e) {
-			throw new RuntimeException(e);
-		}
-
-		undertowServer().start();
-
-		println( //
-				sequence( //
-						text("Web Server running. "), //
-						cyan("URL:"), //
-						text(" http://" + configuration().getHostName() + ":" + configuration().getPort()) //
-				) //
-		);
+		applicationStateGateHandler().setStandardHandler(applicationHandler());
 	}
 
 	@Managed
@@ -253,7 +268,7 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	@Managed
 	private AccessLogHandler accessLogHandler() {
 		String logFormat = "%h %l %u \"%r\" %s %b %Dms";
-		AccessLogHandler bean = new AccessLogHandler(pathHandler(), logReceiver(), logFormat, Undertow.class.getClassLoader());
+		AccessLogHandler bean = new AccessLogHandler(applicationStateGateHandler(), logReceiver(), logFormat, Undertow.class.getClassLoader());
 		return bean;
 	}
 
