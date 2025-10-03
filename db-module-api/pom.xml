@@ -18,7 +18,7 @@ limitations under the License.
         <version>[1.0,1.1)</version>
     </parent>
     <artifactId>db-module-api</artifactId>
-    <version>1.0.6</version>
+    <version>1.0.7</version>
     <properties/>
     <licenses>
         <license>

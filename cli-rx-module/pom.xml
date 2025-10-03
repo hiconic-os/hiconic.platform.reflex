@@ -18,7 +18,7 @@ limitations under the License.
         <version>[1.0,1.1)</version>
     </parent>
     <artifactId>cli-rx-module</artifactId>
-    <version>1.0.21</version>
+    <version>1.0.22</version>
     <properties/>
     <licenses>
         <license>
