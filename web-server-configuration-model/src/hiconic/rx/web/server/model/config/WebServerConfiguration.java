@@ -28,6 +28,9 @@ public interface WebServerConfiguration extends GenericEntity {
 	String port = "port";
 	String sslPort = "sslPort";
 	String hostName = "hostName";
+	String maxTreads = "maxThreads";
+	String coreTreads = "coreThreads";
+	String ioTreads = "ioThreads";
 	String sslKeyStore = "sslKeyStore";
 	String sslKeyStorePassword = "sslKeyStorePassword";
 	String defaultEndpointsBasePath = "defaultEndpointsBasePath";
@@ -49,6 +52,15 @@ public interface WebServerConfiguration extends GenericEntity {
 	@Confidential
 	String getSslKeyStorePassword();
 	void setSslKeyStorePassword(String sslKeyStorePassword);
+	
+	Integer getIoThreads();
+	void setIoThreads(Integer ioThreads);
+	
+	Integer getMaxThreads();
+	void setMaxThreads(Integer maxThreads);
+	
+	Integer getCoreThreads();
+	void setCoreThreads(Integer coreThreads);
 
 	CorsConfiguration getCorsConfiguration();
 	void setCorsConfiguration(CorsConfiguration corsConfiguration);

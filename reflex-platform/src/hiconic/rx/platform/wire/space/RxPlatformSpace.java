@@ -29,7 +29,9 @@ import com.braintribe.wire.api.annotation.Managed;
 import com.braintribe.wire.api.context.WireContext;
 import com.braintribe.wire.api.context.WireContextConfiguration;
 
+import hiconic.rx.module.api.log.RxLogManager;
 import hiconic.rx.module.api.service.ConfiguredModel;
+import hiconic.rx.module.api.state.RxApplicationState;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformConfigurator;
 import hiconic.rx.module.api.wire.RxPlatformContract;
@@ -37,12 +39,15 @@ import hiconic.rx.module.api.wire.RxPlatformResourcesContract;
 import hiconic.rx.module.api.wire.RxProcessLaunchContract;
 import hiconic.rx.platform.conf.RxPlatformConfiguratorImpl;
 import hiconic.rx.platform.loading.RxModuleLoader;
+import hiconic.rx.platform.log.RxLogManagerImpl;
 import hiconic.rx.platform.model.configuration.ReflexAppConfiguration;
 import hiconic.rx.platform.models.RxModelConfigurations;
+import hiconic.rx.platform.processing.lifez.DeadlockChecker;
 import hiconic.rx.platform.processing.worker.BasicRxWorkerManager;
 import hiconic.rx.platform.processing.worker.BasicWorkerAspectRegistry;
 import hiconic.rx.platform.service.RxServiceDomain;
 import hiconic.rx.platform.service.RxServiceDomainConfigurations;
+import hiconic.rx.platform.state.RxApplicationStateManagerImpl;
 import hiconic.rx.platform.wire.contract.RxPlatformConfigContract;
 
 @Managed
@@ -59,7 +64,9 @@ public class RxPlatformSpace extends CoreServicesSpace implements RxPlatformCont
 
 	@Override
 	public void onLoaded(WireContextConfiguration configuration) {
+		stateManager().setState(RxApplicationState.starting);
 		configureModules();
+		stateManager().setState(RxApplicationState.started);
 	}
 
 	private void configureModules() {
@@ -141,6 +148,13 @@ public class RxPlatformSpace extends CoreServicesSpace implements RxPlatformCont
 	public String applicationName() {
 		return config.properties().applicationName();
 	}
+	
+	@Override
+	@Managed
+	public RxLogManager logManager() {
+		RxLogManagerImpl bean = new RxLogManagerImpl();
+		return bean;
+	}
 
 	@Managed
 	private RxPlatformConfigurator platformConfigurator() {
@@ -179,6 +193,14 @@ public class RxPlatformSpace extends CoreServicesSpace implements RxPlatformCont
 		return bean;
 	}
 
+	@Override
+	@Managed
+	public RxApplicationStateManagerImpl stateManager() {
+		RxApplicationStateManagerImpl bean = new RxApplicationStateManagerImpl();
+		bean.addLivenessChecker(new DeadlockChecker());
+		return bean;
+	}
+	
 	@Override
 	@Managed
 	public String applicationId() {

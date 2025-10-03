@@ -35,7 +35,7 @@ public class DemoWebAppModuleSpace implements RxModuleContract {
 	@Override
 	public void onLoaded(WireContextConfiguration configuration) {
 		webServer.addFilter(AccessLogFilter.symbol, accessLogFilter());
-		webServer.addFilterMapping("access-log", "/api/main/*", DispatcherType.REQUEST);
+		webServer.addFilterMapping(AccessLogFilter.symbol, "/api/main/*", DispatcherType.REQUEST);
 	}
 	
 	@Managed

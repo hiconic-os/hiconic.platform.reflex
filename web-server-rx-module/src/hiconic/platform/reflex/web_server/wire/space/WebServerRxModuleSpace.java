@@ -24,13 +24,18 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Set;
 
+import org.xnio.Option;
+import org.xnio.Options;
+
 import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
+import com.braintribe.wire.api.context.WireContextConfiguration;
 
 import dev.hiconic.servlet.api.remote.RemoteClientAddressResolver;
 import dev.hiconic.servlet.impl.remote.StandardRemoteClientAddressResolver;
+import hiconic.platform.reflex.web_server.processing.ApplicationStateGateHandler;
 import hiconic.platform.reflex.web_server.processing.DefaultRxServlet;
 import hiconic.platform.reflex.web_server.processing.InstanceEndpointConfigurator;
 import hiconic.platform.reflex.web_server.processing.ReflexAccessLogReceiver;
@@ -46,6 +51,7 @@ import io.undertow.Handlers;
 import io.undertow.Undertow;
 import io.undertow.Undertow.Builder;
 import io.undertow.Undertow.ListenerInfo;
+import io.undertow.UndertowOptions;
 import io.undertow.server.handlers.PathHandler;
 import io.undertow.server.handlers.accesslog.AccessLogHandler;
 import io.undertow.server.handlers.resource.FileResourceManager;
@@ -89,6 +95,20 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	}
 
 	@Override
+	public void onLoaded(WireContextConfiguration configuration) {
+		platform.logManager().setLogLevel("io.undertow.request.error-response", System.Logger.Level.INFO);
+		undertowServer().start();
+
+		println( //
+				sequence( //
+						text("Web Server running. "), //
+						cyan("URL:"), //
+						text(" http://" + configuration().getHostName() + ":" + configuration().getPort()) //
+				) //
+		);
+	}
+	
+	@Override
 	public void addServlet(String name, String path, HttpServlet servlet) {
 		addServlet(defaultEndpointsBasePath(), name, path, servlet);
 	}
@@ -102,11 +122,15 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 
 	@Override
 	public void addStaticFileResource(String path, String rootDir, String... welcomeFiles) {
+		addStaticFileResource(applicationHandler(), path, rootDir, welcomeFiles);
+	}
+	
+	private void addStaticFileResource(PathHandler pathHandler, String path, String rootDir, String... welcomeFiles) {
 		ResourceHandler resourceHandler = new ResourceHandler(new FileResourceManager(new File(rootDir), 100)) //
 				.setWelcomeFiles(welcomeFiles) //
 				.setDirectoryListingEnabled(false);
-
-		pathHandler().addPrefixPath(path, resourceHandler);
+		
+		pathHandler.addPrefixPath(path, resourceHandler);
 	}
 
 	@Override
@@ -201,45 +225,74 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 
 	@Override
 	public void onApplicationReady() {
-		configureResourceHandlers();
-		configureEndpointsHandlers();
-
-		undertowServer().start();
-
-		println( //
-				sequence( //
-						text("Web Server running. "), //
-						cyan("URL:"), //
-						text(" http://" + configuration().getHostName() + ":" + configuration().getPort()) //
-				) //
-		);
+		PathHandler applicationHandler = applicationHandler();
+		configureApplicationHandler(applicationHandler);
+		applicationStateGateHandler().setStandardHandler(applicationHandler);
 	}
 
-	private void configureResourceHandlers() {
-		for (StaticFilesystemResourceMapping mapping : webServerConfiguration().getResourceMappings())
-			addStaticFileResource( //
-					mapping.getPath(), //
-					mapping.getRootDir(), //
-					mapping.getWelcomeFiles().toArray(new String[0])//
-			);
+	private void configureApplicationHandler(PathHandler applicationHandler) {
+		addResourceHandlers(applicationHandler);
+		addEndpointsHandlers(applicationHandler);
 	}
 
-	private void configureEndpointsHandlers() {
+	@Managed
+	private PathHandler applicationHandler() {
+		return Handlers.path();
+	}
+	
+	private void addEndpointsHandlers(PathHandler pathHandler) {
 		for (String basePath : basePaths())
 			try {
-				pathHandler().addPrefixPath(basePath, servletDeploymentManager(basePath).start());
+				pathHandler.addPrefixPath(basePath, servletDeploymentManager(basePath).start());
 			} catch (ServletException e) {
 				throw new RuntimeException(e);
 			}
+	}
+	
+	private void addResourceHandlers(PathHandler pathHandler) {
+		for (StaticFilesystemResourceMapping mapping : webServerConfiguration().getResourceMappings()) {
+			addStaticFileResource( //
+					pathHandler,
+					mapping.getPath(), //
+					mapping.getRootDir(), //
+					// TODO: ask Peter about "index.html" in old code
+					mapping.getWelcomeFiles().toArray(new String[0])//
+			);
+
+			// old code
+//			ResourceHandler resourceHandler = new ResourceHandler(new FileResourceManager(new File(mapping.getRootDir()), 100)) //
+//					.setWelcomeFiles("index.html") //
+//					.setDirectoryListingEnabled(false);
+//
+//			pathHandler.addPrefixPath(mapping.getPath(), resourceHandler);
+		}
+	}
+	
+	@Managed
+	private ApplicationStateGateHandler applicationStateGateHandler() {
+		ApplicationStateGateHandler bean = new ApplicationStateGateHandler(platform.stateManager());
+		return bean;
 	}
 
 	@Managed
 	private Undertow undertowServer() {
 		WebServerConfiguration configuration = configuration();
-
+		
 		Builder builder = Undertow.builder() //
 				.addHttpListener(configuration.getPort(), "0.0.0.0") //
 				.setHandler(accessLogHandler());
+		
+		Integer ioThreads = configuration.getIoThreads();
+		if (ioThreads != null)
+			builder.setIoThreads(ioThreads);
+		
+		Integer coreThreads = configuration.getCoreThreads();
+		if (coreThreads != null)
+			builder.setWorkerOption(Options.WORKER_TASK_CORE_THREADS, coreThreads);
+			
+		Integer maxThreads = configuration.getMaxThreads();
+		if (maxThreads != null)
+			builder.setWorkerOption(Options.WORKER_TASK_MAX_THREADS, maxThreads);
 
 		SslConfig sslConfig = SslConfig.buildFromConfig(configuration);
 		if (sslConfig != null)
@@ -252,19 +305,13 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	@Managed
 	private AccessLogHandler accessLogHandler() {
 		String logFormat = "%h %l %u \"%r\" %s %b %Dms";
-		AccessLogHandler bean = new AccessLogHandler(pathHandler(), logReceiver(), logFormat, Undertow.class.getClassLoader());
+		AccessLogHandler bean = new AccessLogHandler(applicationStateGateHandler(), logReceiver(), logFormat, Undertow.class.getClassLoader());
 		return bean;
 	}
 
 	@Managed
 	private ReflexAccessLogReceiver logReceiver() {
 		ReflexAccessLogReceiver bean = new ReflexAccessLogReceiver();
-		return bean;
-	}
-
-	@Managed
-	private PathHandler pathHandler() {
-		PathHandler bean = Handlers.path();
 		return bean;
 	}
 
