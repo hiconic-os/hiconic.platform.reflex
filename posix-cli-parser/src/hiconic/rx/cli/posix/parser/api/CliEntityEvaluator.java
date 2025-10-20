@@ -11,21 +11,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package com.braintribe.gm.cli.posix.parser;
+package hiconic.rx.cli.posix.parser.api;
 
-import java.util.List;
+import com.braintribe.model.generic.GenericEntity;
 
-import com.braintribe.model.generic.reflection.GenericModelType;
-
-public interface CliArgumentParser {
-	
-	default CliArgument parseOptionalArgumentValue(GenericModelType inferredType) {
-		return parseOptionalArgumentValue(inferredType, null);
-	}
-	
-	CliArgument parseOptionalArgumentValue(GenericModelType inferredType, List<String> positiveValues);
-	
-	CliArgument parseArgumentValue(GenericModelType inferredType);
-	
-	ParseException parseError(String msg);
+public interface CliEntityEvaluator {
+	boolean isEvaluable(GenericEntity entity);
+	Object evaluate(GenericEntity entity);
 }

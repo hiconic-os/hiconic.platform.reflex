@@ -11,17 +11,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package com.braintribe.gm.cli.posix.parser.api;
-
-import java.util.List;
-import java.util.Optional;
+package hiconic.rx.cli.posix.parser;
 
 import com.braintribe.model.generic.GenericEntity;
-import com.braintribe.model.generic.reflection.EntityType;
 
-public interface ParsedCommandLine {
-	void addEntity(GenericEntity entity);
+import hiconic.rx.cli.posix.parser.api.CliEntityEvaluator;
 
-	<O extends GenericEntity> List<O> listInstances(EntityType<O> optionsType);
-	<O extends GenericEntity> Optional<O> findInstance(EntityType<O> optionsType);
+public class EmptyCliEntityEvaluator implements CliEntityEvaluator {
+	public static final CliEntityEvaluator INSTANCE = new EmptyCliEntityEvaluator();
+	
+	@Override
+	public Object evaluate(GenericEntity entity) {
+		throw new UnsupportedOperationException();
+	}
+	
+	@Override
+	public boolean isEvaluable(GenericEntity entity) {
+		return false;
+	}
 }

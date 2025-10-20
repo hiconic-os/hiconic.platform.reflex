@@ -29,7 +29,6 @@ import com.braintribe.codec.marshaller.api.Marshaller;
 import com.braintribe.codec.marshaller.api.MarshallerRegistry;
 import com.braintribe.codec.marshaller.api.options.GmDeserializationContextBuilder;
 import com.braintribe.codec.marshaller.yaml.YamlMarshaller;
-import com.braintribe.gm.cli.posix.parser.api.CliEntityEvaluator;
 import com.braintribe.gm.config.yaml.ConfigVariableResolver;
 import com.braintribe.gm.config.yaml.YamlConfigurations;
 import com.braintribe.gm.config.yaml.api.ConfigurationReadBuilder;
@@ -42,6 +41,7 @@ import com.braintribe.utils.stream.KeepAliveDelegateInputStream;
 import com.braintribe.ve.api.VirtualEnvironment;
 import com.braintribe.ve.impl.StandardEnvironment;
 
+import hiconic.rx.cli.posix.parser.api.CliEntityEvaluator;
 import hiconic.rx.platform.cli.model.api.From;
 import hiconic.rx.platform.cli.model.api.FromFile;
 import hiconic.rx.platform.cli.model.api.FromStdin;

@@ -15,10 +15,10 @@ package hiconic.platform.reflex.cli.parser.test.processing;
 
 import java.util.LinkedHashMap;
 
-import com.braintribe.gm.cli.posix.parser.api.CliEntityEvaluator;
 import com.braintribe.model.generic.GenericEntity;
 
 import hiconic.platform.reflex.cli.parser.test.model.ParseUrlQuery;
+import hiconic.rx.cli.posix.parser.api.CliEntityEvaluator;
 
 public class TestCliEntityEvaluator implements CliEntityEvaluator {
 

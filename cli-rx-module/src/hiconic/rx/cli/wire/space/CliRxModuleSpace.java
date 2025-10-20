@@ -15,11 +15,11 @@ package hiconic.rx.cli.wire.space;
 
 import static com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling.getOrTunnel;
 
-import com.braintribe.gm.cli.posix.parser.PosixCommandLineParser;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
+import hiconic.rx.cli.posix.parser.PosixCommandLineParser;
 import hiconic.rx.cli.processing.CliExecutor;
 import hiconic.rx.cli.processing.EntityFactory;
 import hiconic.rx.cli.processing.FromEvaluator;

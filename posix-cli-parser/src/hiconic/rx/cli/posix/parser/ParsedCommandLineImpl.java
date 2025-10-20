@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package com.braintribe.gm.cli.posix.parser;
+package hiconic.rx.cli.posix.parser;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -19,9 +19,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.braintribe.gm.cli.posix.parser.api.ParsedCommandLine;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.reflection.EntityType;
+
+import hiconic.rx.cli.posix.parser.api.ParsedCommandLine;
 
 public class ParsedCommandLineImpl implements ParsedCommandLine {
 

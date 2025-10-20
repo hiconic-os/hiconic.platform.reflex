@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package com.braintribe.gm.cli.posix.parser;
+package hiconic.rx.cli.posix.parser;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,8 +23,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import com.braintribe.gm.cli.posix.parser.api.CliEntityEvaluator;
-import com.braintribe.gm.cli.posix.parser.api.ParsedCommandLine;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
@@ -41,6 +39,9 @@ import com.braintribe.model.generic.reflection.LinearCollectionType;
 import com.braintribe.model.generic.reflection.MapType;
 import com.braintribe.model.generic.reflection.Property;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
+
+import hiconic.rx.cli.posix.parser.api.CliEntityEvaluator;
+import hiconic.rx.cli.posix.parser.api.ParsedCommandLine;
 
 
 public class PosixCommandLineParser extends AbstractCommandLineParser {

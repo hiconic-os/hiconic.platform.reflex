@@ -11,21 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package com.braintribe.gm.cli.posix.parser;
+package hiconic.rx.cli.posix.parser;
 
-import com.braintribe.gm.cli.posix.parser.api.CliEntityEvaluator;
-import com.braintribe.model.generic.GenericEntity;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
 
-public class EmptyCliEntityEvaluator implements CliEntityEvaluator {
-	public static final CliEntityEvaluator INSTANCE = new EmptyCliEntityEvaluator();
-	
-	@Override
-	public Object evaluate(GenericEntity entity) {
-		throw new UnsupportedOperationException();
-	}
-	
-	@Override
-	public boolean isEvaluable(GenericEntity entity) {
-		return false;
-	}
+public class ForwardReference {
+	public List<Consumer<Object>> consumers = new ArrayList<>(2);
 }

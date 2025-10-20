@@ -1,6 +1,4 @@
 // ============================================================================
-// Copyright BRAINTRIBE TECHNOLOGY GMBH, Austria, 2002-2022
-//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -13,30 +11,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package com.braintribe.gm.cli.posix.parser;
+package hiconic.rx.cli.posix.parser.api;
 
-public class ParseException extends RuntimeException {
+import java.util.List;
+import java.util.Optional;
 
-	private static final long serialVersionUID = -7198589422746594724L;
+import com.braintribe.model.generic.GenericEntity;
+import com.braintribe.model.generic.reflection.EntityType;
 
-	public ParseException() {
-		super();
-	}
+public interface ParsedCommandLine {
+	void addEntity(GenericEntity entity);
 
-	public ParseException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
-		super(message, cause, enableSuppression, writableStackTrace);
-	}
-
-	public ParseException(String message, Throwable cause) {
-		super(message, cause);
-	}
-
-	public ParseException(String message) {
-		super(message);
-	}
-
-	public ParseException(Throwable cause) {
-		super(cause);
-	}
-
+	<O extends GenericEntity> List<O> listInstances(EntityType<O> optionsType);
+	<O extends GenericEntity> Optional<O> findInstance(EntityType<O> optionsType);
 }

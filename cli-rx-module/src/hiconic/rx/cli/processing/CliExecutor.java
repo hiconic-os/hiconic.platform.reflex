@@ -54,8 +54,6 @@ import com.braintribe.common.attribute.common.impl.BasicCallerEnvironment;
 import com.braintribe.console.Console;
 import com.braintribe.console.ConsoleConfiguration;
 import com.braintribe.exception.Exceptions;
-import com.braintribe.gm.cli.posix.parser.PosixCommandLineParser;
-import com.braintribe.gm.cli.posix.parser.api.ParsedCommandLine;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.gm.model.reason.Reasons;
@@ -73,6 +71,8 @@ import com.braintribe.utils.collection.impl.AttributeContexts;
 import com.braintribe.utils.lcd.StringTools;
 import com.braintribe.utils.stream.NullOutputStream;
 
+import hiconic.rx.cli.posix.parser.PosixCommandLineParser;
+import hiconic.rx.cli.posix.parser.api.ParsedCommandLine;
 import hiconic.rx.module.api.endpoint.EndpointInput;
 import hiconic.rx.module.api.endpoint.EndpointInputAttribute;
 import hiconic.rx.module.api.service.ServiceDomains;

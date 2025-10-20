@@ -23,8 +23,6 @@ import java.util.Optional;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
-import com.braintribe.gm.cli.posix.parser.PosixCommandLineParser;
-import com.braintribe.gm.cli.posix.parser.api.ParsedCommandLine;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.model.generic.GMF;
 import com.braintribe.model.generic.GenericEntity;
@@ -39,6 +37,8 @@ import hiconic.platform.reflex.cli.parser.test.model.TakesAMap;
 import hiconic.platform.reflex.cli.parser.test.model.TestEntity;
 import hiconic.platform.reflex.cli.parser.test.model.TestEnum;
 import hiconic.platform.reflex.cli.parser.test.processing.TestCliEntityEvaluator;
+import hiconic.rx.cli.posix.parser.PosixCommandLineParser;
+import hiconic.rx.cli.posix.parser.api.ParsedCommandLine;
 
 public class PosixCliParserTest {
 
