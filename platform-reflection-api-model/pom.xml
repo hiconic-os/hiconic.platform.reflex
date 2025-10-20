@@ -21,13 +21,11 @@
             <groupId>com.braintribe.gm</groupId>
             <artifactId>service-api-model</artifactId>
             <version>${V.com.braintribe.gm}</version>
-            <?tag asset ?>
         </dependency>
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>database-reflection-model</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
-            <?tag asset ?>
         </dependency>
     </dependencies>
 </project>

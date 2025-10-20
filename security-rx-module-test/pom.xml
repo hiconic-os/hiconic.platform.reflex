@@ -60,7 +60,6 @@ limitations under the License.
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>security-test-model</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
-            <?tag asset ?>
         </dependency>
     </dependencies>
 </project>

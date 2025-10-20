@@ -147,8 +147,8 @@ public class SymbolTranslationServlet extends HttpServlet {
 		} else {
 			int maxLineLength = 0;
 			Set<String> lines = new TreeSet<>();
-			BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(mergedSymbolsFile), "ISO-8859-1"));
-			try {
+
+			try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(mergedSymbolsFile), "ISO-8859-1"))) {
 				String line = reader.readLine();
 				String cid = String.valueOf(Arrays.asList(line.substring(1).trim().split(",")).indexOf(compilationId));
 
@@ -160,13 +160,9 @@ public class SymbolTranslationServlet extends HttpServlet {
 						lines.add(line);
 					}
 				}
-			} finally {
-				reader.close();
 			}
 
-			Writer writer = new OutputStreamWriter(new FileOutputStream(preparedFile), "ISO-8859-1");
-
-			try {
+			try(Writer writer = new OutputStreamWriter(new FileOutputStream(preparedFile), "ISO-8859-1")) {
 				boolean first = true;
 				for (String outputLine : lines) {
 					if (first) {
@@ -176,8 +172,6 @@ public class SymbolTranslationServlet extends HttpServlet {
 					}
 					writeNormalizedLine(writer, outputLine, maxLineLength);
 				}
-			} finally {
-				writer.close();
 			}
 
 			return preparedFile;

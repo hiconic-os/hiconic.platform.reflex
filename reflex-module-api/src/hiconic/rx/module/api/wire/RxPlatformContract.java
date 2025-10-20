@@ -17,6 +17,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Supplier;
 
+import com.braintribe.codec.marshaller.api.Marshaller;
 import com.braintribe.codec.marshaller.api.MarshallerRegistry;
 import com.braintribe.common.attribute.AttributeContext;
 import com.braintribe.common.concurrent.TaskScheduler;
@@ -65,6 +66,9 @@ public interface RxPlatformContract extends WireSpace {
 
 	/** Returns the {@link MarshallerRegistry} */
 	MarshallerRegistry marshallers();
+	Marshaller jsonMarshaller();
+	Marshaller yamlMarshaller();
+	Marshaller binMarshaller();
 
 	/** The name of the application which the platform is hosting given by the applicationName property in META-INF/rx-app.properties */
 	String applicationName();

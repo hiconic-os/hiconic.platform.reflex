@@ -38,7 +38,6 @@ limitations under the License.
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>access-configuration-model</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
-            <?tag asset ?>
         </dependency>
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
@@ -64,7 +63,6 @@ limitations under the License.
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>access-processing-metadata-model</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
-            <?tag asset ?>
         </dependency>
         <dependency>
             <groupId>com.braintribe.gm</groupId>
@@ -75,7 +73,6 @@ limitations under the License.
             <groupId>com.braintribe.gm</groupId>
             <artifactId>persistence-reflection-api-model</artifactId>
             <version>${V.com.braintribe.gm}</version>
-            <?tag asset ?>
         </dependency>
     </dependencies>
 </project>

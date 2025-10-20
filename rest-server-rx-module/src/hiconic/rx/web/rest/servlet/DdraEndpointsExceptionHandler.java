@@ -31,7 +31,7 @@ import com.braintribe.model.processing.securityservice.api.exceptions.SecuritySe
 import com.braintribe.model.processing.service.common.FailureConverter;
 import com.braintribe.model.service.api.result.Failure;
 
-import dev.hiconic.servlet.ddra.endpoints.api.DdraEndpointContext;
+import hiconic.rx.web.ddra.endpoints.api.DdraEndpointContext;
 import jakarta.servlet.http.HttpServletResponse;
 
 public class DdraEndpointsExceptionHandler {

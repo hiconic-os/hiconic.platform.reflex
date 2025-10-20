@@ -18,17 +18,18 @@ package hiconic.rx.web.rest.servlet.handlers;
 import java.io.IOException;
 import java.math.BigDecimal;
 
-import hiconic.rx.web.rest.servlet.RestV2EndpointContext;
 import com.braintribe.exception.HttpException;
 import com.braintribe.model.accessapi.ManipulationRequest;
 import com.braintribe.model.accessapi.ManipulationResponse;
-import com.braintribe.model.ddra.endpoints.v2.DdraDeletePropertiesEndpoint;
-import com.braintribe.model.ddra.endpoints.v2.DdraUrlPathParameters;
 import com.braintribe.model.generic.manipulation.ChangeValueManipulation;
 import com.braintribe.model.generic.manipulation.ClearCollectionManipulation;
 import com.braintribe.model.generic.manipulation.PropertyManipulation;
 import com.braintribe.model.generic.reflection.GenericModelType;
-import com.braintribe.model.processing.web.rest.HttpExceptions;
+
+import dev.hiconic.servlet.decoder.api.HttpExceptions;
+import hiconic.rx.web.rest.servlet.RestV2EndpointContext;
+import hiconic.rx.webapi.endpoints.v2.DdraDeletePropertiesEndpoint;
+import hiconic.rx.webapi.endpoints.v2.DdraUrlPathParameters;
 
 public class RestV2DeletePropertiesHandler extends AbstractRestV2Handler<DdraDeletePropertiesEndpoint> {
 
@@ -51,7 +52,7 @@ public class RestV2DeletePropertiesHandler extends AbstractRestV2Handler<DdraDel
 			case success:
 				return true;
 			default:
-				HttpExceptions.internalServerError("Unexpected projection %s", endpoint.getProjection());
+				HttpExceptions.throwInternalServerError("Unexpected projection %s", endpoint.getProjection());
 				return null;
 		}
 	}

@@ -15,7 +15,7 @@
 // ============================================================================
 package hiconic.rx.web.ddra.servlet;
 
-import static dev.hiconic.servlet.ddra.endpoints.api.DdraEndpointsUtils.getPathInfo;
+import static hiconic.rx.web.ddra.endpoints.api.DdraEndpointsUtils.getPathInfo;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,13 +33,11 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 import org.apache.commons.lang.StringUtils;
 
 import com.braintribe.cfg.Configurable;
 import com.braintribe.cfg.Required;
-import com.braintribe.codec.marshaller.api.CharacterMarshaller;
 import com.braintribe.codec.marshaller.api.CharsetOption;
 import com.braintribe.codec.marshaller.api.EntityVisitorOption;
 import com.braintribe.codec.marshaller.api.GmDeserializationOptions;
@@ -48,20 +46,12 @@ import com.braintribe.exception.Exceptions;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.gm.model.reason.Reasons;
-import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
 import com.braintribe.gm.model.reason.essential.InternalError;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
 import com.braintribe.gm.model.reason.essential.ParseError;
 import com.braintribe.gm.model.reason.meta.HttpStatusCode;
 import com.braintribe.gm.model.reason.meta.LogReason;
 import com.braintribe.logging.Logger;
-import com.braintribe.model.DdraBaseUrlPathParameters;
-import com.braintribe.model.DdraEndpoint;
-import com.braintribe.model.DdraEndpointDepth;
-import com.braintribe.model.DdraEndpointHeaders;
-import com.braintribe.model.ddra.DdraConfiguration;
-import com.braintribe.model.ddra.DdraUrlMethod;
-import com.braintribe.model.ddra.endpoints.api.v1.ApiV1DdraEndpoint;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.eval.EvalContext;
 import com.braintribe.model.generic.pr.criteria.TraversingCriterion;
@@ -101,28 +91,35 @@ import com.braintribe.web.multipart.impl.MultipartSubFormat;
 import com.braintribe.web.multipart.impl.Multiparts;
 import com.braintribe.web.multipart.impl.SequentialParallelFormDataWriter;
 
-import dev.hiconic.servlet.ddra.endpoints.api.DdraEndpointAspect;
-import dev.hiconic.servlet.ddra.endpoints.api.DdraEndpointsUtils;
-import dev.hiconic.servlet.ddra.endpoints.api.api.v1.ApiV1EndpointContext;
-import dev.hiconic.servlet.ddra.endpoints.api.api.v1.DdraMappings;
-import dev.hiconic.servlet.ddra.endpoints.api.api.v1.SingleDdraMapping;
-import dev.hiconic.servlet.ddra.endpoints.api.context.HttpRequestSupplier;
-import dev.hiconic.servlet.ddra.endpoints.api.context.HttpRequestSupplierAspect;
-import dev.hiconic.servlet.ddra.endpoints.api.context.HttpResponseConfigurerAspect;
 import dev.hiconic.servlet.decoder.api.HttpExceptions;
 import dev.hiconic.servlet.decoder.api.HttpRequestEntityDecoder;
 import dev.hiconic.servlet.decoder.api.HttpRequestEntityDecoderOptions;
 import dev.hiconic.servlet.decoder.api.StandardHeadersMapper;
 import dev.hiconic.servlet.decoder.api.UrlPathCodec;
 import dev.hiconic.servlet.decoder.impl.QueryParamDecoder;
+import hiconic.rx.module.api.service.PlatformServiceDomains;
+import hiconic.rx.web.ddra.endpoints.api.DdraEndpointAspect;
+import hiconic.rx.web.ddra.endpoints.api.DdraEndpointsUtils;
+import hiconic.rx.web.ddra.endpoints.api.api.v1.ApiV1EndpointContext;
+import hiconic.rx.web.ddra.endpoints.api.api.v1.SingleDdraMapping;
+import hiconic.rx.web.ddra.endpoints.api.api.v1.WebApiMappingOracle;
+import hiconic.rx.web.ddra.endpoints.api.context.HttpRequestSupplier;
+import hiconic.rx.web.ddra.endpoints.api.context.HttpRequestSupplierAspect;
+import hiconic.rx.web.ddra.endpoints.api.context.HttpResponseConfigurerAspect;
 import hiconic.rx.web.ddra.servlet.ApiV1RestServletUtils.DecodingTargetTraversalResult;
+import hiconic.rx.webapi.endpoints.DdraBaseUrlPathParameters;
+import hiconic.rx.webapi.endpoints.DdraEndpoint;
+import hiconic.rx.webapi.endpoints.DdraEndpointDepth;
+import hiconic.rx.webapi.endpoints.DdraEndpointHeaders;
+import hiconic.rx.webapi.endpoints.api.v1.ApiV1DdraEndpoint;
+import hiconic.rx.webapi.model.meta.HttpRequestMethod;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * The HttpServlet for the /api/v1 path.
+ * The HttpServlet for the /api/v1 pathInfo.
  * <p>
- * This class is thread-safe IF the injected {@code DdraMappings} is thread-safe.
+ * This class is thread-safe IF the injected {@code StandardWebApiMappingOracle} is thread-safe.
  */
 public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext> {
 
@@ -146,17 +143,15 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 		defaultLogging.setRecursive(true);
 	}
 
-	private String mappingsTimestamp;
-	private DdraMappings mappings;
-	private boolean pollMappings = true;
+	private String defaultServiceDomain = PlatformServiceDomains.main.name();
 
-	private String defaultServiceDomain = "serviceDomain:default";
-	private Predicate<String> accessAvailability = d -> d.equals("main");
+	private Predicate<String> domainAvailabilityChecker = (domain) -> false;
+
+	private WebApiMappingOracle mappingOralce;
+
+	// TODO review this default service domain
 	private StreamPipeFactory streamPipeFactory;
 	private Function<String, CmdResolver> mdResolverProvider;
-	
-	private static DdraConfiguration defaultConfiguration = DdraConfiguration.T.create(c -> c.setLastChangeTimestamp(Long.toString(System.currentTimeMillis())));
-	private final Supplier<DdraConfiguration> ddraConfigurationProvider = () -> defaultConfiguration;
 
 	private ApiV1RestServletUtils restServletUtils;
 
@@ -197,8 +192,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 
 	@Override
 	protected void handleOptions(ApiV1EndpointContext context) {
-
-		Collection<String> mappedMethods = mappings.getMethods(getPathInfo(context));
+		Collection<String> mappedMethods = mappingOralce.getMethods(getPathInfo(context));
 
 		if (mappedMethods.isEmpty()) {
 			decodePathAndFillContext(context);
@@ -223,10 +217,6 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 
 	@Override	
 	protected boolean fillContext(ApiV1EndpointContext context) {
-		// check and load mappings if needed
-		if (pollMappings)
-			ensureDdraMappingInitialized();
-
 		if ("OPTIONS".equals(context.getRequest().getMethod())) {
 			handleOptions(context);
 			return false;
@@ -235,9 +225,12 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 		// compute mapping of current request
 		SingleDdraMapping mapping = computeDdraMapping(context);
 
-		// get the entity type for the path or mapping
-		if (mapping == null) {
-			Collection<String> allowedHttpMethodsForMapping = mappings.getMethods(getPathInfo(context));
+		// get the entity type for the pathInfo or mapping
+		if (mapping != null) {
+			context.setServiceDomain(mapping.getServiceDomain());
+
+		} else {
+			Collection<String> allowedHttpMethodsForMapping = mappingOralce.getMethods(getPathInfo(context));
 
 			if (!allowedHttpMethodsForMapping.isEmpty()) {
 				// the mapping is available under a different method. Send 405
@@ -271,7 +264,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 
 		ServiceRequest service = null;
 		if (serviceRequestType != null) {
-			service = createDefaultRequest(serviceRequestType, context.getMapping());
+			service = createDefaultRequest(serviceRequestType);
 			decodeQueryAndFillContext(service, context);
 		} else {
 			writeUnsatisfied(context, Reasons.build(InvalidArgument.T).text("Missing service request type").toMaybe(), 400);
@@ -344,23 +337,23 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 			}
 			
 			service = serviceMaybe.get();
-		} else {
 
+		} else {
 			if ("application/x-www-form-urlencoded".equals(endpoint.getContentType())) {
 				ListMap<String, String> parameters = new HashListMap<>();
 				request.getParameterMap().forEach((k, v) -> parameters.put(k, Arrays.asList(v)));
 
-				UrlEncodingMarshaller.EntityTemplateFactory rootEntityFactory = l -> requestAssemblyPartNames.stream().map(l::getSingleElement)
-						.filter(Objects::nonNull).findFirst().map(a -> {
-							CharacterMarshaller jsonMarshaller = (CharacterMarshaller) marshallerRegistry
-									.getMarshaller(DdraEndpointsUtils.APPLICATION_JSON);
-							return (GenericEntity) jsonMarshaller.unmarshall(new StringReader(a), options);
-						}).orElseGet(() -> createDefaultRequest(serviceRequestType, mapping));
+				UrlEncodingMarshaller.EntityTemplateFactory rootEntityFactory = l -> requestAssemblyPartNames.stream() //
+						.map(l::getSingleElement) //
+						.filter(Objects::nonNull) //
+						.findFirst() //
+						.map(a -> (GenericEntity) jsonMarshaller.unmarshall(new StringReader(a), options)) //
+						.orElseGet(() -> createDefaultRequest(serviceRequestType));
 
 				UrlEncodingMarshaller urlMarshaller = new UrlEncodingMarshaller(rootEntityFactory);
 				service = urlMarshaller.create(parameters, serviceRequestType, options);
-			} else {
 
+			} else {
 				Marshaller inMarshaller = getInMarshallerFor(endpoint);
 
 				boolean transportPayload = false;
@@ -389,10 +382,10 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 			}
 		}
 
-		if (service == null) {
+		if (service == null)
 			// If no body is provided at all the unmarshaller returns null. We supply a default in that case.
-			service = createDefaultRequest(serviceRequestType, mapping);
-		}
+			service = createDefaultRequest(serviceRequestType);
+
 		decodeQueryAndFillContext(service, context);
 
 		restServletUtils.ensureServiceDomain(service, context);
@@ -400,16 +393,15 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 		service = restServletUtils.computeTransformRequest(context, service);
 
 		GenericModelType evaluatesTo = service.entityType().getEffectiveEvaluatesTo();
-		if (evaluatesTo == null) {
+		if (evaluatesTo == null)
 			context.setExpectedResponseType(BaseType.INSTANCE);
-		} else {
+		else
 			context.setExpectedResponseType(evaluatesTo);
-		}
 
 		processRequestAndWriteResponse(context, service);
 	}
 
-	private ServiceRequest createDefaultRequest(EntityType<? extends ServiceRequest> serviceRequestType, SingleDdraMapping mapping) {
+	private ServiceRequest createDefaultRequest(EntityType<? extends ServiceRequest> serviceRequestType) {
 		return serviceRequestType.create();
 	}
 
@@ -443,7 +435,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 
 				part = formDataReader.next();
 			} else {
-				service = createDefaultRequest(serviceRequestType, context.getMapping());
+				service = createDefaultRequest(serviceRequestType);
 			}
 
 			restServletUtils.ensureServiceDomain(service, context);
@@ -730,23 +722,22 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 	}
 
 	private SingleDdraMapping computeDdraMapping(ApiV1EndpointContext context) {
-		DdraUrlMethod method = DdraUrlMethod.valueOf(context.getRequest().getMethod().toUpperCase());
+		HttpRequestMethod method = HttpRequestMethod.valueOf(context.getRequest().getMethod().toUpperCase());
 		String path = getPathInfo(context);
-		SingleDdraMapping mapping = mappings.get(path, method);
+		SingleDdraMapping mapping = mappingOralce.get(path, method);
 
 		context.setMapping(mapping);
 		return mapping;
 	}
 
+	// Only called when no mapping is found 
 	private EntityType<? extends ServiceRequest> decodePathAndFillContext(ApiV1EndpointContext context) {
-
-		DdraBaseUrlPathParameters pathParameters = DdraBaseUrlPathParameters.T.create();
 		// No mapping found. Identify type and domain from Path
+		DdraBaseUrlPathParameters pathParameters = DdraBaseUrlPathParameters.T.create();
 		URL_CODEC.decode(() -> pathParameters, getPathInfo(context));
 
 		String serviceDomain = pathParameters.getServiceDomain();
 		if (serviceDomain == null) {
-
 			String typeSignature = pathParameters.getTypeSignature();
 			if (!StringTools.isEmpty(typeSignature)) {
 				serviceDomain = typeSignature;
@@ -762,7 +753,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 		context.setServiceDomain(serviceDomain);
 		checkServiceDomain(context);
 
-		// get the type signature from the path
+		// get the type signature from the pathInfo
 		String typeSignature = pathParameters.getTypeSignature();
 		if (StringUtils.isBlank(typeSignature)) {
 			return null;
@@ -772,10 +763,10 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 		ModelOracle modelOracle = mdResolverProvider.apply(serviceDomain).getModelOracle();
 		EntityType<? extends ServiceRequest> entityType = restServletUtils.resolveTypeFromSignature(typeSignature, modelOracle);
 		if (entityType == null) {
-			HttpExceptions.notFound("Cannot find request %s", typeSignature);
+			HttpExceptions.throwNotFound("Cannot find request %s", typeSignature);
 		}
 		if (!ServiceRequest.T.isAssignableFrom(entityType)) {
-			HttpExceptions.badRequest("Entity %s is not a ServiceRequest.", typeSignature);
+			HttpExceptions.throwBadRequest("Entity %s is not a ServiceRequest.", typeSignature);
 		}
 
 		context.setServiceRequestType(entityType);
@@ -797,8 +788,8 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 					.getMetaData() //
 					.useCase(DDRA_MD_USECASE);
 
-			if (context.getMapping() != null && context.getMapping().getPath() != null) {
-				String mappingSpecificUsecase = DDRA_MD_USECASE + ":" + context.getMapping().getPath();
+			if (context.getMapping() != null && context.getMapping().getPathInfo() != null) {
+				String mappingSpecificUsecase = DDRA_MD_USECASE + ":" + context.getMapping().getPathInfo();
 				metaDataResolver.useCase(mappingSpecificUsecase);
 			}
 
@@ -819,73 +810,35 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 
 	private void checkServiceDomain(ApiV1EndpointContext context) {
 		String serviceDomain = context.getServiceDomain();
-		if (!accessAvailability.test(serviceDomain))
-			HttpExceptions.notFound(
+		if (!domainAvailabilityChecker.test(serviceDomain))
+			HttpExceptions.throwNotFound(
 					"No ServiceDomain or DdraMapping found for name: " + serviceDomain + " and HTTP method: " + context.getRequest().getMethod());
 	}
 
-	public void ensureDdraMappingInitialized() {
-		DdraConfiguration configuration = ddraConfigurationProvider.get();
-
-		String queriedTimestamp = configuration.getLastChangeTimestamp();
-
-		if (mappingsAreUpToDate(queriedTimestamp))
-			return;
-
-		synchronized (this) {
-			if (!mappingsAreUpToDate(queriedTimestamp)) {
-
-				mappings.setMappings(configuration.getMappings());
-				mappings.setDdraMappingsInitialized(true);
-
-				mappingsTimestamp = queriedTimestamp;
-			}
-		}
-	}
-
-	private boolean mappingsAreUpToDate(String queriedTimestamp) {
-		return mappings.isDdraMappingsInitialized() && bothNullOrEqual(queriedTimestamp, mappingsTimestamp);
-	}
-
-	private static boolean bothNullOrEqual(String a, String b) {
-		if (a == null) {
-			return b == null;
-		}
-
-		return a.equals(b);
+	@Required
+	public void setMappingOralce(WebApiMappingOracle mappingOralce) {
+		this.mappingOralce = mappingOralce;
 	}
 
 	@Required
-	@Configurable
-	public void setMappings(DdraMappings mappings) {
-		this.mappings = mappings;
-	}
-
-	@Configurable
-	public void setAccessAvailability(Predicate<String> accessAvailability) {
-		this.accessAvailability = accessAvailability;
-	}
-
-	@Required
-	@Configurable
 	public void setStreamPipeFactory(StreamPipeFactory streamPipeFactory) {
 		this.streamPipeFactory = streamPipeFactory;
+	}
+
+	@Required
+	public void setRestServletUtils(ApiV1RestServletUtils restServletUtils) {
+		this.restServletUtils = restServletUtils;
+	}
+
+
+	@Required
+	public void setDomainAvailability(Predicate<String> domainAvailabilityChecker) {
+		this.domainAvailabilityChecker = domainAvailabilityChecker;
 	}
 
 	@Configurable
 	public void setDefaultServiceDomain(String defaultServiceDomain) {
 		this.defaultServiceDomain = defaultServiceDomain;
-	}
-
-	@Configurable
-	public void setPollMappings(boolean pollMappings) {
-		this.pollMappings = pollMappings;
-	}
-
-	@Configurable
-	@Required
-	public void setRestServletUtils(ApiV1RestServletUtils restServletUtils) {
-		this.restServletUtils = restServletUtils;
 	}
 
 }

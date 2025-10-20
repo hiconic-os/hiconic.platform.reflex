@@ -28,14 +28,14 @@ import com.braintribe.utils.stream.api.StreamPipes;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 import com.braintribe.wire.api.context.WireContext;
-import com.braintribe.wire.api.context.WireContextConfiguration;
 
-import dev.hiconic.servlet.ddra.endpoints.api.api.v1.DdraMappings;
+import hiconic.rx.module.api.service.PlatformServiceDomains;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.security.web.api.AuthFilters;
 import hiconic.rx.security.web.api.WebSecurityContract;
+import hiconic.rx.web.ddra.mapping.StandardWebApiMappingOracle;
 import hiconic.rx.web.ddra.servlet.ApiV1RestServletUtils;
 import hiconic.rx.web.ddra.servlet.DdraEndpointsExceptionHandler;
 import hiconic.rx.web.ddra.servlet.WebApiV1Server;
@@ -75,16 +75,24 @@ public class WebApiServerRxModuleSpace implements RxModuleContract {
 	@Managed
 	private WebApiV1Server server() {
 		WebApiV1Server bean = new WebApiV1Server();
-		bean.setDefaultServiceDomain("main");
+		bean.setDefaultServiceDomain(PlatformServiceDomains.main.name());
 		bean.setEvaluator(platform.evaluator());
 		bean.setExceptionHandler(exceptionHandler());
-		bean.setMappings(new DdraMappings());
+		bean.setMappingOralce(mappingOralce());
 		bean.setMarshallerRegistry(platform.marshallers());
 		bean.setMdResolverProvider(this::cmdResolverForDomain);
 		bean.setRestServletUtils(servletUtils());
 		bean.setStreamPipeFactory(StreamPipes.simpleFactory());
 		bean.setTraversingCriteriaMap(tc.criteriaMap());
-		bean.setAccessAvailability(s -> platform.serviceDomains().byId(s) != null);
+		bean.setDomainAvailability(s -> platform.serviceDomains().byId(s) != null);
+		return bean;
+	}
+
+	@Managed
+	private StandardWebApiMappingOracle mappingOralce() {
+		StandardWebApiMappingOracle bean = new StandardWebApiMappingOracle();
+		bean.setServiceDomains(platform.serviceDomains());
+
 		return bean;
 	}
 

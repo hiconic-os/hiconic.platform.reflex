@@ -1,4 +1,4 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<?xml version="1.0" encoding="UTF-8"?><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>hiconic.platform.reflex</groupId>
@@ -114,6 +114,11 @@
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
         <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>logs-rx-module</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
             <groupId>com.braintribe.execution</groupId>
             <artifactId>execution</artifactId>
             <version>${V.com.braintribe.execution}</version>
@@ -138,6 +143,11 @@
             <artifactId>platform-reflection-api-model</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
+        <dependency>
+            <groupId>net.lingala.zip4j</groupId>
+            <artifactId>zip4j</artifactId>
+            <version>${V.net.lingala.zip4j}</version>
+        </dependency>
         <!-- Platform reflection -->
         <dependency>
             <groupId>com.github.oshi</groupId>
@@ -158,6 +168,11 @@
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>db-connection-check-rx-module</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>logs-api-model</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
     </dependencies>

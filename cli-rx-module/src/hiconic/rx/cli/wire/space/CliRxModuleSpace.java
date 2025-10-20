@@ -25,6 +25,7 @@ import hiconic.rx.cli.processing.EntityFactory;
 import hiconic.rx.cli.processing.FromEvaluator;
 import hiconic.rx.cli.processing.IntroductionProcessor;
 import hiconic.rx.cli.processing.ReflectServiceDomainsProcessor;
+import hiconic.rx.cli.processing.help.CliServiceDomain;
 import hiconic.rx.cli.processing.help.HelpProcessor;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.service.ServiceDomainConfiguration;
@@ -47,7 +48,7 @@ public class CliRxModuleSpace implements RxModuleContract {
 
 	@Override
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
-		ServiceDomainConfiguration configuration = configurations.byId("cli");
+		ServiceDomainConfiguration configuration = configurations.byId(CliServiceDomain.cli);
 
 		configuration.bindRequest(Introduce.T, this::introductionProcessor);
 		configuration.bindRequest(Help.T, this::helpProcessor);

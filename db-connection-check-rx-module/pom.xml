@@ -23,7 +23,6 @@
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>check-api-model</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
-            <?tag asset ?>
         </dependency>
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>

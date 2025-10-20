@@ -14,6 +14,7 @@ import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.check.api.CheckContract;
+import hiconic.rx.check.api.CheckServiceDomain;
 import hiconic.rx.check.model.bundle.api.request.CheckBundlesRequest;
 import hiconic.rx.check.processing.BasicCheckProcessorRegistry;
 import hiconic.rx.check.processing.CheckBundlesResponseHtmlMarshaller;
@@ -38,11 +39,12 @@ public class CheckRxModuleSpace implements RxModuleContract, CheckContract {
 
 	@Override
 	public void configurePlatform(RxPlatformConfigurator configurator) {
-		configurator.marshallerRegistry().registerMarshaller("text/html;spec=check-bundles-response", checkBundlesResponseHtmlMarshaller());
+		configurator.marshallerRegistry().registerMarshaller("text/html;spec=check-bundles-response", checkResultToHtmlMarshaller());
 	}
 
 	@Managed
-	private Marshaller checkBundlesResponseHtmlMarshaller() {
+	@Override
+	public Marshaller checkResultToHtmlMarshaller() {
 		return new CheckBundlesResponseHtmlMarshaller();
 	}
 
@@ -52,7 +54,7 @@ public class CheckRxModuleSpace implements RxModuleContract, CheckContract {
 
 	@Override
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
-		configurations.byId("checks") //
+		configurations.byId(CheckServiceDomain.check) //
 				.bindRequest(CheckBundlesRequest.T, this::checkBundlesRxProcessor);
 	}
 

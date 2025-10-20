@@ -17,7 +17,9 @@ import java.util.List;
 
 import com.braintribe.cfg.Required;
 
+import hiconic.rx.module.api.service.PlatformServiceDomains;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
+import hiconic.rx.module.api.service.ServiceDomainSymbol;
 
 public class RxServiceDomainConfigurations implements ServiceDomainConfigurations {
 	private RxServiceDomains serviceDomains;
@@ -26,18 +28,22 @@ public class RxServiceDomainConfigurations implements ServiceDomainConfiguration
 	public void setServiceDomains(RxServiceDomains serviceDomains) {
 		this.serviceDomains = serviceDomains;
 	}
-	
+
+	@Override
+	public RxServiceDomain byId(ServiceDomainSymbol domainId) {
+		return serviceDomains.acquire(domainId.name());
+	}
+
 	@Override
 	public RxServiceDomain byId(String domainId) {
 		return serviceDomains.acquire(domainId);
 	}
 
 	// @formatter:off
-	@Override public RxServiceDomain main() { return byId("main"); }
-	@Override public RxServiceDomain system() { return byId("system"); }
-	@Override public RxServiceDomain models() { return byId("models"); }
+	@Override public RxServiceDomain main() { return byId(PlatformServiceDomains.main); }
+	@Override public RxServiceDomain system() { return byId(PlatformServiceDomains.system); }
 	// @formatter:on
-	
+
 	public List<RxServiceDomain> list() {
 		return serviceDomains.list();
 	}

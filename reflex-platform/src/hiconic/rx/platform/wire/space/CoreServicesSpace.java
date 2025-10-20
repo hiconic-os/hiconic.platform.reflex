@@ -169,20 +169,23 @@ public class CoreServicesSpace implements CoreServicesContract {
 		return bean;
 	}
 	
+	@Override
 	@Managed
-	protected JsonStreamMarshaller jsonMarshaller() {
+	public JsonStreamMarshaller jsonMarshaller() {
 		JsonStreamMarshaller bean = new JsonStreamMarshaller();
 		bean.setUseBufferingDecoder(true);
 		return bean;
 	}
 
+	@Override
 	@Managed
-	protected YamlMarshaller yamlMarshaller() {
+	public YamlMarshaller yamlMarshaller() {
 		return new YamlMarshaller();
 	}
 
+	@Override
 	@Managed
-	protected Marshaller binMarshaller() {
+	public Marshaller binMarshaller() {
 		Bin2Marshaller bean = new Bin2Marshaller();
 		//bean.setRequiredTypesReceiver(requiredTypeEnsurer());
 		return bean;

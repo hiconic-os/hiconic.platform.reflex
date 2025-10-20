@@ -14,7 +14,6 @@ import java.util.function.Supplier;
 
 import org.apache.velocity.VelocityContext;
 
-import com.braintribe.cfg.Configurable;
 import com.braintribe.cfg.Required;
 import com.braintribe.logging.Logger;
 import com.braintribe.model.accessdeployment.IncrementalAccess;
@@ -46,43 +45,29 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Classic landing page of tribefire-services. This is the main page where the user can find links to the most common needed resoures (e.g., Control
- * Center, Explorer, About page, Logs,...). <br>
- * <br>
- * The page is aware of the user logged in. If no user is logged in, the page is nearly empty, save for the login button so that the user can
- * authenticate himself/herself with the server. <br>
- * <br>
- * If available (and deployed), Accesses and WebTerminals are also displayed. <br>
+ * Main page with links to the most common needed resources (e.g., Explorer, About page, Logs,...).
+ * <p>
+ * The page is aware of the user logged in. If no user is logged in, the page is nearly empty, save for the login button.
  */
 public class HomeRxServlet extends BasicTemplateBasedServlet {
 
 	private static final long serialVersionUID = 4695919181704450507L;
-	private static final String landingPageTemplateLocation = "hiconic/rx/explorer/processing/servlet/home/home.html.vm";
+	private static final String templateName = "home.html.vm";
 
 	private static final Logger logger = Logger.getLogger(HomeRxServlet.class);
 
 	private static final String USECASE_GME_LOGON = "clientLogon";
 
-	private static final String ACCESS_ID_CORTEX = "cortex";
-
-	// *************************************************************
-	// MEMBERS
-	// *************************************************************
-
-	private final String platformDomain = "serviceDomain:platform";
-	private final String defaultDomain = "serviceDomain:default";
-
 	public HomeRxServlet() {
 		this.refreshFileBasedTemplates = true;
 	}
-	
+
 	private static class LinkConfigurerEntry {
 		BiConsumer<GenericEntity, LinkCollection> configurer;
 		EntityType<?> type;
 		String groupIdPattern;
 
 		public LinkConfigurerEntry(BiConsumer<GenericEntity, LinkCollection> configurer, EntityType<?> type, String groupIdPattern) {
-			super();
 			this.configurer = configurer;
 			this.type = type;
 			this.groupIdPattern = groupIdPattern;
@@ -108,7 +93,7 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 	private String relativeAboutPath = "about";
 	private String relativeDeploymentSummaryPath = "deployment-summary";
 
-	// TODO user proper URLs for RunCheckBundles and and RunDistributedCheckBundles with HTML marshalling 
+	// TODO user proper URLs for RunCheckBundles and and RunDistributedCheckBundles with HTML marshalling
 	// TODO register HTML marshaller
 	private final String relativePlatformBaseChecksPath = "api/v1/checkPlatform";
 	private final String relativePlatformChecksPath = "api/v1/check";
@@ -129,7 +114,7 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 
 	@Override
 	public void init() {
-		setTemplateLocation(landingPageTemplateLocation);
+		setRelativeTemplateLocation(templateName);;
 	}
 
 	// @formatter:off
@@ -167,31 +152,31 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 	@Override
 	protected void serve(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		// TODO SECURITY - configure servlet filter
-//		User dummyUser = User.T.create();
-//		dummyUser.setName("dummy-admin");
-//
-//		UserSession session = UserSession.T.create();
-//		session.setUser(dummyUser);
-//		session.getEffectiveRoles().add("tf-admin");
-//		session.setCreationDate(new Date());
-//
-//		AttributeContext ac = AttributeContexts.derivePeek().set(UserSessionAspect.class, session).build();
-//
-//		AttributeContexts.push(ac);
-//
-//		try {
-//			super.serve(req, resp);
-//		} finally {
-//			AttributeContexts.pop();
-//		}
+		// User dummyUser = User.T.create();
+		// dummyUser.setName("dummy-admin");
+		//
+		// UserSession session = UserSession.T.create();
+		// session.setUser(dummyUser);
+		// session.getEffectiveRoles().add("tf-admin");
+		// session.setCreationDate(new Date());
+		//
+		// AttributeContext ac = AttributeContexts.derivePeek().set(UserSessionAspect.class, session).build();
+		//
+		// AttributeContexts.push(ac);
+		//
+		// try {
+		// super.serve(req, resp);
+		// } finally {
+		// AttributeContexts.pop();
+		// }
 		super.serve(req, resp);
 	}
-	
+
 	@Override
 	protected VelocityContext createContext(HttpServletRequest request, HttpServletResponse repsonse) {
 		/* Check for current user-session */
 		UserSession session = AttributeContexts.peek().findOrNull(UserSessionAspect.class);
-		
+
 		Home home = Home.T.create();
 		if (isAccessGranted(session)) {
 
@@ -311,7 +296,7 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 	private void handleOverview(Home home, UserSession userSession) {
 		GroupContext context = new GroupContext();
 		// TODO why need cortexSession?
-		//context.cortexSession = cortexSessionFactory.get();
+		// context.cortexSession = cortexSessionFactory.get();
 
 		handleGroup(userSession, home, true, () -> buildAdminGroup(context));
 		handleGroup(userSession, home, true, () -> buildModelGroup(context));
@@ -468,22 +453,13 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 			/* administrationGroup.getLinks().add(createLink("Asset Setup", ensureTrailingSlash(controlCenterUrl) + "?accessId=" +
 			 * defaultUserSetupAccessId, "tfControlCenter-setup", null, "./webpages/images/cortex/asset.png")); */
 		}
-		/* if (tfJsUrl != null) {
-		 *
-		 * LinkCollection tribefireJs = LinkCollection.T.create(); tribefireJs.setDisplayName("tribefire.js");
-		 * tribefireJs.setIconRef("./webpages/images/cortex/code.png");
-		 *
-		 * tribefireJs.getNestedLinks().add(createLink("About", ensureTrailingSlash(tfJsUrl)+"#default", "tfJs", null));
-		 * tribefireJs.getNestedLinks().add(createLink("runtime.js", ensureTrailingSlash(tfJsUrl)+"/tribefire.js", "_blank", null));
-		 * tribefireJs.getNestedLinks().add(createLink("debug.js", ensureTrailingSlash(tfJsUrl)+"/debug/tribefire.js", "_blank", null));
-		 *
-		 * administrationGroup.getLinks().add(tribefireJs); } */
+
 	}
 
 	private void configureAccessLink(GroupContext context, LinkCollection linkCollection, List<BiConsumer<GenericEntity, LinkCollection>> configurers,
 			String accessId) {
 		// TODO accesses
-		
+
 //		//@formatter:off
 //		SelectQuery queryCortexAccess = new SelectQueryBuilder().from(IncrementalAccess.T, "a")
 //			.where()
@@ -491,10 +467,10 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 //			.select("a")
 //			.done();
 //		//@formatter:on
-//
-//		queryAndConsume(context.cortexSession, queryCortexAccess, (IncrementalAccess a) -> {
-//			configurers.forEach(c -> c.accept(a, linkCollection));
-//		});
+		//
+		// queryAndConsume(context.cortexSession, queryCortexAccess, (IncrementalAccess a) -> {
+		// configurers.forEach(c -> c.accept(a, linkCollection));
+		// });
 	}
 
 	private void fillWebTerminalGroup(GroupContext context, LinkGroup webTerminalsGroup) {
@@ -522,34 +498,34 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 //			.orderBy(OrderingDirection.ascending).property("m", Module.globalId)
 //			.done();
 //		//@formatter:on
-//
-//		Map<String, String> vitalityCheckPerModule = getDistributedVitalityStatusByModule();
-//		queryAndConsume(context.cortexSession, query, (m) -> {
-//			ListRecord lr = (ListRecord) m;
-//			List<Object> values = lr.getValues();
-//			String globalId = (String) values.get(0);
-//			String name = (String) values.get(1);
-//
-//			LinkCollection links = LinkCollection.T.create();
-//			links.setIconRef("./webpages/images/cortex/modules.png");
-//
-//			links.setDisplayName(name == null ? "Unknown Module" : name);
-//
-//			// links.getNestedLinks().add(createLink("About",
-//			// "./home?selectedTab=CARTRIDGE&selectedTabPath="+urlEncode("cartridge/"+urlEncode(c.getExternalId())+"/aObout"),
-//			// "_self", null));
-//			String vitalityStatus = vitalityCheckPerModule.computeIfAbsent(globalId, s -> " &#x2714;");
-//			links.getNestedLinks().add(createLink("Health" + vitalityStatus,
-//					"./home?selectedTab=MODULE&selectedTabPath=" + urlEncode(relativeVitalityCheckPath + urlEncode(globalId)), "_self", null));
-//
-//			links.getNestedLinks()
-//					.add(createLink("Checks",
-//							"./home?selectedTab=FUNCTIONAL MODULE&selectedTabPath=" + urlEncode(relativeModuleCheckPath + urlEncode(globalId)),
-//							"_self", null));
-//
-//			modulesGroup.getLinks().add(links);
-//
-//		});
+		//
+		// Map<String, String> vitalityCheckPerModule = getDistributedVitalityStatusByModule();
+		// queryAndConsume(context.cortexSession, query, (m) -> {
+		// ListRecord lr = (ListRecord) m;
+		// List<Object> values = lr.getValues();
+		// String globalId = (String) values.get(0);
+		// String name = (String) values.get(1);
+		//
+		// LinkCollection links = LinkCollection.T.create();
+		// links.setIconRef("./webpages/images/cortex/modules.png");
+		//
+		// links.setDisplayName(name == null ? "Unknown Module" : name);
+		//
+		// // links.getNestedLinks().add(createLink("About",
+		// // "./home?selectedTab=CARTRIDGE&selectedTabPath="+urlEncode("cartridge/"+urlEncode(c.getExternalId())+"/aObout"),
+		// // "_self", null));
+		// String vitalityStatus = vitalityCheckPerModule.computeIfAbsent(globalId, s -> " &#x2714;");
+		// links.getNestedLinks().add(createLink("Health" + vitalityStatus,
+		// "./home?selectedTab=MODULE&selectedTabPath=" + urlEncode(relativeVitalityCheckPath + urlEncode(globalId)), "_self", null));
+		//
+		// links.getNestedLinks()
+		// .add(createLink("Checks",
+		// "./home?selectedTab=FUNCTIONAL MODULE&selectedTabPath=" + urlEncode(relativeModuleCheckPath + urlEncode(globalId)),
+		// "_self", null));
+		//
+		// modulesGroup.getLinks().add(links);
+		//
+		// });
 	}
 	private void fillConfigurationModulesGroup(GroupContext context, LinkGroup modulesGroup) {
 
@@ -561,91 +537,91 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 //			.orderBy(OrderingDirection.ascending).property("m", Module.globalId)
 //			.done();
 //		//@formatter:on
-//
-//		queryAndConsume(context.cortexSession, query, (m) -> {
-//
-//			String name = (String) m;
-//
-//			LinkCollection links = LinkCollection.T.create();
-//			links.setIconRef("./webpages/images/cortex/modules.png");
-//
-//			links.setDisplayName(name == null ? "Unknown Module" : name);
-//
-//			// links.getNestedLinks().add(createLink("About",
-//			// "./home?selectedTab=CARTRIDGE&selectedTabPath="+urlEncode("cartridge/"+urlEncode(c.getExternalId())+"/aObout"),
-//			// "_self", null));
-//
-//			modulesGroup.getLinks().add(links);
-//
-//		});
+		//
+		// queryAndConsume(context.cortexSession, query, (m) -> {
+		//
+		// String name = (String) m;
+		//
+		// LinkCollection links = LinkCollection.T.create();
+		// links.setIconRef("./webpages/images/cortex/modules.png");
+		//
+		// links.setDisplayName(name == null ? "Unknown Module" : name);
+		//
+		// // links.getNestedLinks().add(createLink("About",
+		// // "./home?selectedTab=CARTRIDGE&selectedTabPath="+urlEncode("cartridge/"+urlEncode(c.getExternalId())+"/aObout"),
+		// // "_self", null));
+		//
+		// modulesGroup.getLinks().add(links);
+		//
+		// });
 	}
 
 	private String getPlatformVitalityStatus() {
 		// TODO platform vitality status
 		return "&nbsp;&#x2714;";
-//		RunCheckBundles run = RunCheckBundles.T.create();
-//		run.setCoverage(Collections.singleton(CheckCoverage.vitality));
-//		run.setIsPlatformRelevant(true);
-//
-//		CheckBundlesResponse response = run.eval(systemServiceRequestEvaluator).get();
-//
-//		CheckStatus status = response.getStatus();
-//		switch (status) {
-//			case ok:
-//				return "&nbsp;&#x2714;";
-//			case warn:
-//				return "&nbsp;&#x26a0;";
-//			case fail:
-//			default:
-//				return "&nbsp;&#x2716;";
-//		}
+		// RunCheckBundles run = RunCheckBundles.T.create();
+		// run.setCoverage(Collections.singleton(CheckCoverage.vitality));
+		// run.setIsPlatformRelevant(true);
+		//
+		// CheckBundlesResponse response = run.eval(systemServiceRequestEvaluator).get();
+		//
+		// CheckStatus status = response.getStatus();
+		// switch (status) {
+		// case ok:
+		// return "&nbsp;&#x2714;";
+		// case warn:
+		// return "&nbsp;&#x26a0;";
+		// case fail:
+		// default:
+		// return "&nbsp;&#x2716;";
+		// }
 	}
 
-//	private Map<String, String> getDistributedVitalityStatusByModule() {
-//		Map<String, String> res = new HashMap<>();
-//
-//		RunDistributedCheckBundles run = RunDistributedCheckBundles.T.create();
-//		run.setCoverage(Collections.singleton(CheckCoverage.vitality));
-//		run.setIsPlatformRelevant(false);
-//		run.setAggregateBy(Collections.singletonList(CbrAggregationKind.module));
-//
-//		CheckBundlesResponse response = run.eval(systemServiceRequestEvaluator).get();
-//
-//		List<CbrAggregatable> elements = response.getElements();
-//
-//		if (elements.isEmpty())
-//			return res;
-//
-//		for (CbrAggregatable a : response.getElements()) {
-//			if (a instanceof CbrAggregation) {
-//				CbrAggregation aggregation = (CbrAggregation) a;
-//				Module module = (Module) aggregation.getDiscriminator();
-//
-//				CheckStatus status = aggregation.getStatus();
-//				String statusRepresentation = getStatusRepresentationAsStr(status);
-//
-//				res.put(module.getGlobalId(), statusRepresentation);
-//			}
-//		}
-//
-//		return res;
-//	}
-//
-//	private String getStatusRepresentationAsStr(CheckStatus status) {
-//		String statusRepresentation = null;
-//		switch (status) {
-//			case ok:
-//				statusRepresentation = " &#x2714;";
-//				break;
-//			case warn:
-//				statusRepresentation = " &#x26a0;";
-//				break;
-//			case fail:
-//			default:
-//				statusRepresentation = " &#x2716;";
-//		}
-//		return statusRepresentation;
-//	}
+	// private Map<String, String> getDistributedVitalityStatusByModule() {
+	// Map<String, String> res = new HashMap<>();
+	//
+	// RunDistributedCheckBundles run = RunDistributedCheckBundles.T.create();
+	// run.setCoverage(Collections.singleton(CheckCoverage.vitality));
+	// run.setIsPlatformRelevant(false);
+	// run.setAggregateBy(Collections.singletonList(CbrAggregationKind.module));
+	//
+	// CheckBundlesResponse response = run.eval(systemServiceRequestEvaluator).get();
+	//
+	// List<CbrAggregatable> elements = response.getElements();
+	//
+	// if (elements.isEmpty())
+	// return res;
+	//
+	// for (CbrAggregatable a : response.getElements()) {
+	// if (a instanceof CbrAggregation) {
+	// CbrAggregation aggregation = (CbrAggregation) a;
+	// Module module = (Module) aggregation.getDiscriminator();
+	//
+	// CheckStatus status = aggregation.getStatus();
+	// String statusRepresentation = getStatusRepresentationAsStr(status);
+	//
+	// res.put(module.getGlobalId(), statusRepresentation);
+	// }
+	// }
+	//
+	// return res;
+	// }
+	//
+	// private String getStatusRepresentationAsStr(CheckStatus status) {
+	// String statusRepresentation = null;
+	// switch (status) {
+	// case ok:
+	// statusRepresentation = " &#x2714;";
+	// break;
+	// case warn:
+	// statusRepresentation = " &#x26a0;";
+	// break;
+	// case fail:
+	// default:
+	// statusRepresentation = " &#x2716;";
+	// }
+	// return statusRepresentation;
+	// }
 
 	private static String urlEncode(String text) {
 		try {
@@ -666,69 +642,69 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 //			.select("s")
 //			.done();
 //		//@formatter:on
-//
-//		List<BiConsumer<GenericEntity, LinkCollection>> configurers = resolveConfigures(serviceDomainsGroup.getName(), ServiceDomain.T);
-//
-//		queryAndConsume(context.cortexSession, queryPlatformDomain, (d) -> {
-//
-//			ServiceDomain sd = (ServiceDomain) d;
-//
-//			LinkCollection links = LinkCollection.T.create();
-//			links.setIconRef("./webpages/images/cortex/tf-cortex.png");
-//
-//			setDisplayName(sd, links);
-//
-//			configurers.forEach(c -> c.accept(sd, links));
-//
-//			if (!links.getNestedLinks().isEmpty()) {
-//				serviceDomainsGroup.getLinks().add(links);
-//			}
-//		});
-//
+		//
+		// List<BiConsumer<GenericEntity, LinkCollection>> configurers = resolveConfigures(serviceDomainsGroup.getName(), ServiceDomain.T);
+		//
+		// queryAndConsume(context.cortexSession, queryPlatformDomain, (d) -> {
+		//
+		// ServiceDomain sd = (ServiceDomain) d;
+		//
+		// LinkCollection links = LinkCollection.T.create();
+		// links.setIconRef("./webpages/images/cortex/tf-cortex.png");
+		//
+		// setDisplayName(sd, links);
+		//
+		// configurers.forEach(c -> c.accept(sd, links));
+		//
+		// if (!links.getNestedLinks().isEmpty()) {
+		// serviceDomainsGroup.getLinks().add(links);
+		// }
+		// });
+		//
 //		//@formatter:off
 //		SelectQuery queryServiceDomain = new SelectQueryBuilder().from(ServiceDomain.T, "s")
 //			.select("s")
 //			.orderBy(OrderingDirection.ascending).property("s", ServiceDomain.externalId)
 //			.done();
 //		//@formatter:on
-//
-//		List<String> wbIds = getListOfWorkbenchAccessIds(context.cortexSession);
-//
-//		queryAndConsume(context.cortexSession, queryServiceDomain, (r) -> {
-//
-//			ServiceDomain sd = (ServiceDomain) r;
-//			String externalId = sd.getExternalId();
-//
-//			if (sd instanceof Deployable) {
-//				Deployable deployable = (Deployable) sd;
-//				if (deployable.getDeploymentStatus() != DeploymentStatus.deployed) {
-//					return;
-//				}
-//			}
-//
-//			if (!(sd instanceof HardwiredDeployable) && !wbIds.contains(externalId)) {
-//				LinkCollection links = LinkCollection.T.create();
-//				if (platformDomain.equals(sd.getExternalId()) || defaultDomain.equals(externalId)) {
-//					return;
-//				}
-//				links.setIconRef("./webpages/images/cortex/domains.png");
-//
-//				setDisplayName(sd, links);
-//				if ((sd instanceof IncrementalAccess)) {
-//					addAccessLinks((IncrementalAccess) sd, links);
-//				}
-//
-//				configurers.forEach(c -> c.accept(sd, links));
-//
-//				if (links.getHasErrors()) {
-//					links.setDisplayName(links.getDisplayName() + " &#x2757;");
-//					serviceDomainsGroup.getLinks().add(links);
-//				} else if (!links.getNestedLinks().isEmpty()) {
-//					serviceDomainsGroup.getLinks().add(links);
-//				}
-//			}
-//
-//		});
+		//
+		// List<String> wbIds = getListOfWorkbenchAccessIds(context.cortexSession);
+		//
+		// queryAndConsume(context.cortexSession, queryServiceDomain, (r) -> {
+		//
+		// ServiceDomain sd = (ServiceDomain) r;
+		// String externalId = sd.getExternalId();
+		//
+		// if (sd instanceof Deployable) {
+		// Deployable deployable = (Deployable) sd;
+		// if (deployable.getDeploymentStatus() != DeploymentStatus.deployed) {
+		// return;
+		// }
+		// }
+		//
+		// if (!(sd instanceof HardwiredDeployable) && !wbIds.contains(externalId)) {
+		// LinkCollection links = LinkCollection.T.create();
+		// if (platformDomain.equals(sd.getExternalId()) || defaultDomain.equals(externalId)) {
+		// return;
+		// }
+		// links.setIconRef("./webpages/images/cortex/domains.png");
+		//
+		// setDisplayName(sd, links);
+		// if ((sd instanceof IncrementalAccess)) {
+		// addAccessLinks((IncrementalAccess) sd, links);
+		// }
+		//
+		// configurers.forEach(c -> c.accept(sd, links));
+		//
+		// if (links.getHasErrors()) {
+		// links.setDisplayName(links.getDisplayName() + " &#x2757;");
+		// serviceDomainsGroup.getLinks().add(links);
+		// } else if (!links.getNestedLinks().isEmpty()) {
+		// serviceDomainsGroup.getLinks().add(links);
+		// }
+		// }
+		//
+		// });
 	}
 
 	private boolean isModelVisible(IncrementalAccess access, String... useCases) {
@@ -774,7 +750,7 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 		links.setDisplayName(displayName);
 	}
 
-//	private List<String> getListOfWorkbenchAccessIds(PersistenceGmSession cortexSession) {
+	// private List<String> getListOfWorkbenchAccessIds(PersistenceGmSession cortexSession) {
 //		//@formatter:off
 //		SelectQuery query = new SelectQueryBuilder().from(IncrementalAccess.T, "a")
 //				.join("a", IncrementalAccess.workbenchAccess, "w")
@@ -802,52 +778,52 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 //			.orderBy(OrderingDirection.ascending).property("m", GmMetaModel.name)
 //			.done();
 //		//@formatter:on
-//
-//		queryAndConsume(context.cortexSession, query, (r) -> {
-//
-//			ListRecord lr = (ListRecord) r;
-//			List<Object> values = lr.getValues();
-//			String modelName = (String) values.get(0);
-//			String version = (String) values.get(1);
-//			long typeCount = (Long) values.get(2);
-//
-//			if (typeCount > 0) {
-//				LinkCollection links = LinkCollection.T.create();
-//				links.setIconRef("./webpages/images/cortex/models.png");
-//				if (StringTools.isEmpty(version)) {
-//					version = "unknownVersion";
-//
-//				}
-//
-//				String[] nameElements = modelName.split(":");
-//				String shortName = nameElements[nameElements.length - 1];
-//
-//				String displayName = shortName; // + " (" + version + ")";
-//
-//				links.setDisplayName(displayName);
-//
-//				// TODO Remove the Standalone Modeler completely
-//				// if (modelerUrl != null) {
-//				// links.getNestedLinks()
-//				// .add(createLink("Browse",
-//				// ensureTrailingSlash(modelerUrl) + "#readOnly&do=loadModel&par.modelName=" +
-//				// urlEncode(m.getName()),
-//				// "tf-modeler", null));
-//				// }
-//				if (controlCenterUrl != null) {
-//					links.getNestedLinks()
-//							.add(createLink("Explore",
-//									ensureTrailingSlash(controlCenterUrl) + "#do=query&par.typeSignature="
-//											+ urlEncode(GmMetaModel.T.getTypeSignature()) + "&par.propertyName=name&par.propertyValue="
-//											+ urlEncode(modelName),
-//									"tfControlCenter", null));
-//				}
-//				/* links.getNestedLinks().add(createLink("Browse", ".", "tfModeler", null)); links.getNestedLinks().add(createLink("Exchange Package",
-//				 * ".", "tfModeler", null)); links.getNestedLinks().add(createLink("JSON", ".", "tfModeler", null)); */
-//				modelsGroup.getLinks().add(links);
-//			}
-//
-//		});
+		//
+		// queryAndConsume(context.cortexSession, query, (r) -> {
+		//
+		// ListRecord lr = (ListRecord) r;
+		// List<Object> values = lr.getValues();
+		// String modelName = (String) values.get(0);
+		// String version = (String) values.get(1);
+		// long typeCount = (Long) values.get(2);
+		//
+		// if (typeCount > 0) {
+		// LinkCollection links = LinkCollection.T.create();
+		// links.setIconRef("./webpages/images/cortex/models.png");
+		// if (StringTools.isEmpty(version)) {
+		// version = "unknownVersion";
+		//
+		// }
+		//
+		// String[] nameElements = modelName.split(":");
+		// String shortName = nameElements[nameElements.length - 1];
+		//
+		// String displayName = shortName; // + " (" + version + ")";
+		//
+		// links.setDisplayName(displayName);
+		//
+		// // TODO Remove the Standalone Modeler completely
+		// // if (modelerUrl != null) {
+		// // links.getNestedLinks()
+		// // .add(createLink("Browse",
+		// // ensureTrailingSlash(modelerUrl) + "#readOnly&do=loadModel&par.modelName=" +
+		// // urlEncode(m.getName()),
+		// // "tf-modeler", null));
+		// // }
+		// if (controlCenterUrl != null) {
+		// links.getNestedLinks()
+		// .add(createLink("Explore",
+		// ensureTrailingSlash(controlCenterUrl) + "#do=query&par.typeSignature="
+		// + urlEncode(GmMetaModel.T.getTypeSignature()) + "&par.propertyName=name&par.propertyValue="
+		// + urlEncode(modelName),
+		// "tfControlCenter", null));
+		// }
+		// /* links.getNestedLinks().add(createLink("Browse", ".", "tfModeler", null)); links.getNestedLinks().add(createLink("Exchange Package",
+		// * ".", "tfModeler", null)); links.getNestedLinks().add(createLink("JSON", ".", "tfModeler", null)); */
+		// modelsGroup.getLinks().add(links);
+		// }
+		//
+		// });
 	}
 	private boolean handleTab(HttpServletRequest request, Home home) {
 		String selectedTabParameter = request.getParameter("selectedTab");

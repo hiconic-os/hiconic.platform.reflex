@@ -458,7 +458,7 @@ public class HelpProcessor implements ServiceProcessor<Help, Neutral> {
 	private void getRequestOverview(Help request) {
 		boolean includeUpToDate = request.getUpToDate();
 		
-		CommandsReflection cr = commandsReflection(serviceDomains.byId("cli"));
+		CommandsReflection cr = commandsReflection(serviceDomains.byId(CliServiceDomain.cli));
 		CommandsOverview commandsOverview = cr.getCommandsOverview();
 
 		ConfigurableConsoleOutputContainer factoryCommands = configurableSequence();

@@ -23,7 +23,6 @@
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>hibernate-test-model</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
-            <?tag asset ?>
         </dependency>
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
@@ -54,7 +53,6 @@
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>hibernate-test-api-model</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
-            <?tag asset ?>
         </dependency>
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>

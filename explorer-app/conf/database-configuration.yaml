@@ -1,0 +1,16 @@
+databases:
+- name: user-sessions
+  user: "cortex"
+  password: "cortex"
+  driver: "org.postgresql.Driver"
+  url: "jdbc:postgresql://localhost:65432/dbtest"
+- name: messaging
+  user: "cortex"
+  password: "cortex"
+  driver: "org.postgresql.Driver"
+  url: "jdbc:postgresql://localhost:65432/dbtest"
+- name: locking
+  user: "cortex"
+  password: "cortex"
+  driver: "org.postgresql.Driver"
+  url: "jdbc:postgresql://localhost:65432/dbtest"

@@ -39,7 +39,6 @@ limitations under the License.
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>demo-model</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
-            <?tag asset ?>
         </dependency>
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>

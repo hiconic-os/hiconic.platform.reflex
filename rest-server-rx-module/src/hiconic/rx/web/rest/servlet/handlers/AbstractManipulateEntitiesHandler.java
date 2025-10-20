@@ -33,8 +33,6 @@ import com.braintribe.codec.marshaller.api.IdentityManagementMode;
 import com.braintribe.codec.marshaller.api.IdentityManagementModeOption;
 import com.braintribe.model.accessapi.ManipulationRequest;
 import com.braintribe.model.accessapi.ManipulationResponse;
-import com.braintribe.model.ddra.endpoints.v2.DdraManipulateEntitiesEndpoint;
-import com.braintribe.model.ddra.endpoints.v2.DdraUrlPathParameters;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.manipulation.CompoundManipulation;
 import com.braintribe.model.generic.manipulation.Manipulation;
@@ -45,13 +43,15 @@ import com.braintribe.model.processing.query.fluent.EntityQueryBuilder;
 import com.braintribe.model.processing.session.api.managed.NotFoundException;
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSession;
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSessionFactory;
-import com.braintribe.model.processing.web.rest.HttpExceptions;
 import com.braintribe.model.query.EntityQuery;
 import com.braintribe.utils.lcd.ThrowableTools;
 
+import dev.hiconic.servlet.decoder.api.HttpExceptions;
 import hiconic.rx.web.rest.servlet.ManipulationTransformer;
 import hiconic.rx.web.rest.servlet.RestV2EndpointContext;
 import hiconic.rx.web.rest.servlet.RestV2Server;
+import hiconic.rx.webapi.endpoints.v2.DdraManipulateEntitiesEndpoint;
+import hiconic.rx.webapi.endpoints.v2.DdraUrlPathParameters;
 
 /**
  * Handler used for POST, PUT and PATCH entities.
@@ -92,9 +92,9 @@ public abstract class AbstractManipulateEntitiesHandler extends AbstractRestV2Ha
 			Throwable rootCause = ThrowableTools.getRootCause(e);
 			if (rootCause instanceof NotFoundException) {
 				if (parameters.getEntityId() != null)
-					HttpExceptions.notFound(rootCause.getMessage());
+					HttpExceptions.throwNotFound(rootCause.getMessage());
 				else
-					HttpExceptions.badRequest(rootCause.getMessage());
+					HttpExceptions.throwBadRequest(rootCause.getMessage());
 			}
 			throw e;
 		}
@@ -117,7 +117,7 @@ public abstract class AbstractManipulateEntitiesHandler extends AbstractRestV2Ha
 		Object result = unmarshallBody(context, endpoint, options);
 		boolean isCollection = result instanceof Collection;
 		if (isCollection && !allowMultipleEntities)
-			HttpExceptions.badRequest("The body must only contain one entity.");
+			HttpExceptions.throwBadRequest("The body must only contain one entity.");
 
 		manipulationTransformer.setTransformingMultipleEntities(isCollection);
 		if (result != null && !isCollection)
@@ -130,7 +130,7 @@ public abstract class AbstractManipulateEntitiesHandler extends AbstractRestV2Ha
 			DdraManipulateEntitiesEndpoint endpoint) {
 		List<GenericEntity> entities = manipulationTransformer.getEntities();
 		if (entities.isEmpty())
-			HttpExceptions.badRequest("No generic entity found in the post body.");
+			HttpExceptions.throwBadRequest("No generic entity found in the post body.");
 		else if (entities.size() > 1) {
 			if (parameters.getEntityId() != null)
 				entities.stream().filter(e -> e.getId() == null && e.type().getTypeSignature().equals(parameters.getTypeSignature())).findFirst()
@@ -143,7 +143,7 @@ public abstract class AbstractManipulateEntitiesHandler extends AbstractRestV2Ha
 			manipulationTransformer.setTransformingMultipleNestedEntities(true);
 
 			if (endpoint.getId() != null)
-				HttpExceptions.badRequest("The body must only contain one entity because an id was specified in the URL path.");
+				HttpExceptions.throwBadRequest("The body must only contain one entity because an id was specified in the URL path.");
 		} else {
 			GenericEntity decodedEntity = entities.iterator().next();
 			if (parameters.getEntityId() != null)
@@ -197,7 +197,7 @@ public abstract class AbstractManipulateEntitiesHandler extends AbstractRestV2Ha
 			case success:
 				return true;
 			default:
-				HttpExceptions.internalServerError("Unexpected projection %s", endpoint.getProjection());
+				HttpExceptions.throwInternalServerError("Unexpected projection %s", endpoint.getProjection());
 				return null;
 		}
 	}

@@ -1,0 +1,4 @@
+userSessionDb: "user-sessions"
+adminRoles:
+	- tf-admin
+	- tf-locksmith

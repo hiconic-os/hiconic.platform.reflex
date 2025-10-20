@@ -20,7 +20,7 @@ import hiconic.rx.module.api.wire.RxModule;
 
 public enum HibernateRxTestModule implements RxModule<HibernateRxTestModuleSpace> {
 	INSTANCE;
-	
+
 	@Override
 	public void bindExports(Exports exports) {
 		exports.bind(HibernateTestContract.class, HibernateRxTestModuleSpace.class);

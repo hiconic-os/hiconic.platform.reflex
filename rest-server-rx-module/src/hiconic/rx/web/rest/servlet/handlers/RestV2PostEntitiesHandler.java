@@ -18,7 +18,7 @@ package hiconic.rx.web.rest.servlet.handlers;
 import java.io.IOException;
 
 import hiconic.rx.web.rest.servlet.RestV2EndpointContext;
-import com.braintribe.model.ddra.endpoints.v2.DdraManipulateEntitiesEndpoint;
+import hiconic.rx.webapi.endpoints.v2.DdraManipulateEntitiesEndpoint;
 
 public class RestV2PostEntitiesHandler extends AbstractManipulateEntitiesHandler {
 

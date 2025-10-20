@@ -18,15 +18,16 @@ package hiconic.rx.web.rest.servlet.handlers;
 import java.io.IOException;
 
 import com.braintribe.codec.marshaller.api.GmDeserializationOptions;
-import hiconic.rx.web.rest.servlet.RestV2EndpointContext;
 import com.braintribe.model.accessapi.ManipulationRequest;
 import com.braintribe.model.accessapi.ManipulationResponse;
-import com.braintribe.model.ddra.endpoints.v2.DdraPutPropertiesEndpoint;
-import com.braintribe.model.ddra.endpoints.v2.DdraUrlPathParameters;
 import com.braintribe.model.generic.manipulation.ChangeValueManipulation;
 import com.braintribe.model.generic.reflection.GenericModelType;
 import com.braintribe.model.generic.reflection.Property;
-import com.braintribe.model.processing.web.rest.HttpExceptions;
+
+import dev.hiconic.servlet.decoder.api.HttpExceptions;
+import hiconic.rx.web.rest.servlet.RestV2EndpointContext;
+import hiconic.rx.webapi.endpoints.v2.DdraPutPropertiesEndpoint;
+import hiconic.rx.webapi.endpoints.v2.DdraUrlPathParameters;
 
 public class RestV2PutPropertiesHandler extends AbstractManipulationPropertiesHandler<DdraPutPropertiesEndpoint> {
 
@@ -65,7 +66,7 @@ public class RestV2PutPropertiesHandler extends AbstractManipulationPropertiesHa
 			case listType:
 			case setType:
 			case mapType:
-				HttpExceptions.badRequest(context.getRequest().getMethod() + " for properties is only allowed for non-collection properties, "
+				HttpExceptions.throwBadRequest(context.getRequest().getMethod() + " for properties is only allowed for non-collection properties, "
 						+ "but property %s if of type: %s", property.getName(), type.getTypeName());
 				return;
 			default:

@@ -1,0 +1,116 @@
+*.loginContent html {
+	height: 100%;
+	min-height: 100%;
+}
+div.loginContent {
+	margin: 0;
+	padding: 0;
+	background-color: white;
+	background-repeat: no-repeat;
+	background-position: 100% 100%;
+	height: 100%;
+	min-height: 100%;
+	font-family: 'Open Sans', sans-serif;
+	font-weight: 300;
+	font-size: medium;
+	color: gray;
+	font-smoothing: antialiased;
+	-webkit-font-smoothing: antialiased;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.004);
+    text-align: center;
+}
+*.loginContent input, *.loginContent textarea, *.loginContent button {
+	font-family: 'Open Sans', sans-serif;
+	font-weight: 300;
+	font-size: medium;
+	outline: none;
+	box-sizing:border-box;
+	-moz-box-sizing:border-box;
+}
+*.loginContent img {
+	margin-top: 100px;
+}
+*.loginContent h1 {
+		
+	#text-transform: uppercase;
+	margin: 0px auto 20px auto;
+	padding: 20px 0 0 0;
+	font-size: 24px;
+}
+*.loginContent h2 {
+	font-family: 'Open Sans', sans-serif;
+	font-style: 19px;
+	font-weight: 300;
+	margin: 5px auto 20px auto;
+	padding: 0;
+}
+*.loginContent h3 {
+	font-family: 'Open Sans', sans-serif;
+	font-style: 19px;
+	font-weight: 300;
+	font-size: small;
+	margin: 5px auto 5px auto;
+	padding: 0;
+}
+
+form.loginForm {
+	width: 210px;
+	margin: 20px auto 0 auto;
+	padding: 50px;
+	background-color: rgba(0,0,0,0.05);
+}
+*.loginContent div {
+	margin-bottom: 15px;
+}
+*.loginContent input[type="text"], *.loginContent input[type="password"] {
+	width: 100% !important;
+	padding: 10px !important;
+    height: 35px !important;
+	border:0;
+	background-color: white;
+	color: gray;
+	border-radius: 0px;
+}
+
+*.loginContent input[type="checkbox"]{
+	height:12px;
+	width:12px;
+}
+
+*.loginContent button {
+	padding: 5px 30px !important;
+	font-size: 16px !important;
+	background-color: #ffa500 !important;
+	border:0 !important;
+	cursor: pointer !important;
+    height: 35px !important;
+    width: 100% !important;
+    color: white;
+}
+*.loginContent .errorMessage {
+    font-size: small;
+    color: red;
+}
+
+*.loginContent .okMessage {
+    font-size: small;
+    color: green;
+}
+
+a {
+	text-decoration: none;
+	color:gray; 
+}
+
+a:hover { 
+
+	text-decoration: none; 
+	color: #ffa500;
+}
+
+.mycheckbox {
+	
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+}

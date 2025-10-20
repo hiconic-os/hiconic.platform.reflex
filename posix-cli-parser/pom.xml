@@ -53,7 +53,6 @@ limitations under the License.
             <groupId>com.braintribe.gm</groupId>
             <artifactId>essential-reason-model</artifactId>
             <version>${V.com.braintribe.gm}</version>
-            <?tag asset ?>
         </dependency>
     </dependencies>
 </project>

@@ -19,6 +19,7 @@ import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.access.module.api.AccessContract;
+import hiconic.rx.explorer.processing.ExplorerServiceDomain;
 import hiconic.rx.explorer.processing.bapi.AvailableAccessesProcessor;
 import hiconic.rx.explorer.processing.bapi.CurrentUserInformationProcessor;
 import hiconic.rx.module.api.service.ServiceDomainConfiguration;
@@ -41,13 +42,14 @@ public class ExplorerRxModuleSpace implements RxModuleContract {
 	@Import private ChecksSpace checks;
 	@Import private CortexSpace cortex;
 	@Import private PlatformReflectionSpace platformReflection;
+	@Import private SystemToolsSpace systemTools;
 	@Import private WebappsSpace webapps;
 	
 	// @formatter:on
 
 	@Override
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
-		ServiceDomainConfiguration explorerSd = configurations.byId("explorer");
+		ServiceDomainConfiguration explorerSd = configurations.byId(ExplorerServiceDomain.explorer);
 
 		explorerSd.bindRequest(AvailableAccessesRequest.T, this::availableAccessesProcessor);
 		explorerSd.bindRequest(CurrentUserInformationRequest.T, this::currentUserInformationProcessor);
@@ -73,4 +75,10 @@ public class ExplorerRxModuleSpace implements RxModuleContract {
 		checks.registerChecks();
 		cortex.registerCortexAccess();
 	}
+
+	@Override
+	public void onApplicationReady() {
+		systemTools.startTasks();
+	}
+
 }

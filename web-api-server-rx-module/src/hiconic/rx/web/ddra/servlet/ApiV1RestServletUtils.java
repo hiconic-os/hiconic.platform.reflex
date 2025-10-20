@@ -15,7 +15,6 @@
 // ============================================================================
 package hiconic.rx.web.ddra.servlet;
 
-import static com.braintribe.model.processing.web.rest.HttpExceptions.notFound;
 import static com.braintribe.utils.lcd.CollectionTools2.first;
 
 import java.io.IOException;
@@ -29,12 +28,7 @@ import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
 import com.braintribe.cfg.Configurable;
-import com.braintribe.ddra.TypeTraversal;
-import com.braintribe.ddra.TypeTraversalResult;
 import com.braintribe.logging.Logger;
-import com.braintribe.model.ddra.endpoints.OutputPrettiness;
-import com.braintribe.model.ddra.endpoints.TypeExplicitness;
-import com.braintribe.model.ddra.endpoints.api.v1.ApiV1DdraEndpoint;
 import com.braintribe.model.generic.GMF;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.reflection.EntityType;
@@ -62,10 +56,13 @@ import com.braintribe.web.multipart.api.MutablePartHeader;
 import com.braintribe.web.multipart.api.PartReader;
 import com.braintribe.web.multipart.impl.Multiparts;
 
-import dev.hiconic.servlet.ddra.endpoints.api.api.v1.ApiV1EndpointContext;
-import dev.hiconic.servlet.ddra.endpoints.api.api.v1.SingleDdraMapping;
 import dev.hiconic.servlet.decoder.api.DecoderTargetRegistry;
 import dev.hiconic.servlet.decoder.api.HttpExceptions;
+import hiconic.rx.web.ddra.endpoints.api.api.v1.ApiV1EndpointContext;
+import hiconic.rx.web.ddra.endpoints.api.api.v1.SingleDdraMapping;
+import hiconic.rx.webapi.common.TypeTraversal;
+import hiconic.rx.webapi.common.TypeTraversalResult;
+import hiconic.rx.webapi.endpoints.api.v1.ApiV1DdraEndpoint;
 
 public class ApiV1RestServletUtils {
 	private final static Logger logger = Logger.getLogger(ApiV1RestServletUtils.class);
@@ -105,13 +102,13 @@ public class ApiV1RestServletUtils {
 
 			for (String propertyName : properties) {
 				if (!(currentType instanceof EntityType))
-					HttpExceptions.badRequest("Invalid projection %s - the property %s in entityType %s is not an entityType", projection,
+					HttpExceptions.throwBadRequest("Invalid projection %s - the property %s in entityType %s is not an entityType", projection,
 							propertyName, parentType.getTypeSignature());
 
 				EntityType<?> entityType = (EntityType<?>) currentType;
 				property = entityType.findProperty(propertyName);
 				if (property == null)
-					HttpExceptions.badRequest("Invalid projection %s - no property found with name %s in entityType %s", projection, propertyName,
+					HttpExceptions.throwBadRequest("Invalid projection %s - no property found with name %s in entityType %s", projection, propertyName,
 							entityType.getTypeSignature());
 
 				parentType = entityType;
@@ -124,7 +121,7 @@ public class ApiV1RestServletUtils {
 			return result;
 		}
 
-		HttpExceptions.badRequest("Got projection %s but the result was not a GenericEntity, result class: %s", projection,
+		HttpExceptions.throwBadRequest("Got projection %s but the result was not a GenericEntity, result class: %s", projection,
 				result.getClass().getName());
 
 		return null;
@@ -144,7 +141,7 @@ public class ApiV1RestServletUtils {
 			return null;
 
 		if (matchingTypes.size() > 1) {
-			notFound("Cannot find request with type signature %s, but multiple requests found with given simple name.", typeSignature,
+			HttpExceptions.throwNotFound("Cannot find request with type signature %s, but multiple requests found with given simple name.", typeSignature,
 					matchingTypes.toString());
 		}
 
@@ -255,61 +252,39 @@ public class ApiV1RestServletUtils {
 	}
 
 	public ApiV1DdraEndpoint createDefaultEndpoint(SingleDdraMapping mapping) {
-		if (mapping == null) {
+		if (mapping == null)
 			return ApiV1DdraEndpoint.T.create();
-		}
 
 		ApiV1DdraEndpoint endpoint = mapping.getEndpointPrototype();
 
-		if (endpoint == null) {
+		if (endpoint == null)
 			endpoint = ApiV1DdraEndpoint.T.create();
-		}
 
-		if (mapping.getDefaultDepth() != null) {
+		if (mapping.getDefaultDepth() != null)
 			endpoint.setDepth(mapping.getDefaultDepth());
-		}
-		if (mapping.getDefaultResponseContentType() != null) {
+		if (mapping.getDefaultResponseContentType() != null)
 			endpoint.setResponseContentType(mapping.getDefaultResponseContentType());
-		}
-		if (mapping.getDefaultSaveLocally() != null) {
+		if (mapping.getDefaultSaveLocally() != null)
 			endpoint.setSaveLocally(mapping.getDefaultSaveLocally());
-		}
-		if (mapping.getDefaultResponseFilename() != null) {
+		if (mapping.getDefaultResponseFilename() != null)
 			endpoint.setResponseFilename(mapping.getDefaultResponseFilename());
-		}
-		if (mapping.getDefaultDownloadResource() != null) {
+		if (mapping.getDefaultDownloadResource() != null)
 			endpoint.setDownloadResource(mapping.getDefaultDownloadResource());
-		}
-		if (mapping.getDefaultWriteAbsenceInformation() != null) {
+		if (mapping.getDefaultWriteAbsenceInformation() != null)
 			endpoint.setWriteAbsenceInformation(mapping.getDefaultWriteAbsenceInformation());
-		}
-		if (mapping.getDefaultStabilizeOrder() != null) {
+		if (mapping.getDefaultStabilizeOrder() != null)
 			endpoint.setStabilizeOrder(mapping.getDefaultStabilizeOrder());
-		}
-		if (mapping.getDefaultWriteEmptyProperties() != null) {
+		if (mapping.getDefaultWriteEmptyProperties() != null)
 			endpoint.setWriteEmptyProperties(mapping.getDefaultWriteEmptyProperties());
-		}
-		if (mapping.getDefaultEntityRecurrenceDepth() != null) {
+		if (mapping.getDefaultEntityRecurrenceDepth() != null)
 			endpoint.setEntityRecurrenceDepth(mapping.getDefaultEntityRecurrenceDepth());
-		}
-		if (mapping.getDefaultPrettiness() != null) {
-			try {
-				endpoint.setPrettiness(OutputPrettiness.valueOf(mapping.getDefaultPrettiness()));
-			} catch (Exception e) {
-				logger.warn("Invalid defaultPrettiness configured on DdraMapping: " + mapping.getDefaultPrettiness());
-			}
-		}
-		if (mapping.getDefaultTypeExplicitness() != null) {
-			try {
-				endpoint.setTypeExplicitness(TypeExplicitness.valueOf(mapping.getDefaultTypeExplicitness()));
-			} catch (Exception e) {
-				logger.warn("Invalid typeExplicitness configured on DdraMapping: " + mapping.getDefaultTypeExplicitness());
-			}
-		}
-
-		if (mapping.getDefaultUseSessionEvaluation() != null) {
+		if (mapping.getDefaultPrettiness() != null)
+			endpoint.setPrettiness(mapping.getDefaultPrettiness());
+		if (mapping.getDefaultTypeExplicitness() != null)
+			endpoint.setTypeExplicitness(mapping.getDefaultTypeExplicitness());
+		if (mapping.getDefaultUseSessionEvaluation() != null)
 			endpoint.setUseSessionEvaluation(mapping.getDefaultUseSessionEvaluation());
-		}
+
 		return endpoint;
 	}
 

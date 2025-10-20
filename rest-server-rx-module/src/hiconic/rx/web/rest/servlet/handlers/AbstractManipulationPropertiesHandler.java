@@ -16,9 +16,10 @@
 package hiconic.rx.web.rest.servlet.handlers;
 
 import com.braintribe.model.accessapi.ManipulationResponse;
-import com.braintribe.model.ddra.endpoints.v2.DdraManipulatePropertiesProjection;
-import com.braintribe.model.ddra.endpoints.v2.RestV2Endpoint;
-import com.braintribe.model.processing.web.rest.HttpExceptions;
+
+import dev.hiconic.servlet.decoder.api.HttpExceptions;
+import hiconic.rx.webapi.endpoints.v2.DdraManipulatePropertiesProjection;
+import hiconic.rx.webapi.endpoints.v2.RestV2Endpoint;
 
 public abstract class AbstractManipulationPropertiesHandler<E extends RestV2Endpoint> extends AbstractRestV2Handler<E> {
 
@@ -29,7 +30,7 @@ public abstract class AbstractManipulationPropertiesHandler<E extends RestV2Endp
 			case success:
 				return true;
 			default:
-				HttpExceptions.internalServerError("Unexpected projection %s", projection);
+				HttpExceptions.throwInternalServerError("Unexpected projection %s", projection);
 				return null;
 		}
 	}

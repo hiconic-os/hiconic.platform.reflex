@@ -32,6 +32,7 @@ import hiconic.rx.access.module.api.AccessContract;
 import hiconic.rx.access.module.api.AccessDomains;
 import hiconic.rx.access.module.api.AccessExpert;
 import hiconic.rx.access.module.api.AccessExpertContract;
+import hiconic.rx.access.module.api.PersistenceServiceDomain;
 import hiconic.rx.access.module.processing.PersistenceReflectionProcessor;
 import hiconic.rx.access.module.processing.RxAccessConstants;
 import hiconic.rx.access.module.processing.RxAccessModelConfigurations;
@@ -62,9 +63,9 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 
 	@Override
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
-		ServiceDomainConfiguration persistenceSd = configurations.byId("persistence");
+		ServiceDomainConfiguration persistenceSd = configurations.byId(PersistenceServiceDomain.persistence);
 
-		persistenceSd.addModel(_ModelEnvironmentApiModel_.reflection); // brings ModelEnvironmentRequests... 
+		persistenceSd.addModel(_ModelEnvironmentApiModel_.reflection); // brings ModelEnvironmentRequests...
 		persistenceSd.bindRequest(PersistenceReflectionRequest.T, this::persistenceReflectionProcessor);
 
 		accesses().initServiceDomainConfigurations(configurations);
@@ -107,7 +108,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 	public void deploy(Access accessDenotation, IncrementalAccess access) {
 		accesses().deploy(accessDenotation, access);
 	}
-	
+
 	@Override
 	public AccessDomains accessDomains() {
 		return accesses();

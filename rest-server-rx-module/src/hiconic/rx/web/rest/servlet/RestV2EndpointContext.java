@@ -13,16 +13,15 @@
 // ============================================================================
 package hiconic.rx.web.rest.servlet;
 
-import com.braintribe.ddra.endpoints.api.rest.v2.CrudRequestTarget;
-import com.braintribe.model.ddra.endpoints.v2.DdraUrlPathParameters;
-import com.braintribe.model.ddra.endpoints.v2.RestV2Endpoint;
 import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.Property;
 import com.braintribe.model.service.api.ServiceRequest;
 
-import dev.hiconic.servlet.ddra.endpoints.api.DdraEndpointContext;
+import hiconic.rx.web.ddra.endpoints.api.DdraEndpointContext;
 import hiconic.rx.web.rest.servlet.handlers.RestV2Handler;
+import hiconic.rx.webapi.endpoints.v2.DdraUrlPathParameters;
+import hiconic.rx.webapi.endpoints.v2.RestV2Endpoint;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 

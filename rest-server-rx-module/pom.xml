@@ -1,4 +1,4 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<?xml version="1.0" encoding="UTF-8"?><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>hiconic.platform.reflex</groupId>
@@ -25,15 +25,9 @@
             <version>${V.com.braintribe.gm}</version>
         </dependency>
         <dependency>
-            <groupId>tribefire.extension.web-api</groupId>
-            <artifactId>web-api-endpoints-model</artifactId>
-            <version>${V.tribefire.extension.web-api}</version>
-            <?tag asset ?>
-        </dependency>
-        <dependency>
-            <groupId>tribefire.extension.web-api</groupId>
-            <artifactId>web-api-endpoints-api</artifactId>
-            <version>${V.tribefire.extension.web-api}</version>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>web-api-server-module-api</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
         </dependency>
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
@@ -54,6 +48,11 @@
             <groupId>com.braintribe.gm</groupId>
             <artifactId>basic-managed-gm-session</artifactId>
             <version>${V.com.braintribe.gm}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>http-request-entity-decoder</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
         </dependency>
     </dependencies>
 </project>

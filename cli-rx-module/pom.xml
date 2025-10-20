@@ -44,7 +44,6 @@ limitations under the License.
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>cli-api-model</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
-            <?tag asset ?>
         </dependency>
         <dependency>
             <groupId>com.braintribe.common</groupId>

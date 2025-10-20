@@ -73,7 +73,6 @@ public class RestServerRxModuleSpace implements RxModuleContract {
 		bean.setExceptionHandler(exceptionHandler());
 		bean.setHandlers(handlers());
 		bean.setMarshallerRegistry(platform.marshallers());
-		bean.setSystemSessionFactory(access.systemSessionFactory());
 		bean.setTraversingCriteriaMap(tc.criteriaMap());
 		return bean;
 	}

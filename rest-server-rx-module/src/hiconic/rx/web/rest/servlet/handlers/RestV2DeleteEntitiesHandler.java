@@ -18,21 +18,22 @@ package hiconic.rx.web.rest.servlet.handlers;
 import java.io.IOException;
 import java.util.List;
 
-import hiconic.rx.web.rest.servlet.RestV2EndpointContext;
 import com.braintribe.model.accessapi.ManipulationRequest;
 import com.braintribe.model.accessapi.ManipulationResponse;
 import com.braintribe.model.accessapi.QueryEntities;
-import com.braintribe.model.ddra.endpoints.v2.DdraDeleteEntitiesEndpoint;
-import com.braintribe.model.ddra.endpoints.v2.DdraUrlPathParameters;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.manipulation.CompoundManipulation;
 import com.braintribe.model.generic.manipulation.DeleteManipulation;
 import com.braintribe.model.generic.value.EntityReference;
 import com.braintribe.model.generic.value.PersistentEntityReference;
 import com.braintribe.model.processing.query.fluent.AbstractQueryBuilder;
-import com.braintribe.model.processing.web.rest.HttpExceptions;
 import com.braintribe.model.query.EntityQuery;
 import com.braintribe.model.query.EntityQueryResult;
+
+import dev.hiconic.servlet.decoder.api.HttpExceptions;
+import hiconic.rx.web.rest.servlet.RestV2EndpointContext;
+import hiconic.rx.webapi.endpoints.v2.DdraDeleteEntitiesEndpoint;
+import hiconic.rx.webapi.endpoints.v2.DdraUrlPathParameters;
 
 public class RestV2DeleteEntitiesHandler extends AbstractEntityQueryingHandler<DdraDeleteEntitiesEndpoint> {
 
@@ -49,7 +50,7 @@ public class RestV2DeleteEntitiesHandler extends AbstractEntityQueryingHandler<D
 		AbstractQueryBuilder<EntityQuery> builder = decodeEntityQueryBuilder(context);
 
 		if(parameters.getEntityId() == null && !endpoint.getAllowMultipleDelete()){
-			HttpExceptions.preConditionFaild("The flag 'allowMultipleDelete' must be 'true' to perform operation. This is due prevention of unintentional deletion group of entities.");
+			HttpExceptions.throwPreConditionFaild("The flag 'allowMultipleDelete' must be 'true' to perform operation. This is due prevention of unintentional deletion group of entities.");
 			return;
 		}
 
@@ -117,7 +118,7 @@ public class RestV2DeleteEntitiesHandler extends AbstractEntityQueryingHandler<D
 			case success:
 				return true;
 			default:
-				HttpExceptions.internalServerError("Unexpected projection %s", endpoint.getProjection());
+				HttpExceptions.throwInternalServerError("Unexpected projection %s", endpoint.getProjection());
 				return null;
 			
 		}

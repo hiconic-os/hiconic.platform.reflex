@@ -26,7 +26,6 @@ import hiconic.rx.explorer.processing.servlet.about.expert.PackagingExpert;
 import hiconic.rx.explorer.processing.servlet.about.expert.ProcessesExpert;
 import hiconic.rx.explorer.processing.servlet.about.expert.SystemInformation;
 import hiconic.rx.explorer.processing.servlet.about.expert.Threaddump;
-import hiconic.rx.explorer.processing.servlet.about.expert.TribefireInformation;
 import hiconic.rx.explorer.processing.servlet.alive.AliveServlet;
 import hiconic.rx.explorer.processing.servlet.explorer.SymbolTranslationServlet;
 import hiconic.rx.explorer.processing.servlet.home.HomeRxServlet;
@@ -102,7 +101,6 @@ public class WebappsSpace implements WireSpace {
 		bean.setHotThreadsExpert(aboutHotThreadsExpert());
 		bean.setProcessesExpert(aboutProcessesExpert());
 		bean.setSystemInformation(aboutSystemInformation());
-		bean.setTribefireInformation(aboutTribefireInformation());
 
 		return bean;
 	}
@@ -146,11 +144,6 @@ public class WebappsSpace implements WireSpace {
 	@Managed
 	private SystemInformation aboutSystemInformation() {
 		SystemInformation bean = new SystemInformation();
-		return bean;
-	}
-	@Managed
-	private TribefireInformation aboutTribefireInformation() {
-		TribefireInformation bean = new TribefireInformation();
 		return bean;
 	}
 

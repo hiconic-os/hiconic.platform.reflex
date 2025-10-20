@@ -17,9 +17,8 @@ package hiconic.rx.web.rest.servlet.handlers;
 
 import java.io.IOException;
 
-import com.braintribe.model.ddra.endpoints.v2.RestV2Endpoint;
-
 import hiconic.rx.web.rest.servlet.RestV2EndpointContext;
+import hiconic.rx.webapi.endpoints.v2.RestV2Endpoint;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 

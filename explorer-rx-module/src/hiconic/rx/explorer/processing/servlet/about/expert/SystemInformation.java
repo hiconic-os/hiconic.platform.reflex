@@ -37,7 +37,6 @@ import com.braintribe.model.service.api.result.ServiceResult;
 
 import hiconic.rx.reflection.model.api.PlatformReflection;
 import hiconic.rx.reflection.model.api.ReflectPlatform;
-import hiconic.rx.reflection.model.application.RxAppInfo;
 import hiconic.rx.reflection.model.check.java.JavaEnvironment;
 import hiconic.rx.reflection.model.system.SystemInfo;
 import hiconic.rx.servlet.velocity.TypedVelocityContext;

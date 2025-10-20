@@ -19,24 +19,31 @@ import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.meta.GmMetaModel;
 import com.braintribe.model.service.api.ServiceRequest;
 
+/**
+ * Registry of all {@link ServiceDomain}s.
+ */
 public interface ServiceDomains {
 
 	// @formatter:off
-	/**Returns the main {@link ServiceDomain}*/
-	default ServiceDomain main() { return byId("main"); }
-	/**Returns the system {@link ServiceDomain}*/
-	default ServiceDomain system() { return byId("system"); }
+	/** @see PlatformServiceDomains#main */
+	default ServiceDomain main() { return byId(PlatformServiceDomains.main); }
+	/** @see PlatformServiceDomains#system */
+	default ServiceDomain system() { return byId(PlatformServiceDomains.system); }
 	// @formatter:on
 
-	
 	/** Returns the {@link ServiceDomain} for given domainId or <tt>null</tt> if no such domain exists. */
 	ServiceDomain byId(String domainId);
-	
-	/**Lists all available {@link ServiceDomain}s */
+
+	/** Returns the {@link ServiceDomain} for given {@link ServiceDomainSymbol} or <tt>null</tt> if no such domain exists. */
+	ServiceDomain byId(ServiceDomainSymbol domainId);
+
+	/** Lists all available {@link ServiceDomain}s */
 	List<? extends ServiceDomain> list();
 
+	/** Lists all {@link ServiceDomain}s which contain given request type. */
 	List<? extends ServiceDomain> listDomains(EntityType<? extends ServiceRequest> requestType);
 
+	/** Lists all {@link ServiceDomain}s which contain given model. */
 	List<? extends ServiceDomain> listDomains(GmMetaModel model);
 
 }

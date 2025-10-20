@@ -39,8 +39,8 @@ import com.braintribe.model.generic.value.PersistentEntityReference;
 import com.braintribe.model.generic.value.PreliminaryEntityReference;
 import com.braintribe.model.processing.session.api.managed.ManipulationMode;
 import com.braintribe.model.processing.session.impl.managed.BasicManagedGmSession;
-import com.braintribe.model.processing.web.rest.HttpExceptions;
 
+import dev.hiconic.servlet.decoder.api.HttpExceptions;
 import hiconic.rx.web.rest.servlet.handlers.AbstractRestV2Handler;
 
 public class ManipulationTransformer {
@@ -129,7 +129,7 @@ public class ManipulationTransformer {
 					result.add(changeValue);
 					break;
 				default:
-					HttpExceptions.badRequest("INSTANTIATION or CHANGE_VALUE only supported.");
+					HttpExceptions.throwBadRequest("INSTANTIATION or CHANGE_VALUE only supported.");
 			}
 		}
 
@@ -222,6 +222,6 @@ public class ManipulationTransformer {
 	}
 
 	private void badRequestIdentifierMissing() {
-		HttpExceptions.badRequest("The entity must be fully identified (ID provided) either in the URL path, or in the payload.");
+		HttpExceptions.throwBadRequest("The entity must be fully identified (ID provided) either in the URL path, or in the payload.");
 	}
 }

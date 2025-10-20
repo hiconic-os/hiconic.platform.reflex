@@ -17,29 +17,29 @@ package hiconic.rx.web.ddra.servlet;
 
 import java.io.IOException;
 
-import com.braintribe.cfg.Configurable;
 import com.braintribe.cfg.Required;
+import com.braintribe.codec.marshaller.api.CharacterMarshaller;
 import com.braintribe.codec.marshaller.api.Marshaller;
 import com.braintribe.codec.marshaller.api.MarshallerRegistry;
 import com.braintribe.common.lcd.Pair;
 import com.braintribe.exception.Exceptions;
 import com.braintribe.logging.Logger;
-import com.braintribe.model.DdraEndpoint;
 import com.braintribe.model.generic.GMF;
 import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.generic.reflection.BaseType;
 import com.braintribe.model.generic.reflection.GenericModelType;
 import com.braintribe.model.processing.service.api.aspect.RequestorAddressAspect;
-import com.braintribe.model.processing.web.rest.HttpExceptions;
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.utils.collection.impl.AttributeContexts;
 import com.braintribe.utils.lcd.StopWatch;
 
-import dev.hiconic.servlet.ddra.endpoints.api.DdraEndpointContext;
-import dev.hiconic.servlet.ddra.endpoints.api.DdraEndpointsUtils;
-import dev.hiconic.servlet.ddra.endpoints.api.DdraTraversingCriteriaMap;
-import dev.hiconic.servlet.ddra.endpoints.api.api.v1.ApiV1EndpointContext;
+import dev.hiconic.servlet.decoder.api.HttpExceptions;
 import dev.hiconic.servlet.impl.util.ServletTools;
+import hiconic.rx.web.ddra.endpoints.api.DdraEndpointContext;
+import hiconic.rx.web.ddra.endpoints.api.DdraEndpointsUtils;
+import hiconic.rx.web.ddra.endpoints.api.DdraTraversingCriteriaMap;
+import hiconic.rx.web.ddra.endpoints.api.api.v1.ApiV1EndpointContext;
+import hiconic.rx.webapi.endpoints.DdraEndpoint;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -52,12 +52,26 @@ public abstract class AbstractDdraRestServlet<Context extends DdraEndpointContex
 	protected Evaluator<ServiceRequest> evaluator;
 
 	protected MarshallerRegistry marshallerRegistry;
+	protected CharacterMarshaller jsonMarshaller;
 
 	protected DdraEndpointsExceptionHandler exceptionHandler;
 
 	protected DdraTraversingCriteriaMap traversingCriteriaMap;
 
 	protected String cortexAccessId = "cortex";
+
+	// @formatter:off
+	@Required public void setEvaluator(Evaluator<ServiceRequest> evaluator) { this.evaluator = evaluator; }
+	@Required public void setExceptionHandler(DdraEndpointsExceptionHandler exceptionHandler) { this.exceptionHandler = exceptionHandler; }	
+	@Required public void setTraversingCriteriaMap(DdraTraversingCriteriaMap traversingCriteriaMap) { this.traversingCriteriaMap = traversingCriteriaMap; }
+	// @formatter:on
+
+	@Required
+	public void setMarshallerRegistry(MarshallerRegistry marshallerRegistry) {
+		this.marshallerRegistry = marshallerRegistry;
+		this.jsonMarshaller = (CharacterMarshaller) marshallerRegistry
+				.getMarshaller(DdraEndpointsUtils.APPLICATION_JSON);
+	}
 
 	protected void writeResponse(ApiV1EndpointContext context, Object result, DdraEndpoint endpoint, boolean full) throws IOException {
 		GenericModelType responseType;
@@ -205,7 +219,7 @@ public abstract class AbstractDdraRestServlet<Context extends DdraEndpointContex
 	}
 
 	private void unsupportedMethod(Context context) {
-		HttpExceptions.methodNotAllowed("Unsupported method: \"$s\"", context.getRequest().getMethod());
+		HttpExceptions.throwMethodNotAllowed("Unsupported method: \"$s\"", context.getRequest().getMethod());
 	}
 
 	private Pair<String, Boolean> logRequest(HttpServletRequest request) {
@@ -232,27 +246,4 @@ public abstract class AbstractDdraRestServlet<Context extends DdraEndpointContex
 		return new Pair<>(msg, isHealthz);
 	}
 
-	@Required
-	@Configurable
-	public void setEvaluator(Evaluator<ServiceRequest> evaluator) {
-		this.evaluator = evaluator;
-	}
-
-	@Required
-	@Configurable
-	public void setMarshallerRegistry(MarshallerRegistry marshallerRegistry) {
-		this.marshallerRegistry = marshallerRegistry;
-	}
-
-	@Required
-	@Configurable
-	public void setExceptionHandler(DdraEndpointsExceptionHandler exceptionHandler) {
-		this.exceptionHandler = exceptionHandler;
-	}
-	
-	@Required
-	@Configurable
-	public void setTraversingCriteriaMap(DdraTraversingCriteriaMap traversingCriteriaMap) {
-		this.traversingCriteriaMap = traversingCriteriaMap;
-	}
 }

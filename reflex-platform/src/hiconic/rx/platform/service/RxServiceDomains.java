@@ -35,6 +35,7 @@ import com.braintribe.utils.lcd.LazyInitialized;
 
 import hiconic.platform.reflex._ReflexPlatform_;
 import hiconic.rx.module.api.service.ServiceDomain;
+import hiconic.rx.module.api.service.ServiceDomainSymbol;
 import hiconic.rx.module.api.service.ServiceDomains;
 import hiconic.rx.platform.models.RxConfiguredModel;
 import hiconic.rx.platform.models.RxModelConfigurations;
@@ -70,6 +71,11 @@ public class RxServiceDomains implements ServiceDomains {
 	@Required
 	public void setFallbackProcessor(ConfigurableDispatchingServiceProcessor fallbackProcessor) {
 		this.fallbackProcessor = fallbackProcessor;
+	}
+
+	@Override
+	public ServiceDomain byId(ServiceDomainSymbol domainId) {
+		return byId(domainId.name());
 	}
 
 	@Override

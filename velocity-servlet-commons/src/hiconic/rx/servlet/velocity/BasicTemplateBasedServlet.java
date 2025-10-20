@@ -78,6 +78,10 @@ public abstract class BasicTemplateBasedServlet extends HttpServlet {
 		templatesModified = true;
 	}
 	@Configurable
+	public void setRelativeTemplateLocation(String relativeTemplateLocation) {
+		setTemplateLocation(resolveRelativeTemplateLocation(relativeTemplateLocation));
+	}
+	@Configurable
 	public void setTemplateLocation(String templateLocation) {
 		this.templateLocationMap.put(DEFAULT_TEMPLATE_KEY, templateLocation);
 		templatesModified = true;
@@ -104,9 +108,6 @@ public abstract class BasicTemplateBasedServlet extends HttpServlet {
 	}
 
 	protected void serve(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
-		boolean trace = logger.isTraceEnabled();
-		boolean debug = logger.isDebugEnabled();
-
 		resp.setContentType(this.getContentType());
 
 		loadTemplates();
@@ -130,29 +131,33 @@ public abstract class BasicTemplateBasedServlet extends HttpServlet {
 			}
 		}
 
+		Template template = resolveTemplate(context);
+
+		PrintWriter writer = resp.getWriter();
+		templateMerge(template, context, writer);
+		writer.flush();
+	}
+
+	private Template resolveTemplate(VelocityContext context) throws IOException, ServletException {
 		Template template = null;
-		if (context instanceof TypedVelocityContext) {
-			TypedVelocityContext tvc = (TypedVelocityContext) context;
+		if (context instanceof TypedVelocityContext tvc) {
 			String type = tvc.getType();
 			if (type == null) {
-				if (debug)
-					logger.debug("The typed velocity context does not contain a type. Using the default.");
+				logger.debug("The typed velocity context does not contain a type. Using the default.");
 				template = getTemplate(DEFAULT_TEMPLATE_KEY);
 			} else {
 				template = getTemplate(type);
 			}
+
 		} else {
-			if (trace)
-				logger.trace("Using default template: " + this.templateLocationMap.get(DEFAULT_TEMPLATE_KEY));
+			logger.trace(() -> "Using default template: " + this.templateLocationMap.get(DEFAULT_TEMPLATE_KEY));
 			template = this.templateMap.get(DEFAULT_TEMPLATE_KEY);
 		}
 
-		if (template == null) {
+		if (template == null)
 			throw new ServletException("No template found for context: " + context);
-		}
-		PrintWriter writer = resp.getWriter();
-		templateMerge(template, context, writer);
-		writer.flush();
+
+		return template;
 	}
 
 	protected Template getTemplate(String key) throws IOException {
@@ -296,6 +301,10 @@ public abstract class BasicTemplateBasedServlet extends HttpServlet {
 		return localTemplate;
 	}
 
+	public void addRelativeTemplateLocation(String key, String relativeTemplateLocation) throws IllegalArgumentException {
+		addTemplateLocation(key, resolveRelativeTemplateLocation(relativeTemplateLocation));
+	}
+
 	/**
 	 * This method can be used to programmatically add templates. Each template is to be identified by a key. Subclasses can
 	 * return a {@link TypedVelocityContext} in the {@link #createContext(HttpServletRequest, HttpServletResponse)} method
@@ -314,6 +323,13 @@ public abstract class BasicTemplateBasedServlet extends HttpServlet {
 		}
 		this.templateLocationMap.put(key, location);
 		templatesModified = true;
+	}
+
+	/**
+	 * Resolve given path relative to the current class's package.
+	 */
+	private String resolveRelativeTemplateLocation(String relativeTemplateLocation) {
+		return getClass().getPackageName().replace('.', '/') + "/" + relativeTemplateLocation;
 	}
 
 	@Configurable

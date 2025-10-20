@@ -20,7 +20,6 @@
             <groupId>com.braintribe.gm</groupId>
             <artifactId>descriptive-model</artifactId>
             <version>${V.com.braintribe.gm}</version>
-            <?tag asset ?>
         </dependency>
     </dependencies>
 </project>

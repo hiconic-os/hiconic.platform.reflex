@@ -17,14 +17,15 @@ package hiconic.rx.web.rest.servlet.handlers;
 
 import java.io.IOException;
 
-import hiconic.rx.web.rest.servlet.RestV2EndpointContext;
 import com.braintribe.model.accessapi.QueryProperty;
-import com.braintribe.model.ddra.endpoints.v2.DdraGetPropertiesEndpoint;
-import com.braintribe.model.ddra.endpoints.v2.DdraUrlPathParameters;
 import com.braintribe.model.processing.query.fluent.PropertyQueryBuilder;
-import com.braintribe.model.processing.web.rest.HttpExceptions;
 import com.braintribe.model.query.PropertyQuery;
 import com.braintribe.model.query.PropertyQueryResult;
+
+import dev.hiconic.servlet.decoder.api.HttpExceptions;
+import hiconic.rx.web.rest.servlet.RestV2EndpointContext;
+import hiconic.rx.webapi.endpoints.v2.DdraGetPropertiesEndpoint;
+import hiconic.rx.webapi.endpoints.v2.DdraUrlPathParameters;
 
 public class RestV2GetPropertiesHandler extends AbstractQueryingHandler<DdraGetPropertiesEndpoint> {
 
@@ -58,7 +59,7 @@ public class RestV2GetPropertiesHandler extends AbstractQueryingHandler<DdraGetP
 			case value:
 				return value.getPropertyValue();
 			default:
-				HttpExceptions.internalServerError("Unexpected endpoint projection %s", endpoint.getProjection());
+				HttpExceptions.throwInternalServerError("Unexpected endpoint projection %s", endpoint.getProjection());
 				return null;
 		}
 	}

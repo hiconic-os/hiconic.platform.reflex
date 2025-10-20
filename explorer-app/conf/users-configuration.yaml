@@ -1,0 +1,12 @@
+roles:
+- &admin 
+  name: tf-admin
+users:
+- id: cortex
+  name: cortex
+  password: cortex
+  firstName: Cortex
+  lastName: C.
+  email: cortex@hiconic.dev
+  roles:
+  - *admin

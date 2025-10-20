@@ -18,10 +18,9 @@ package hiconic.rx.web.rest.servlet.handlers;
 import java.io.IOException;
 import java.util.Arrays;
 
-import com.braintribe.model.ddra.endpoints.v2.RestV2Endpoint;
-
-import dev.hiconic.servlet.ddra.endpoints.api.DdraEndpointsUtils;
+import hiconic.rx.web.ddra.endpoints.api.DdraEndpointsUtils;
 import hiconic.rx.web.rest.servlet.RestV2EndpointContext;
+import hiconic.rx.webapi.endpoints.v2.RestV2Endpoint;
 
 public class RestV2OptionsHandler extends AbstractRestV2Handler<RestV2Endpoint> {
 

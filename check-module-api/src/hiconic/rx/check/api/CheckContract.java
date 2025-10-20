@@ -1,5 +1,7 @@
 package hiconic.rx.check.api;
 
+import com.braintribe.codec.marshaller.api.Marshaller;
+
 import hiconic.rx.module.api.wire.RxExportContract;
 
 /**
@@ -12,4 +14,6 @@ public interface CheckContract extends RxExportContract {
 	 */
 	CheckProcessorRegistry checkProcessorRegistry();
 
+	Marshaller checkResultToHtmlMarshaller();
+	
 }

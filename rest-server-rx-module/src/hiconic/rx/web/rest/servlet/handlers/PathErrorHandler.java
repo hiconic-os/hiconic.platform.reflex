@@ -17,10 +17,10 @@ import java.io.IOException;
 
 import com.braintribe.codec.marshaller.api.MarshallerRegistry;
 import com.braintribe.gm.model.reason.Maybe;
-import com.braintribe.model.ddra.endpoints.v2.DdraErrorEndpoint;
 import com.braintribe.model.service.api.result.Unsatisfied;
 
 import hiconic.rx.web.rest.servlet.RestV2EndpointContext;
+import hiconic.rx.webapi.endpoints.v2.DdraErrorEndpoint;
 
 public class PathErrorHandler extends AbstractRestV2Handler<DdraErrorEndpoint> {
 	private Maybe<?> maybe;

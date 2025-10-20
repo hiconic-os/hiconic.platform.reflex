@@ -19,7 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import dev.hiconic.servlet.ddra.endpoints.api.context.HttpResponseConfigurer;
+import hiconic.rx.web.ddra.endpoints.api.context.HttpResponseConfigurer;
 import jakarta.servlet.http.HttpServletResponse;
 
 public class HttpResponseConfigurerImpl implements HttpResponseConfigurer {

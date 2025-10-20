@@ -50,6 +50,7 @@ import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformConfigurator;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.security.api.SecurityContract;
+import hiconic.rx.security.api.SecurityServiceDomain;
 import hiconic.rx.security.model.configuration.SecurityConfiguration;
 
 @Managed
@@ -66,7 +67,7 @@ public class SecurityRxModuleSpace implements RxModuleContract, SecurityContract
 
 	@Override
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
-		ServiceDomainConfiguration configuration = configurations.byId("security");
+		ServiceDomainConfiguration configuration = configurations.byId(SecurityServiceDomain.security);
 		configuration.bindRequest(SecurityRequest.T, this::securityProcessor);
 		configuration.bindRequest(SimplifiedOpenUserSession.T, this::simpleSecurityProcessor);
 		configuration.bindRequest(AuthenticateCredentials.T, this::authenticationProcessor);
@@ -74,11 +75,13 @@ public class SecurityRxModuleSpace implements RxModuleContract, SecurityContract
 
 	@Override
 	public void registerCrossDomainInterceptors(InterceptorRegistry interceptorRegistry) {
+		// Uses symbols for auth interceptor
 		interceptorRegistry.registerInterceptor("auth").registerForType(AuthorizableRequest.T, authorizingServiceInterceptor());
 	}
 
 	@Override
 	public void configurePlatform(RxPlatformConfigurator configurator) {
+		// Uses symbols for system-user-scoping worker interceptor
 		configurator.workerAspectRegistry().register("system-user-scoping", systemUserScopingWorkerAspect());
 	}
 

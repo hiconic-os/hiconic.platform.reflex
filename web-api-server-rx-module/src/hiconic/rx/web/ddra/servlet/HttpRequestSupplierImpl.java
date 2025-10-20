@@ -24,7 +24,7 @@ import java.util.UUID;
 
 import com.braintribe.model.service.api.ServiceRequest;
 
-import dev.hiconic.servlet.ddra.endpoints.api.context.HttpRequestSupplier;
+import hiconic.rx.web.ddra.endpoints.api.context.HttpRequestSupplier;
 import jakarta.servlet.http.HttpServletRequest;
 
 public class HttpRequestSupplierImpl implements HttpRequestSupplier {

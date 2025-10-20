@@ -48,12 +48,10 @@ public interface RxModuleContract extends WireSpace {
 	}
 
 	/**
-	 * Configures the main persistence model acquired by {@link ModelConfigurations#mainPersistenceModel()}
-	 * <ul>
-	 * <li>adding models</li>
-	 * <li>configuring meta data on models</li>
-	 * </ul>
+	 * @deprecated Use {@link #configureModels(ModelConfigurations)} and configure the main model there via 
+	 *             {@link ModelConfigurations#mainPersistenceModel()}.
 	 */
+	@Deprecated
 	default void configureMainPersistenceModel(ModelConfiguration configuration) {
 		// implement if needed
 	}
@@ -72,14 +70,11 @@ public interface RxModuleContract extends WireSpace {
 	}
 
 	/**
-	 * Configures the main service domain by:
-	 * <ul>
-	 * <li>adding models</li>
-	 * <li>binding processors</li>
-	 * <li>binding interceptors</li>
-	 * <li>configuring meta data on models</li>
-	 * </ul>
+	 * @deprecated Use {@link #configureServiceDomains(ServiceDomainConfigurations)} and configure the main domain there via
+	 *             {@link ServiceDomainConfigurations#main()}. Supporting this leads to eager initialization of the "main" domain, which is then also
+	 *             reflected as an existing domain, even if it was empty.
 	 */
+	@Deprecated
 	default void configureMainServiceDomain(ServiceDomainConfiguration configuration) {
 		// implement if needed
 	}

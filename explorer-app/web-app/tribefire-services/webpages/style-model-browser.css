@@ -1,0 +1,75 @@
+body { margin: 0; padding: 0; background-color: #fff;}
+
+/* start */
+
+#tf_header {
+	font-family: 'Open Sans', sans-serif;
+	font-weight: 400; /* or 700 */
+	height: 70px;
+	/*overflow: hidden;*/
+	background: #fff;
+	
+}
+#tf_logo {
+	margin: 10px 0px 0px 15px;
+	//margin: 10px 0 0 10px;
+}
+#tf_nav {
+	margin: 0 30px 0 0;
+	padding: 0;
+	line-height: 45px;
+	list-style: none;
+	float: right;
+}
+#tf_nav li {
+	float: left;
+	margin-right: 20px;
+}
+#tf_nav li:last-child {
+	margin-right: 0px;
+}
+#tf_nav li a{
+	color: black;
+	text-decoration: none;
+	font-size: 16px;
+	font-weight: 400;
+	-webkit-transition: all .1s ease-out;
+	-moz-transition: all .1s ease-out;
+	-ms-transition: all .1s ease-out;
+	-o-transition: all .1s ease-out;
+	transition: all .1s ease-out;
+	position: relative;
+}
+
+#tf_nav_text {
+	margin-top:20px
+}
+
+#tf_nav li a:hover{
+	color: #666;
+}
+#tf_nav li a:after{
+	content: "";
+	position: absolute;
+	left: 0;
+	bottom: -5px;
+	width: 100%;
+	height: 5px;
+	border-bottom: 1px solid #ffa500;
+	opacity: 0;
+	-webkit-transition: all .1s ease-out;
+	-moz-transition: all .1s ease-out;
+	-ms-transition: all .1s ease-out;
+	-o-transition: all .1s ease-out;
+	transition: all .1s ease-out;
+}
+#tf_nav li a:hover:after{
+	bottom: -5px;
+	opacity: 1;
+}
+
+
+
+
+
+/* end */

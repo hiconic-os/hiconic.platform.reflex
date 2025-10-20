@@ -15,12 +15,13 @@
 // ============================================================================
 package hiconic.rx.web.rest.servlet.handlers;
 
-import com.braintribe.model.DdraEndpointDepth;
-import com.braintribe.model.DdraEndpointDepthKind;
 import com.braintribe.model.access.TmpQueryResultDepth;
-import com.braintribe.model.ddra.endpoints.v2.RestV2Endpoint;
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.utils.collection.impl.AttributeContexts;
+
+import hiconic.rx.webapi.endpoints.DdraEndpointDepth;
+import hiconic.rx.webapi.endpoints.DdraEndpointDepthKind;
+import hiconic.rx.webapi.endpoints.v2.RestV2Endpoint;
 
 public abstract class AbstractQueryingHandler<E extends RestV2Endpoint> extends AbstractRestV2Handler<E> {
 

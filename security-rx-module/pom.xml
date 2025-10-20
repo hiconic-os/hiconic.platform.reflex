@@ -38,13 +38,11 @@ limitations under the License.
             <groupId>com.braintribe.gm</groupId>
             <artifactId>security-service-api-model</artifactId>
             <version>${V.com.braintribe.gm}</version>
-            <?tag asset ?>
         </dependency>
         <dependency>
             <groupId>com.braintribe.gm</groupId>
             <artifactId>persistence-user-session-model</artifactId>
             <version>${V.com.braintribe.gm}</version>
-            <?tag asset ?>
         </dependency>
         <dependency>
             <groupId>com.braintribe.gm</groupId>
@@ -65,7 +63,6 @@ limitations under the License.
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>security-configuration-model</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
-            <?tag asset ?>
         </dependency>
         <dependency>
             <groupId>com.braintribe.gm</groupId>

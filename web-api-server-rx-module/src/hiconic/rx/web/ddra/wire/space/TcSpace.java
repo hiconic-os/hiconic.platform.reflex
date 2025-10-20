@@ -18,14 +18,14 @@ package hiconic.rx.web.ddra.wire.space;
 import static com.braintribe.model.generic.typecondition.TypeConditions.isKind;
 import static com.braintribe.model.generic.typecondition.TypeConditions.orTc;
 
-import com.braintribe.model.DdraEndpointDepthKind;
 import com.braintribe.model.generic.pr.criteria.TraversingCriterion;
 import com.braintribe.model.generic.processing.pr.fluent.TC;
 import com.braintribe.model.generic.typecondition.basic.TypeKind;
 import com.braintribe.wire.api.annotation.Managed;
 import com.braintribe.wire.api.space.WireSpace;
 
-import dev.hiconic.servlet.ddra.endpoints.api.DdraTraversingCriteriaMap;
+import hiconic.rx.web.ddra.endpoints.api.DdraTraversingCriteriaMap;
+import hiconic.rx.webapi.endpoints.DdraEndpointDepthKind;
 
 @Managed
 public class TcSpace implements WireSpace {

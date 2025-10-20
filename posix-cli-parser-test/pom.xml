@@ -28,7 +28,6 @@
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>posix-cli-parser-test-model</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
-            <?tag asset ?>
         </dependency>
         <dependency>
             <groupId>com.braintribe.gm</groupId>

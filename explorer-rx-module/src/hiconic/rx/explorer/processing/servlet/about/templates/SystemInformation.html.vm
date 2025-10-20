@@ -598,7 +598,7 @@
 		#set($alloc = ${blocks.mbAllocatable})
 		&nbsp;&nbsp;$blocks.numUnused / $spi.fileBlocks.numTotal blocks unused #if(${blocks.blockSize} > 0) with ${blocks.blockSize} bytes each #end<br />
 		&nbsp;&nbsp;$blocks.mbUnused MB allocated by unused blocks<br />
-		&nbsp;&nbsp;$blocks.mbTotal MB allocated in total <!--(Also covers recyclable files from crashed previous tribefire runs)--><br />
+		&nbsp;&nbsp;$blocks.mbTotal MB allocated in total <!--(Also covers recyclable files from crashed previous application runs)--><br />
 		&nbsp;#if(${max} == -1) No limit on theoretically allocatable blocks #else Might allocate up to $alloc MB in $max blocks #end <br />
 		#if(${blocks.poolKind} == "growing")&nbsp;&nbsp;Growing: Resources of this pool are kept available once they are instantiated and live until the server is shut down.<br /> #end
 		#if(${blocks.poolKind} == "dynamic")&nbsp;&nbsp;Dynamic: Resources of this pool may be freed again once they are not being actively used. <br /> #end

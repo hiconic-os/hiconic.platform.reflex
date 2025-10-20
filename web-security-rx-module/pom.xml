@@ -73,13 +73,11 @@
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>web-security-configuration-model</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
-            <?tag asset ?>
         </dependency>
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>security-configuration-model</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
-            <?tag asset ?>
         </dependency>
     </dependencies>
 </project>

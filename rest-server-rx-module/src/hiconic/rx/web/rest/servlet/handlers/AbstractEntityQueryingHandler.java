@@ -23,7 +23,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.braintribe.cfg.Configurable;
 import com.braintribe.cfg.Required;
-import com.braintribe.model.ddra.endpoints.v2.RestV2Endpoint;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.meta.data.constraint.TypeSpecification;
@@ -39,6 +38,7 @@ import dev.hiconic.servlet.decoder.api.PropertyTypeResolver;
 import hiconic.rx.access.module.api.AccessDomains;
 import hiconic.rx.web.rest.servlet.RestV2EndpointContext;
 import hiconic.rx.web.rest.servlet.RestV2EntityQueryBuilder;
+import hiconic.rx.webapi.endpoints.v2.RestV2Endpoint;
 
 public abstract class AbstractEntityQueryingHandler<E extends RestV2Endpoint> extends AbstractQueryingHandler<E> {
 

@@ -28,10 +28,7 @@ import com.braintribe.codec.marshaller.api.MarshallException;
 import com.braintribe.codec.marshaller.api.Marshaller;
 import com.braintribe.codec.marshaller.api.MarshallerRegistry;
 import com.braintribe.logging.Logger;
-import com.braintribe.model.DdraEndpointHeaders;
 import com.braintribe.model.accessapi.ManipulationRequest;
-import com.braintribe.model.ddra.endpoints.v2.DdraUrlPathParameters;
-import com.braintribe.model.ddra.endpoints.v2.RestV2Endpoint;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.generic.manipulation.EntityProperty;
@@ -42,17 +39,20 @@ import com.braintribe.model.generic.value.EntityReference;
 import com.braintribe.model.generic.value.EntityReferenceType;
 import com.braintribe.model.generic.value.PersistentEntityReference;
 import com.braintribe.model.processing.session.api.managed.NotFoundException;
-import com.braintribe.model.processing.web.rest.HttpExceptions;
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.utils.ThrowableTools;
 
-import dev.hiconic.servlet.ddra.endpoints.api.DdraEndpointContext;
-import dev.hiconic.servlet.ddra.endpoints.api.DdraEndpointsUtils;
-import dev.hiconic.servlet.ddra.endpoints.api.DdraTraversingCriteriaMap;
+import dev.hiconic.servlet.decoder.api.HttpExceptions;
 import dev.hiconic.servlet.decoder.api.HttpRequestEntityDecoder;
 import dev.hiconic.servlet.decoder.api.HttpRequestEntityDecoderOptions;
 import dev.hiconic.servlet.decoder.api.StandardHeadersMapper;
+import hiconic.rx.web.ddra.endpoints.api.DdraEndpointContext;
+import hiconic.rx.web.ddra.endpoints.api.DdraEndpointsUtils;
+import hiconic.rx.web.ddra.endpoints.api.DdraTraversingCriteriaMap;
 import hiconic.rx.web.rest.servlet.RestV2EndpointContext;
+import hiconic.rx.webapi.endpoints.DdraEndpointHeaders;
+import hiconic.rx.webapi.endpoints.v2.DdraUrlPathParameters;
+import hiconic.rx.webapi.endpoints.v2.RestV2Endpoint;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -116,7 +116,7 @@ public abstract class AbstractRestV2Handler<E extends RestV2Endpoint> implements
 			return marshaller.unmarshall(in, options);
 		} catch (IOException | MarshallException e) {
 			logger.warn("Error while unmarshalling body for request " + context.getRequest().getPathInfo(), e);
-			HttpExceptions.badRequest("Error while unmarshalling body, reason: %s", e.getMessage());
+			HttpExceptions.throwBadRequest("Error while unmarshalling body, reason: %s", e.getMessage());
 			return null;
 		}
 	}
@@ -130,7 +130,7 @@ public abstract class AbstractRestV2Handler<E extends RestV2Endpoint> implements
 
 	protected Object getReferenceForPropertyValue(GenericModelType type, Object value, Property property) {
 		if (value != null && !type.isInstance(value))
-			HttpExceptions.badRequest("Unexpected value type, expected %s but got %s for property %s.", type.getJavaType().getName(),
+			HttpExceptions.throwBadRequest("Unexpected value type, expected %s but got %s for property %s.", type.getJavaType().getName(),
 					value.getClass().getName(), property.getName());
 
 		if (GenericEntity.T.isInstance(value))
@@ -156,7 +156,7 @@ public abstract class AbstractRestV2Handler<E extends RestV2Endpoint> implements
 
 	protected void checkIsPersistentReference(Object reference) {
 		if (!PersistentEntityReference.T.isInstance(reference))
-			HttpExceptions.badRequest("Only simple properties, or PersistentEntityReference  are allowed for PUT /properties");
+			HttpExceptions.throwBadRequest("Only simple properties, or PersistentEntityReference  are allowed for PUT /properties");
 	}
 
 	protected ManipulationRequest createManipulationRequestFor(DdraUrlPathParameters parameters, RestV2Endpoint endpoint) {
@@ -174,7 +174,7 @@ public abstract class AbstractRestV2Handler<E extends RestV2Endpoint> implements
 			if (throw404OnNotFound) {
 				NotFoundException notFound = ThrowableTools.searchCause(e, NotFoundException.class);
 				if (notFound != null) {
-					HttpExceptions.notFound(notFound.getMessage());
+					HttpExceptions.throwNotFound(notFound.getMessage());
 				}
 			}
 			throw e;

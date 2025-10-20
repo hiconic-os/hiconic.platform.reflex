@@ -28,6 +28,7 @@ import hiconic.rx.hibernate.test.model.api.GetPersons;
 
 public class PersonPersistenceProcessor implements PersistenceProcessor<GetPersons, Object> {
 
+	@SuppressWarnings("unused")
 	@PersistenceService(TransactionMode.READ)
 	public Maybe<List<Person>> getPersons(PersistenceContext context, Session session, GetPersons request) {
 		

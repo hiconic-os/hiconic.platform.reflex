@@ -1,0 +1,3 @@
+hiconic.rx.webapi.model.annotation.RequestMethod,hiconic.rx.webapi.model.meta.RequestMethod,value,method
+hiconic.rx.webapi.model.annotation.RequestPath,hiconic.rx.webapi.model.meta.RequestPath,value,path
+hiconic.rx.webapi.model.annotation.RequestPathPrefix,hiconic.rx.webapi.model.meta.RequestPathPrefix,value,prefix

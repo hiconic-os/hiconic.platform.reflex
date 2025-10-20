@@ -23,6 +23,7 @@ import com.braintribe.model.service.api.ServiceRequest;
 
 import hiconic.rx.servlet.velocity.TypedVelocityContext;
 
+@SuppressWarnings("unused")
 public class PackagingExpert {
 
 	private static Logger logger = Logger.getLogger(PackagingExpert.class);
@@ -32,8 +33,11 @@ public class PackagingExpert {
 
 		throw new UnsupportedOperationException("Method 'PackagingExpert.processPackagingRequest' is not implemented yet!");
 
-		// TODO implement packaging
+		// TODO implement packaging?
 
+		// See PlatformReflectionProcessor
+		// See PackagingProvider
+		
 //		Map<InstanceId, PackagingInformation> packagingInfoMap = new ConcurrentHashMap<>();
 //		Map<InstanceId, SetupDescriptor> setupDescriptorMap = new ConcurrentHashMap<>();
 //		Set<InstanceId> returnedInstanceIds = Collections.synchronizedSet(new TreeSet<>(InstanceIdComparator.instance));

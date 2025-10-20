@@ -22,11 +22,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import com.braintribe.codec.marshaller.api.GmDeserializationOptions;
-import hiconic.rx.web.rest.servlet.RestV2EndpointContext;
 import com.braintribe.model.accessapi.ManipulationRequest;
 import com.braintribe.model.accessapi.ManipulationResponse;
-import com.braintribe.model.ddra.endpoints.v2.DdraPostPropertiesEndpoint;
-import com.braintribe.model.ddra.endpoints.v2.DdraUrlPathParameters;
 import com.braintribe.model.generic.manipulation.AddManipulation;
 import com.braintribe.model.generic.manipulation.Manipulation;
 import com.braintribe.model.generic.manipulation.RemoveManipulation;
@@ -35,8 +32,12 @@ import com.braintribe.model.generic.reflection.ListType;
 import com.braintribe.model.generic.reflection.MapType;
 import com.braintribe.model.generic.reflection.Property;
 import com.braintribe.model.generic.reflection.SetType;
-import com.braintribe.model.processing.web.rest.HttpExceptions;
 import com.braintribe.utils.MapTools;
+
+import dev.hiconic.servlet.decoder.api.HttpExceptions;
+import hiconic.rx.web.rest.servlet.RestV2EndpointContext;
+import hiconic.rx.webapi.endpoints.v2.DdraPostPropertiesEndpoint;
+import hiconic.rx.webapi.endpoints.v2.DdraUrlPathParameters;
 
 public class RestV2PostPropertiesHandler extends AbstractManipulationPropertiesHandler<DdraPostPropertiesEndpoint> {
 
@@ -51,7 +52,7 @@ public class RestV2PostPropertiesHandler extends AbstractManipulationPropertiesH
 
 		Object body = unmarshallBody(context, endpoint, GmDeserializationOptions.deriveDefaults().build());
 		if (body == null) {
-			HttpExceptions.badRequest("Unexpected body: got null.");
+			HttpExceptions.throwBadRequest("Unexpected body: got null.");
 		}
 		if (endpoint.getRemove()) {
 			request.setManipulation(getRemoveManipulationFor(context, body));
@@ -79,7 +80,7 @@ public class RestV2PostPropertiesHandler extends AbstractManipulationPropertiesH
 				break;
 			default:
 				// impossible
-				HttpExceptions.internalServerError("Something is wrong in the code...");
+				HttpExceptions.throwInternalServerError("Something is wrong in the code...");
 		}
 
 		return manipulation;
@@ -108,7 +109,7 @@ public class RestV2PostPropertiesHandler extends AbstractManipulationPropertiesH
 			for (Entry<Object, Object> entry : values.entrySet()) {
 				Object key = entry.getKey();
 				if (!(key instanceof Integer)) {
-					HttpExceptions.badRequest("keys in the body must be int, got a key od type %s", key.getClass().getName());
+					HttpExceptions.throwBadRequest("keys in the body must be int, got a key od type %s", key.getClass().getName());
 				}
 
 				Object value = getReferenceForPropertyValue(type.getCollectionElementType(), entry.getValue(), property);
@@ -161,7 +162,7 @@ public class RestV2PostPropertiesHandler extends AbstractManipulationPropertiesH
 
 			return result;
 		} else {
-			HttpExceptions.badRequest("Property %s is a map, expected body to be a map but got %s", property.getName(), body.getClass().getName());
+			HttpExceptions.throwBadRequest("Property %s is a map, expected body to be a map but got %s", property.getName(), body.getClass().getName());
 			return null;
 		}
 	}
@@ -182,7 +183,7 @@ public class RestV2PostPropertiesHandler extends AbstractManipulationPropertiesH
 				break;
 			default:
 				// impossible
-				HttpExceptions.internalServerError("Something is wrong in the code...");
+				HttpExceptions.throwInternalServerError("Something is wrong in the code...");
 		}
 
 		return manipulation;
@@ -190,7 +191,7 @@ public class RestV2PostPropertiesHandler extends AbstractManipulationPropertiesH
 
 	private Map<Object, Object> getItemsToRemoveForListProperty(RestV2EndpointContext<?> context, Object body) {
 		if (!(body instanceof Map)) {
-			HttpExceptions.badRequest("When removing from a list property, the body must be a map<int, value> but got %s", body.getClass().getName());
+			HttpExceptions.throwBadRequest("When removing from a list property, the body must be a map<int, value> but got %s", body.getClass().getName());
 		}
 
 		Property property = context.getProperty();
@@ -203,7 +204,7 @@ public class RestV2PostPropertiesHandler extends AbstractManipulationPropertiesH
 		for (Entry<Object, Object> entry : values.entrySet()) {
 			Object key = entry.getKey();
 			if (!(key instanceof Integer)) {
-				HttpExceptions.badRequest("keys in the body must be int, got a key od type %s", key.getClass().getName());
+				HttpExceptions.throwBadRequest("keys in the body must be int, got a key od type %s", key.getClass().getName());
 			}
 
 			Object value = getReferenceForPropertyValue(type.getCollectionElementType(), entry.getValue(), property);
@@ -220,7 +221,7 @@ public class RestV2PostPropertiesHandler extends AbstractManipulationPropertiesH
 
 	private Map<Object, Object> getItemsToRemoveForMapProperty(RestV2EndpointContext<?> context, Object body) {
 		if (!(body instanceof Map)) {
-			HttpExceptions.badRequest("When removing from a map property, the body must be a map<key, value> but got %s", body.getClass().getName());
+			HttpExceptions.throwBadRequest("When removing from a map property, the body must be a map<key, value> but got %s", body.getClass().getName());
 		}
 
 		Property property = context.getProperty();
@@ -248,7 +249,7 @@ public class RestV2PostPropertiesHandler extends AbstractManipulationPropertiesH
 				// allowed
 				return;
 			default:
-				HttpExceptions.badRequest(
+				HttpExceptions.throwBadRequest(
 						"POST for properties is only allowed for property of types list, map or set, " + "but property %s if of type: %s",
 						property.getName(), type.getTypeName());
 		}

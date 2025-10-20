@@ -26,11 +26,11 @@ import jakarta.servlet.http.HttpServletResponse;
 public class LoginRxServlet extends BasicTemplateBasedServlet implements InitializationAware {
 
 	private static final long serialVersionUID = -3371378397236984055L;
-	private static final String signinPageTemplateLocation = "hiconic/rx/security/web/processing/servlet/templates/login.html.vm";
+	private static final String signinPageTemplatePath = "templates/login.html.vm";
 		
 	@Override
 	public void postConstruct() {
-		setTemplateLocation(signinPageTemplateLocation);
+		setRelativeTemplateLocation(signinPageTemplatePath);
 	}
 
 	@Override

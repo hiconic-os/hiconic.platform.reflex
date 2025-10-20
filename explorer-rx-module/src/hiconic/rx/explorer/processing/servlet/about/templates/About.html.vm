@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html>
-<title>tribefire About</title>
+<title>About</title>
 <head>
   
  		<style>
@@ -436,7 +436,6 @@
 <tr>
 
 #set( $msgNoValue = "/" )
-#set ($tfs = "tribefire-services" )
 
 <td id="nav" #if(${hideNav})class="hidden-section"#end>
 	
@@ -467,7 +466,7 @@
 		<p class="nav-header">Actions</p>
 			
 			<div class="downloadArea" 
-				title="Shows information about the underlying system, the host container and tribefire."
+				title="Shows information about the underlying system."
 				onclick="getAbout('systeminformation', document.getElementById('nodeId').value)"><img class="downloadImage" src="webpages/images/about/business-report.svg" width="16" height="16"/>Show System Information</div><br />
 			<div class="downloadArea" 
 				title="Shows those threads that consume the most processing power."
@@ -476,18 +475,15 @@
 				title="Shows all processes running on the host environment."
 				onclick="getAbout('processes', document.getElementById('nodeId').value)"><img class="downloadImage" src="webpages/images/about/process.svg" width="16" height="16"/>Show Processes</div><br />
 			<div class="downloadArea" 
-				title="Show detailed information about the installed versions of all tribefire components."
+				title="Show detailed information about the installed versions of all components."
 				onclick="getAbout('versions', document.getElementById('nodeId').value)"><img class="downloadImage" src="webpages/images/about/numbering-signs.svg" width="16" height="16"/>Show Packaging</div><br />
-			<div class="downloadArea" 
-				title="Show detailed information about the tribefire deployables."
-				onclick="getAbout('deployables', document.getElementById('nodeId').value)"><img class="downloadImage" src="webpages/images/about/gears.svg" width="16" height="16"/>Show Deployables</div><br />
 			<!--				
 			<div class="downloadArea" 
-				title="Retrieves a heap dump of the selected tribefire instance."
+				title="Retrieves a heap dump of the selected instance."
 				onclick="downloadFromAbout('heapdump', document.getElementById('nodeId').value)"><img class="downloadImage" src="webpages/images/about/ram.svg" width="16" height="16"/>Get Heap Dump</div><br />
 			-->
 			<div class="downloadArea" 
-				title="Retrieves a thread dump of one selected or all tribefire instances."
+				title="Retrieves a thread dump of one selected or all nodes in a cluster."
 				onclick="downloadFromAbout('threaddump', document.getElementById('nodeId').value)"><img class="downloadImage" src="webpages/images/about/note.svg" width="16" height="16"/>Get Thread Dump</div><br />
 			<div class="downloadArea" 
 				title="Creates a diagnostic package that contains the information displayed here along with log files and a thread dump." 
@@ -496,7 +492,7 @@
 				title="Creates a diagnostic package with an additional heap dump. This operation may take some time and might block the JVM." 
 				onclick="downloadFromAbout('diagnosticExtended', document.getElementById('nodeId').value)"><img class="downloadImage" src="webpages/images/about/large_package.svg" width="16" height="16"/>Get Extended Diagnostic Package</div><br />
 			<div class="downloadArea"
-				title="Downloads the system information of one selected or all tribefire instances as a JSON file." 
+				title="Downloads the system information of one selected or all instances as a JSON file." 
 				onclick="downloadFromAbout('json', document.getElementById('nodeId').value)"><img class="downloadImage" src="webpages/images/about/json-file.svg" width="16" height="16"/>Get System Information as JSON</div><br />
 
 	</div>
