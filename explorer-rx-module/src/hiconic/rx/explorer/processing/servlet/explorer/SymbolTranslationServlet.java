@@ -29,6 +29,8 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.TreeSet;
 
+import com.braintribe.utils.lcd.StringTools;
+
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
@@ -44,7 +46,7 @@ public class SymbolTranslationServlet extends HttpServlet {
 
 	@Override
 	protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		String compilationId = req.getParameter("compilationId");
+		String compilationId = getCompilationId(req);
 
 		String content = null;
 
@@ -128,9 +130,21 @@ public class SymbolTranslationServlet extends HttpServlet {
 		lookup.close();
 	}
 
+	private String getCompilationId(HttpServletRequest req) {
+		String compilationId = req.getParameter("compilationId");
+		if (StringTools.isEmpty(compilationId) || //
+				compilationId.contains("..") || //
+				compilationId.contains("/") || //
+				compilationId.contains("\\") //
+		)
+			throw new IllegalArgumentException("Invalid compilationId: " + compilationId);
+
+		return compilationId;
+	}
+
 	protected synchronized File getNormalizedSymbolFile(String compilationId) throws IOException {
 		String mergedSymbolsFileName = "mergedSymbols";
-		
+
 		// This doesn't work, as our servlet does not have a ResourceManager
 		String realPath = servletContext.getRealPath("/WEB-INF/symbolMaps");
 		if (realPath == null)
@@ -162,7 +176,7 @@ public class SymbolTranslationServlet extends HttpServlet {
 				}
 			}
 
-			try(Writer writer = new OutputStreamWriter(new FileOutputStream(preparedFile), "ISO-8859-1")) {
+			try (Writer writer = new OutputStreamWriter(new FileOutputStream(preparedFile), "ISO-8859-1")) {
 				boolean first = true;
 				for (String outputLine : lines) {
 					if (first) {
