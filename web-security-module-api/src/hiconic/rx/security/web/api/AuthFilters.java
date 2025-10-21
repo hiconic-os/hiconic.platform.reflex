@@ -9,6 +9,7 @@ import hiconic.rx.web.server.api.FilterSymbol;
  */
 public enum AuthFilters implements FilterSymbol {
 
+	// TODO explain what these filters are supposed to do
 	strictAuthFilter,
 	lenientAuthFilter,
 	strictAdminAuthFilter;

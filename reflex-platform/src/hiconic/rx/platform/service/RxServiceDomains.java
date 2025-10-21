@@ -31,7 +31,7 @@ import com.braintribe.model.generic.reflection.Model;
 import com.braintribe.model.meta.GmMetaModel;
 import com.braintribe.model.processing.service.common.ConfigurableDispatchingServiceProcessor;
 import com.braintribe.model.service.api.ServiceRequest;
-import com.braintribe.utils.lcd.LazyInitialized;
+import com.braintribe.utils.lcd.Lazy;
 
 import hiconic.platform.reflex._ReflexPlatform_;
 import hiconic.rx.module.api.service.ServiceDomain;
@@ -50,8 +50,8 @@ public class RxServiceDomains implements ServiceDomains {
 	private RxModelConfigurations modelConfigurations;
 
 	private final Map<String, RxServiceDomain> domains = new ConcurrentHashMap<>();
-	private final LazyInitialized<Map<GmMetaModel, List<RxServiceDomain>>> domainsByModel = new LazyInitialized<>(this::indexGmModelToDomains);
-	private final LazyInitialized<Map<EntityType<?>, List<RxServiceDomain>>> domainsByReqType = new LazyInitialized<>(this::indexReqTypeToDomains);
+	private final Lazy<Map<GmMetaModel, List<RxServiceDomain>>> domainsByModel = new Lazy<>(this::indexGmModelToDomains);
+	private final Lazy<Map<EntityType<?>, List<RxServiceDomain>>> domainsByReqType = new Lazy<>(this::indexReqTypeToDomains);
 
 	@Required
 	public void setModelConfigurations(RxModelConfigurations modelConfigurations) {

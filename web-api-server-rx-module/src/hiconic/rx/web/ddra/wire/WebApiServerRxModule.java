@@ -13,9 +13,17 @@
 // ============================================================================
 package hiconic.rx.web.ddra.wire;
 
+import hiconic.rx.module.api.wire.Exports;
 import hiconic.rx.module.api.wire.RxModule;
+import hiconic.rx.web.ddra.endpoints.api.WebApiServerContract;
 import hiconic.rx.web.ddra.wire.space.WebApiServerRxModuleSpace;
 
 public enum WebApiServerRxModule implements RxModule<WebApiServerRxModuleSpace> {
 	INSTANCE;
+	
+	@Override
+	public void bindExports(Exports exports) {
+		exports.bind(WebApiServerContract.class, WebApiServerRxModuleSpace.class);
+	}
+	
 }

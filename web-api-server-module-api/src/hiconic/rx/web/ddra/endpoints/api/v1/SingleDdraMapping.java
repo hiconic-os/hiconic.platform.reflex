@@ -11,7 +11,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.web.ddra.endpoints.api.api.v1;
+package hiconic.rx.web.ddra.endpoints.api.v1;
+
+import java.util.Set;
 
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.service.api.ServiceRequest;
@@ -85,4 +87,7 @@ public interface SingleDdraMapping {
 	Boolean getDefaultDecodingLenience();
 
 	String getDefaultEndpointParameter(String name);
+
+	Set<String> getTags();
+
 }

@@ -31,7 +31,7 @@ import com.braintribe.model.processing.aop.api.aspect.AccessAspect;
 import com.braintribe.model.processing.core.expert.api.MutableDenotationMap;
 import com.braintribe.model.processing.core.expert.impl.PolymorphicDenotationMap;
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSessionFactory;
-import com.braintribe.utils.lcd.LazyInitialized;
+import com.braintribe.utils.lcd.Lazy;
 import com.braintribe.utils.lcd.NullSafe;
 
 import hiconic.rx.access.model.configuration.Access;
@@ -49,7 +49,7 @@ import hiconic.rx.module.api.service.ServiceDomains;
 
 public class RxAccesses implements AccessDomains {
 
-	private final Map<String, LazyInitialized<RxAccess>> accesses = new ConcurrentHashMap<>();
+	private final Map<String, Lazy<RxAccess>> accesses = new ConcurrentHashMap<>();
 	private final MutableDenotationMap<Access, AccessExpert<?>> experts = new PolymorphicDenotationMap<>(true);
 
 	private ConfiguredModels configuredModels;
@@ -103,7 +103,12 @@ public class RxAccesses implements AccessDomains {
 
 	@Override
 	public AccessDomain byId(String domainId) {
-		return getAccess(domainId);
+		return findAccess(domainId);
+	}
+
+	private RxAccess findAccess(String domainId) {
+		Lazy<RxAccess> lazyAccess = accesses.get(domainId);
+		return lazyAccess == null ? null : lazyAccess.get();
 	}
 
 	// Unused?
@@ -112,7 +117,7 @@ public class RxAccesses implements AccessDomains {
 	}
 
 	public RxAccess getAccess(String accessId) {
-		LazyInitialized<RxAccess> lazyAccess = accesses.get(accessId);
+		Lazy<RxAccess> lazyAccess = accesses.get(accessId);
 		if (lazyAccess == null)
 			throw new NoSuchElementException("No Access configured with accessId: " + accessId);
 
@@ -138,7 +143,7 @@ public class RxAccesses implements AccessDomains {
 		ServiceDomainConfiguration serviceDomainConfiguration = serviceDomainConfigurations.byId(accessId);
 		serviceDomainConfiguration.addModel(modelConfigurations.byName(RxAccessConstants.ACCESS_BASE_MODEL_NAME));
 
-		if (accesses.putIfAbsent(accessId, new LazyInitialized<>(rxAccessSupplier)) != null)
+		if (accesses.putIfAbsent(accessId, new Lazy<>(rxAccessSupplier)) != null)
 			throw new IllegalArgumentException("Duplicate deployment of an Access with id: " + accessId);
 	}
 

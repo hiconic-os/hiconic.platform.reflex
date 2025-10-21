@@ -21,5 +21,6 @@ public interface AccessDomains {
 
 	boolean hasDomain(String domainId);
 
+	/** Returns the {@link AccessDomain} for given domainId or <tt>null</tt> if no such domain exists. */
 	AccessDomain byId(String domainId);
 }

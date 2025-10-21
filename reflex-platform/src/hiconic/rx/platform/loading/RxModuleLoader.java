@@ -38,7 +38,7 @@ import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.config.ConfigurationError;
 import com.braintribe.gm.model.reason.essential.InternalError;
 import com.braintribe.logging.Logger;
-import com.braintribe.utils.lcd.LazyInitialized;
+import com.braintribe.utils.lcd.Lazy;
 import com.braintribe.wire.api.Wire;
 import com.braintribe.wire.api.context.WireContext;
 import com.braintribe.wire.api.context.WireContextBuilder;
@@ -122,7 +122,7 @@ public class RxModuleLoader implements LifecycleAware {
 	private Maybe<List<WireContext<RxModuleContract>>> loadWireModuleContexts(RxModuleAnalysis analysis) {
 		var contexts = new ArrayList<WireContext<RxModuleContract>>(analysis.nodes.size());
 
-		var lazyError = new LazyInitialized<ConfigurationError>( //
+		var lazyError = new Lazy<ConfigurationError>( //
 				() -> ConfigurationError.create("Error while loading rx-module wire contexts"));
 
 		var importResolver = new RxExportResolver(analysis.exports);

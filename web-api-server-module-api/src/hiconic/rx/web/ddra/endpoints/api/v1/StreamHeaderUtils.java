@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.web.ddra.endpoints.api.api.v1;
+package hiconic.rx.web.ddra.endpoints.api.v1;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;

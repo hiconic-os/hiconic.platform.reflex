@@ -51,7 +51,7 @@ import com.braintribe.model.service.api.result.Unsatisfied;
 import com.braintribe.model.usersession.UserSession;
 import com.braintribe.utils.CollectionTools;
 import com.braintribe.utils.collection.impl.AttributeContexts;
-import com.braintribe.utils.lcd.LazyInitialized;
+import com.braintribe.utils.lcd.Lazy;
 
 import dev.hiconic.servlet.api.HttpFilter;
 import dev.hiconic.servlet.impl.util.ServletTools;
@@ -358,7 +358,7 @@ public class AuthRxFilter implements HttpFilter, InitializationAware {
 		}
 
 		private Maybe<Credentials> findCredentials(HttpServletRequest request) {
-			LazyInitialized<Reason> invalidCredentialProblems = new LazyInitialized<>(
+			Lazy<Reason> invalidCredentialProblems = new Lazy<>(
 					() -> Reasons.build(InvalidCredentials.T).text("Error while extracting credentials from http request").toReason());
 
 			for (Map.Entry<String, WebCredentialsProvider> entry : webCredentialProviders.entrySet()) {

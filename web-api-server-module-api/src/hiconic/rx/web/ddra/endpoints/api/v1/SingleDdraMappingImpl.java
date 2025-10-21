@@ -1,12 +1,13 @@
 // ============================================================================
-package hiconic.rx.web.ddra.mapping;
+package hiconic.rx.web.ddra.endpoints.api.v1;
+
+import java.util.Set;
 
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.StandardCloningContext;
 //import com.braintribe.model.prototyping.api.PrototypingRequest;
 import com.braintribe.model.service.api.ServiceRequest;
 
-import hiconic.rx.web.ddra.endpoints.api.api.v1.SingleDdraMapping;
 import hiconic.rx.webapi.endpoints.OutputPrettiness;
 import hiconic.rx.webapi.endpoints.TypeExplicitness;
 import hiconic.rx.webapi.endpoints.api.v1.ApiV1DdraEndpoint;
@@ -45,6 +46,8 @@ public class SingleDdraMappingImpl implements SingleDdraMapping {
 	public Boolean defaultPreserveTransportPayload;
 	public Boolean defaultDecodingLenience;
 
+	public Set<String> tags; // TODO use tags...
+	
 	// @formatter:off
 	@Override public String getServiceDomain() { return serviceDomain; }
 	@Override public String getPathInfo() { return pathInfo; }
@@ -71,6 +74,7 @@ public class SingleDdraMappingImpl implements SingleDdraMapping {
 	@Override public Boolean getDefaultUseSessionEvaluation() { return defaultUseSessionEvaluation; }
 	@Override public Boolean getDefaultPreserveTransportPayload() { return defaultPreserveTransportPayload; }
 	@Override public Boolean getDefaultDecodingLenience() { return defaultDecodingLenience; }
+	@Override public Set<String> getTags() { return tags; }
 	// @formatter:on
 
 	@Override

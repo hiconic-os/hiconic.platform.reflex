@@ -20,11 +20,11 @@ import com.braintribe.model.processing.meta.oracle.ModelOracle;
 import com.braintribe.model.processing.session.api.managed.ManagedGmSession;
 import com.braintribe.model.processing.session.api.managed.ModelAccessory;
 import com.braintribe.model.processing.session.impl.managed.BasicManagedGmSession;
-import com.braintribe.utils.lcd.LazyInitialized;
+import com.braintribe.utils.lcd.Lazy;
 
 public class RxModelAccessory implements ModelAccessory {
-	private CmdResolver cmdResolver;
-	private LazyInitialized<ManagedGmSession> lazySession = new LazyInitialized<ManagedGmSession>(this::newSession);
+	private final CmdResolver cmdResolver;
+	private final Lazy<ManagedGmSession> lazySession = new Lazy<>(this::newSession);
 	
 	public RxModelAccessory(CmdResolver cmdResolver) {
 		this.cmdResolver = cmdResolver;

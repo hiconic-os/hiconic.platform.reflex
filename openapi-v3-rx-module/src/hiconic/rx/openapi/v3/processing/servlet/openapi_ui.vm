@@ -1,0 +1,270 @@
+<!-- HTML for static distribution bundle build -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>OpenApi UI</title>
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,700|Source+Code+Pro:300,600|Titillium+Web:400,600,700" rel="stylesheet">
+  <link href="${servicesUrl}/webpages/swagger-theme-muted.css" rel="stylesheet">	
+  <style>
+    body {
+      margin: 5px;
+      background: #fafafa;
+    }
+    .markdown a {
+    	color: #f9a320 !important;
+    	font-weight: 1;
+    }
+
+    
+    .main a {
+    	color: #c8c9cc !important;
+    	font-weight: 1;
+    }
+    
+     a {
+    	color: #3f4348 !important;
+    	font-weight: 600;
+    }
+    
+    .title {
+    	font-weight: 100; 
+    }
+    
+    #header-menu {
+    	display: flex;
+    	height: 2em;
+    	margin-block-start: 0;
+	    margin-block-end: 0;
+	    padding-inline-start: 0;
+    }
+    
+    #header-menu * {
+    	display: block;
+    		    
+	    border-radius: 0;
+	    border: none;
+	    
+	    font-size: 16px;
+	    font-family: sans-serif;
+	    
+	    box-sizing: border-box;
+    }
+    
+    
+    #view-selector {
+    	margin-right: 5px;
+    }
+    
+    #view-selector, #view-selector * {
+    	width: 17ch;
+    	max-width: 100%;
+    	text-decoration: none;
+    	
+    	margin-block-start: 0;
+	    margin-block-end: 0;
+	    padding-inline-start: 0;
+    }
+    
+    #view-selector ul {
+    	display: none;
+    	z-index: 1;
+    	position: absolute;
+    }
+    
+    #view-selector button {
+      	color: orange;
+    	text-decoration: underline
+    }
+    
+    #view-selector ul li {
+     	padding: 8px;
+    	background-color: white;
+    }
+    
+    #view-selector ul li a {
+      font-weight: initial;
+      font-family: sans-serif;
+    }
+    
+    #view-selector ul li > *:hover {
+      text-decoration: underline;
+    }
+    
+    #view-selector button:hover + ul, #view-selector button:focus + ul,  #view-selector ul:hover {
+      display: block;
+    }
+    
+    #view-selector .view a::before {
+      content: "Switch to ";
+    }
+    
+	#header-menu .header-link {
+    	margin-right: 5px;
+    	background-color: #f9f9f9;
+    	border-radius: 15% 15% 0 0;
+    	padding: 5px;
+    	height: 100%;
+	    color: orange !important;
+    	font-weight: normal;
+    	box-shadow: -1px -1px 2px 0px rgba(0, 0, 0, .1);
+    }
+    
+    #header-menu .header-link:hover, #header-menu .header-link:focus {
+	    background-color: #f5f5f5;
+	    box-shadow: -2px -2px 2px 1px rgba(0, 0, 0, .12);
+    }
+    
+    #header-menu .header-link.active {
+    	color: black !important;
+    	background-color: #eee;
+    }
+    
+    #header-menu .header-link.active:hover {
+    	box-shadow: inherit;
+    	box-shadow: -1px -1px 2px 0px rgba(0, 0, 0, .1);
+    }
+    
+    #view-selector .option.option.option > label > input {
+    	display: inline;
+    	width: initial;
+    }
+    
+    #view-selector .option.option.option > label {
+    	width: 100%;
+    }
+    
+  </style>
+  
+</head>
+
+<body>
+<ul id="header-menu">
+<li id="view-selector">
+	<button>
+		<span id="view-selector-label">Switch View</span> 
+		<svg class="arrow" width="20" height="20" style="
+		    display: inline-block;
+		    width: 16px;
+		    height: 14px;
+		    padding-top: 3px;
+		">
+			<use href="#large-arrow-down" xlink:href="#large-arrow-down"></use>
+		</svg>
+	</button>
+	<ul>
+		<li class="view"><a href="?useCases=openapi:simple" class="openapi-link">Simple</a></li>
+		<li class="view"><a href="?" class="openapi-link">Standard</a></li>
+		<li class="option">
+			<label title="Explicitly include the current Session-ID in all applicable requests of the OpenAPI document">
+				<input type="checkbox" name="includeSessionId" onchange="includeSessionId(this)" id="includeSessionIdCheckbox">Session-ID
+			</label>
+		</li>
+	</ul>
+</li>
+#foreach ($link in $headerLinks)
+<li>
+	#if ($link.active)
+	<span class="header-link active">$link.title</span>
+	#else
+	<a class="header-link openapi-link" href="$link.url" target="$link.target">$link.title</a>
+	#end
+</li>
+#end
+
+</ul>
+
+<script>
+// hide currently selected view
+let currentUrl = new URL(window.location);
+let useCases = currentUrl.searchParams.getAll("useCases");
+let label = document.getElementById("view-selector-label");
+let views = Array.prototype.slice.call(document.querySelectorAll("#view-selector .view a"));
+
+function markViewAsCurrent(v){
+	v.parentElement.remove();
+	label.innerText = v.innerText + " View";
+}
+if (!useCases || useCases.length == 0){
+  views
+    .filter(v => v.innerText === "Standard" )
+  	.forEach(markViewAsCurrent)
+}
+else if (useCases.length == 1 && useCases[0].startsWith("openapi:")){
+  let currentView = useCases[0].replace(/^openapi:/, "");
+  currentView = currentView[0].toUpperCase() + currentView.slice(1);
+  
+  views
+    .filter(v => v.innerText === currentView )
+  	.forEach(markViewAsCurrent)
+}
+</script>
+<script>
+// Handle checkbox to toggle includeSessionId param
+let shouldIncludeSessionId = currentUrl.searchParams.get("includeSessionId") === "true";
+if (shouldIncludeSessionId) {
+	Array.prototype.slice.call(document.querySelectorAll("a.openapi-link[target='_self']")).forEach(a => {
+		withIncludeSessionIdParam(a)
+	});
+}
+
+function includeSessionId(n) {
+	withIncludeSessionIdParam(window.location, n.checked);
+}
+
+function withIncludeSessionIdParam(href, value=true) {
+	let url = new URL(href);
+	console.log("setting", url, value);
+	if (value)
+		url.searchParams.set("includeSessionId", value);
+	else
+		url.searchParams.delete("includeSessionId");
+	
+	href.search = url.search;
+}
+
+
+document.getElementById('includeSessionIdCheckbox').checked = currentUrl.searchParams.get("includeSessionId") === "true";
+
+</script>
+<div id="swagger-ui"></div>
+<script>
+  	#include("${swaggerUiBundleJsUrl}")
+</script>
+<script>
+  	#include("${swaggerUiStandalonePresetJsUrl}")
+</script>
+<script>
+
+
+window.onload = function() {
+    
+  var url = new URL("${swaggerfileUrl}", window.location);
+  var absoluteServicesUrl = new URL("${servicesUrl}", window.location).href;
+  absoluteServicesUrl = absoluteServicesUrl.replace(/\/$/, "") // remove trailing slash
+  url.searchParams.append("serverUrl", absoluteServicesUrl)
+  
+  // Build a system
+  const ui = SwaggerUIBundle({
+    url: url.href,
+    validatorUrl : null,
+    dom_id: '#swagger-ui',
+    deepLinking: true,
+    presets: [
+      SwaggerUIBundle.presets.apis,
+      SwaggerUIStandalonePreset
+    ],
+    plugins: [
+      SwaggerUIBundle.plugins.DownloadUrl
+    ],
+    layout: "StandaloneLayout"
+  })
+
+  window.ui = ui
+}
+
+</script>
+
+</body>
+
+</html>

@@ -34,13 +34,14 @@ import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.meta.cmd.builders.EntityMdResolver;
 import com.braintribe.model.processing.meta.oracle.ModelOracle;
 import com.braintribe.model.service.api.ServiceRequest;
-import com.braintribe.utils.lcd.LazyInitialized;
+import com.braintribe.utils.lcd.Lazy;
 import com.braintribe.utils.lcd.StringTools;
 
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.service.ServiceDomains;
-import hiconic.rx.web.ddra.endpoints.api.api.v1.SingleDdraMapping;
-import hiconic.rx.web.ddra.endpoints.api.api.v1.WebApiMappingOracle;
+import hiconic.rx.web.ddra.endpoints.api.v1.SingleDdraMapping;
+import hiconic.rx.web.ddra.endpoints.api.v1.SingleDdraMappingImpl;
+import hiconic.rx.web.ddra.endpoints.api.v1.WebApiMappingOracle;
 import hiconic.rx.webapi.model.meta.HttpRequestMethod;
 import hiconic.rx.webapi.model.meta.RequestMethod;
 import hiconic.rx.webapi.model.meta.RequestPath;
@@ -52,7 +53,7 @@ import hiconic.rx.webapi.model.meta.RequestPathPrefix;
  */
 public class StandardWebApiMappingOracle implements WebApiMappingOracle {
 
-	private final LazyInitialized<Map<PathAndMethod, SingleDdraMapping>> mappings = new LazyInitialized<>(() -> new MappingIndexer().buildMappings());
+	private final Lazy<Map<PathAndMethod, SingleDdraMapping>> mappings = new Lazy<>(() -> new MappingIndexer().buildMappings());
 
 	private final CloningContext cloningContext;
 

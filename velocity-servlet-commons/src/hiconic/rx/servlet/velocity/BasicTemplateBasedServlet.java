@@ -328,7 +328,7 @@ public abstract class BasicTemplateBasedServlet extends HttpServlet {
 	/**
 	 * Resolve given path relative to the current class's package.
 	 */
-	private String resolveRelativeTemplateLocation(String relativeTemplateLocation) {
+	protected String resolveRelativeTemplateLocation(String relativeTemplateLocation) {
 		return getClass().getPackageName().replace('.', '/') + "/" + relativeTemplateLocation;
 	}
 

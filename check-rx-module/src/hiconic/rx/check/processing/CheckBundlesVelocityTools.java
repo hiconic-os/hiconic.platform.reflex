@@ -6,7 +6,7 @@ import java.util.Arrays;
 
 import com.braintribe.model.time.TimeSpan;
 import com.braintribe.model.time.TimeUnit;
-import com.braintribe.utils.lcd.LazyInitialized;
+import com.braintribe.utils.lcd.Lazy;
 import com.braintribe.utils.xml.XmlTools;
 import com.vladsch.flexmark.ext.tables.TablesExtension;
 import com.vladsch.flexmark.html.HtmlRenderer;
@@ -29,8 +29,8 @@ public class CheckBundlesVelocityTools {
 	public static final MutableDataHolder FLEXMARK_OPTIONS = new MutableDataSet() //
 			.set(Parser.EXTENSIONS, Arrays.asList(TablesExtension.create()));
 	
-	private final LazyInitialized<Parser> markdownParser = new LazyInitialized<>(() -> Parser.builder(FLEXMARK_OPTIONS).build());
-	private final LazyInitialized<HtmlRenderer> htmlRenderer = new LazyInitialized<>(() -> HtmlRenderer.builder(FLEXMARK_OPTIONS).build());
+	private final Lazy<Parser> markdownParser = new Lazy<>(() -> Parser.builder(FLEXMARK_OPTIONS).build());
+	private final Lazy<HtmlRenderer> htmlRenderer = new Lazy<>(() -> HtmlRenderer.builder(FLEXMARK_OPTIONS).build());
 
 	public String getIdPrefix(CbrAggregation aggregation) {
 		switch (aggregation.getKind()) {

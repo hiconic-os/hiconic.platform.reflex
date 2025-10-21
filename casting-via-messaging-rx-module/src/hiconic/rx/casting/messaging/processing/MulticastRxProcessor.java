@@ -50,7 +50,7 @@ import com.braintribe.transport.messaging.api.MessageProperties;
 import com.braintribe.transport.messaging.api.MessagingException;
 import com.braintribe.transport.messaging.api.MessagingSession;
 import com.braintribe.transport.messaging.api.MessagingSessionProvider;
-import com.braintribe.utils.lcd.LazyInitialized;
+import com.braintribe.utils.lcd.Lazy;
 import com.braintribe.utils.lcd.NullSafe;
 
 import hiconic.rx.topology.api.LiveInstances;
@@ -83,7 +83,7 @@ public class MulticastRxProcessor implements ServiceProcessor<MulticastRequest, 
 	private boolean localCallOptimizationEnabled = true;
 
 	// lazy initialized
-	private final LazyInitialized<MulticastMsg> msg = new LazyInitialized<>(MulticastMsg::new);
+	private final Lazy<MulticastMsg> msg = new Lazy<>(MulticastMsg::new);
 
 	private class MulticastMsg implements AutoCloseable {
 		// post initialized

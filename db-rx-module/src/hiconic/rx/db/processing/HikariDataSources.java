@@ -30,7 +30,7 @@ import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.essential.NotFound;
 import com.braintribe.logging.Logger;
 import com.braintribe.utils.lcd.CollectionTools;
-import com.braintribe.utils.lcd.LazyInitialized;
+import com.braintribe.utils.lcd.Lazy;
 import com.codahale.metrics.MetricRegistry;
 import com.zaxxer.hikari.HikariDataSource;
 import com.zaxxer.hikari.metrics.MetricsTrackerFactory;
@@ -53,7 +53,7 @@ public class HikariDataSources {
 	
 	private DatabaseConfiguration databaseConfiguration;
 	
-	private final LazyInitialized<Map<String, Database>> pools = new LazyInitialized<>(this::indexPools);
+	private final Lazy<Map<String, Database>> pools = new Lazy<>(this::indexPools);
 	
 	@Required
 	public void setDatabaseConfiguration(DatabaseConfiguration databaseConfiguration) {

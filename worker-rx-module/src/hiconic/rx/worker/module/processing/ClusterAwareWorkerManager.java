@@ -29,6 +29,7 @@ import com.braintribe.model.processing.worker.api.WorkerException;
 import com.braintribe.model.processing.worker.api.WorkerManager;
 import com.braintribe.model.processing.worker.api.WorkerManagerControl;
 import com.braintribe.utils.RandomTools;
+import com.braintribe.utils.lcd.Lazy;
 import com.braintribe.utils.lcd.LazyInitialized;
 
 import hiconic.rx.platform.processing.worker.BasicRxWorkerManager;
@@ -44,7 +45,7 @@ public class ClusterAwareWorkerManager implements WorkerManager, WorkerManagerCo
 	private ExecutorService executorService;
 	private final Map<Worker, ClusterAwareWorkerContext> workers = new ConcurrentHashMap<Worker, ClusterAwareWorkerContext>();
 
-	private LazyInitialized<LeadershipManager> leadershipManager;
+	private Lazy<LeadershipManager> leadershipManager;
 
 	private boolean started = false;
 	private final Set<Worker> deferredWorkers = new LinkedHashSet<Worker>();
@@ -54,7 +55,7 @@ public class ClusterAwareWorkerManager implements WorkerManager, WorkerManagerCo
 
 	@Required
 	public void setLeadershipManagerSupplier(Supplier<LeadershipManager> leadershipManagerSupplier) {
-		this.leadershipManager = new LazyInitialized<LeadershipManager>(leadershipManagerSupplier);
+		this.leadershipManager = new Lazy<LeadershipManager>(leadershipManagerSupplier);
 	}
 
 	@Required

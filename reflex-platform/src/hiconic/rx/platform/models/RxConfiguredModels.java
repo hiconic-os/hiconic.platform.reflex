@@ -28,7 +28,7 @@ import com.braintribe.model.generic.reflection.Model;
 import com.braintribe.model.meta.GmMetaModel;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.meta.oracle.ModelOracle;
-import com.braintribe.utils.lcd.LazyInitialized;
+import com.braintribe.utils.lcd.Lazy;
 
 import hiconic.rx.module.api.service.ConfiguredModel;
 import hiconic.rx.module.api.service.ConfiguredModels;
@@ -39,7 +39,7 @@ public class RxConfiguredModels implements ConfiguredModels {
 
 	private final Map<String, RxConfiguredModel> models = new ConcurrentHashMap<>();
 	private final Map<String, RxPlatformModel> platformModels = new ConcurrentHashMap<>();
-	private final LazyInitialized<Map<GmMetaModel, List<AbstractRxConfiguredModel>>> dependersByModel = new LazyInitialized<>(this::indexDependers);
+	private final Lazy<Map<GmMetaModel, List<AbstractRxConfiguredModel>>> dependersByModel = new Lazy<>(this::indexDependers);
 	private Supplier<AttributeContext> systemAttributeContextSupplier;
 	private RxCmdResolverManager cmdResolverManager;
 	

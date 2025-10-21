@@ -38,7 +38,7 @@ import dev.hiconic.servlet.impl.util.ServletTools;
 import hiconic.rx.web.ddra.endpoints.api.DdraEndpointContext;
 import hiconic.rx.web.ddra.endpoints.api.DdraEndpointsUtils;
 import hiconic.rx.web.ddra.endpoints.api.DdraTraversingCriteriaMap;
-import hiconic.rx.web.ddra.endpoints.api.api.v1.ApiV1EndpointContext;
+import hiconic.rx.web.ddra.endpoints.api.v1.ApiV1EndpointContext;
 import hiconic.rx.webapi.endpoints.DdraEndpoint;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;

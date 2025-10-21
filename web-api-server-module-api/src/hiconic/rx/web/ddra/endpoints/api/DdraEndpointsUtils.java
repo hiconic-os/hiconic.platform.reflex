@@ -49,7 +49,7 @@ import com.braintribe.model.service.api.result.Neutral;
 import com.braintribe.utils.lcd.StringTools;
 
 import dev.hiconic.servlet.decoder.api.HttpExceptions;
-import hiconic.rx.web.ddra.endpoints.api.api.v1.ApiV1EndpointContext;
+import hiconic.rx.web.ddra.endpoints.api.v1.ApiV1EndpointContext;
 import hiconic.rx.webapi.endpoints.DdraEndpoint;
 import hiconic.rx.webapi.endpoints.DdraEndpointDepth;
 import hiconic.rx.webapi.endpoints.DdraEndpointDepthKind;

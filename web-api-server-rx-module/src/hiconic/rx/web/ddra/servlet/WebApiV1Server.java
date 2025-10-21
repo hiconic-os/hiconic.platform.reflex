@@ -100,12 +100,12 @@ import dev.hiconic.servlet.decoder.impl.QueryParamDecoder;
 import hiconic.rx.module.api.service.PlatformServiceDomains;
 import hiconic.rx.web.ddra.endpoints.api.DdraEndpointAspect;
 import hiconic.rx.web.ddra.endpoints.api.DdraEndpointsUtils;
-import hiconic.rx.web.ddra.endpoints.api.api.v1.ApiV1EndpointContext;
-import hiconic.rx.web.ddra.endpoints.api.api.v1.SingleDdraMapping;
-import hiconic.rx.web.ddra.endpoints.api.api.v1.WebApiMappingOracle;
 import hiconic.rx.web.ddra.endpoints.api.context.HttpRequestSupplier;
 import hiconic.rx.web.ddra.endpoints.api.context.HttpRequestSupplierAspect;
 import hiconic.rx.web.ddra.endpoints.api.context.HttpResponseConfigurerAspect;
+import hiconic.rx.web.ddra.endpoints.api.v1.ApiV1EndpointContext;
+import hiconic.rx.web.ddra.endpoints.api.v1.SingleDdraMapping;
+import hiconic.rx.web.ddra.endpoints.api.v1.WebApiMappingOracle;
 import hiconic.rx.web.ddra.servlet.ApiV1RestServletUtils.DecodingTargetTraversalResult;
 import hiconic.rx.webapi.endpoints.DdraBaseUrlPathParameters;
 import hiconic.rx.webapi.endpoints.DdraEndpoint;
@@ -762,12 +762,11 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 		// get the entity type from the type signature
 		ModelOracle modelOracle = mdResolverProvider.apply(serviceDomain).getModelOracle();
 		EntityType<? extends ServiceRequest> entityType = restServletUtils.resolveTypeFromSignature(typeSignature, modelOracle);
-		if (entityType == null) {
-			HttpExceptions.throwNotFound("Cannot find request %s", typeSignature);
-		}
-		if (!ServiceRequest.T.isAssignableFrom(entityType)) {
-			HttpExceptions.throwBadRequest("Entity %s is not a ServiceRequest.", typeSignature);
-		}
+		if (entityType == null)
+			HttpExceptions.throwNotFound("Cannot find request [%s]", typeSignature);
+
+		if (!ServiceRequest.T.isAssignableFrom(entityType))
+			HttpExceptions.throwBadRequest("Entity [%s] is not a ServiceRequest.", typeSignature);
 
 		context.setServiceRequestType(entityType);
 		return entityType;

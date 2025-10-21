@@ -58,7 +58,7 @@ import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.model.time.TimeSpan;
 import com.braintribe.model.user.User;
 import com.braintribe.model.usersession.UserSession;
-import com.braintribe.utils.lcd.LazyInitialized;
+import com.braintribe.utils.lcd.Lazy;
 
 import hiconic.platform.reflex.security.api.UserInternalService;
 import hiconic.platform.reflex.security.api.UserSessionAccessVerificationExpert;
@@ -386,7 +386,7 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 			}
 		}
 
-		LazyInitialized<Reason> verifyReason = new LazyInitialized<>(
+		Lazy<Reason> verifyReason = new Lazy<>(
 				() -> Reasons.build(InvalidSession.T).text("User session '" + userSession.getSessionId() + "' is invalid.").toReason());
 
 		if (userSessionAccessVerificationExperts != null && !userSessionAccessVerificationExperts.isEmpty()) {

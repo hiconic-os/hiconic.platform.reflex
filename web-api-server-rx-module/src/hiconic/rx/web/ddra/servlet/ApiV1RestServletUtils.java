@@ -58,8 +58,8 @@ import com.braintribe.web.multipart.impl.Multiparts;
 
 import dev.hiconic.servlet.decoder.api.DecoderTargetRegistry;
 import dev.hiconic.servlet.decoder.api.HttpExceptions;
-import hiconic.rx.web.ddra.endpoints.api.api.v1.ApiV1EndpointContext;
-import hiconic.rx.web.ddra.endpoints.api.api.v1.SingleDdraMapping;
+import hiconic.rx.web.ddra.endpoints.api.v1.ApiV1EndpointContext;
+import hiconic.rx.web.ddra.endpoints.api.v1.SingleDdraMapping;
 import hiconic.rx.webapi.common.TypeTraversal;
 import hiconic.rx.webapi.common.TypeTraversalResult;
 import hiconic.rx.webapi.endpoints.api.v1.ApiV1DdraEndpoint;

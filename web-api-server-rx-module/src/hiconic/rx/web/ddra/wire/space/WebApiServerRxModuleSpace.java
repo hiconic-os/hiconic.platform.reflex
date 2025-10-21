@@ -35,6 +35,8 @@ import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.security.web.api.AuthFilters;
 import hiconic.rx.security.web.api.WebSecurityContract;
+import hiconic.rx.web.ddra.endpoints.api.WebApiServerContract;
+import hiconic.rx.web.ddra.endpoints.api.v1.WebApiMappingOracle;
 import hiconic.rx.web.ddra.mapping.StandardWebApiMappingOracle;
 import hiconic.rx.web.ddra.servlet.ApiV1RestServletUtils;
 import hiconic.rx.web.ddra.servlet.DdraEndpointsExceptionHandler;
@@ -43,7 +45,7 @@ import hiconic.rx.web.server.api.WebServerContract;
 import jakarta.servlet.DispatcherType;
 
 @Managed
-public class WebApiServerRxModuleSpace implements RxModuleContract {
+public class WebApiServerRxModuleSpace implements RxModuleContract, WebApiServerContract {
 	private static Logger logger = Logger.getLogger(WebApiServerRxModuleSpace.class);
 
 	private static final String MIME_TYPE_JSON = "application/json";
@@ -62,10 +64,11 @@ public class WebApiServerRxModuleSpace implements RxModuleContract {
 
 	@Override
 	public void onDeploy() {
-		webServer.addServlet("web-api", "/api/*", server());
+		// TODO make web api servlet path configurable, not always "/api/*"
+		webServer.addServlet("web-api", "/" + servletPath() + "/*", server());
 
 		if (appIncludesWebSecurity())
-			webServer.addFilterMapping(AuthFilters.lenientAuthFilter, "/api/*", DispatcherType.REQUEST);
+			webServer.addFilterMapping(AuthFilters.lenientAuthFilter, "/" + servletPath() + "/*", DispatcherType.REQUEST);
 	}
 
 	private boolean appIncludesWebSecurity() {
@@ -78,7 +81,7 @@ public class WebApiServerRxModuleSpace implements RxModuleContract {
 		bean.setDefaultServiceDomain(PlatformServiceDomains.main.name());
 		bean.setEvaluator(platform.evaluator());
 		bean.setExceptionHandler(exceptionHandler());
-		bean.setMappingOralce(mappingOralce());
+		bean.setMappingOralce(mappingOracle());
 		bean.setMarshallerRegistry(platform.marshallers());
 		bean.setMdResolverProvider(this::cmdResolverForDomain);
 		bean.setRestServletUtils(servletUtils());
@@ -88,12 +91,19 @@ public class WebApiServerRxModuleSpace implements RxModuleContract {
 		return bean;
 	}
 
+	@Override
 	@Managed
-	private StandardWebApiMappingOracle mappingOralce() {
+	public WebApiMappingOracle mappingOracle() {
 		StandardWebApiMappingOracle bean = new StandardWebApiMappingOracle();
 		bean.setServiceDomains(platform.serviceDomains());
 
 		return bean;
+	}
+
+	@Override
+	@Managed
+	public String servletPath() {
+		return "api";
 	}
 
 	private CmdResolver cmdResolverForDomain(String domainId) {

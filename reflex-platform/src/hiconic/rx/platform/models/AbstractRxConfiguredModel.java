@@ -17,14 +17,14 @@ import com.braintribe.common.attribute.AttributeContext;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.meta.oracle.ModelOracle;
 import com.braintribe.utils.collection.impl.AttributeContexts;
-import com.braintribe.utils.lcd.LazyInitialized;
+import com.braintribe.utils.lcd.Lazy;
 
 import hiconic.rx.module.api.service.ConfiguredModel;
 
 public abstract class AbstractRxConfiguredModel implements ConfiguredModel {
 
-	protected final LazyInitialized<ModelOracle> lazyModelOracle = new LazyInitialized<>(this::buildModelOracle);
-	protected final LazyInitialized<CmdResolver> lazySystemCmdResolver = new LazyInitialized<>(this::buildSystemCmdResolver);
+	protected final Lazy<ModelOracle> lazyModelOracle = new Lazy<>(this::buildModelOracle);
+	protected final Lazy<CmdResolver> lazySystemCmdResolver = new Lazy<>(this::buildSystemCmdResolver);
 	protected final RxConfiguredModels configuredModels;
 
 	protected AbstractRxConfiguredModel(RxConfiguredModels configuredModels) {
