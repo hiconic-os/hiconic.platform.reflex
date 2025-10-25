@@ -50,8 +50,8 @@ public class RxServiceDomains implements ServiceDomains {
 	private RxModelConfigurations modelConfigurations;
 
 	private final Map<String, RxServiceDomain> domains = new ConcurrentHashMap<>();
-	private final Lazy<Map<GmMetaModel, List<RxServiceDomain>>> domainsByModel = new Lazy<>(this::indexGmModelToDomains);
-	private final Lazy<Map<EntityType<?>, List<RxServiceDomain>>> domainsByReqType = new Lazy<>(this::indexReqTypeToDomains);
+	private final Lazy<Map<GmMetaModel, List<ServiceDomain>>> domainsByModel = new Lazy<>(this::indexGmModelToDomains);
+	private final Lazy<Map<EntityType<?>, List<ServiceDomain>>> domainsByReqType = new Lazy<>(this::indexReqTypeToDomains);
 
 	@Required
 	public void setModelConfigurations(RxModelConfigurations modelConfigurations) {
@@ -84,7 +84,7 @@ public class RxServiceDomains implements ServiceDomains {
 	}
 
 	@Override
-	public List<? extends ServiceDomain> listDomains(EntityType<? extends ServiceRequest> requestType) {
+	public List<ServiceDomain> listDomains(EntityType<? extends ServiceRequest> requestType) {
 		Model model = requestType.getModel();
 		if (model != null)
 			return listDomains(model.<GmMetaModel> getMetaModel());
@@ -93,14 +93,14 @@ public class RxServiceDomains implements ServiceDomains {
 	}
 
 	@Override
-	public List<? extends ServiceDomain> listDomains(GmMetaModel model) {
+	public List<ServiceDomain> listDomains(GmMetaModel model) {
 		return domainsByModel.get().getOrDefault(model, emptyList());
 	}
 
-	private Map<GmMetaModel, List<RxServiceDomain>> indexGmModelToDomains() {
-		Map<GmMetaModel, List<RxServiceDomain>> index = new IdentityHashMap<>();
+	private Map<GmMetaModel, List<ServiceDomain>> indexGmModelToDomains() {
+		Map<GmMetaModel, List<ServiceDomain>> index = new IdentityHashMap<>();
 
-		for (RxServiceDomain domain : list()) {
+		for (RxServiceDomain domain : domains.values()) {
 			if (log.isDebugEnabled())
 				logModelsForDomain(domain);
 
@@ -125,10 +125,10 @@ public class RxServiceDomains implements ServiceDomains {
 		log.debug(s);
 	}
 
-	private Map<EntityType<?>, List<RxServiceDomain>> indexReqTypeToDomains() {
-		Map<EntityType<?>, List<RxServiceDomain>> index = new IdentityHashMap<>();
+	private Map<EntityType<?>, List<ServiceDomain>> indexReqTypeToDomains() {
+		Map<EntityType<?>, List<ServiceDomain>> index = new IdentityHashMap<>();
 
-		for (RxServiceDomain domain : list())
+		for (RxServiceDomain domain : domains.values())
 			domain.modelOracle().getEntityTypeOracle(ServiceRequest.T) //
 					.getSubTypes() //
 					.transitive() //
@@ -150,7 +150,8 @@ public class RxServiceDomains implements ServiceDomains {
 	}
 
 	@Override
-	public List<RxServiceDomain> list() {
-		return List.copyOf(domains.values());
+	public List<ServiceDomain> list() {
+		return List.<ServiceDomain>copyOf(domains.values());
 	}
+
 }

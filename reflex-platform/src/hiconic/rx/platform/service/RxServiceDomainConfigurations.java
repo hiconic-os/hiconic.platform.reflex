@@ -13,8 +13,6 @@
 // ============================================================================
 package hiconic.rx.platform.service;
 
-import java.util.List;
-
 import com.braintribe.cfg.Required;
 
 import hiconic.rx.module.api.service.PlatformServiceDomains;
@@ -22,6 +20,7 @@ import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.module.api.service.ServiceDomainSymbol;
 
 public class RxServiceDomainConfigurations implements ServiceDomainConfigurations {
+
 	private RxServiceDomains serviceDomains;
 
 	@Required
@@ -44,7 +43,4 @@ public class RxServiceDomainConfigurations implements ServiceDomainConfiguration
 	@Override public RxServiceDomain system() { return byId(PlatformServiceDomains.system); }
 	// @formatter:on
 
-	public List<RxServiceDomain> list() {
-		return serviceDomains.list();
-	}
 }

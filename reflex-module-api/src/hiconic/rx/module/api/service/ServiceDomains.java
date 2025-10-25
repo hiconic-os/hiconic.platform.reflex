@@ -38,12 +38,12 @@ public interface ServiceDomains {
 	ServiceDomain byId(ServiceDomainSymbol domainId);
 
 	/** Lists all available {@link ServiceDomain}s */
-	List<? extends ServiceDomain> list();
+	List<ServiceDomain> list();
 
 	/** Lists all {@link ServiceDomain}s which contain given request type. */
-	List<? extends ServiceDomain> listDomains(EntityType<? extends ServiceRequest> requestType);
+	List<ServiceDomain> listDomains(EntityType<? extends ServiceRequest> requestType);
 
 	/** Lists all {@link ServiceDomain}s which contain given model. */
-	List<? extends ServiceDomain> listDomains(GmMetaModel model);
+	List<ServiceDomain> listDomains(GmMetaModel model);
 
 }

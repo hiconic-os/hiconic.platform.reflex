@@ -1,9 +1,10 @@
 // ============================================================================
 package hiconic.rx.explorer.processing.servlet.home;
 
+import static com.braintribe.utils.lcd.CollectionTools2.newList;
+
 import java.io.IOException;
 import java.net.URLEncoder;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.GregorianCalendar;
@@ -16,29 +17,26 @@ import org.apache.velocity.VelocityContext;
 
 import com.braintribe.cfg.Required;
 import com.braintribe.logging.Logger;
-import com.braintribe.model.accessdeployment.IncrementalAccess;
-import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.eval.Evaluator;
-import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.meta.data.prompt.Visible;
 import com.braintribe.model.packaging.Packaging;
-import com.braintribe.model.processing.bootstrapping.TribefireRuntime;
-import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.meta.cmd.builders.ModelMdResolver;
 import com.braintribe.model.processing.service.common.context.UserSessionAspect;
-import com.braintribe.model.processing.session.api.managed.ModelAccessory;
-import com.braintribe.model.processing.session.api.managed.ModelAccessoryFactory;
-import com.braintribe.model.processing.session.api.persistence.PersistenceGmSession;
 import com.braintribe.model.service.api.ServiceRequest;
-import com.braintribe.model.service.domain.ServiceDomain;
 import com.braintribe.model.usersession.UserSession;
 import com.braintribe.utils.CollectionTools;
 import com.braintribe.utils.collection.impl.AttributeContexts;
+import com.braintribe.utils.lcd.NullSafe;
 
+import hiconic.rx.access.module.api.AccessDomain;
+import hiconic.rx.access.module.api.AccessDomains;
 import hiconic.rx.explorer.home.model.Home;
 import hiconic.rx.explorer.home.model.Link;
 import hiconic.rx.explorer.home.model.LinkCollection;
 import hiconic.rx.explorer.home.model.LinkGroup;
+import hiconic.rx.module.api.service.ConfiguredModel;
+import hiconic.rx.module.api.service.ServiceDomain;
+import hiconic.rx.module.api.service.ServiceDomains;
 import hiconic.rx.servlet.velocity.BasicTemplateBasedServlet;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -62,19 +60,11 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 		this.refreshFileBasedTemplates = true;
 	}
 
-	private static class LinkConfigurerEntry {
-		BiConsumer<GenericEntity, LinkCollection> configurer;
-		EntityType<?> type;
-		String groupIdPattern;
+	private ServiceDomains serviceDomains;
+	private AccessDomains accessDomains;
 
-		public LinkConfigurerEntry(BiConsumer<GenericEntity, LinkCollection> configurer, EntityType<?> type, String groupIdPattern) {
-			this.configurer = configurer;
-			this.type = type;
-			this.groupIdPattern = groupIdPattern;
-		}
-	}
-
-	private final List<LinkConfigurerEntry> configurers = new ArrayList<>();
+	private final List<BiConsumer<? super ServiceDomain, LinkCollection>> serviceDomainLinkConfigurers = newList();
+	private final List<BiConsumer<? super AccessDomain, LinkCollection>> accessLinkConfigurers = newList();
 
 	/* Packaging */
 	private Supplier<Packaging> packagingProvider = () -> null;
@@ -83,10 +73,7 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 	private Set<String> grantedRoles = Collections.singleton("tf-admin");
 
 	/* Application Links */
-	private String explorerUrl = TribefireRuntime.getExplorerUrl();
-	// private String controlCenterUrl = NullSafe.get(TribefireRuntime.getControlCenterUrl(), explorerUrl);
-	private String controlCenterUrl = (TribefireRuntime.getControlCenterUrl() == null || TribefireRuntime.getControlCenterUrl().isEmpty())
-			? explorerUrl : TribefireRuntime.getControlCenterUrl();
+	private String explorerUrlWithTrailingSlash;
 
 	/* Relative Paths */
 	private String relativeLogPath = "logs";
@@ -108,18 +95,18 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 	private String defaultUserSessionAccessId = "user-sessions";
 	private String defaultUserStatisticsAccessId = "user-statistics";
 	private String defaultUserSetupAccessId = "setup";
-	private Evaluator<ServiceRequest> systemServiceRequestEvaluator;
 
-	private ModelAccessoryFactory modelAccessoryFactory;
+	@SuppressWarnings("unused")
+	private Evaluator<ServiceRequest> systemServiceRequestEvaluator;
 
 	@Override
 	public void init() {
-		setRelativeTemplateLocation(templateName);;
+		setRelativeTemplateLocation(templateName);
 	}
 
 	// @formatter:off
-	@Required
-	public void setModelAccessoryFactory(ModelAccessoryFactory modelAccessoryFactory) { this.modelAccessoryFactory = modelAccessoryFactory; }
+	@Required public void setServiceDomains(ServiceDomains serviceDomains) { this.serviceDomains = serviceDomains; }
+	@Required public void setAccessDomains(AccessDomains accessDomains) { this.accessDomains = accessDomains; }
 
 	/* Privileges */
 	public void setGrantedRoles(Set<String> grantedRoles) { this.grantedRoles = grantedRoles; }
@@ -132,10 +119,8 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 	public void setDefaultUserSetupAccessId(String defaultUserSetupAccessId) { this.defaultUserSetupAccessId = defaultUserSetupAccessId; }
 
 	/* Application Links */
-	@Required
-	public void setApplicationName(String applicationName) { this.applicationName = applicationName; }	
-	public void setExplorerUrl(String explorerUrl) { this.explorerUrl = explorerUrl; }
-	public void setControlCenterUrl(String controlCenterUrl) { this.controlCenterUrl = controlCenterUrl; }
+	@Required public void setApplicationName(String applicationName) { this.applicationName = applicationName; }
+	@Required 	public void setExplorerUrl(String explorerUrl) { this.explorerUrlWithTrailingSlash = ensureTrailingSlash(NullSafe.nonNull(explorerUrl, "explorerUrlWithTrailingSlash")); }
 
 	/* Relative servlet paths */
 	public void setRelativeAboutPath(String aboutUrl) { this.relativeAboutPath = aboutUrl; }
@@ -149,26 +134,16 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 	public void setSystemRequestEvaluator(Evaluator<ServiceRequest> serviceRequestEvaluator) { this.systemServiceRequestEvaluator = serviceRequestEvaluator; }
 	// @formatter:on
 
+	public void addServiceDomainLinkConfigurer(BiConsumer<? super ServiceDomain, LinkCollection> configurer) {
+		serviceDomainLinkConfigurers.add(configurer);
+	}
+
+	public void addAccessLinkConfigurer(BiConsumer<? super AccessDomain, LinkCollection> configurer) {
+		accessLinkConfigurers.add(configurer);
+	}
+
 	@Override
 	protected void serve(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
-		// TODO SECURITY - configure servlet filter
-		// User dummyUser = User.T.create();
-		// dummyUser.setName("dummy-admin");
-		//
-		// UserSession session = UserSession.T.create();
-		// session.setUser(dummyUser);
-		// session.getEffectiveRoles().add("tf-admin");
-		// session.setCreationDate(new Date());
-		//
-		// AttributeContext ac = AttributeContexts.derivePeek().set(UserSessionAspect.class, session).build();
-		//
-		// AttributeContexts.push(ac);
-		//
-		// try {
-		// super.serve(req, resp);
-		// } finally {
-		// AttributeContexts.pop();
-		// }
 		super.serve(req, resp);
 	}
 
@@ -182,10 +157,8 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 
 			// handle either tab or overview page.
 			boolean wasTab = handleTab(request, home);
-			if (!wasTab) {
+			if (!wasTab)
 				handleOverview(home, session);
-			}
-
 		}
 
 		/* Prepare the template context. */
@@ -281,111 +254,45 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 	// }
 	// }
 
-	private void handleGroup(UserSession userSession, Home home, boolean isAdminRequired, Supplier<LinkGroup> groupSupplier) {
+	private void handleOverview(Home home, UserSession userSession) {
+		handleGroup(userSession, home, true, () -> buildAdminGroup());
+		// handleGroup(userSession, home, true, () -> buildModelGroup());
+		handleGroup(userSession, home, false, () -> buildDomainGroup());
+		handleGroup(userSession, home, false, () -> buildAccessGroup());
+		// handleGroup(userSession, home, true, () -> buildFunctionalModuleGroup());
+		// handleGroup(userSession, home, false, () -> buildWebTerminalGroup());
+	}
 
+	private void handleGroup(UserSession userSession, Home home, boolean isAdminRequired, Supplier<LinkGroup> groupSupplier) {
 		if (!isAdminRequired || isAdminAccessGranted(userSession)) {
 			LinkGroup linkGroup = groupSupplier.get();
 			home.getGroups().add(linkGroup);
 		}
 	}
 
-	private class GroupContext {
-		PersistenceGmSession cortexSession;
-	}
+	// #################################################
+	// ## . . . . . . . . AdminGroup . . . . . . . . .##
+	// #################################################
 
-	private void handleOverview(Home home, UserSession userSession) {
-		GroupContext context = new GroupContext();
-		// TODO why need cortexSession?
-		// context.cortexSession = cortexSessionFactory.get();
-
-		handleGroup(userSession, home, true, () -> buildAdminGroup(context));
-		handleGroup(userSession, home, true, () -> buildModelGroup(context));
-		handleGroup(userSession, home, false, () -> buildDomainGroup(context));
-		handleGroup(userSession, home, true, () -> buildFunctionalModuleGroup(context));
-		handleGroup(userSession, home, true, () -> buildConfigurationModuleGroup(context));
-		handleGroup(userSession, home, false, () -> buildWebTerminalGroup(context));
-
-	}
-
-	private LinkGroup buildWebTerminalGroup(GroupContext context) {
-		LinkGroup webTerminalsGroup = LinkGroup.T.create();
-		webTerminalsGroup.setName("Web Terminals");
-		webTerminalsGroup.setIconRef("./webpages/images/cortex/webterminal.png");
-		webTerminalsGroup.setOpenLink(createLink("Open", ensureTrailingSlash(controlCenterUrl) + "#do=showFolder&par.folderName=Apps",
-				"tfControlCenter", null, "./webpages/images/open.png"));
-
-		fillWebTerminalGroup(context, webTerminalsGroup);
-		return webTerminalsGroup;
-	}
-	private LinkGroup buildFunctionalModuleGroup(GroupContext context) {
-		LinkGroup modulesGroup = LinkGroup.T.create();
-		modulesGroup.setName("Functional Modules");
-		modulesGroup.setIconRef("./webpages/images/cortex/modules.png");
-		modulesGroup.setOpenLink(createLink("Open", ensureTrailingSlash(controlCenterUrl) + "#do=showFolder&par.folderName=ShowFunctionalModules",
-				"tfControlCenter", null, "./webpages/images/open.png"));
-
-		fillFunctionalModulesGroup(context, modulesGroup);
-		return modulesGroup;
-	}
-	private LinkGroup buildConfigurationModuleGroup(GroupContext context) {
-		LinkGroup modulesGroup = LinkGroup.T.create();
-		modulesGroup.setName("Configuration Modules");
-		modulesGroup.setIconRef("./webpages/images/cortex/modules.png");
-		modulesGroup.setOpenLink(createLink("Open", ensureTrailingSlash(controlCenterUrl) + "#do=showFolder&par.folderName=ShowConfigurationModules",
-				"tfControlCenter", null, "./webpages/images/open.png"));
-
-		fillConfigurationModulesGroup(context, modulesGroup);
-		return modulesGroup;
-	}
-
-	private LinkGroup buildDomainGroup(GroupContext context) {
-		LinkGroup serviceDomainsGroup = LinkGroup.T.create();
-		serviceDomainsGroup.setName("Service Domains");
-		serviceDomainsGroup.setIconRef("./webpages/images/cortex/domains.png");
-		serviceDomainsGroup.setOpenLink(createLink("Open", ensureTrailingSlash(controlCenterUrl) + "#do=showFolder&par.folderName=CustomAccesses",
-				"tfControlCenter", null, "./webpages/images/open.png"));
-
-		fillDomainGroup(context, serviceDomainsGroup);
-		return serviceDomainsGroup;
-	}
-	private LinkGroup buildModelGroup(GroupContext context) {
-		LinkGroup modelGroup = LinkGroup.T.create();
-		modelGroup.setName("Models");
-		modelGroup.setIconRef("./webpages/images/cortex/models.png");
-		modelGroup.setOpenLink(createLink("Open", ensureTrailingSlash(controlCenterUrl) + "#do=showFolder&par.folderName=CustomModels",
-				"tfControlCenter", null, "./webpages/images/open.png"));
-
-		fillModelGroup(context, modelGroup);
-		return modelGroup;
-	}
-
-	private LinkGroup buildAdminGroup(GroupContext context) {
+	private LinkGroup buildAdminGroup() {
 		LinkGroup adminGroup = LinkGroup.T.create();
 		adminGroup.setName("Administration");
 		adminGroup.setIconRef("./webpages/images/cortex/settings.png");
 
-		fillAdminGroup(adminGroup, context);
+		fillAdminGroup(adminGroup);
 		return adminGroup;
 	}
 
-	private void fillAdminGroup(LinkGroup administrationGroup, GroupContext context) {
-
+	private void fillAdminGroup(LinkGroup administrationGroup) {
 		LinkCollection cortexgroup = LinkCollection.T.create();
 		cortexgroup.setDisplayName("Cortex");
 		cortexgroup.setUrl("controlCenterUrl" + "#default");
 		cortexgroup.setTarget("tfControlCenter-cortex");
 		cortexgroup.setIconRef("./webpages/images/cortex/tf-cortex.png");
 
-		if (controlCenterUrl != null) {
+		cortexgroup.getNestedLinks().add(createLink("Administration", explorerUrlWithTrailingSlash + "#default", "tfControlCenter-cortex", null));
 
-			cortexgroup.getNestedLinks()
-					.add(createLink("Administration", ensureTrailingSlash(controlCenterUrl) + "#default", "tfControlCenter-cortex", null));
-
-		}
-
-		List<BiConsumer<GenericEntity, LinkCollection>> configurers = resolveConfigures(administrationGroup.getName(), IncrementalAccess.T);
-
-		configureAccessLink(context, cortexgroup, configurers, "cortex");
+		configureAccessDomainLink(cortexgroup, "cortex");
 
 		administrationGroup.getLinks().add(cortexgroup);
 
@@ -422,70 +329,228 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 		setupgroup.setDisplayName("Platform Setup (Assets)");
 		setupgroup.setIconRef("./webpages/images/cortex/asset.png");
 
-		if (controlCenterUrl != null) {
-			setupgroup.getNestedLinks()
-					.add(createLink("Administration", ensureTrailingSlash(controlCenterUrl) + "?accessId=" + defaultUserSetupAccessId,
-							"tfControlCenter-setup", null, "./webpages/images/cortex/asset.png"));
+		setupgroup.getNestedLinks().add(createLink("Administration", explorerUrlWithTrailingSlash + "?accessId=" + defaultUserSetupAccessId,
+				"tfControlCenter-setup", null, "./webpages/images/cortex/asset.png"));
 
-		}
-
-		configureAccessLink(context, setupgroup, configurers, "setup");
+		configureAccessDomainLink(setupgroup, "setup");
 
 		administrationGroup.getLinks().add(setupgroup);
 
-		if (controlCenterUrl != null) {
+		usergroups.getNestedLinks().add(createLink("Administration",
+				explorerUrlWithTrailingSlash + "?accessId=" + urlEncode(defaultAuthAccessId) + "#default", "tfControlCenter-auth", null));
 
+		if (accessExists(defaultUserSessionAccessId))
 			usergroups.getNestedLinks()
-					.add(createLink("Administration",
-							ensureTrailingSlash(controlCenterUrl) + "?accessId=" + urlEncode(defaultAuthAccessId) + "#default",
-							"tfControlCenter-auth", null));
-
-			usergroups.getNestedLinks()
-					.add(createLink("User Sessions",
-							ensureTrailingSlash(controlCenterUrl) + "?accessId=" + urlEncode(defaultUserSessionAccessId) + "#default",
+					.add(createLink("User Sessions", explorerUrlWithTrailingSlash + "?accessId=" + urlEncode(defaultUserSessionAccessId) + "#default",
 							"tfControlCenter-sessions", null));
 
+		if (accessExists(defaultUserStatisticsAccessId))
 			usergroups.getNestedLinks()
 					.add(createLink("User Statistics",
-							ensureTrailingSlash(controlCenterUrl) + "?accessId=" + urlEncode(defaultUserStatisticsAccessId) + "#default",
+							explorerUrlWithTrailingSlash + "?accessId=" + urlEncode(defaultUserStatisticsAccessId) + "#default",
 							"tfControlCenter-statistics", null));
-
-			/* administrationGroup.getLinks().add(createLink("Asset Setup", ensureTrailingSlash(controlCenterUrl) + "?accessId=" +
-			 * defaultUserSetupAccessId, "tfControlCenter-setup", null, "./webpages/images/cortex/asset.png")); */
-		}
-
 	}
 
-	private void configureAccessLink(GroupContext context, LinkCollection linkCollection, List<BiConsumer<GenericEntity, LinkCollection>> configurers,
-			String accessId) {
-		// TODO accesses
-
-//		//@formatter:off
-//		SelectQuery queryCortexAccess = new SelectQueryBuilder().from(IncrementalAccess.T, "a")
-//			.where()
-//				.property("a", IncrementalAccess.externalId).eq(accessId)
-//			.select("a")
-//			.done();
-//		//@formatter:on
+	private String getPlatformVitalityStatus() {
+		// TODO platform vitality status
+		return "&nbsp;&#x2714;";
+		// RunCheckBundles run = RunCheckBundles.T.create();
+		// run.setCoverage(Collections.singleton(CheckCoverage.vitality));
+		// run.setIsPlatformRelevant(true);
 		//
-		// queryAndConsume(context.cortexSession, queryCortexAccess, (IncrementalAccess a) -> {
-		// configurers.forEach(c -> c.accept(a, linkCollection));
+		// CheckBundlesResponse response = run.eval(systemServiceRequestEvaluator).get();
+		//
+		// CheckStatus status = response.getStatus();
+		// switch (status) {
+		// case ok:
+		// return "&nbsp;&#x2714;";
+		// case warn:
+		// return "&nbsp;&#x26a0;";
+		// case fail:
+		// default:
+		// return "&nbsp;&#x2716;";
+		// }
+	}
+
+	private boolean accessExists(String acccessId) {
+		return accessDomains.byId(acccessId) != null;
+	}
+
+	// #################################################
+	// ## . . . . . . . . ModelGroup . . . . . . . . .##
+	// #################################################
+
+	@SuppressWarnings("unused")
+	private LinkGroup buildModelGroup() {
+		LinkGroup modelGroup = LinkGroup.T.create();
+		modelGroup.setName("Models");
+		modelGroup.setIconRef("./webpages/images/cortex/models.png");
+		modelGroup.setOpenLink(createLink("Open", explorerUrlWithTrailingSlash + "#do=showFolder&par.folderName=CustomModels", "tfControlCenter",
+				null, "./webpages/images/open.png"));
+
+		fillModelGroup(modelGroup);
+		return modelGroup;
+	}
+
+	private void fillModelGroup(@SuppressWarnings("unused") LinkGroup modelsGroup) {
+		//
+//				//@formatter:off
+//				SelectQuery query = new SelectQueryBuilder().from(GmMetaModel.T, "m")
+//					.leftJoin("m", GmMetaModel.types, "t")
+//					.where()
+//						.negation()
+//							.disjunction()
+//								.property("m", GmMetaModel.name).ilike("tribefire.cortex*")
+//								.property("m", GmMetaModel.name).ilike("com.braintribe*")
+//							.close()
+//					.select("m", GmMetaModel.name)
+//					.select("m", GmMetaModel.version)
+//					.select().count("t")
+//					.orderBy(OrderingDirection.ascending).property("m", GmMetaModel.name)
+//					.done();
+//				//@formatter:on
+		//
+		// queryAndConsume(context.cortexSession, query, (r) -> {
+		//
+		// ListRecord lr = (ListRecord) r;
+		// List<Object> values = lr.getValues();
+		// String modelName = (String) values.get(0);
+		// String version = (String) values.get(1);
+		// long typeCount = (Long) values.get(2);
+		//
+		// if (typeCount > 0) {
+		// LinkCollection links = LinkCollection.T.create();
+		// links.setIconRef("./webpages/images/cortex/models.png");
+		// if (StringTools.isEmpty(version)) {
+		// version = "unknownVersion";
+		//
+		// }
+		//
+		// String[] nameElements = modelName.split(":");
+		// String shortName = nameElements[nameElements.length - 1];
+		//
+		// String displayName = shortName; // + " (" + version + ")";
+		//
+		// links.setDisplayName(displayName);
+		//
+		// // TODO Remove the Standalone Modeler completely
+		// // if (modelerUrl != null) {
+		// // links.getNestedLinks()
+		// // .add(createLink("Browse",
+		// // modelerUrl + "#readOnly&do=loadModel&par.modelName=" +
+		// // urlEncode(m.getName()),
+		// // "tf-modeler", null));
+		// // }
+		// if (controlCenterUrl != null) {
+		// links.getNestedLinks()
+		// .add(createLink("Explore",
+		// controlCenterUrl + "#do=query&par.typeSignature="
+		// + urlEncode(GmMetaModel.T.getTypeSignature()) + "&par.propertyName=name&par.propertyValue="
+		// + urlEncode(modelName),
+		// "tfControlCenter", null));
+		// }
+		// /* links.getNestedLinks().add(createLink("Browse", ".", "tfModeler", null)); links.getNestedLinks().add(createLink("Exchange Package",
+		// * ".", "tfModeler", null)); links.getNestedLinks().add(createLink("JSON", ".", "tfModeler", null)); */
+		// modelsGroup.getLinks().add(links);
+		// }
+		//
 		// });
 	}
 
-	private void fillWebTerminalGroup(GroupContext context, LinkGroup webTerminalsGroup) {
-		// TODO find a way to list web terminals and check which are visible for current user
+	// #################################################
+	// ## . . . . . . . . DomainGroup . . . . . . . . ##
+	// #################################################
 
-		// ModelAccessory modelAccessory = modelAccessoryFactory.getForModel(cortexAccess.getMetaModel().getName());
-		// CmdResolver resolver = modelAccessory.getCmdResolver();
-		//
-		// if (resolver.getMetaData().entity(w).is(Visible.T)) {
-		// webTerminalsGroup.getLinks().add(createLink(w.getName(), relativeWebTerminalPath + "/" + w.getPathIdentifier(),
-		// "tfTerminal-" + w.getExternalId(), null, "./webpages/images/cortex/webterminal.png"));
-		// }
+	private LinkGroup buildDomainGroup() {
+		LinkGroup serviceDomainsGroup = LinkGroup.T.create();
+		serviceDomainsGroup.setName("Service Domains");
+		serviceDomainsGroup.setIconRef("./webpages/images/cortex/domains.png");
+		// This points to a folder, which does not exist currently
+		// serviceDomainsGroup.setOpenLink(createLink("Open", ensureTrailingSlash(controlCenterUrl) + "#do=showFolder&par.folderName=CustomAccesses",
+		// "tfControlCenter", null, "./webpages/images/open.png"));
+
+		fillDomainGroup(serviceDomainsGroup);
+		return serviceDomainsGroup;
 	}
-	private void fillFunctionalModulesGroup(GroupContext context, LinkGroup modulesGroup) {
 
+	private void fillDomainGroup(LinkGroup serviceDomainsGroup) {
+		for (ServiceDomain sd : serviceDomains.list()) {
+			String domainId = sd.domainId();
+
+			// accesses are in a separate group
+			if (accessDomains.hasDomain(domainId))
+				continue;
+
+			LinkCollection links = LinkCollection.T.create();
+			links.setIconRef("./webpages/images/cortex/domains.png");
+
+			setDisplayName(domainId, links);
+			configureServiceDomainLink(links, domainId);
+
+			if (links.getHasErrors()) {
+				links.setDisplayName(links.getDisplayName() + " &#x2757;");
+				serviceDomainsGroup.getLinks().add(links);
+
+			} else if (!links.getNestedLinks().isEmpty()) {
+				serviceDomainsGroup.getLinks().add(links);
+			}
+		}
+	}
+
+	// #################################################
+	// ## . . . . . . . . AccessGroup . . . . . . . . ##
+	// #################################################
+
+	private LinkGroup buildAccessGroup() {
+		LinkGroup serviceDomainsGroup = LinkGroup.T.create();
+		serviceDomainsGroup.setName("Access Domains");
+		serviceDomainsGroup.setIconRef("./webpages/images/cortex/domains.png");
+		// This points to a folder, which does not exist currently
+		// serviceDomainsGroup.setOpenLink(createLink("Open", ensureTrailingSlash(controlCenterUrl) + "#do=showFolder&par.folderName=CustomAccesses",
+		// "tfControlCenter", null, "./webpages/images/open.png"));
+
+		fillAccessGroup(serviceDomainsGroup);
+		return serviceDomainsGroup;
+	}
+
+	private void fillAccessGroup(LinkGroup accessesGroup) {
+		for (String accessId : accessDomains.domainIds()) {
+			AccessDomain sd = accessDomains.byId(accessId);
+
+			LinkCollection links = LinkCollection.T.create();
+			links.setIconRef("./webpages/images/cortex/domains.png");
+
+			setDisplayName(sd.access().getAccessId(), links);
+			addAccessLinks(sd, links);
+			configureAccessDomainLink(links, accessId);
+
+			if (links.getHasErrors()) {
+				links.setDisplayName(links.getDisplayName() + " &#x2757;");
+				accessesGroup.getLinks().add(links);
+
+			} else if (!links.getNestedLinks().isEmpty()) {
+				accessesGroup.getLinks().add(links);
+			}
+		}
+	}
+
+	// #################################################
+	// ## . . . . . FunctionalModuleGroup . . . . . . ##
+	// #################################################
+
+	@SuppressWarnings("unused")
+	private LinkGroup buildFunctionalModuleGroup() {
+		LinkGroup modulesGroup = LinkGroup.T.create();
+		modulesGroup.setName("Functional Modules");
+		modulesGroup.setIconRef("./webpages/images/cortex/modules.png");
+		modulesGroup.setOpenLink(createLink("Open", explorerUrlWithTrailingSlash + "#do=showFolder&par.folderName=ShowFunctionalModules",
+				"tfControlCenter", null, "./webpages/images/open.png"));
+
+		fillFunctionalModulesGroup(modulesGroup);
+		return modulesGroup;
+	}
+
+	private void fillFunctionalModulesGroup(@SuppressWarnings("unused") LinkGroup modulesGroup) {
 //		//@formatter:off
 //		SelectQuery query = new SelectQueryBuilder().from(Module.T, "m")
 //			.where()
@@ -526,55 +591,6 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 		// modulesGroup.getLinks().add(links);
 		//
 		// });
-	}
-	private void fillConfigurationModulesGroup(GroupContext context, LinkGroup modulesGroup) {
-
-//		//@formatter:off
-//		SelectQuery query = new SelectQueryBuilder().from(Module.T, "m")
-//			.where()
-//				.property("m", Module.bindsInitializers).eq(true)
-//			.select("m", Module.name)
-//			.orderBy(OrderingDirection.ascending).property("m", Module.globalId)
-//			.done();
-//		//@formatter:on
-		//
-		// queryAndConsume(context.cortexSession, query, (m) -> {
-		//
-		// String name = (String) m;
-		//
-		// LinkCollection links = LinkCollection.T.create();
-		// links.setIconRef("./webpages/images/cortex/modules.png");
-		//
-		// links.setDisplayName(name == null ? "Unknown Module" : name);
-		//
-		// // links.getNestedLinks().add(createLink("About",
-		// // "./home?selectedTab=CARTRIDGE&selectedTabPath="+urlEncode("cartridge/"+urlEncode(c.getExternalId())+"/aObout"),
-		// // "_self", null));
-		//
-		// modulesGroup.getLinks().add(links);
-		//
-		// });
-	}
-
-	private String getPlatformVitalityStatus() {
-		// TODO platform vitality status
-		return "&nbsp;&#x2714;";
-		// RunCheckBundles run = RunCheckBundles.T.create();
-		// run.setCoverage(Collections.singleton(CheckCoverage.vitality));
-		// run.setIsPlatformRelevant(true);
-		//
-		// CheckBundlesResponse response = run.eval(systemServiceRequestEvaluator).get();
-		//
-		// CheckStatus status = response.getStatus();
-		// switch (status) {
-		// case ok:
-		// return "&nbsp;&#x2714;";
-		// case warn:
-		// return "&nbsp;&#x26a0;";
-		// case fail:
-		// default:
-		// return "&nbsp;&#x2716;";
-		// }
 	}
 
 	// private Map<String, String> getDistributedVitalityStatusByModule() {
@@ -623,6 +639,60 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 	// return statusRepresentation;
 	// }
 
+	// #################################################
+	// ## . . . . . . . WebTerminalGroup . . . . . . .##
+	// #################################################
+
+	@SuppressWarnings("unused")
+	private LinkGroup buildWebTerminalGroup() {
+		LinkGroup webTerminalsGroup = LinkGroup.T.create();
+		webTerminalsGroup.setName("Web Terminals");
+		webTerminalsGroup.setIconRef("./webpages/images/cortex/webterminal.png");
+		webTerminalsGroup.setOpenLink(createLink("Open", explorerUrlWithTrailingSlash + "#do=showFolder&par.folderName=Apps", "tfControlCenter", null,
+				"./webpages/images/open.png"));
+
+		fillWebTerminalGroup(webTerminalsGroup);
+		return webTerminalsGroup;
+	}
+
+	private void fillWebTerminalGroup(@SuppressWarnings("unused") LinkGroup webTerminalsGroup) {
+		// TODO find a way to list web terminals and check which are visible for current user
+
+		// ModelAccessory modelAccessory = modelAccessoryFactory.getForModel(cortexAccess.getMetaModel().getName());
+		// CmdResolver resolver = modelAccessory.getCmdResolver();
+		//
+		// if (resolver.getMetaData().entity(w).is(Visible.T)) {
+		// webTerminalsGroup.getLinks().add(createLink(w.getName(), relativeWebTerminalPath + "/" + w.getPathIdentifier(),
+		// "tfTerminal-" + w.getExternalId(), null, "./webpages/images/cortex/webterminal.png"));
+		// }
+	}
+
+	// #################################################
+	// ## . . . . . . . . . . Misc . . . . . . . . . .##
+	// #################################################
+
+	/** Configures both CRUD and API links, if available */
+	private void configureAccessDomainLink(LinkCollection linkCollection, String accessId) {
+		AccessDomain ad = accessDomains.byId(accessId);
+		if (ad != null && isModelVisible(ad.configuredDataModel()))
+			accessLinkConfigurers.forEach(c -> c.accept(ad, linkCollection));
+
+		configureServiceDomainLink(linkCollection, accessId);
+	}
+
+	private void configureServiceDomainLink(LinkCollection linkCollection, String domainId) {
+		ServiceDomain sd = serviceDomains.byId(domainId);
+		if (sd != null && isModelVisible(sd.configuredModel()))
+			serviceDomainLinkConfigurers.forEach(c -> c.accept(sd, linkCollection));
+	}
+
+	private boolean isModelVisible(ConfiguredModel configuredModel) {
+		ModelMdResolver mdResolver = configuredModel.contextCmdResolver().getMetaData();
+		mdResolver.useCases(USECASE_GME_LOGON);
+
+		return mdResolver.is(Visible.T);
+	}
+
 	private static String urlEncode(String text) {
 		try {
 			return URLEncoder.encode(text, "UTF-8");
@@ -632,122 +702,31 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 		}
 	}
 
-	private void fillDomainGroup(GroupContext context, LinkGroup serviceDomainsGroup) {
-		// TODO domain group
-
-//		//@formatter:off
-//		SelectQuery queryPlatformDomain = new SelectQueryBuilder().from(ServiceDomain.T, "s")
-//			.where()
-//				.property("s", ServiceDomain.externalId).eq(platformDomain)
-//			.select("s")
-//			.done();
-//		//@formatter:on
-		//
-		// List<BiConsumer<GenericEntity, LinkCollection>> configurers = resolveConfigures(serviceDomainsGroup.getName(), ServiceDomain.T);
-		//
-		// queryAndConsume(context.cortexSession, queryPlatformDomain, (d) -> {
-		//
-		// ServiceDomain sd = (ServiceDomain) d;
-		//
-		// LinkCollection links = LinkCollection.T.create();
-		// links.setIconRef("./webpages/images/cortex/tf-cortex.png");
-		//
-		// setDisplayName(sd, links);
-		//
-		// configurers.forEach(c -> c.accept(sd, links));
-		//
-		// if (!links.getNestedLinks().isEmpty()) {
-		// serviceDomainsGroup.getLinks().add(links);
-		// }
-		// });
-		//
-//		//@formatter:off
-//		SelectQuery queryServiceDomain = new SelectQueryBuilder().from(ServiceDomain.T, "s")
-//			.select("s")
-//			.orderBy(OrderingDirection.ascending).property("s", ServiceDomain.externalId)
-//			.done();
-//		//@formatter:on
-		//
-		// List<String> wbIds = getListOfWorkbenchAccessIds(context.cortexSession);
-		//
-		// queryAndConsume(context.cortexSession, queryServiceDomain, (r) -> {
-		//
-		// ServiceDomain sd = (ServiceDomain) r;
-		// String externalId = sd.getExternalId();
-		//
-		// if (sd instanceof Deployable) {
-		// Deployable deployable = (Deployable) sd;
-		// if (deployable.getDeploymentStatus() != DeploymentStatus.deployed) {
-		// return;
-		// }
-		// }
-		//
-		// if (!(sd instanceof HardwiredDeployable) && !wbIds.contains(externalId)) {
-		// LinkCollection links = LinkCollection.T.create();
-		// if (platformDomain.equals(sd.getExternalId()) || defaultDomain.equals(externalId)) {
-		// return;
-		// }
-		// links.setIconRef("./webpages/images/cortex/domains.png");
-		//
-		// setDisplayName(sd, links);
-		// if ((sd instanceof IncrementalAccess)) {
-		// addAccessLinks((IncrementalAccess) sd, links);
-		// }
-		//
-		// configurers.forEach(c -> c.accept(sd, links));
-		//
-		// if (links.getHasErrors()) {
-		// links.setDisplayName(links.getDisplayName() + " &#x2757;");
-		// serviceDomainsGroup.getLinks().add(links);
-		// } else if (!links.getNestedLinks().isEmpty()) {
-		// serviceDomainsGroup.getLinks().add(links);
-		// }
-		// }
-		//
-		// });
-	}
-
-	private boolean isModelVisible(IncrementalAccess access, String... useCases) {
-		String accessId = access.getExternalId();
-
-		ModelAccessory modelAccessory = modelAccessoryFactory.getForAccess(accessId);
-		CmdResolver resolver = modelAccessory.getCmdResolver();
-
-		ModelMdResolver mdResolver = resolver.getMetaData();
-		if (useCases != null && useCases.length > 0) {
-			mdResolver.useCases(useCases);
-		}
-
-		return mdResolver.is(Visible.T);
-	}
-
-	private void addAccessLinks(IncrementalAccess access, LinkCollection links) {
+	private void addAccessLinks(AccessDomain ad, LinkCollection links) {
 		try {
-			if (isModelVisible(access, USECASE_GME_LOGON)) {
-				links.getNestedLinks()
-						.add(createLink("Explore", ensureTrailingSlash(explorerUrl) + "?accessId=" + urlEncode(access.getExternalId()) + "#default",
-								"tfExplorer-" + access.getExternalId(), null));
+			if (isModelVisible(ad.configuredDataModel())) {
+				String accessId = ad.access().getAccessId();
+				links.getNestedLinks().add(//
+						createLink("Explore", explorerUrlWithTrailingSlash + "?accessId=" + urlEncode(accessId) + "#default",
+								"tfExplorer-" + accessId, null));
 
-				IncrementalAccess wbAccess = access.getWorkbenchAccess();
-				if (wbAccess != null) {
-					links.getNestedLinks()
-							.add(createLink("Work&shy;bench",
-									ensureTrailingSlash(explorerUrl) + "?accessId=" + urlEncode(wbAccess.getExternalId()) + "#default",
-									"tfExplorer-" + wbAccess.getExternalId(), null));
-				}
+				// IncrementalAccess wbAccess = access.getWorkbenchAccess();
+				// if (wbAccess != null) {
+				// links.getNestedLinks()
+				// .add(createLink("Work&shy;bench",
+				// explorerUrlWithTrailingSlash + "?accessId=" + urlEncode(wbAccess.getExternalId()) + "#default",
+				// "tfExplorer-" + wbAccess.getExternalId(), null));
+				// }
 			}
 		} catch (Exception e) {
-			logger.warn(() -> "Error while trying to get the links for access " + access, e);
+			logger.warn(() -> "Error while trying to get the links for access " + ad, e);
 			links.setHasErrors(true);
 		}
 	}
 
-	private void setDisplayName(ServiceDomain d, LinkCollection links) {
-		String displayName = d.getName();
-		if (displayName == null) {
-			displayName = d.getExternalId();
-		}
-		links.setDisplayName(displayName);
+	private void setDisplayName(String technicalName, LinkCollection links) {
+		String name = technicalName;
+		links.setDisplayName(name);
 	}
 
 	// private List<String> getListOfWorkbenchAccessIds(PersistenceGmSession cortexSession) {
@@ -761,70 +740,7 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 //		return list;
 //	}
 	
-	private void fillModelGroup(GroupContext context, LinkGroup modelsGroup) {
-//
-//		//@formatter:off
-//		SelectQuery query = new SelectQueryBuilder().from(GmMetaModel.T, "m")
-//			.leftJoin("m", GmMetaModel.types, "t")
-//			.where()
-//				.negation()
-//					.disjunction()
-//						.property("m", GmMetaModel.name).ilike("tribefire.cortex*")
-//						.property("m", GmMetaModel.name).ilike("com.braintribe*")
-//					.close()
-//			.select("m", GmMetaModel.name)
-//			.select("m", GmMetaModel.version)
-//			.select().count("t")
-//			.orderBy(OrderingDirection.ascending).property("m", GmMetaModel.name)
-//			.done();
-//		//@formatter:on
-		//
-		// queryAndConsume(context.cortexSession, query, (r) -> {
-		//
-		// ListRecord lr = (ListRecord) r;
-		// List<Object> values = lr.getValues();
-		// String modelName = (String) values.get(0);
-		// String version = (String) values.get(1);
-		// long typeCount = (Long) values.get(2);
-		//
-		// if (typeCount > 0) {
-		// LinkCollection links = LinkCollection.T.create();
-		// links.setIconRef("./webpages/images/cortex/models.png");
-		// if (StringTools.isEmpty(version)) {
-		// version = "unknownVersion";
-		//
-		// }
-		//
-		// String[] nameElements = modelName.split(":");
-		// String shortName = nameElements[nameElements.length - 1];
-		//
-		// String displayName = shortName; // + " (" + version + ")";
-		//
-		// links.setDisplayName(displayName);
-		//
-		// // TODO Remove the Standalone Modeler completely
-		// // if (modelerUrl != null) {
-		// // links.getNestedLinks()
-		// // .add(createLink("Browse",
-		// // ensureTrailingSlash(modelerUrl) + "#readOnly&do=loadModel&par.modelName=" +
-		// // urlEncode(m.getName()),
-		// // "tf-modeler", null));
-		// // }
-		// if (controlCenterUrl != null) {
-		// links.getNestedLinks()
-		// .add(createLink("Explore",
-		// ensureTrailingSlash(controlCenterUrl) + "#do=query&par.typeSignature="
-		// + urlEncode(GmMetaModel.T.getTypeSignature()) + "&par.propertyName=name&par.propertyValue="
-		// + urlEncode(modelName),
-		// "tfControlCenter", null));
-		// }
-		// /* links.getNestedLinks().add(createLink("Browse", ".", "tfModeler", null)); links.getNestedLinks().add(createLink("Exchange Package",
-		// * ".", "tfModeler", null)); links.getNestedLinks().add(createLink("JSON", ".", "tfModeler", null)); */
-		// modelsGroup.getLinks().add(links);
-		// }
-		//
-		// });
-	}
+	
 	private boolean handleTab(HttpServletRequest request, Home home) {
 		String selectedTabParameter = request.getParameter("selectedTab");
 		String selectedTabPathParameter = request.getParameter("selectedTabPath");
@@ -872,32 +788,10 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 	}
 
 	private String ensureTrailingSlash(String path) {
-		if (path == null) {
+		if (path == null)
 			return "/";
-		}
-		if (path.endsWith("/")) {
-			return path;
-		}
-		return path + "/";
-	}
 
-	public <T extends GenericEntity> void addLinkConfigurer(String groupPattern, EntityType<T> type, BiConsumer<T, LinkCollection> configurer) {
-		configurers.add(new LinkConfigurerEntry((BiConsumer<GenericEntity, LinkCollection>) configurer, type, groupPattern));
-	}
-
-	private List<BiConsumer<GenericEntity, LinkCollection>> resolveConfigures(String groupId, EntityType<?> type) {
-		List<BiConsumer<GenericEntity, LinkCollection>> matchingConfigurers = new ArrayList<>();
-		for (LinkConfigurerEntry entry : configurers) {
-			if (isConfigurerMatching(groupId, type, entry)) {
-				matchingConfigurers.add(entry.configurer);
-			}
-		}
-		return matchingConfigurers;
-	}
-
-	private boolean isConfigurerMatching(String groupId, EntityType<?> type, LinkConfigurerEntry entry) {
-		return (entry.groupIdPattern == null || groupId.matches(entry.groupIdPattern)) && //
-				(entry.type == null || entry.type.isAssignableFrom(type));
+		return path.endsWith("/") ? path : path + "/";
 	}
 
 }

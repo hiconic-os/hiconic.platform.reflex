@@ -17,6 +17,7 @@ import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 import com.braintribe.wire.api.space.WireSpace;
 
+import hiconic.rx.access.module.api.AccessContract;
 import hiconic.rx.explorer.processing.servlet.about.AboutRxServlet;
 import hiconic.rx.explorer.processing.servlet.about.expert.DiagnosticMultinode;
 import hiconic.rx.explorer.processing.servlet.about.expert.Heapdump;
@@ -29,6 +30,7 @@ import hiconic.rx.explorer.processing.servlet.about.expert.Threaddump;
 import hiconic.rx.explorer.processing.servlet.alive.AliveServlet;
 import hiconic.rx.explorer.processing.servlet.explorer.SymbolTranslationServlet;
 import hiconic.rx.explorer.processing.servlet.home.HomeRxServlet;
+import hiconic.rx.explorer.processing.servlet.home.OpenApiLandingPageLinkConfigurer;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.security.web.api.AuthFilters;
 import hiconic.rx.topology.api.TopologyContract;
@@ -44,6 +46,7 @@ public class WebappsSpace implements WireSpace {
 	// @formatter:off
 	@Import private RxPlatformContract platform;
 
+	@Import private AccessContract access;
 	@Import private TopologyContract topology;
 	@Import private WebServerContract webServer;
 	// @formatter:on
@@ -81,7 +84,19 @@ public class WebappsSpace implements WireSpace {
 	private HomeRxServlet homeServlet() {
 		HomeRxServlet bean = new HomeRxServlet();
 		bean.setApplicationName(platform.applicationName());
+		bean.setExplorerUrl("/tribefire-explorer"); // relative path works
+		bean.setServiceDomains(platform.serviceDomains());
+		bean.setAccessDomains(access.accessDomains());
 
+		bean.addAccessLinkConfigurer(openApiLandingPageLinkConfigurer());
+		bean.addServiceDomainLinkConfigurer(openApiLandingPageLinkConfigurer());
+
+		return bean;
+	}
+
+	@Managed
+	private OpenApiLandingPageLinkConfigurer openApiLandingPageLinkConfigurer() {
+		OpenApiLandingPageLinkConfigurer bean = new OpenApiLandingPageLinkConfigurer();
 		return bean;
 	}
 

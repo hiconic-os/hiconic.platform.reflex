@@ -475,7 +475,7 @@ public abstract class AbstractOpenapiProcessor<R extends OpenapiRequest> impleme
 				break;
 			case decimalType:
 				schema.setTitle("decimal");
-				schema.setType(OpenapiType.NUMBER); // TODO: Check if it shouldn't be String
+				schema.setType(OpenapiType.NUMBER); // not sure if it shouldn't be String
 				break;
 			case mapType:
 				schema.setTitle("map");

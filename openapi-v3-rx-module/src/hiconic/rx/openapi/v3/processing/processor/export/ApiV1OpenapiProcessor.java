@@ -16,6 +16,7 @@
 package hiconic.rx.openapi.v3.processing.processor.export;
 
 import static com.braintribe.utils.lcd.CollectionTools2.asSet;
+import static com.braintribe.utils.lcd.CollectionTools2.newConcurrentMap;
 import static com.braintribe.utils.lcd.CollectionTools2.newMap;
 import static com.braintribe.utils.lcd.CollectionTools2.newSet;
 import static hiconic.rx.openapi.v3.processing.processor.export.OpenapiMimeType.APPLICATION_JSON;
@@ -37,10 +38,13 @@ import com.braintribe.model.generic.mdec.ModelDeclaration;
 import com.braintribe.model.generic.reflection.CustomType;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
+import com.braintribe.model.generic.reflection.EntityVisitor;
 import com.braintribe.model.generic.reflection.GenericModelType;
 import com.braintribe.model.generic.reflection.Model;
 import com.braintribe.model.meta.GmEntityType;
+import com.braintribe.model.meta.GmMetaModel;
 import com.braintribe.model.meta.data.mapping.UnsatisfiedBy;
+import com.braintribe.model.meta.selector.UseCaseSelector;
 import com.braintribe.model.openapi.v3_0.OpenApi;
 import com.braintribe.model.openapi.v3_0.OpenapiOperation;
 import com.braintribe.model.openapi.v3_0.OpenapiParameter;
@@ -67,12 +71,11 @@ import hiconic.rx.webapi.model.meta.HttpRequestMethod;
 
 public class ApiV1OpenapiProcessor extends AbstractOpenapiProcessor<OpenapiServicesRequest> {
 
-	// TODO: enable endpointParameters field again to cache them as they wont change in most cases
-	// private List<OpenapiParameter> endpointParameters;
-
 	private ServiceDomains serviceDomains;
 	private WebApiMappingOracle mappingOracle;
 	private String relativeEndpointPath = "api/";
+
+	private final Map<String, Set<String>> domainIdToMdUseCases = newConcurrentMap();
 
 	@Required
 	public void setServiceDomains(ServiceDomains serviceDomains) {
@@ -120,7 +123,7 @@ public class ApiV1OpenapiProcessor extends AbstractOpenapiProcessor<OpenapiServi
 
 		mappingOracle.getAllForDomain(request.getServiceDomain()).stream() //
 				.sorted(Comparator.comparing(SingleDdraMapping::getPathInfo).thenComparing(SingleDdraMapping::getMethod)).forEach(m -> {
-					OpenapiPath path = pathStringToPath.computeIfAbsent(m.getPathInfo(), k -> {
+					OpenapiPath path = pathStringToPath.computeIfAbsent(m.getPathInfo(), pathInfo -> {
 						OpenapiPath p = OpenapiPath.T.create();
 						return p;
 					});
@@ -163,7 +166,7 @@ public class ApiV1OpenapiProcessor extends AbstractOpenapiProcessor<OpenapiServi
 						OpenapiContext pathRequestResolvingContext = sessionScopedContext;
 						OpenapiContext pathEndpointParametersResolvingContext = endpointParametersResolvingContext;
 
-						if (needsPathSpecificContext(fullKey)) {
+						if (needsPathSpecificContext(request, fullKey)) {
 							pathRequestResolvingContext = pathContext(sessionScopedContext, fullKey);
 							pathEndpointParametersResolvingContext = pathContext(pathEndpointParametersResolvingContext, fullKey);
 						}
@@ -213,15 +216,29 @@ public class ApiV1OpenapiProcessor extends AbstractOpenapiProcessor<OpenapiServi
 		openApi.getTags().add(tag);
 	}
 
-	private boolean needsPathSpecificContext(String path) {
-		return useCaseExistsFor(path);
+	private boolean needsPathSpecificContext(OpenapiServicesRequest request, String path) {
+		return useCaseExistsFor(request, path);
 	}
 
-	@SuppressWarnings("unused")
-	private boolean useCaseExistsFor(String openapiUseCase) {
-		// TODO find out how to implement this without querying all use-cases from cortex
-		return true;
-		// return allUseCases.contains("ddra:" + openapiUseCase) || allUseCases.contains("openapi:" + openapiUseCase);
+	private boolean useCaseExistsFor(OpenapiServicesRequest request, String openapiUseCase) {
+		String domainId = request.getServiceDomain();
+
+		Set<String> useCases = domainIdToMdUseCases.computeIfAbsent(domainId, dId -> computeUseCasesForDomain(dId));
+
+		return useCases.contains("ddra:" + openapiUseCase) || useCases.contains("openapi:" + openapiUseCase);
+	}
+
+	private Set<String> computeUseCasesForDomain(String domainId) {
+		GmMetaModel gmModel = requireServiceDomain(domainId).configuredModel().modelOracle().getGmMetaModel();
+
+		Set<String> result = newSet();
+
+		GmMetaModel.T.traverse(gmModel, null, EntityVisitor.onVisitEntity((entity, criterion, context) -> {
+			if (entity instanceof UseCaseSelector ucs)
+				result.add(ucs.getUseCase());
+		}));
+
+		return result;
 	}
 
 	private OpenapiContext pathContext(OpenapiContext context, String path) {
@@ -297,6 +314,7 @@ public class ApiV1OpenapiProcessor extends AbstractOpenapiProcessor<OpenapiServi
 				throw new IllegalArgumentException("Method not supported: " + mapping.getMethod());
 		}
 
+		// These could be cached? Original comment said "they wont change in most cases"
 		List<OpenapiParameter> endpointParameters = getQueryParameterRefs(ApiV1DdraEndpoint.T, endpointParametersResolvingContext, "endpoint");
 		operation.getParameters().addAll(endpointParameters);
 	}
@@ -425,11 +443,15 @@ public class ApiV1OpenapiProcessor extends AbstractOpenapiProcessor<OpenapiServi
 
 	@Override
 	protected ConfiguredModel getConfiguredModel(ServiceRequestContext requestContext, OpenapiServicesRequest request) {
-		ServiceDomain serviceDomain = serviceDomains.byId(request.getServiceDomain());
-		if (serviceDomain == null)
-			throw new IllegalArgumentException("Unknown service domain: " + request.getServiceDomain());
+		return requireServiceDomain(request.getServiceDomain()).configuredModel();
+	}
 
-		return serviceDomain.configuredModel();
+	private ServiceDomain requireServiceDomain(String domainId) {
+		ServiceDomain serviceDomain = serviceDomains.byId(domainId);
+		if (serviceDomain == null)
+			throw new IllegalArgumentException("Unknown service domain: " + domainId);
+
+		return serviceDomain;
 	}
 
 	@Override

@@ -105,6 +105,7 @@ public class OpenapiV3RxModuleSpace implements RxModuleContract {
 		PropertyOpenapiProcessor bean = new PropertyOpenapiProcessor();
 		bean.setPublicUrl(webServer.publicUrl());
 		bean.setConfiguredModels(platform.configuredModels());
+		bean.setAccessDomains(access.accessDomains());
 
 		return bean;
 	}
