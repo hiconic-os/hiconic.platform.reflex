@@ -42,17 +42,17 @@ public class RxPersistenceGmSessionFactory implements PersistenceGmSessionFactor
 	public void setAccesses(RxAccesses accesses) {
 		this.accesses = accesses;
 	}
-	
+
 	@Required
 	public void setAttributeContextSupplier(Supplier<AttributeContext> attributeContextSupplier) {
 		this.attributeContextSupplier = attributeContextSupplier;
 	}
-	
+
 	@Required
 	public void setEvaluatorSupplier(Function<AttributeContext, Evaluator<ServiceRequest>> evaluatorSupplier) {
 		this.evaluatorSupplier = evaluatorSupplier;
 	}
-	
+
 	@Override
 	public PersistenceGmSession newSession(String accessId) throws GmSessionException {
 		RxAccess access = accesses.getAccess(accessId);
@@ -60,33 +60,34 @@ public class RxPersistenceGmSessionFactory implements PersistenceGmSessionFactor
 		ConfiguredModel configuredModel = access.configuredDataModel();
 		AttributeContext attributeContext = attributeContextSupplier.get();
 		CmdResolver cmdResolver = configuredModel.cmdResolver(attributeContext);
-		
+
 		BasicPersistenceGmSession session = new BasicPersistenceGmSession();
 		session.setAccessId(accessId);
 		session.setIncrementalAccess(incrementalAccess);
 		session.setEquivalentSessionFactory(() -> newSession(accessId));
 		session.setModelAccessory(new RxModelAccessory(cmdResolver));
-		
+
 		session.setRequestEvaluator(evaluatorSupplier.apply(attributeContext));
-		session.setDescription("AccessContract PersistenceGmSession accessId=" + accessId + " model="+ configuredModel.modelName() + " accessType=" + access.access().entityType().getTypeSignature());
-		
-		UserSession userSession = attributeContext.getAttribute(UserSessionAspect.class);
-		
+		session.setDescription("AccessContract PersistenceGmSession accessId=" + accessId + " model=" + configuredModel.modelName() + " accessType="
+				+ access.access().entityType().getTypeSignature());
+
+		UserSession userSession = attributeContext.findOrDefault(UserSessionAspect.class, null);
+
 		if (userSession != null) {
 			BasicSessionAuthorization sessionAuthorization = new BasicSessionAuthorization();
 			User user = userSession.getUser();
-			
+
 			sessionAuthorization.setSessionId(userSession.getSessionId());
 			sessionAuthorization.setUserId(user.getId());
 			sessionAuthorization.setUserName(user.getName());
 			sessionAuthorization.setUserRoles(userSession.getEffectiveRoles());
-			
-			session.setSessionAuthorization(sessionAuthorization);	
+
+			session.setSessionAuthorization(sessionAuthorization);
 		}
 
 		// TODO: how to apply Resource support
 		session.setResourcesAccessFactory(null);
-		
+
 		return session;
 	}
 
