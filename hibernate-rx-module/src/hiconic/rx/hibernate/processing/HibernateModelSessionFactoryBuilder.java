@@ -23,12 +23,8 @@ import java.util.Properties;
 import javax.sql.DataSource;
 
 import org.hibernate.SessionFactory;
-import org.hibernate.boot.MetadataSources;
-import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.boot.spi.MetadataImplementor;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.cfg.Environment;
-import org.hibernate.service.ServiceRegistry;
 
 import com.braintribe.cfg.Configurable;
 import com.braintribe.model.generic.GMF;
@@ -38,8 +34,8 @@ import com.braintribe.utils.FileTools;
 import com.braintribe.utils.stream.ReaderInputStream;
 
 public class HibernateModelSessionFactoryBuilder {
-	private CmdResolver cmdResolver;
-	private DataSource dataSource;
+	private final CmdResolver cmdResolver;
+	private final DataSource dataSource;
 	private File ormDebugOutputFolder;
 	private DialectAutoSense dialectAutoSense;
 
@@ -105,7 +101,10 @@ public class HibernateModelSessionFactoryBuilder {
 							.withCharset(StandardCharsets.UTF_8) //
 							.string(sd.sourceCode);
 					}
-						
+
+					if (!sd.sourceRelativePath.endsWith(".hbm.xml"))
+						return;
+
 					try (ReaderInputStream in = new ReaderInputStream(new StringReader(sd.sourceCode))) {
 						configuration.addInputStream(in);
 					} catch (IOException e) {
