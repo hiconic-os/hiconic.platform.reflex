@@ -31,9 +31,9 @@ import com.braintribe.utils.lcd.NullSafe;
 import hiconic.rx.check.api.CheckProcessor;
 import hiconic.rx.check.api.CheckProcessorRegistry;
 import hiconic.rx.check.api.CheckProcessorSymbol;
-import hiconic.rx.check.model.bundle.api.request.RunCheckBundles;
-import hiconic.rx.check.model.bundle.aspect.CheckCoverage;
-import hiconic.rx.check.model.bundle.aspect.CheckLatency;
+import hiconic.rx.check.model.api.request.RunChecks;
+import hiconic.rx.check.model.aspect.CheckCoverage;
+import hiconic.rx.check.model.aspect.CheckLatency;
 
 /**
  * @author peter.gazdik
@@ -174,14 +174,14 @@ public class BasicCheckProcessorRegistry implements CheckProcessorRegistry {
 	// ## . . . . . . . . ListBundleCheckProcessor . . . . . . . . ##
 	// ##############################################################
 
-	public List<CheckProcessorEntry> listMatchingProcessorEntries(RunCheckBundles request) {
+	public List<CheckProcessorEntry> listMatchingProcessorEntries(RunChecks request) {
 		return streamMatchingBundles(request) //
 				.flatMap(b -> b.listCheckProcessors().stream()) //
 				.filter(matchingEntryPredicate(request)) //
 				.toList();
 	}
 
-	private Stream<CheckBundle> streamMatchingBundles(RunCheckBundles request) {
+	private Stream<CheckBundle> streamMatchingBundles(RunChecks request) {
 		Set<String> names = request.getName();
 		if (names.isEmpty())
 			return checkBundles.values().stream();
@@ -191,7 +191,7 @@ public class BasicCheckProcessorRegistry implements CheckProcessorRegistry {
 					.filter(b -> b != null);
 	}
 
-	private static Predicate<CheckProcessorEntry> matchingEntryPredicate(RunCheckBundles request) {
+	private static Predicate<CheckProcessorEntry> matchingEntryPredicate(RunChecks request) {
 		Predicate<CheckProcessorEntry> result = e -> true;
 
 		// # Coverage

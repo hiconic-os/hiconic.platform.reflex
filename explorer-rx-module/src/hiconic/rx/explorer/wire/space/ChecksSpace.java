@@ -6,8 +6,8 @@ import com.braintribe.wire.api.space.WireSpace;
 
 import hiconic.rx.check.api.CheckContract;
 import hiconic.rx.check.api.CheckProcessorRegistry;
-import hiconic.rx.check.model.bundle.aspect.CheckCoverage;
-import hiconic.rx.check.model.bundle.aspect.CheckLatency;
+import hiconic.rx.check.model.aspect.CheckCoverage;
+import hiconic.rx.check.model.aspect.CheckLatency;
 import hiconic.rx.db.module.api.DatabaseContract;
 import hiconic.rx.explorer.processing.check.base.BaseConnectivityCheckProcessor;
 import hiconic.rx.explorer.processing.check.base.BaseFunctionalityCheckProcessor;

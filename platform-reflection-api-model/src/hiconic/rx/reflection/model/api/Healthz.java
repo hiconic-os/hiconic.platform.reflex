@@ -22,7 +22,7 @@ public interface Healthz extends PlatformReflectionResponse {
 
 	EntityType<Healthz> T = EntityTypes.T(Healthz.class);
 
-	void setCheckBundlesResponseAsHtml(String htmlResponse);
-	String getCheckBundlesResponseAsHtml();
+	void setCheckResponseAsHtml(String htmlResponse);
+	String getCheckResponseAsHtml();
 
 }

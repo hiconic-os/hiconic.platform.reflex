@@ -80,7 +80,7 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 	private String relativeAboutPath = "about";
 	private String relativeDeploymentSummaryPath = "deployment-summary";
 
-	// TODO user proper URLs for RunCheckBundles and and RunDistributedCheckBundles with HTML marshalling
+	// TODO user proper URLs for RunChecks and and RunDistributedChecks with HTML marshalling
 	// TODO register HTML marshaller
 	private final String relativePlatformBaseChecksPath = "api/v1/checkPlatform";
 	private final String relativePlatformChecksPath = "api/v1/check";
@@ -354,11 +354,11 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 	private String getPlatformVitalityStatus() {
 		// TODO platform vitality status
 		return "&nbsp;&#x2714;";
-		// RunCheckBundles run = RunCheckBundles.T.create();
+		// RunChecks run = RunChecks.T.create();
 		// run.setCoverage(Collections.singleton(CheckCoverage.vitality));
 		// run.setIsPlatformRelevant(true);
 		//
-		// CheckBundlesResponse response = run.eval(systemServiceRequestEvaluator).get();
+		// CheckResponse response = run.eval(systemServiceRequestEvaluator).get();
 		//
 		// CheckStatus status = response.getStatus();
 		// switch (status) {
@@ -596,21 +596,21 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 	// private Map<String, String> getDistributedVitalityStatusByModule() {
 	// Map<String, String> res = new HashMap<>();
 	//
-	// RunDistributedCheckBundles run = RunDistributedCheckBundles.T.create();
+	// RunDistributedChecks run = RunDistributedChecks.T.create();
 	// run.setCoverage(Collections.singleton(CheckCoverage.vitality));
 	// run.setIsPlatformRelevant(false);
-	// run.setAggregateBy(Collections.singletonList(CbrAggregationKind.module));
+	// run.setAggregateBy(Collections.singletonList(CrAggregationKind.module));
 	//
-	// CheckBundlesResponse response = run.eval(systemServiceRequestEvaluator).get();
+	// CheckResponse response = run.eval(systemServiceRequestEvaluator).get();
 	//
-	// List<CbrAggregatable> elements = response.getElements();
+	// List<CrAggregatable> elements = response.getElements();
 	//
 	// if (elements.isEmpty())
 	// return res;
 	//
-	// for (CbrAggregatable a : response.getElements()) {
-	// if (a instanceof CbrAggregation) {
-	// CbrAggregation aggregation = (CbrAggregation) a;
+	// for (CrAggregatable a : response.getElements()) {
+	// if (a instanceof CrAggregation) {
+	// CrAggregation aggregation = (CrAggregation) a;
 	// Module module = (Module) aggregation.getDiscriminator();
 	//
 	// CheckStatus status = aggregation.getStatus();

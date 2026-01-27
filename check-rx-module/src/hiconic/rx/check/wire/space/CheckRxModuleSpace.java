@@ -15,10 +15,10 @@ import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.check.api.CheckContract;
 import hiconic.rx.check.api.CheckServiceDomain;
-import hiconic.rx.check.model.bundle.api.request.CheckBundlesRequest;
+import hiconic.rx.check.model.api.request.CheckRequest;
 import hiconic.rx.check.processing.BasicCheckProcessorRegistry;
-import hiconic.rx.check.processing.CheckBundlesResponseHtmlMarshaller;
-import hiconic.rx.check.processing.CheckBundlesRxProcessor;
+import hiconic.rx.check.processing.CheckResponseHtmlMarshaller;
+import hiconic.rx.check.processing.CheckRxProcessor;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformConfigurator;
@@ -39,13 +39,13 @@ public class CheckRxModuleSpace implements RxModuleContract, CheckContract {
 
 	@Override
 	public void configurePlatform(RxPlatformConfigurator configurator) {
-		configurator.marshallerRegistry().registerMarshaller("text/html;spec=check-bundles-response", checkResultToHtmlMarshaller());
+		configurator.marshallerRegistry().registerMarshaller("text/html;spec=check-response", checkResultToHtmlMarshaller());
 	}
 
 	@Managed
 	@Override
 	public Marshaller checkResultToHtmlMarshaller() {
-		return new CheckBundlesResponseHtmlMarshaller();
+		return new CheckResponseHtmlMarshaller();
 	}
 
 	// ###############################################
@@ -55,12 +55,12 @@ public class CheckRxModuleSpace implements RxModuleContract, CheckContract {
 	@Override
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
 		configurations.byId(CheckServiceDomain.check) //
-				.bindRequest(CheckBundlesRequest.T, this::checkBundlesRxProcessor);
+				.bindRequest(CheckRequest.T, this::checkRxProcessor);
 	}
 
 	@Managed
-	private CheckBundlesRxProcessor checkBundlesRxProcessor() {
-		CheckBundlesRxProcessor bean = new CheckBundlesRxProcessor();
+	private CheckRxProcessor checkRxProcessor() {
+		CheckRxProcessor bean = new CheckRxProcessor();
 		bean.setEvaluator(platform.systemEvaluator());
 		bean.setInstanceId(platform.instanceId());
 		bean.setThreadContextScoping(threadContextScoping());
@@ -121,24 +121,24 @@ public class CheckRxModuleSpace implements RxModuleContract, CheckContract {
  * configureReachabilityAndHighOutputPrettiness);
  * 
  * 
- * registry.create("/checkVitality", RunVitalityCheckBundles.T, DdraUrlMethod.GET, null, "text/html;spec=check-bundles-response", ACCESS_ID_CORTEX,
+ * registry.create("/checkVitality", RunVitalityChecks.T, DdraUrlMethod.GET, null, "text/html;spec=check-response", ACCESS_ID_CORTEX,
  * Sets.set(DDRA_MAPPING_TAG_CHECKS), configureReachabilityAndHighOutputPrettiness);
  * 
  * 
  * HomePage : Runtime / Checks
  * 
- * registry.create("/check", RunCheckBundles.T, DdraUrlMethod.GET, null, "text/html;spec=check-bundles-response", ACCESS_ID_CORTEX,
+ * registry.create("/check", RunChecks.T, DdraUrlMethod.GET, null, "text/html;spec=check-response", ACCESS_ID_CORTEX,
  * Sets.set(DDRA_MAPPING_TAG_CHECKS), configureReachabilityAndHighOutputPrettiness);
  * 
  * 
  * HomePage : Runtime / Health
  * 
  * 
- * registry.create("/checkDistributed", RunDistributedCheckBundles.T, DdraUrlMethod.GET, null, "text/html;spec=check-bundles-response",
+ * registry.create("/checkDistributed", RunDistributedChecks.T, DdraUrlMethod.GET, null, "text/html;spec=check-response",
  * ACCESS_ID_CORTEX, Sets.set(DDRA_MAPPING_TAG_CHECKS), configureReachabilityAndHighOutputPrettiness);
  * 
  * 
- * registry.create("/checkAimed", RunAimedCheckBundles.T, DdraUrlMethod.GET, null, "text/html;spec=check-bundles-response", ACCESS_ID_CORTEX,
+ * registry.create("/checkAimed", RunAimedChecks.T, DdraUrlMethod.GET, null, "text/html;spec=check-response", ACCESS_ID_CORTEX,
  * Sets.set(DDRA_MAPPING_TAG_CHECKS), configureReachabilityAndHighOutputPrettiness);
  * 
  * 
@@ -146,13 +146,13 @@ public class CheckRxModuleSpace implements RxModuleContract, CheckContract {
  * HomePage : Runtime / Health
  * 
  * 
- * RunDistributedCheckBundles run = session.create(RunDistributedCheckBundles.T, "b9265418-8e97-4424-9e0a-32153bf0d715");
- * run.setAggregateBy(Lists.list(CbrAggregationKind.node));
+ * RunDistributedChecks run = session.create(RunDistributedChecks.T, "b9265418-8e97-4424-9e0a-32153bf0d715");
+ * run.setAggregateBy(Lists.list(CrAggregationKind.node));
  * 
  * StaticPrototyping p = session.create(StaticPrototyping.T, "6d453267-7891-41a2-a649-31392e2b00d3"); p.setPrototype(run);
  * 
  * Consumer<DdraMapping> configureReachabilityAndHighOutputPrettinessAndRequestPrototype = configureReachabilityAndHighOutputPrettiness .andThen(m ->
  * { m.setRequestPrototyping(p); });
  * 
- * registry.create("/checkPlatform", RunDistributedCheckBundles.T, DdraUrlMethod.GET, null, "text/html;spec=check-bundles-response", ACCESS_ID_CORTEX,
+ * registry.create("/checkPlatform", RunDistributedChecks.T, DdraUrlMethod.GET, null, "text/html;spec=check-response", ACCESS_ID_CORTEX,
  * Sets.set(DDRA_MAPPING_TAG_CHECKS), configureReachabilityAndHighOutputPrettinessAndRequestPrototype); */
