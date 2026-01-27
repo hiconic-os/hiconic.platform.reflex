@@ -11,23 +11,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.model.service.processing.md;
+package hiconic.rx.resource.model.api;
 
-import com.braintribe.model.generic.base.EnumBase;
-import com.braintribe.model.generic.reflection.EnumType;
-import com.braintribe.model.generic.reflection.EnumTypes;
+import com.braintribe.model.generic.eval.EvalContext;
+import com.braintribe.model.generic.eval.Evaluator;
+import com.braintribe.model.generic.reflection.EntityType;
+import com.braintribe.model.generic.reflection.EntityTypes;
+import com.braintribe.model.resource.CallStreamCapture;
+import com.braintribe.model.service.api.ServiceRequest;
 
-public enum InterceptionType implements EnumBase<InterceptionType> {
+public interface PipeResourcePayload extends DownloadResourcePayload {
 
-	preProcess,
-	aroundProcess,
-	postProcess;
+	EntityType<PipeResourcePayload> T = EntityTypes.T(PipeResourcePayload.class);
 
-	public static final EnumType<InterceptionType> T = EnumTypes.T(InterceptionType.class);
+	CallStreamCapture getCapture();
+	void setCapture(CallStreamCapture capture);
 
 	@Override
-	public EnumType<InterceptionType> type() {
-		return T;
-	}
+	EvalContext<? extends PipeResourcePayloadResponse> eval(Evaluator<ServiceRequest> evaluator);
 
 }

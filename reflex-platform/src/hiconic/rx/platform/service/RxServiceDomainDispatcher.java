@@ -47,6 +47,10 @@ public class RxServiceDomainDispatcher
 		this.serviceDomains = serviceDomains;
 	}
 
+	// ###################################################
+	// ## . . . . . . . Service Processor . . . . . . . ##
+	// ###################################################
+
 	@Override
 	public Maybe<? extends Object> processReasoned(ServiceRequestContext context, ServiceRequest request) {
 		String domainId = context.getDomainId();
@@ -56,6 +60,14 @@ public class RxServiceDomainDispatcher
 		return serviceDomain.evaluator().eval(request).getReasoned();
 	}
 
+	// ###################################################
+	// ## . . . . . Service Around Processor . . . . . .##
+	// ###################################################
+
+	/**
+	 * Configures {@link DomainIdAspect} for the {@link ServiceRequestContext}, so that #processReasoned(ServiceRequestContext, ServiceRequest) can
+	 * delegate to the evaluator of the right service domain.
+	 */
 	@Override
 	public Maybe<? extends Object> processReasoned(ServiceRequestContext context, ServiceRequest request, ProceedContext proceedContext) {
 		String domainId = resolveDomainId(request);
@@ -72,6 +84,7 @@ public class RxServiceDomainDispatcher
 				return wrongNumberOfDependers(dependers, requestType);
 
 			domainId = dependers.get(0).domainId();
+
 		} else {
 			ServiceDomain serviceDomain = serviceDomains.byId(domainId);
 			if (serviceDomain == null)

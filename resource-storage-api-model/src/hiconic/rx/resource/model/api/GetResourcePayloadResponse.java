@@ -11,23 +11,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.model.service.processing.md;
+package hiconic.rx.resource.model.api;
 
-import com.braintribe.model.generic.base.EnumBase;
-import com.braintribe.model.generic.reflection.EnumType;
-import com.braintribe.model.generic.reflection.EnumTypes;
 
-public enum InterceptionType implements EnumBase<InterceptionType> {
+import com.braintribe.model.generic.reflection.EntityType;
+import com.braintribe.model.generic.reflection.EntityTypes;
+import com.braintribe.model.resource.Resource;
 
-	preProcess,
-	aroundProcess,
-	postProcess;
 
-	public static final EnumType<InterceptionType> T = EnumTypes.T(InterceptionType.class);
+public interface GetResourcePayloadResponse extends DownloadResourcePayloadResponse {
 
-	@Override
-	public EnumType<InterceptionType> type() {
-		return T;
-	}
+	EntityType<GetResourcePayloadResponse> T = EntityTypes.T(GetResourcePayloadResponse.class);
+	
+	String resource = "resource";
+
+	Resource getResource();
+	void setResource(Resource resource);
 
 }

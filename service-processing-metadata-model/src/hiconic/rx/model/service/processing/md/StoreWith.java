@@ -13,21 +13,20 @@
 // ============================================================================
 package hiconic.rx.model.service.processing.md;
 
-import com.braintribe.model.generic.base.EnumBase;
-import com.braintribe.model.generic.reflection.EnumType;
-import com.braintribe.model.generic.reflection.EnumTypes;
+import com.braintribe.model.generic.annotation.meta.Description;
+import com.braintribe.model.generic.reflection.EntityType;
+import com.braintribe.model.generic.reflection.EntityTypes;
+import com.braintribe.model.meta.data.EntityTypeMetaData;
 
-public enum InterceptionType implements EnumBase<InterceptionType> {
+@Description("Specifies ResourceStorage for given ResourceSource type.")
+public interface StoreWith extends EntityTypeMetaData, HasTransientAssociate {
 
-	preProcess,
-	aroundProcess,
-	postProcess;
+	EntityType<StoreWith> T = EntityTypes.T(StoreWith.class);
 
-	public static final EnumType<InterceptionType> T = EnumTypes.T(InterceptionType.class);
-
-	@Override
-	public EnumType<InterceptionType> type() {
-		return T;
+	static StoreWith create(Object serviceProcessor) {
+		StoreWith processWith = StoreWith.T.create();
+		processWith.setAssociate(serviceProcessor);
+		return processWith;
 	}
 
 }
