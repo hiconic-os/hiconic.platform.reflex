@@ -81,7 +81,9 @@ public class RxPlatformSpace extends CoreServicesSpace implements RxPlatformCont
 		for (RxModuleContract moduleContract : moduleContracts) {
 			moduleContract.configureMainPersistenceModel(modelConfigurations.mainPersistenceModel());
 			moduleContract.configureModels(modelConfigurations);
+		}
 
+		for (RxModuleContract moduleContract : moduleContracts) {
 			moduleContract.configureMainServiceDomain(mainDomain);
 			moduleContract.configureServiceDomains(serviceDomainConfigurations);
 

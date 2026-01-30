@@ -55,4 +55,8 @@ public interface ModelConfiguration extends ModelReference {
 			Supplier<MappingServiceProcessor<? super R, ?>> serviceProcessorSupplier);
 
 	InterceptorBuilder bindInterceptor(String identification);
+	
+	default InterceptorBuilder bindInterceptor(InterceptorSymbol identification) {
+		return bindInterceptor(identification.name());
+	}
 }

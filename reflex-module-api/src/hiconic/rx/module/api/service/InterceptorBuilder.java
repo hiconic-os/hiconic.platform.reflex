@@ -23,6 +23,15 @@ import com.braintribe.model.service.api.ServiceRequest;
 public interface InterceptorBuilder {
 	InterceptorBuilder before(String identification);
 	InterceptorBuilder after(String identification);
+	
+	default InterceptorBuilder before(InterceptorSymbol identification) {
+		return before(identification.name());
+	}
+
+	default InterceptorBuilder after(InterceptorSymbol identification) {
+		return after(identification.name());
+	}
+	
 	InterceptorBuilder predicate(Predicate<ServiceRequest> predicate);
 	InterceptorBuilder forType(EntityType<? extends ServiceRequest> requestType);
 	void bind(Supplier<ServiceInterceptorProcessor> interceptorSupplier);

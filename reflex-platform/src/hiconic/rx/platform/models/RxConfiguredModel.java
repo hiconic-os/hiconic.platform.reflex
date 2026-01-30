@@ -71,6 +71,8 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 		super(configuredModels);
 		this.name = model.getName();
 		this.configurationModelBuilder = ConfigurationModels.extend(model);
+		
+		models.addAll(model.getDependencies());
 	}
 	
 	@Override
