@@ -85,10 +85,22 @@ public class RxConfiguredModels implements ConfiguredModels {
 	}
 	
 	public RxConfiguredModel acquire(String modelName) {
-		if (GMF.getTypeReflection().findModel(modelName) != null) 
-			throw new IllegalArgumentException("Configured models must not have a platform model name: " + modelName);
-
-		return models.computeIfAbsent(modelName, n -> new RxConfiguredModel(this, n));
+		return models.computeIfAbsent(modelName, this::buildConfiguredModel);
+	}
+		
+	private RxConfiguredModel buildConfiguredModel(String modelName) {
+		Model model = GMF.getTypeReflection().findModel(modelName);
+		
+		if (model != null) {
+			GmMetaModel metaModel = model.getMetaModel();
+			if (!metaModel.getName().contains("configured-"))
+				throw new IllegalArgumentException("Configured models must not have a platform model name: " + modelName);
+			
+			return new RxConfiguredModel(this, metaModel);
+		}
+			
+			
+		return new RxConfiguredModel(this, modelName);
 	}
 	
 	public RxConfiguredModel acquire(ModelReference modelReference) {
