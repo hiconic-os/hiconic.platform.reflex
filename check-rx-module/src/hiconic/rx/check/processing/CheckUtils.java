@@ -18,12 +18,12 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.function.Function;
 
-import hiconic.rx.check.model.bundle.api.response.CbrAggregatable;
-import hiconic.rx.check.model.bundle.api.response.CbrAggregation;
-import hiconic.rx.check.model.bundle.api.response.CbrAggregationKind;
-import hiconic.rx.check.model.bundle.api.response.CheckBundleResult;
-import hiconic.rx.check.model.bundle.aspect.CheckCoverage;
-import hiconic.rx.check.model.bundle.aspect.CheckLatency;
+import hiconic.rx.check.model.api.response.CrAggregatable;
+import hiconic.rx.check.model.api.response.CrAggregation;
+import hiconic.rx.check.model.api.response.CrAggregationKind;
+import hiconic.rx.check.model.api.response.CrCheckResult;
+import hiconic.rx.check.model.aspect.CheckCoverage;
+import hiconic.rx.check.model.aspect.CheckLatency;
 import hiconic.rx.check.model.result.CheckResult;
 import hiconic.rx.check.model.result.CheckResultEntry;
 import hiconic.rx.check.model.result.CheckStatus;
@@ -33,7 +33,7 @@ import hiconic.rx.check.model.result.CheckStatus;
  * 
  * @author christina.wilpernig
  */
-public class CheckBundlesUtils {
+/* package */ class CheckUtils {
 
 	public static CheckStatus getStatus(Collection<CheckResult> results) {
 		return results.stream() //
@@ -50,7 +50,7 @@ public class CheckBundlesUtils {
 				.orElse(CheckStatus.ok);
 	}
 
-	public static Function<CheckBundleResult, Collection<?>> getAccessor(CbrAggregationKind kind) {
+	public static Function<CrCheckResult, Collection<?>> getAccessor(CrAggregationKind kind) {
 		// @formatter:off
 		switch (kind) {
 			case coverage: 			return r -> Collections.singleton(r.getCoverage());
@@ -61,17 +61,17 @@ public class CheckBundlesUtils {
 			case latency: 			return r -> Collections.singleton(r.getLatency());
 			case bundle: 			return r -> Collections.singleton(r.getName());
 			default:
-				throw new IllegalStateException("Unknown CbrAggregationKind: " + kind);
+				throw new IllegalStateException("Unknown CrAggregationKind: " + kind);
 		}
 		// @formatter:on
 	}
 
-	public static String getIdentification(CbrAggregatable a) {
+	public static String getIdentification(CrAggregatable a) {
 		if (a.isResult())
-			return ((CheckBundleResult) a).getName();
+			return ((CrCheckResult) a).getName();
 
-		CbrAggregation aggr = (CbrAggregation) a;
-		CbrAggregationKind kind = aggr.getKind();
+		CrAggregation aggr = (CrAggregation) a;
+		CrAggregationKind kind = aggr.getKind();
 		Object d = aggr.getDiscriminator();
 
 		switch (kind) {

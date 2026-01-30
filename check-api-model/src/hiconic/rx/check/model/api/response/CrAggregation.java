@@ -11,16 +11,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.check.model.bundle.api.request;
+package hiconic.rx.check.model.api.response;
 
-import com.braintribe.model.generic.annotation.Abstract;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
-import com.braintribe.model.service.api.AuthorizedRequest;
 
-@Abstract
-public interface AuthorizedCheckBundlesRequest extends CheckBundlesRequest, HasCheckBundleFilters, HasAggregateBy, AuthorizedRequest {
+public interface CrAggregation extends CrContainer, CrAggregatable {
+	EntityType<CrAggregation> T = EntityTypes.T(CrAggregation.class);
 
-	EntityType<AuthorizedCheckBundlesRequest> T = EntityTypes.T(AuthorizedCheckBundlesRequest.class);
+	CrAggregationKind getKind();
+	void setKind(CrAggregationKind kind);
 
+	Object getDiscriminator();
+	void setDiscriminator(Object discriminator);
+
+	@Override
+	default boolean isResult() {
+		return false;
+	}
 }

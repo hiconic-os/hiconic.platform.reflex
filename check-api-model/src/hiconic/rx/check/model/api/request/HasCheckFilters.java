@@ -1,5 +1,5 @@
 // ============================================================================
-package hiconic.rx.check.model.bundle.api.request;
+package hiconic.rx.check.model.api.request;
 
 import java.util.Set;
 
@@ -8,13 +8,13 @@ import com.braintribe.model.generic.annotation.Abstract;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 
-import hiconic.rx.check.model.bundle.aspect.CheckCoverage;
-import hiconic.rx.check.model.bundle.aspect.CheckLatency;
+import hiconic.rx.check.model.aspect.CheckCoverage;
+import hiconic.rx.check.model.aspect.CheckLatency;
 
 @Abstract
-public interface HasCheckBundleFilters extends GenericEntity {
+public interface HasCheckFilters extends GenericEntity {
 
-	EntityType<HasCheckBundleFilters> T = EntityTypes.T(HasCheckBundleFilters.class);
+	EntityType<HasCheckFilters> T = EntityTypes.T(HasCheckFilters.class);
 	
 	Set<String> getLabel();
 	void setLabel(Set<String> label);

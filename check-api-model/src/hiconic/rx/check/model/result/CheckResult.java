@@ -20,7 +20,7 @@ import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 
 /**
- * Aggregated result of a check performed by a CheckProcessor. This result consists of one or more {@link CheckResultEntry}s.
+ * Result of a check performed by a single CheckProcessor. This result consists of one or more {@link CheckResultEntry}s.
  */
 public interface CheckResult extends GenericEntity {
 

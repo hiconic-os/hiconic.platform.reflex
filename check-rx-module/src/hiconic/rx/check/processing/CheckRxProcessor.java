@@ -63,20 +63,20 @@ import com.braintribe.thread.api.ThreadContextScoping;
 import com.braintribe.utils.StringTools;
 import com.braintribe.utils.xml.XmlTools;
 
-import hiconic.rx.check.model.bundle.api.request.CheckBundlesRequest;
-import hiconic.rx.check.model.bundle.api.request.HasCheckBundleFilters;
-import hiconic.rx.check.model.bundle.api.request.RunAimedCheckBundles;
-import hiconic.rx.check.model.bundle.api.request.RunCheckBundles;
-import hiconic.rx.check.model.bundle.api.request.RunDistributedCheckBundles;
-import hiconic.rx.check.model.bundle.api.request.RunHealthChecks;
-import hiconic.rx.check.model.bundle.api.request.RunVitalityCheckBundles;
-import hiconic.rx.check.model.bundle.api.response.CbrAggregatable;
-import hiconic.rx.check.model.bundle.api.response.CbrAggregation;
-import hiconic.rx.check.model.bundle.api.response.CbrAggregationKind;
-import hiconic.rx.check.model.bundle.api.response.CbrContainer;
-import hiconic.rx.check.model.bundle.api.response.CheckBundleResult;
-import hiconic.rx.check.model.bundle.api.response.CheckBundlesResponse;
-import hiconic.rx.check.model.bundle.aspect.CheckCoverage;
+import hiconic.rx.check.model.api.request.CheckRequest;
+import hiconic.rx.check.model.api.request.HasCheckFilters;
+import hiconic.rx.check.model.api.request.RunAimedChecks;
+import hiconic.rx.check.model.api.request.RunChecks;
+import hiconic.rx.check.model.api.request.RunDistributedChecks;
+import hiconic.rx.check.model.api.request.RunHealthChecks;
+import hiconic.rx.check.model.api.request.RunVitalityChecks;
+import hiconic.rx.check.model.api.response.CheckResponse;
+import hiconic.rx.check.model.api.response.CrAggregatable;
+import hiconic.rx.check.model.api.response.CrAggregation;
+import hiconic.rx.check.model.api.response.CrAggregationKind;
+import hiconic.rx.check.model.api.response.CrCheckResult;
+import hiconic.rx.check.model.api.response.CrContainer;
+import hiconic.rx.check.model.aspect.CheckCoverage;
 import hiconic.rx.check.model.result.CheckResult;
 import hiconic.rx.check.model.result.CheckResultEntry;
 import hiconic.rx.check.model.result.CheckStatus;
@@ -84,11 +84,11 @@ import hiconic.rx.check.processing.BasicCheckProcessorRegistry.CheckProcessorEnt
 
 
 /**
-* This service processor handles {@link CheckBundlesRequest Check Bundle Requests} covering local instance checks as well as distributed checks.
+* This service processor handles {@link CheckRequest Check Requests} covering local instance checks as well as distributed checks.
 * Also, vitality/health checks are treated here. These kind of low-level checks can be executed in an unauthorized way.
 */
-public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor<CheckBundlesRequest, Object> implements LifecycleAware {
-	private static Logger log = Logger.getLogger(CheckBundlesRxProcessor.class);
+public class CheckRxProcessor extends AbstractDispatchingServiceProcessor<CheckRequest, Object> implements LifecycleAware {
+	private static Logger log = Logger.getLogger(CheckRxProcessor.class);
 
 	private BasicCheckProcessorRegistry registry;
 
@@ -98,11 +98,11 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 	private ThreadContextScoping threadContextScoping;
 	private ExecutorService executionThreadPool;
 
-	private static Comparator<CbrAggregatable> comparator = cbrAggregatableComparator();
+	private static Comparator<CrAggregatable> comparator = cbrAggregatableComparator();
 
-	private static Comparator<CbrAggregatable> cbrAggregatableComparator() {
-		Comparator<CbrAggregatable> statusComparator = Comparator.comparing(CbrAggregatable::getStatus);
-		Comparator<CbrAggregatable> nameComparator = Comparator.comparing(CheckBundlesUtils::getIdentification);
+	private static Comparator<CrAggregatable> cbrAggregatableComparator() {
+		Comparator<CrAggregatable> statusComparator = Comparator.comparing(CrAggregatable::getStatus);
+		Comparator<CrAggregatable> nameComparator = Comparator.comparing(CheckUtils::getIdentification);
 
 		return statusComparator.reversed().thenComparing(nameComparator);
 	}
@@ -133,7 +133,7 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 
 	@Override
 	public void postConstruct() {
-		executionThreadPool = VirtualThreadExecutorBuilder.newPool().concurrency(50).threadNamePrefix("CheckBundleExecution").build();
+		executionThreadPool = VirtualThreadExecutorBuilder.newPool().concurrency(50).threadNamePrefix("CheckExecution").build();
 	}
 
 	@Override
@@ -142,31 +142,31 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 	}
 
 	@Override
-	protected void configureDispatching(DispatchConfiguration<CheckBundlesRequest, Object> dispatching) {
+	protected void configureDispatching(DispatchConfiguration<CheckRequest, Object> dispatching) {
 		// do require permission
-		dispatching.register(RunCheckBundles.T, (c, r) -> runCheckBundles(c, r));
-		dispatching.register(RunAimedCheckBundles.T, (c, r) -> runAimedCheckBundles(r));
-		dispatching.register(RunDistributedCheckBundles.T, (c, r) -> runDistributedCheckBundles(r));
+		dispatching.register(RunChecks.T, (c, r) -> runChecks(c, r));
+		dispatching.register(RunAimedChecks.T, (c, r) -> runAimedChecks(r));
+		dispatching.register(RunDistributedChecks.T, (c, r) -> runDistributedChecks(r));
 
 		// do not require permissions
-		dispatching.register(RunVitalityCheckBundles.T, (c, r) -> runVitalityCheckBundles(c, r));
+		dispatching.register(RunVitalityChecks.T, (c, r) -> runVitalityChecks(c, r));
 		dispatching.register(RunHealthChecks.T, (c, r) -> runHealthChecks(c, r));
 	}
 
 	// Requests
 
-	/** Executes {@link RunCheckBundles} */
-	private CheckBundlesResponse runCheckBundles(ServiceRequestContext context, RunCheckBundles request) {
+	/** Executes {@link RunChecks} */
+	private CheckResponse runChecks(ServiceRequestContext context, RunChecks request) {
 		long t0 = System.nanoTime();
 
-		CheckBundlesResponse response = CheckBundlesResponse.T.create();
+		CheckResponse response = CheckResponse.T.create();
 		response.setStatus(CheckStatus.ok);
 		response.setCreatedAt(new Date());
 
 		try {
-			List<CheckProcessorEntry> bundles = getFilteredCheckBundles(request);
+			List<CheckProcessorEntry> entries = getFilteredCheckProcessorEntries(request);
 
-			if (bundles.size() == 0) {
+			if (entries.size() == 0) {
 				log.trace(() -> "Nothing to do here.");
 
 				response.setElapsedTimeInMs((System.nanoTime() - t0) / 1_000_000.0);
@@ -177,7 +177,7 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 			List<Pair<CheckProcessorEntry, Future<CheckResult>>> contextToResultFutureList = new ArrayList<>();
 
 			Map<CheckProcessorEntry, CheckResult> results = new LinkedHashMap<>();
-			for (CheckProcessorEntry c : bundles) {
+			for (CheckProcessorEntry c : entries) {
 				Future<CheckResult> resultFuture = evaluateParallel(c, context);
 				contextToResultFutureList.add(Pair.of(c, resultFuture));
 			}
@@ -212,7 +212,7 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 
 		} catch (Exception e) {
 			log.error("Error while evaluating checks: ", e);
-			CheckBundleResult result = createFailureCheckBundleResult(e, t0);
+			CrCheckResult result = createFailureCrCheckResult(e, t0);
 
 			response.getElements().add(result);
 			response.setStatus(CheckStatus.fail);
@@ -222,8 +222,8 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 		return response;
 	}
 
-	/** Executes {@link RunAimedCheckBundles} via Unicast */
-	private CheckBundlesResponse runAimedCheckBundles(RunAimedCheckBundles request) {
+	/** Executes {@link RunAimedChecks} via Unicast */
+	private CheckResponse runAimedChecks(RunAimedChecks request) {
 		long t0 = System.nanoTime();
 
 		try {
@@ -231,9 +231,9 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 			if (nodeId == null || nodeId.isEmpty())
 				throw new IllegalArgumentException("nodeId must be set");
 
-			RunCheckBundles run = RunCheckBundles.T.create();
-			for (Property p : HasCheckBundleFilters.T.getProperties()) {
-				if (p.getDeclaringType() != HasCheckBundleFilters.T)
+			RunChecks run = RunChecks.T.create();
+			for (Property p : HasCheckFilters.T.getProperties()) {
+				if (p.getDeclaringType() != HasCheckFilters.T)
 					continue;
 
 				Object v = p.get(request);
@@ -244,13 +244,13 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 			r.setServiceRequest(run);
 			r.setAddressee(InstanceId.of(nodeId, null));
 
-			return (CheckBundlesResponse) r.eval(systemEvaluator).get();
+			return (CheckResponse) r.eval(systemEvaluator).get();
 
 		} catch (Exception e) {
 			log.error("Error while evaluating aimed checks: ", e);
-			CheckBundlesResponse response = CheckBundlesResponse.T.create();
+			CheckResponse response = CheckResponse.T.create();
 
-			response.getElements().add(createFailureCheckBundleResult(e, t0));
+			response.getElements().add(createFailureCrCheckResult(e, t0));
 			response.setStatus(CheckStatus.fail);
 			response.setCreatedAt(new Date());
 			response.setElapsedTimeInMs((System.nanoTime() - t0) / 1_000_000.0);
@@ -259,27 +259,27 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 		}
 	}
 
-	/** Executes {@link RunDistributedCheckBundles} via Multicast */
-	private CheckBundlesResponse runDistributedCheckBundles(RunDistributedCheckBundles request) {
+	
+	private CheckResponse runDistributedChecks(RunDistributedChecks request) {
 		long t0 = System.nanoTime();
 
-		CheckBundlesResponse response = CheckBundlesResponse.T.create();
+		CheckResponse response = CheckResponse.T.create();
 		response.setCreatedAt(new Date());
 
-		List<CheckBundleResult> results = new ArrayList<>();
+		List<CrCheckResult> results = new ArrayList<>();
 		try {
 			MulticastRequest m = buildMulticast(request);
-			Map<InstanceId, CheckBundlesResponse> responsePerNode = getDistributedCheckResponses(m);
+			Map<InstanceId, CheckResponse> responsePerNode = getDistributedCheckResponses(m);
 
-			for (CheckBundlesResponse r : responsePerNode.values()) {
-				for (CbrAggregatable a : r.getElements()) {
-					results.add((CheckBundleResult) a);
+			for (CheckResponse r : responsePerNode.values()) {
+				for (CrAggregatable a : r.getElements()) {
+					results.add((CrCheckResult) a);
 				}
 			}
 
 		} catch (Exception e) {
 			log.error("Error while evaluating distributed checks: ", e);
-			results.add(createFailureCheckBundleResult(e, t0));
+			results.add(createFailureCrCheckResult(e, t0));
 		}
 
 		aggregate(response, results, request.getAggregateBy(), 0);
@@ -288,14 +288,14 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 		return response;
 	}
 
-	/** Executes unauthorized {@link RunVitalityCheckBundles} */
-	private CheckBundlesResponse runVitalityCheckBundles(ServiceRequestContext requestContext, RunVitalityCheckBundles request) {
+	/** Executes unauthorized {@link RunVitalityChecks} */
+	private CheckResponse runVitalityChecks(ServiceRequestContext requestContext, RunVitalityChecks request) {
 		long t0 = System.nanoTime();
-		CheckBundlesResponse response;
+		CheckResponse response;
 		Consumer<Integer> statusCodeConsumer = statusCodeConsumer(requestContext);
 
 		try {
-			RunCheckBundles run = RunCheckBundles.T.create();
+			RunChecks run = RunChecks.T.create();
 
 			run.setAggregateBy(request.getAggregateBy());
 			run.setCoverage(Collections.singleton(CheckCoverage.vitality));
@@ -317,8 +317,8 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 
 		} catch (Exception e) {
 			log.error("Error while evaluating vitality checks: ", e);
-			response = CheckBundlesResponse.T.create();
-			response.getElements().add(createFailureCheckBundleResult(e, t0));
+			response = CheckResponse.T.create();
+			response.getElements().add(createFailureCrCheckResult(e, t0));
 			response.setStatus(CheckStatus.fail);
 
 			response.setCreatedAt(new Date());
@@ -335,22 +335,22 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 		long t0 = System.nanoTime();
 		Map<InstanceId, Object> response = new HashMap<>();
 		List<CheckResult> results = new ArrayList<>();
-		CheckBundlesResponse cbr;
+		CheckResponse cbr;
 		try {
 
 			Integer warnStatusCode = request.getWarnStatusCode();
 			if (warnStatusCode == null)
 				warnStatusCode = 503;
 
-			RunVitalityCheckBundles run = RunVitalityCheckBundles.T.create();
+			RunVitalityChecks run = RunVitalityChecks.T.create();
 			run.setWarnStatusCode(warnStatusCode);
 
 			cbr = run.eval(requestContext).get();
 
-			// no aggregation has been defined so we get back a flat list of check bundle results
-			for (CbrAggregatable a : cbr.getElements()) {
+			// no aggregation has been defined so we get back a flat list of CrCheckResults
+			for (CrAggregatable a : cbr.getElements()) {
 				if (a.isResult())
-					results.add(((CheckBundleResult) a).getResult());
+					results.add(((CrCheckResult) a).getResult());
 			}
 
 		} catch (Exception e) {
@@ -371,14 +371,14 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 	}
 
 	
-	private CheckBundleResult createFailureCheckBundleResult(Exception e, long t0) {
+	private CrCheckResult createFailureCrCheckResult(Exception e, long t0) {
 		CheckResult r = createFailureCheckResult(e, t0);
 
-		CheckBundleResult cbr = CheckBundleResult.T.create();
+		CrCheckResult cbr = CrCheckResult.T.create();
 		cbr.setResult(r);
 		cbr.setNode(this.instanceId.getNodeId());
 		cbr.setStatus(CheckStatus.fail);
-		cbr.setName("Check Bundle Framework - Internal Error");
+		cbr.setName("Check Framework - Internal Error");
 		// TODO properly solve this
 		cbr.setCheckProcessorName("Check Framework");
 
@@ -398,7 +398,7 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 	private CheckResultEntry createFailureCheckResultEntry(Exception e) {
 		CheckResultEntry entry = CheckResultEntry.T.create();
 		entry.setCheckStatus(CheckStatus.fail);
-		entry.setName("Check Bundle Framework");
+		entry.setName("Check Framework");
 
 		StringBuilder sb = new StringBuilder();
 		sb.append("Evaluation of checks on node " + this.instanceId.getNodeId() + " failed with " + e.getClass().getName());
@@ -415,10 +415,10 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 		return entry;
 	}
 
-	private MulticastRequest buildMulticast(CheckBundlesRequest request) {
-		RunCheckBundles run = RunCheckBundles.T.create();
+	private MulticastRequest buildMulticast(CheckRequest request) {
+		RunChecks run = RunChecks.T.create();
 
-		for (Property p : HasCheckBundleFilters.T.getProperties()) {
+		for (Property p : HasCheckFilters.T.getProperties()) {
 			if (p.getDeclaringType() == GenericEntity.T)
 				continue;
 
@@ -434,13 +434,13 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 		return m;
 	}
 
-	private Map<InstanceId, CheckBundlesResponse> getDistributedCheckResponses(MulticastRequest multicastRequest) {
-		Map<InstanceId, CheckBundlesResponse> responsePerNode = CodingMap.create(new ConcurrentHashMap<>(), InstanceIdHashingComparator.instance);
+	private Map<InstanceId, CheckResponse> getDistributedCheckResponses(MulticastRequest multicastRequest) {
+		Map<InstanceId, CheckResponse> responsePerNode = CodingMap.create(new ConcurrentHashMap<>(), InstanceIdHashingComparator.instance);
 		MulticastResponse mcResponse = multicastRequest.eval(systemEvaluator).get();
 
 		for (Map.Entry<InstanceId, ServiceResult> entry : mcResponse.getResponses().entrySet()) {
 			ServiceResult serviceResult = entry.getValue();
-			CheckBundlesResponse response;
+			CheckResponse response;
 
 			// can this be null?
 			InstanceId instanceId = entry.getKey();
@@ -448,7 +448,7 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 			switch (serviceResult.resultType()) {
 				case success:
 					ResponseEnvelope standardServiceResult = (ResponseEnvelope) serviceResult;
-					response = (CheckBundlesResponse) standardServiceResult.getResult();
+					response = (CheckResponse) standardServiceResult.getResult();
 					break;
 				case failure: {
 					Failure fail = (Failure) serviceResult;
@@ -456,21 +456,21 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 
 					CheckResultEntry cre = CheckResultEntry.T.create();
 					cre.setCheckStatus(CheckStatus.fail);
-					cre.setName("Check Bundle Framework Distributed");
+					cre.setName("Check Framework Distributed");
 					cre.setMessage("Evaluation of distributed checks on node " + nodeId + " failed with " + fail.getType());
 					cre.setDetails(fail.getType() + "\n" + fail.getDetails());
 
 					CheckResult r = CheckResult.T.create();
 					r.getEntries().add(cre);
 
-					CheckBundleResult cbr = CheckBundleResult.T.create();
+					CrCheckResult cbr = CrCheckResult.T.create();
 					cbr.setResult(r);
 					cbr.setNode(nodeId);
 					cbr.setStatus(CheckStatus.fail);
-					cbr.setName("Check Bundle Framework - Internal Error");
+					cbr.setName("Check Framework - Internal Error");
 					cbr.setCheckProcessorName("Check Framework");
 
-					response = CheckBundlesResponse.T.create();
+					response = CheckResponse.T.create();
 					response.getElements().add(cbr);
 					response.setStatus(CheckStatus.fail);
 
@@ -481,7 +481,7 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 
 					CheckResultEntry cre = CheckResultEntry.T.create();
 					cre.setCheckStatus(CheckStatus.fail);
-					cre.setName("Check Bundle Framework Distributed");
+					cre.setName("Check Framework Distributed");
 					cre.setMessage("Evaluation of distributed checks failed with: unsatisfied");
 
 					Reason reason = unsatisfied.getWhy();
@@ -500,13 +500,13 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 					CheckResult r = CheckResult.T.create();
 					r.getEntries().add(cre);
 
-					CheckBundleResult cbr = CheckBundleResult.T.create();
+					CrCheckResult cbr = CrCheckResult.T.create();
 					cbr.setResult(r);
 					cbr.setStatus(CheckStatus.fail);
-					cbr.setName("Check Bundle Framework - Internal Error");
+					cbr.setName("Check Framework - Internal Error");
 					cbr.setCheckProcessorName("Check Framework");
 
-					response = CheckBundlesResponse.T.create();
+					response = CheckResponse.T.create();
 					response.getElements().add(cbr);
 					response.setStatus(CheckStatus.fail);
 
@@ -523,19 +523,19 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 		return responsePerNode;
 	}
 
-	private CheckBundlesResponse buildResponse(List<CbrAggregationKind> aggregatedBy, Map<CheckProcessorEntry, CheckResult> results) {
-		CheckBundlesResponse response = CheckBundlesResponse.T.create();
+	private CheckResponse buildResponse(List<CrAggregationKind> aggregatedBy, Map<CheckProcessorEntry, CheckResult> results) {
+		CheckResponse response = CheckResponse.T.create();
 
 		// # Calculate CheckStatus: ok, fail or warn
-		CheckStatus status = CheckBundlesUtils.getStatus(results.values());
+		CheckStatus status = CheckUtils.getStatus(results.values());
 		response.setStatus(status);
 
 		// # Create results
-		List<CheckBundleResult> bundleResults = new ArrayList<>();
+		List<CrCheckResult> crResults = new ArrayList<>();
 		for (Map.Entry<CheckProcessorEntry, CheckResult> entry : results.entrySet()) {
 			CheckProcessorEntry context = entry.getKey();
 
-			CheckBundleResult cbr = CheckBundleResult.T.create();
+			CrCheckResult cbr = CrCheckResult.T.create();
 			// Why does a result have a name???
 			cbr.setName(context.name());
 			cbr.setCheckProcessorName(context.name());
@@ -548,39 +548,39 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 
 			cbr.setNode(instanceId.getNodeId());
 
-			CheckStatus bundleStatus = CheckBundlesUtils.getStatus(result);
-			cbr.setStatus(bundleStatus);
+			CheckStatus checkStatus = CheckUtils.getStatus(result);
+			cbr.setStatus(checkStatus);
 
-			bundleResults.add(cbr);
+			crResults.add(cbr);
 		}
 
 		// # Aggregate
-		aggregate(response, bundleResults, aggregatedBy, 0);
+		aggregate(response, crResults, aggregatedBy, 0);
 
 		return response;
 	}
 
-	private void aggregate(CbrContainer container, List<CheckBundleResult> results, List<CbrAggregationKind> aggregateBy, int aggregateByIndex) {
-		List<CbrAggregatable> elements = container.getElements();
+	private void aggregate(CrContainer container, List<CrCheckResult> results, List<CrAggregationKind> aggregateBy, int aggregateByIndex) {
+		List<CrAggregatable> elements = container.getElements();
 
 		if (aggregateByIndex < aggregateBy.size()) {
-			CbrAggregationKind kind = aggregateBy.get(aggregateByIndex);
+			CrAggregationKind kind = aggregateBy.get(aggregateByIndex);
 
-			Function<CheckBundleResult, Collection<?>> accessor = CheckBundlesUtils.getAccessor(kind);
+			Function<CrCheckResult, Collection<?>> accessor = CheckUtils.getAccessor(kind);
 
-			Map<Object, Pair<CbrAggregation, List<CheckBundleResult>>> aggregationByKindSpecificValue = new LinkedHashMap<>();
+			Map<Object, Pair<CrAggregation, List<CrCheckResult>>> aggregationByKindSpecificValue = new LinkedHashMap<>();
 
-			Iterator<CheckBundleResult> iterator = results.iterator();
+			Iterator<CrCheckResult> iterator = results.iterator();
 			while (iterator.hasNext()) {
 				boolean matched = false;
-				CheckBundleResult result = iterator.next();
+				CrCheckResult result = iterator.next();
 
 				Collection<?> values = accessor.apply(result);
 				for (Object v : values) {
 					if (v == null) {
 						continue;
 					}
-					List<CheckBundleResult> filteredResults = aggregationByKindSpecificValue
+					List<CrCheckResult> filteredResults = aggregationByKindSpecificValue
 							.computeIfAbsent(v, k -> Pair.of(createAggregation(kind, v), new ArrayList<>())).second();
 					filteredResults.add(result);
 					matched = true;
@@ -591,9 +591,9 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 
 			}
 
-			for (Pair<CbrAggregation, List<CheckBundleResult>> aggregationPair : aggregationByKindSpecificValue.values()) {
-				CbrAggregation aggregation = aggregationPair.first();
-				List<CheckBundleResult> filteredResults = aggregationPair.second();
+			for (Pair<CrAggregation, List<CrCheckResult>> aggregationPair : aggregationByKindSpecificValue.values()) {
+				CrAggregation aggregation = aggregationPair.first();
+				List<CrCheckResult> filteredResults = aggregationPair.second();
 				aggregate(aggregation, filteredResults, aggregateBy, aggregateByIndex + 1);
 				elements.add(aggregation);
 			}
@@ -608,7 +608,7 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 
 		CheckStatus containerStatus = CheckStatus.ok;
 
-		for (CbrAggregatable aggregatable : elements) {
+		for (CrAggregatable aggregatable : elements) {
 			CheckStatus aggregatableStatus = aggregatable.getStatus();
 
 			if (aggregatableStatus.ordinal() > containerStatus.ordinal())
@@ -620,14 +620,14 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 		container.setStatus(containerStatus);
 	}
 
-	static CbrAggregation createAggregation(CbrAggregationKind kind, Object discriminator) {
-		CbrAggregation newAggregation = CbrAggregation.T.create();
+	static CrAggregation createAggregation(CrAggregationKind kind, Object discriminator) {
+		CrAggregation newAggregation = CrAggregation.T.create();
 		newAggregation.setKind(kind);
 		newAggregation.setDiscriminator(discriminator);
 		return newAggregation;
 	}
 
-	private List<CheckProcessorEntry> getFilteredCheckBundles(RunCheckBundles request) {
+	private List<CheckProcessorEntry> getFilteredCheckProcessorEntries(RunChecks request) {
 		return registry.listMatchingProcessorEntries(request);
 	}
 
@@ -655,7 +655,7 @@ public class CheckBundlesRxProcessor extends AbstractDispatchingServiceProcessor
 						String name = entry.getName();
 						String message = entry.getMessage();
 
-						entry.setName("Check Bundle Framework Result Entry Validation");
+						entry.setName("Check Framework Result Entry Validation");
 						entry.setMessage("CheckResultEntry.status must not be null");
 
 						StringBuilder builder = new StringBuilder();

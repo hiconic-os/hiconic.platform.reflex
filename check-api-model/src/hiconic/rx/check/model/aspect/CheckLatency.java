@@ -11,26 +11,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.check.model.bundle.api.response;
+package hiconic.rx.check.model.aspect;
 
 import com.braintribe.model.generic.base.EnumBase;
 import com.braintribe.model.generic.reflection.EnumType;
 import com.braintribe.model.generic.reflection.EnumTypes;
 
-public enum CbrAggregationKind implements EnumBase<CbrAggregationKind> {
+/**
+ * Classifies checks based on the expected computational effort.
+ * 
+ * @see CheckCoverage
+ */
+public enum CheckLatency implements EnumBase<CheckLatency> {
 
-	node,
-	label,
-	processorName,
-	latency,
-	coverage,
-	status,
-	bundle;
+	/** Checks that are very fast and use little resources. These checks can be performed frequently. */
+	immediate,
 
-	public static final EnumType<CbrAggregationKind> T = EnumTypes.T(CbrAggregationKind.class);
+	/** Checks that are still reasonably fast, up to say a few seconds, but calling them excessively could affect performance. */
+	moderate,
+
+	/** Deep(er) checks which should ideally be performed at off-peak hours. */
+	extensive;
+
+	public static final EnumType<CheckLatency> T = EnumTypes.T(CheckLatency.class);
 
 	@Override
-	public EnumType<CbrAggregationKind> type() {
+	public EnumType<CheckLatency> type() {
 		return T;
 	}
 }
