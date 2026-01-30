@@ -17,15 +17,16 @@ import com.braintribe.model.generic.base.EnumBase;
 import com.braintribe.model.generic.reflection.EnumType;
 import com.braintribe.model.generic.reflection.EnumTypes;
 
-public enum InterceptionType implements EnumBase {
+public enum InterceptionType implements EnumBase<InterceptionType> {
+
 	preProcess,
 	aroundProcess,
 	postProcess;
 
-	public static final EnumType T = EnumTypes.T(InterceptionType.class);
-	
+	public static final EnumType<InterceptionType> T = EnumTypes.T(InterceptionType.class);
+
 	@Override
-	public EnumType type() {
+	public EnumType<InterceptionType> type() {
 		return T;
 	}
 

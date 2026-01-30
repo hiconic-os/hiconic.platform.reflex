@@ -13,8 +13,34 @@
 // ============================================================================
 package hiconic.rx.access.module.processing;
 
+import java.util.function.Supplier;
+
+import com.braintribe.model.accessapi.PersistenceRequest;
+import com.braintribe.model.resource.Resource;
+import com.braintribe.model.resourceapi.base.ResourceRequest;
+
+import hiconic.rx.access.model.configuration.Access;
+import hiconic.rx.access.module.wire.space.AccessRxModuleSpace;
+
 public interface RxAccessConstants {
 
-	String ACCESS_BASE_MODEL_NAME = "reflex:access-base-model";
+	/**
+	 * This model is added to every service domain of every access.
+	 * <p>
+	 * It binds {@link PersistenceRequest} to {@link RxPersistenceProcessor}
+	 * 
+	 *  @see RxAccesses#deploy(Access, Supplier)
+	 *  @see AccessRxModuleSpace#configurePersistenceProcessor
+	 */
+	String ACCESS_API_BASE_MODEL_NAME = "reflex:access-api-base-model";
 
+	/**
+	 * This model is added to every service domain of every access which contains the {@link Resource} type.
+	 * <p>
+	 * It binds {@link ResourceRequest} to {@link ResourceRequestProcessor}
+	 * 
+	 *  @see RxAccesses#deploy(Access, Supplier)
+	 *  @see AccessRxModuleSpace#configureResourceRequestProcessor
+	 */
+	String ACCESS_API_RESOURCE_MODEL_NAME = "reflex:access-api-resource-model";
 }
