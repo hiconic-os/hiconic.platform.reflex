@@ -80,12 +80,6 @@ public class RxModuleLoader implements LifecycleAware {
 		this.executorService = executorService;
 	}
 
-	public Iterable<RxModuleContract> getModuleContracts() {
-		return () -> contexts.stream() //
-				.map(c -> c.contract()) //
-				.iterator();
-	}
-
 	public List<RxModuleContract> listModuleContracts() {
 		return contexts.stream() //
 				.map(c -> c.contract()) //
