@@ -17,13 +17,13 @@ import static com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling.getOrTunn
 
 import javax.sql.DataSource;
 
-import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.persistence.hibernate.dialects.HibernateDialectMappings;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.db.module.api.DatabaseContract;
+import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguration;
 import hiconic.rx.hibernate.module.api.HibernateContract;
 import hiconic.rx.hibernate.processing.DialectAutoSense;
 import hiconic.rx.hibernate.processing.HibernatePersistences;
@@ -38,28 +38,28 @@ public class HibernateRxModuleSpace implements RxModuleContract, HibernateContra
 
 	@Import
 	private RxPlatformContract platform;
-	
+
 	@Import
 	private HibernatePropertiesContract hibernateProperties;
-	
-	@Import 
+
+	@Import
 	private DatabaseContract database;
-	
+
 	@Override
-	public HibernatePersistence persistence(CmdResolver cmdResolver, DataSource dataSource) {
-		return persistences().acquirePersistence(cmdResolver, dataSource);
+	public HibernatePersistence persistence(HibernatePersistenceConfiguration configuration, ConfiguredModel configuredModel, DataSource dataSource) {
+		return persistence(configuration, configuredModel.systemCmdResolver(), dataSource);
 	}
-	
+
 	@Override
-	public HibernatePersistence persistence(ConfiguredModel configuredModel, DataSource dataSource) {
-		return persistences().acquirePersistence(configuredModel.systemCmdResolver(), dataSource);
+	public HibernatePersistence persistence(HibernatePersistenceConfiguration configuration, CmdResolver cmdResolver, DataSource dataSource) {
+		return persistences().acquirePersistence(configuration, cmdResolver, dataSource);
 	}
-	
+
 	@Override
 	public HibernatePersistence mainPersistence() {
-		return persistence(platform.configuredModels().mainPersistenceModel(), getOrTunnel(database.mainDataSource()));
+		return persistence(null, platform.configuredModels().mainPersistenceModel(), getOrTunnel(database.mainDataSource()));
 	}
-	
+
 	@Managed
 	private HibernatePersistences persistences() {
 		HibernatePersistences bean = new HibernatePersistences();

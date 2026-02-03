@@ -28,7 +28,6 @@ import org.hibernate.dialect.Dialect;
 import com.braintribe.cartridge.common.processing.DialectMapping;
 import com.braintribe.cfg.Required;
 import com.braintribe.exception.Exceptions;
-import com.braintribe.logging.Logger;
 import com.braintribe.persistence.hibernate.dialects.HibernateDialectMapping;
 import com.braintribe.util.jdbc.dialect.JdbcDialectAutoSense;
 import com.braintribe.utils.StringTools;
@@ -37,15 +36,10 @@ import com.braintribe.utils.StringTools;
  * This class holds the list of {@link DialectMapping}s. It's main purpose is to increase the expressiveness of the configuration (for EM).
  * 
  * @author michael.lafite
- * 
- * @param <D>
- *            The dialect type
  */
 public class DialectAutoSense {
 
-	private static Logger logger = Logger.getLogger(DialectAutoSense.class);
-
-	private Map<Pattern, Class<? extends Dialect>> patternMappings = new HashMap<>();
+	private final Map<Pattern, Class<? extends Dialect>> patternMappings = new HashMap<>();
 
 	@Required
 	public void setDialectMappings(List<HibernateDialectMapping> dialectMappings) {

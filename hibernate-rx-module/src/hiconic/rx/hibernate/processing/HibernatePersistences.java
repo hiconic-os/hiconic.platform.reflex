@@ -29,8 +29,9 @@ import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.service.api.ServiceProcessor;
 import com.braintribe.model.service.api.ServiceRequest;
-import com.braintribe.utils.lcd.LazyInitialized;
+import com.braintribe.utils.lcd.Lazy;
 
+import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguration;
 import hiconic.rx.hibernate.service.api.HibernatePersistence;
 import hiconic.rx.hibernate.service.api.PersistenceDispatching;
 import hiconic.rx.hibernate.service.api.PersistenceProcessor;
@@ -41,11 +42,7 @@ import hiconic.rx.hibernate.service.impl.ConfigurableDispatchingPersistenceServi
 public class HibernatePersistences implements DestructionAware {
 	private static Logger logger = Logger.getLogger(HibernatePersistences.class);
 
-	record SessionFactoryKey(CmdResolver resolver, DataSource dataSource) {
-		// empty
-	}
-
-	private final Map<SessionFactoryKey, LazyInitialized<HibernatePersistenceImpl>> cache = new ConcurrentHashMap<>();
+	private final Map<SessionFactoryKey, Lazy<HibernatePersistenceImpl>> cache = new ConcurrentHashMap<>();
 
 	private File debugOrmOutputFolder;
 	private DialectAutoSense dialectAutoSense;
@@ -60,18 +57,18 @@ public class HibernatePersistences implements DestructionAware {
 		this.dialectAutoSense = dialectAutoSense;
 	}
 
-	public HibernatePersistence acquirePersistence(CmdResolver resolver, DataSource dataSource) {
-		return cache.computeIfAbsent(new SessionFactoryKey(resolver, dataSource), this::buildPersistence).get();
+	public HibernatePersistence acquirePersistence(HibernatePersistenceConfiguration configuration, CmdResolver resolver, DataSource dataSource) {
+		return cache.computeIfAbsent(new SessionFactoryKey(configuration, resolver, dataSource), this::buildPersistence).get();
 	}
 
-	private LazyInitialized<HibernatePersistenceImpl> buildPersistence(SessionFactoryKey key) {
-		return new LazyInitialized<>(() -> new HibernatePersistenceImpl(key));
+	private Lazy<HibernatePersistenceImpl> buildPersistence(SessionFactoryKey key) {
+		return new Lazy<>(() -> new HibernatePersistenceImpl(key));
 	}
 
 	@Override
 	public void preDestroy() {
-		for (Entry<SessionFactoryKey, LazyInitialized<HibernatePersistenceImpl>> entry : cache.entrySet()) {
-			LazyInitialized<HibernatePersistenceImpl> lazyPersistence = entry.getValue();
+		for (Entry<SessionFactoryKey, Lazy<HibernatePersistenceImpl>> entry : cache.entrySet()) {
+			Lazy<HibernatePersistenceImpl> lazyPersistence = entry.getValue();
 
 			if (!lazyPersistence.isInitialized())
 				continue;
@@ -88,7 +85,7 @@ public class HibernatePersistences implements DestructionAware {
 
 	class HibernatePersistenceImpl implements HibernatePersistence {
 
-		private final LazyInitialized<SessionFactory> lazySessionFactory = new LazyInitialized<>(this::buildSessionFactory);
+		private final Lazy<SessionFactory> lazySessionFactory = new Lazy<>(this::buildSessionFactory);
 		private final SessionFactoryKey key;
 
 		public HibernatePersistenceImpl(SessionFactoryKey key) {
@@ -96,7 +93,7 @@ public class HibernatePersistences implements DestructionAware {
 		}
 
 		private SessionFactory buildSessionFactory() {
-			var builder = new HibernateModelSessionFactoryBuilder(key.resolver(), key.dataSource());
+			var builder = new HibernateModelSessionFactoryBuilder(key);
 			builder.setOrmDebugOutputFolder(debugOrmOutputFolder);
 			builder.setDialectAutoSense(dialectAutoSense);
 			return builder.build();
@@ -109,8 +106,7 @@ public class HibernatePersistences implements DestructionAware {
 
 		@Override
 		public <P extends ServiceRequest, R> ServiceProcessor<P, R> asServiceProcessor(PersistenceDispatching<P, R> dispatching) {
-			ConfigurableDispatchingPersistenceServiceProcessor<P, R> dispatcher = new ConfigurableDispatchingPersistenceServiceProcessor<>(
-					dispatching);
+			var dispatcher = new ConfigurableDispatchingPersistenceServiceProcessor<>(dispatching);
 			return new PersistenceAdapterServiceProcessor<>(lazySessionFactory, dispatcher);
 		}
 
@@ -129,4 +125,11 @@ public class HibernatePersistences implements DestructionAware {
 			return lazySessionFactory.get();
 		}
 	}
+}
+
+record SessionFactoryKey( //
+		HibernatePersistenceConfiguration configuration, //
+		CmdResolver resolver, //
+		DataSource dataSource) {
+	// empty
 }

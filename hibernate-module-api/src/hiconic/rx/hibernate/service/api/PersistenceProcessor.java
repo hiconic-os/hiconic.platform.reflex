@@ -15,6 +15,14 @@ package hiconic.rx.hibernate.service.api;
 
 import com.braintribe.model.service.api.ServiceRequest;
 
+/**
+ * Not really relevant. 
+ * 
+ * @param <P>
+ *            request type
+ * @param <R>
+ * 	        response type
+ */
 public interface PersistenceProcessor<P extends ServiceRequest, R> {
-
+	// empty
 }

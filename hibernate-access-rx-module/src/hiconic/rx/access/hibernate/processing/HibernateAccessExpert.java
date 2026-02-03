@@ -33,14 +33,15 @@ import hiconic.rx.hibernate.service.api.HibernatePersistence;
 import hiconic.rx.module.api.service.ConfiguredModel;
 
 public class HibernateAccessExpert implements AccessExpert<HibernateAccess> {
+
 	private HibernateContract hibernateContract;
 	private DatabaseContract databaseContract;
-	
+
 	@Required
 	public void setHibernateContract(HibernateContract hibernateContract) {
 		this.hibernateContract = hibernateContract;
 	}
-	
+
 	@Required
 	public void setDatabaseContract(DatabaseContract databaseContract) {
 		this.databaseContract = databaseContract;
@@ -67,7 +68,7 @@ public class HibernateAccessExpert implements AccessExpert<HibernateAccess> {
 
 		DataSource dataSource = dataSourceMaybe.get();
 
-		HibernatePersistence persistence = hibernateContract.persistence(dataModel.systemCmdResolver(), dataSource);
+		HibernatePersistence persistence = hibernateContract.persistence(access, dataModel, dataSource);
 
 		incrementalAccess.setAccessId(access.getAccessId());
 		incrementalAccess.setHibernateSessionFactory(persistence.sessionFactory());
