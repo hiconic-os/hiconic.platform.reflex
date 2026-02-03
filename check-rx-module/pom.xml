@@ -6,7 +6,7 @@
         <version>[1.0,1.1)</version>
     </parent>
     <artifactId>check-rx-module</artifactId>
-    <version>1.0.4</version>
+    <version>1.0.5</version>
     <properties/>
     <dependencies>
         <dependency>
