@@ -11,25 +11,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.check.model.bundle.api.request;
+package hiconic.rx.check.model.api.response;
 
-import com.braintribe.model.generic.annotation.Initializer;
-import com.braintribe.model.generic.eval.EvalContext;
-import com.braintribe.model.generic.eval.Evaluator;
+import java.util.Date;
+
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
-import com.braintribe.model.service.api.ServiceRequest;
 
-import hiconic.rx.check.model.bundle.api.response.CheckBundlesResponse;
+import hiconic.rx.check.model.api.request.CheckRequest;
 
-public interface RunVitalityCheckBundles extends HasAggregateBy, CheckBundlesRequest {
-	EntityType<RunVitalityCheckBundles> T = EntityTypes.T(RunVitalityCheckBundles.class);
+/**
+ * Response to a {@link CheckRequest} 
+ */
+public interface CheckResponse extends CrContainer {
 
-	@Override
-	EvalContext<CheckBundlesResponse> eval(Evaluator<ServiceRequest> evaluator);
+	EntityType<CheckResponse> T = EntityTypes.T(CheckResponse.class);
 
-	@Initializer("503")
-	int getWarnStatusCode();
-	void setWarnStatusCode(int warnStatusCode);
+	double getElapsedTimeInMs();
+	void setElapsedTimeInMs(double elapsedTime);
+
+	Date getCreatedAt();
+	void setCreatedAt(Date createdAt);
 
 }

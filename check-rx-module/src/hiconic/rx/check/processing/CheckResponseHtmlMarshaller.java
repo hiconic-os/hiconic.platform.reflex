@@ -20,17 +20,17 @@ import com.braintribe.codec.marshaller.api.GmSerializationOptions;
 import com.braintribe.codec.marshaller.api.MarshallException;
 import com.braintribe.model.service.api.result.Unsatisfied;
 
-import hiconic.rx.check.model.bundle.api.response.CbrAggregatable;
-import hiconic.rx.check.model.bundle.api.response.CbrAggregation;
-import hiconic.rx.check.model.bundle.api.response.CheckBundlesResponse;
+import hiconic.rx.check.model.api.response.CheckResponse;
+import hiconic.rx.check.model.api.response.CrAggregatable;
+import hiconic.rx.check.model.api.response.CrAggregation;
 
 /**
- * This custom marshaller is mapped to custom mime type <code>text/html;spec=check-bundles-response</code> and reacts on incoming
- * {@link CheckBundlesResponse Check Bundle Responses}. Its responsibility is to marshall the incoming response in a styled HTML site.
+ * This custom marshaller is mapped to custom mime type <code>text/html;spec=check-response</code> and reacts on incoming
+ * {@link CheckResponse Check Responses}. Its responsibility is to marshall the incoming response in a styled HTML site.
  * 
  * @author christina.wilpernig
  */
-public class CheckBundlesResponseHtmlMarshaller implements CharacterMarshaller {
+public class CheckResponseHtmlMarshaller implements CharacterMarshaller {
 
 	private VelocityEngine veloEngine;
 	private Template template;
@@ -50,7 +50,7 @@ public class CheckBundlesResponseHtmlMarshaller implements CharacterMarshaller {
 
 	@Override
 	public void marshall(Writer writer, Object value, GmSerializationOptions options) throws MarshallException {
-		if (!(value instanceof CheckBundlesResponse)) {
+		if (!(value instanceof CheckResponse)) {
 			marshallNonResponse(writer, value);
 			return;
 		}
@@ -58,14 +58,14 @@ public class CheckBundlesResponseHtmlMarshaller implements CharacterMarshaller {
 		this.veloEngine = com.braintribe.utils.velocity.VelocityTools.newResourceLoaderVelocityEngine(true);
 		this.template = this.veloEngine.getTemplate("hiconic/rx/check/processing/result.html.vm");
 
-		CheckBundlesResponse response = (CheckBundlesResponse) value;
+		CheckResponse response = (CheckResponse) value;
 
 		VelocityContext context = new VelocityContext();
 		context.put("response", response);
 		context.put("overallStatus", response.getStatus());
 		context.put("overallElapsedTime", response.getElapsedTimeInMs());
 
-		List<CbrAggregatable> elements = response.getElements();
+		List<CrAggregatable> elements = response.getElements();
 
 		StringBuilder aggregationListStringBuilder = new StringBuilder();
 		int aggregationByCount = getAggregationList(aggregationListStringBuilder, elements);
@@ -82,7 +82,7 @@ public class CheckBundlesResponseHtmlMarshaller implements CharacterMarshaller {
 		context.put("warnCount", statistic.getWarnCount());
 		context.put("failCount", statistic.getFailCount());
 
-		CheckBundlesVelocityTools tools = new CheckBundlesVelocityTools();
+		CheckVelocityTools tools = new CheckVelocityTools();
 		context.put("tools", tools);
 
 		template.merge(context, writer);
@@ -98,7 +98,7 @@ public class CheckBundlesResponseHtmlMarshaller implements CharacterMarshaller {
 			}
 
 		} else {
-			throw new IllegalArgumentException("Unsupported value type. Supported type: " + CheckBundlesResponse.T.getShortName());
+			throw new IllegalArgumentException("Unsupported value type. Supported type: " + CheckResponse.T.getShortName());
 		}
 
 	}
@@ -109,8 +109,8 @@ public class CheckBundlesResponseHtmlMarshaller implements CharacterMarshaller {
 		private int warnCount;
 		private int failCount;
 
-		public void createStatistic(List<CbrAggregatable> elements) {
-			for (CbrAggregatable a : elements) {
+		public void createStatistic(List<CrAggregatable> elements) {
+			for (CrAggregatable a : elements) {
 				if (a.isResult()) {
 					checks++;
 					switch (a.getStatus()) {
@@ -127,7 +127,7 @@ public class CheckBundlesResponseHtmlMarshaller implements CharacterMarshaller {
 							break;
 					}
 				} else {
-					createStatistic(((CbrAggregation) a).getElements());
+					createStatistic(((CrAggregation) a).getElements());
 				}
 			}
 		}
@@ -152,7 +152,7 @@ public class CheckBundlesResponseHtmlMarshaller implements CharacterMarshaller {
 	/**
 	 * Returns the aggregation order of the elements in a human-readable format, like: <b>node / bundle / weight</b>
 	 */
-	private static int getAggregationList(StringBuilder res, List<CbrAggregatable> aggregatables) {
+	private static int getAggregationList(StringBuilder res, List<CrAggregatable> aggregatables) {
 		int count = collectKinds(res, aggregatables, 0);
 		if (count == 0)
 			res.append("No aggregation defined");
@@ -160,15 +160,15 @@ public class CheckBundlesResponseHtmlMarshaller implements CharacterMarshaller {
 		return count;
 	}
 
-	private static int collectKinds(StringBuilder res, List<CbrAggregatable> aggregatables, int count) {
-		for (CbrAggregatable e : aggregatables) {
-			if (e instanceof CbrAggregation) {
+	private static int collectKinds(StringBuilder res, List<CrAggregatable> aggregatables, int count) {
+		for (CrAggregatable e : aggregatables) {
+			if (e instanceof CrAggregation) {
 				if (res.length() > 0)
 					res.append(" / ");
 
-				CbrAggregation aggregation = (CbrAggregation) e;
+				CrAggregation aggregation = (CrAggregation) e;
 				res.append(aggregation.getKind());
-				List<CbrAggregatable> elements = aggregation.getElements();
+				List<CrAggregatable> elements = aggregation.getElements();
 
 				return collectKinds(res, elements, ++count);
 			} else {

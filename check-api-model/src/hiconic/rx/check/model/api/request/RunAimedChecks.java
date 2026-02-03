@@ -11,26 +11,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.check.model.bundle.api.request;
+package hiconic.rx.check.model.api.request;
 
-import java.util.Map;
-
-import com.braintribe.model.generic.annotation.Initializer;
+import com.braintribe.model.generic.annotation.meta.Mandatory;
 import com.braintribe.model.generic.eval.EvalContext;
 import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
-import com.braintribe.model.service.api.InstanceId;
 import com.braintribe.model.service.api.ServiceRequest;
 
-public interface RunHealthChecks extends CheckBundlesRequest {
-	EntityType<RunHealthChecks> T = EntityTypes.T(RunHealthChecks.class);
+import hiconic.rx.check.model.api.response.CheckResponse;
+
+/** Executes {@link RunChecks} on the specified {@link #getNode() node}. */
+public interface RunAimedChecks extends AuthorizedCheckRequest {
+
+	EntityType<RunAimedChecks> T = EntityTypes.T(RunAimedChecks.class);
+
+	@Mandatory
+	String getNodeId();
+	void setNodeId(String nodeId);
 
 	@Override
-	EvalContext<Map<InstanceId, Object>> eval(Evaluator<ServiceRequest> evaluator);
-
-	@Initializer("503")
-	Integer getWarnStatusCode();
-	void setWarnStatusCode(Integer warnStatusCode);
+	EvalContext<CheckResponse> eval(Evaluator<ServiceRequest> evaluator);
 
 }

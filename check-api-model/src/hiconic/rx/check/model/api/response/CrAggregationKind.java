@@ -11,16 +11,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.check.model.bundle.api.request;
+package hiconic.rx.check.model.api.response;
 
-import com.braintribe.model.generic.annotation.Abstract;
-import com.braintribe.model.generic.reflection.EntityType;
-import com.braintribe.model.generic.reflection.EntityTypes;
-import com.braintribe.model.service.api.ServiceRequest;
+import com.braintribe.model.generic.base.EnumBase;
+import com.braintribe.model.generic.reflection.EnumType;
+import com.braintribe.model.generic.reflection.EnumTypes;
 
-@Abstract
-public interface CheckBundlesRequest extends ServiceRequest {
+public enum CrAggregationKind implements EnumBase<CrAggregationKind> {
 
-	EntityType<CheckBundlesRequest> T = EntityTypes.T(CheckBundlesRequest.class);
+	node,
+	label,
+	processorName,
+	latency,
+	coverage,
+	status,
+	bundle;
 
+	public static final EnumType<CrAggregationKind> T = EnumTypes.T(CrAggregationKind.class);
+
+	@Override
+	public EnumType<CrAggregationKind> type() {
+		return T;
+	}
 }

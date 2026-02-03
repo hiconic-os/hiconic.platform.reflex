@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.check.model.bundle.api.request;
+package hiconic.rx.check.model.api.request;
 
 import java.util.List;
 
@@ -20,14 +20,14 @@ import com.braintribe.model.generic.annotation.Abstract;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 
-import hiconic.rx.check.model.bundle.api.response.CbrAggregationKind;
+import hiconic.rx.check.model.api.response.CrAggregationKind;
 
 @Abstract
 public interface HasAggregateBy extends GenericEntity {
 
 	EntityType<HasAggregateBy> T = EntityTypes.T(HasAggregateBy.class);
 
-	List<CbrAggregationKind> getAggregateBy();
-	void setAggregateBy(List<CbrAggregationKind> aggregateBy);
+	List<CrAggregationKind> getAggregateBy();
+	void setAggregateBy(List<CrAggregationKind> aggregateBy);
 
 }

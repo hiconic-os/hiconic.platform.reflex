@@ -4,8 +4,8 @@ import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.check.api.CheckContract;
-import hiconic.rx.check.model.bundle.aspect.CheckCoverage;
-import hiconic.rx.check.model.bundle.aspect.CheckLatency;
+import hiconic.rx.check.model.aspect.CheckCoverage;
+import hiconic.rx.check.model.aspect.CheckLatency;
 import hiconic.rx.db.check.processing.DbConnectionCheckProcessor;
 import hiconic.rx.db.module.api.DatabaseContract;
 import hiconic.rx.module.api.wire.RxModuleContract;

@@ -1,6 +1,6 @@
 package hiconic.rx.check.api;
 
-import hiconic.rx.check.model.bundle.api.request.RunCheckBundles;
+import hiconic.rx.check.model.api.request.RunChecks;
 import hiconic.rx.module.api.service.ServiceDomainSymbol;
 
 /**
@@ -9,7 +9,7 @@ import hiconic.rx.module.api.service.ServiceDomainSymbol;
 public enum CheckServiceDomain implements ServiceDomainSymbol {
 
 	/**
-	 * Domain for {@link RunCheckBundles}
+	 * Domain for {@link RunChecks}
 	 */
 	check
 

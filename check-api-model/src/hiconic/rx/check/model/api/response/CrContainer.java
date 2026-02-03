@@ -11,7 +11,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.check.model.bundle.api.response;
+package hiconic.rx.check.model.api.response;
+
+import java.util.List;
 
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.annotation.Abstract;
@@ -21,12 +23,13 @@ import com.braintribe.model.generic.reflection.EntityTypes;
 import hiconic.rx.check.model.result.CheckStatus;
 
 @Abstract
-public interface CbrAggregatable extends GenericEntity {
-	EntityType<CbrAggregatable> T = EntityTypes.T(CbrAggregatable.class);
+public interface CrContainer extends GenericEntity {
+	EntityType<CrContainer> T = EntityTypes.T(CrContainer.class);
 
 	CheckStatus getStatus();
 	void setStatus(CheckStatus status);
 
-	boolean isResult();
+	List<CrAggregatable> getElements();
+	void setElements(List<CrAggregatable> elements);
 
 }

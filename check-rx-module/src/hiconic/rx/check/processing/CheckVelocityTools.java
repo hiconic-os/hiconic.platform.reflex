@@ -15,16 +15,16 @@ import com.vladsch.flexmark.util.ast.Document;
 import com.vladsch.flexmark.util.data.MutableDataHolder;
 import com.vladsch.flexmark.util.data.MutableDataSet;
 
-import hiconic.rx.check.model.bundle.api.response.CbrAggregatable;
-import hiconic.rx.check.model.bundle.api.response.CbrAggregation;
-import hiconic.rx.check.model.bundle.api.response.CheckBundlesResponse;
+import hiconic.rx.check.model.api.response.CheckResponse;
+import hiconic.rx.check.model.api.response.CrAggregatable;
+import hiconic.rx.check.model.api.response.CrAggregation;
 
 /**
  * Tooling functions which are called from the check bundle velocity template.
  * 
  * @author christina.wilpernig
  */
-public class CheckBundlesVelocityTools {
+public class CheckVelocityTools {
 
 	public static final MutableDataHolder FLEXMARK_OPTIONS = new MutableDataSet() //
 			.set(Parser.EXTENSIONS, Arrays.asList(TablesExtension.create()));
@@ -32,7 +32,7 @@ public class CheckBundlesVelocityTools {
 	private final Lazy<Parser> markdownParser = new Lazy<>(() -> Parser.builder(FLEXMARK_OPTIONS).build());
 	private final Lazy<HtmlRenderer> htmlRenderer = new Lazy<>(() -> HtmlRenderer.builder(FLEXMARK_OPTIONS).build());
 
-	public String getIdPrefix(CbrAggregation aggregation) {
+	public String getIdPrefix(CrAggregation aggregation) {
 		switch (aggregation.getKind()) {
 			case bundle:
 				return "Bundle";
@@ -54,15 +54,15 @@ public class CheckBundlesVelocityTools {
 	}
 	
 	public boolean isResponse(Object object) {
-		return (object instanceof CheckBundlesResponse);
+		return (object instanceof CheckResponse);
 	}
 	
 	public String getDetailsPreview(String details) {
 		return details.length() < 50 ? details : details.substring(0, 50) + "...";
 	}
 	
-	public String getIdentification(CbrAggregatable a) {
-		return CheckBundlesUtils.getIdentification(a);
+	public String getIdentification(CrAggregatable a) {
+		return CheckUtils.getIdentification(a);
 	}
 	
 	public String getPrettyElapsedTime(double elapsedTime) {

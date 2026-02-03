@@ -11,21 +11,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.check.model.bundle.api.response;
+package hiconic.rx.check.model.api.response;
 
-import java.util.Date;
-
+import com.braintribe.model.generic.GenericEntity;
+import com.braintribe.model.generic.annotation.Abstract;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 
-public interface CheckBundlesResponse extends CbrContainer {
+import hiconic.rx.check.model.result.CheckStatus;
 
-	EntityType<CheckBundlesResponse> T = EntityTypes.T(CheckBundlesResponse.class);
+@Abstract
+public interface CrAggregatable extends GenericEntity {
+	EntityType<CrAggregatable> T = EntityTypes.T(CrAggregatable.class);
 
-	double getElapsedTimeInMs();
-	void setElapsedTimeInMs(double elapsedTime);
+	CheckStatus getStatus();
+	void setStatus(CheckStatus status);
 
-	Date getCreatedAt();
-	void setCreatedAt(Date createdAt);
+	boolean isResult();
 
 }

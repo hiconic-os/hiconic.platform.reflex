@@ -81,8 +81,8 @@ import com.braintribe.utils.system.exec.CommandExecution;
 import com.braintribe.utils.system.exec.RunCommandContext;
 import com.braintribe.utils.system.exec.RunCommandRequest;
 
-import hiconic.rx.check.model.bundle.api.request.RunCheckBundles;
-import hiconic.rx.check.model.bundle.api.response.CheckBundlesResponse;
+import hiconic.rx.check.model.api.request.RunChecks;
+import hiconic.rx.check.model.api.response.CheckResponse;
 import hiconic.rx.explorer.processing.platformreflection.ReflectionResponseAsyncCallback.CollectAccessDataFolderAsyncCallback;
 import hiconic.rx.explorer.processing.platformreflection.ReflectionResponseAsyncCallback.CollectConfigurationFolderAsyncCallback;
 import hiconic.rx.explorer.processing.platformreflection.ReflectionResponseAsyncCallback.CollectHealthzAsyncCallback;
@@ -439,16 +439,16 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 		Healthz result = Healthz.T.create();
 
 		try {
-			RunCheckBundles runChecks = RunCheckBundles.T.create();
+			RunChecks runChecks = RunChecks.T.create();
 			runChecks.setCoverage(null);
 
 			// TODO make timeout configurable?
-			Maybe<CheckBundlesResponse> checkResultMaybe = evalWithTimeout(runChecks, runChecks.eval(context), 2, TimeUnit.MINUTES);
+			Maybe<CheckResponse> checkResultMaybe = evalWithTimeout(runChecks, runChecks.eval(context), 2, TimeUnit.MINUTES);
 
 			if (checkResultMaybe.isSatisfied()) {
-				CheckBundlesResponse checkResult = checkResultMaybe.get();
+				CheckResponse checkResult = checkResultMaybe.get();
 				String html = marshall(checkResult);
-				result.setCheckBundlesResponseAsHtml(html);
+				result.setCheckResponseAsHtml(html);
 
 			} else {
 				logger.info("Error while running health checks: " + checkResultMaybe.whyUnsatisfied().stringify());
@@ -462,7 +462,7 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 		return result;
 	}
 
-	private String marshall(CheckBundlesResponse checkResult) {
+	private String marshall(CheckResponse checkResult) {
 		try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
 			checkResultMarshaller.marshall(bos, checkResult);
 			return new String(bos.toByteArray());
@@ -684,7 +684,7 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 		Map<String, File> files = new LinkedHashMap<>();
 
 		if (dpContext.healthz != null) {
-			String htmlString = dpContext.healthz.getCheckBundlesResponseAsHtml();
+			String htmlString = dpContext.healthz.getCheckResponseAsHtml();
 			if (htmlString != null) {
 				File processesJsonFile = writeToTempFile("healthz-" + now, htmlString);
 				files.put("healthz-" + now + ".html", processesJsonFile);

@@ -1,7 +1,7 @@
 package hiconic.rx.check.api;
 
-import hiconic.rx.check.model.bundle.aspect.CheckCoverage;
-import hiconic.rx.check.model.bundle.aspect.CheckLatency;
+import hiconic.rx.check.model.aspect.CheckCoverage;
+import hiconic.rx.check.model.aspect.CheckLatency;
 
 /**
  * @author peter.gazdik

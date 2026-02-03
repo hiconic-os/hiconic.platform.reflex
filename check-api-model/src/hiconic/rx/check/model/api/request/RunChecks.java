@@ -11,32 +11,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.check.model.bundle.api.response;
+package hiconic.rx.check.model.api.request;
 
+import com.braintribe.model.generic.eval.EvalContext;
+import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
-import com.braintribe.model.service.api.result.Failure;
+import com.braintribe.model.service.api.ServiceRequest;
 
-import hiconic.rx.check.model.result.CheckResult;
+import hiconic.rx.check.model.api.response.CheckResponse;
 
-public interface CheckBundleResult extends CheckBundleQualification, CbrAggregatable {
-	EntityType<CheckBundleResult> T = EntityTypes.T(CheckBundleResult.class);
+/** Executes all the relevant checks (passing the {@link HasCheckFilters}) on the local node. */
+public interface RunChecks extends AuthorizedCheckRequest {
 
-	CheckResult getResult();
-	void setResult(CheckResult result);
-
-	String getCheckProcessorName();
-	void setCheckProcessorName(String checkProcessorName);
-
-	String getNode();
-	void setNode(String node);
-
-	Failure getProcessingFailure();
-	void setProcessingFailure(Failure processingFailure);
+	EntityType<RunChecks> T = EntityTypes.T(RunChecks.class);
 
 	@Override
-	default boolean isResult() {
-		return true;
-	}
+	EvalContext<CheckResponse> eval(Evaluator<ServiceRequest> evaluator);
 
 }
