@@ -26,7 +26,7 @@ import hiconic.rx.module.api.wire.RxContractSpaceResolverConfigurator;
 
 public class RxConfigurableContractSpaceResolver implements RxContractSpaceResolverConfigurator, ContractSpaceResolver {
 
-	private List<ContractSpaceResolver> contractSpaceResolvers = emptyList();
+	private volatile List<ContractSpaceResolver> contractSpaceResolvers = emptyList();
 
 	@Override
 	public synchronized void addResolver(ContractSpaceResolver resolver) {

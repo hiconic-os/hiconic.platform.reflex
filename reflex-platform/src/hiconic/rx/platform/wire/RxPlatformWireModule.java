@@ -76,7 +76,7 @@ public class RxPlatformWireModule implements WireTerminalModule<RxPlatformContra
 		contextBuilder.bindContract(RxTransientDataContract.class, RxTransientDataSpace.class);
 		contextBuilder.bindContract(RxProcessLaunchContract.class, RxPlatformSpace.class);
 		contextBuilder.bindContract(RxPlatformConfigContract.class, config);
-		contextBuilder.bindContracts(configurableContractSpaceResolver);
+		contextBuilder.bindContracts(configurableContractSpaceResolver); // here RxExportContracts are registered and can be resolved
 	}
-	
+
 }
