@@ -17,6 +17,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.braintribe.cfg.Required;
+import com.braintribe.model.processing.session.api.persistence.PersistenceGmSessionFactory;
+
 import hiconic.rx.access.module.api.AccessModelConfiguration;
 import hiconic.rx.access.module.api.AccessModelConfigurations;
 import hiconic.rx.module.api.service.ModelConfiguration;
@@ -24,30 +27,48 @@ import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.service.ModelReference;
 
 public class RxAccessModelConfigurations implements AccessModelConfigurations {
+
 	private ModelConfigurations modelConfigurations;
 	private final Map<ModelConfiguration, RxAccessModelConfiguration> accessModelConfigurations = new ConcurrentHashMap<>();
-	
+
+	private PersistenceGmSessionFactory contextSessionFactory;
+	private PersistenceGmSessionFactory systemSessionFactory;
+
 	public void initModelConfigurations(ModelConfigurations modelConfigurations) {
 		this.modelConfigurations = modelConfigurations;
 	}
-	
+
+	@Required
+	public void setContextSessionFactory(PersistenceGmSessionFactory contextSessionFactory) {
+		this.contextSessionFactory = contextSessionFactory;
+	}
+
+	@Required
+	public void setSystemSessionFactory(PersistenceGmSessionFactory systemSessionFactory) {
+		this.systemSessionFactory = systemSessionFactory;
+	}
+
 	@Override
 	public AccessModelConfiguration byConfiguration(ModelConfiguration modelConfiguration) {
-		return accessModelConfigurations.computeIfAbsent(modelConfiguration, RxAccessModelConfiguration::new);
+		return accessModelConfigurations.computeIfAbsent(modelConfiguration, this::newRxModelConfiguration);
 	}
-	
+
+	private RxAccessModelConfiguration newRxModelConfiguration(ModelConfiguration modelconfiguration) {
+		return new RxAccessModelConfiguration(modelconfiguration, contextSessionFactory, systemSessionFactory);
+	}
 	@Override
 	public AccessModelConfiguration byName(String modeName) {
 		return byConfiguration(modelConfigurations.byName(modeName));
 	}
-	
+
 	@Override
 	public AccessModelConfiguration byReference(ModelReference modelReference) {
 		return byConfiguration(modelConfigurations.byReference(modelReference));
 	}
-	
+
 	@Override
 	public List<AccessModelConfiguration> listConfigurations() {
 		return List.copyOf(accessModelConfigurations.values());
 	}
+
 }

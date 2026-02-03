@@ -20,9 +20,13 @@ import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.function.Supplier;
 
+import com.braintribe.model.accessapi.AccessRequest;
+import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.processing.aop.api.aspect.AccessAspect;
 import com.braintribe.model.processing.meta.editor.ModelMetaDataEditor;
+import com.braintribe.model.processing.session.api.persistence.PersistenceGmSessionFactory;
 
+import hiconic.rx.access.api.AccessRequestProcessor;
 import hiconic.rx.access.model.md.InterceptAccessWith;
 import hiconic.rx.access.module.api.AccessInterceptorBuilder;
 import hiconic.rx.access.module.api.AccessModelConfiguration;
@@ -30,69 +34,84 @@ import hiconic.rx.module.api.service.DelegatingModelConfiguration;
 import hiconic.rx.module.api.service.ModelConfiguration;
 
 public class RxAccessModelConfiguration implements AccessModelConfiguration, DelegatingModelConfiguration {
+
 	private final ModelConfiguration modelConfiguration;
 	private final List<AccessInterceptorEntry> interceptors = Collections.synchronizedList(new ArrayList<>());
 
-	public RxAccessModelConfiguration(ModelConfiguration modelConfiguration) {
+	private final PersistenceGmSessionFactory contextSessionFactory;
+	private final PersistenceGmSessionFactory systemSessionFactory;
+
+	public RxAccessModelConfiguration(ModelConfiguration modelConfiguration, PersistenceGmSessionFactory contextSessionFactory,
+			PersistenceGmSessionFactory systemSessionFactory) {
+
 		this.modelConfiguration = modelConfiguration;
+		this.contextSessionFactory = contextSessionFactory;
+		this.systemSessionFactory = systemSessionFactory;
 	}
-	
+
 	@Override
 	public ModelConfiguration modelConfiguration() {
 		return modelConfiguration;
 	}
-	
+
+	@Override
+	public <R extends AccessRequest> void bindAccessRequest(EntityType<R> request, Supplier<AccessRequestProcessor<? super R, ?>> processorSupplier) {
+		modelConfiguration.bindRequest(request, () -> {
+			var processor = processorSupplier.get();
+			return new AccessRequestProcessorAdapter<>(processor, contextSessionFactory, systemSessionFactory);
+		});
+	}
+
 	@Override
 	public AccessInterceptorBuilder bindAspect(String identification) {
 		return new AccessInterceptorBuilder() {
 			private String insertIdentification;
 			private boolean before;
-			
+
 			@Override
 			public void bind(Supplier<AccessAspect> interceptorSupplier) {
 				AccessInterceptorEntry interceptorEntry = new AccessInterceptorEntry(identification, interceptorSupplier);
 				register(interceptorEntry);
 			}
-			
+
 			@Override
 			public AccessInterceptorBuilder before(String identification) {
 				this.insertIdentification = identification;
 				this.before = true;
 				return this;
 			}
-			
+
 			@Override
 			public AccessInterceptorBuilder after(String identification) {
 				this.insertIdentification = identification;
 				this.before = false;
 				return this;
 			}
-			
+
 			private void register(AccessInterceptorEntry interceptorEntry) {
 				synchronized (interceptors) {
 					if (insertIdentification != null) {
 						requireInterceptorIterator(insertIdentification, before).add(interceptorEntry);
-					}
-					else {
+					} else {
 						interceptors.add(interceptorEntry);
 					}
-					
+
 					if (interceptors.size() == 1)
 						configureModel(RxAccessModelConfiguration.this::configureInterceptors);
 				}
 			}
 		};
 	}
-	
+
 	private ListIterator<AccessInterceptorEntry> requireInterceptorIterator(String identification, boolean before) {
 		ListIterator<AccessInterceptorEntry> iterator = find(identification, before);
-		
+
 		if (!iterator.hasNext())
 			throw new NoSuchElementException("No processor found with identification: '" + identification + "'");
-		
+
 		return iterator;
 	}
-	
+
 	private ListIterator<AccessInterceptorEntry> find(String identification, boolean before) {
 		ListIterator<AccessInterceptorEntry> it = interceptors.listIterator();
 		while (it.hasNext()) {
@@ -103,21 +122,22 @@ public class RxAccessModelConfiguration implements AccessModelConfiguration, Del
 				break;
 			}
 		}
-		
+
 		return it;
 	}
-	
+
 	private void configureInterceptors(ModelMetaDataEditor editor) {
 		int prio = 0;
-		for (AccessInterceptorEntry entry: interceptors) {
+		for (AccessInterceptorEntry entry : interceptors) {
 			final InterceptAccessWith interceptWith = InterceptAccessWith.T.create();
-			
+
 			interceptWith.setAssociate(entry.interceptorSupplier.get());
-			interceptWith.setConflictPriority((double)prio++);
-			
+			interceptWith.setConflictPriority((double) prio++);
+
 			editor.addModelMetaData(interceptWith);
 		}
 	}
-	
-	private static record AccessInterceptorEntry (String identification, Supplier<AccessAspect> interceptorSupplier) {}
+
+	private static record AccessInterceptorEntry(String identification, Supplier<AccessAspect> interceptorSupplier) {
+	}
 }

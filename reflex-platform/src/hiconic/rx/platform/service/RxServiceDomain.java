@@ -44,7 +44,8 @@ public class RxServiceDomain implements ServiceDomain, ServiceDomainConfiguratio
 	
 	private final List<Supplier<? extends ServiceRequest>> defaultRequestSuppliers = Collections.synchronizedList(new ArrayList<>());
 	
-	public RxServiceDomain(String domainId, RxConfiguredModel modelConfiguration, ExecutorService executorService, Evaluator<ServiceRequest> contextEvaluator, ServiceProcessor<ServiceRequest, Object> fallbackProcessor) {
+	public RxServiceDomain(String domainId, RxConfiguredModel modelConfiguration, ExecutorService executorService,
+			Evaluator<ServiceRequest> contextEvaluator, ServiceProcessor<ServiceRequest, Object> fallbackProcessor) {
 		this.domainId = domainId;
 		this.modelConfiguration = modelConfiguration;
 		

@@ -13,6 +13,7 @@
 // ============================================================================
 package hiconic.rx.platform.module.wire.space;
 
+import com.braintribe.model.processing.service.api.ProcessorRegistry;
 import com.braintribe.model.processing.service.common.CompositeServiceProcessor;
 import com.braintribe.model.processing.service.common.UnicastProcessor;
 import com.braintribe.model.service.api.CompositeRequest;
@@ -24,6 +25,8 @@ import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
+import hiconic.rx.platform.resource.ResourcePayloadProcessor;
+import hiconic.rx.resource.model.api.ResourcePayloadRequest;
 
 /**
  * Module that brings core ...
@@ -62,6 +65,23 @@ public class CoreRxPlatformModuleSpace implements RxModuleContract {
 	private CompositeServiceProcessor compositeProcessor() {
 		CompositeServiceProcessor bean = new CompositeServiceProcessor();
 		// TODO configure "swallowed" exceptions log level
+
+		return bean;
+	}
+
+	// ###############################################
+	// ## . . . . . . Fallback Processors . . . . . ##
+	// ###############################################
+
+	@Override
+	public void registerFallbackProcessors(ProcessorRegistry processorRegistry) {
+		processorRegistry.register(ResourcePayloadRequest.T, resourceDownloadProcessor());
+	}
+
+	@Managed
+	private ResourcePayloadProcessor resourceDownloadProcessor() {
+		ResourcePayloadProcessor bean = new ResourcePayloadProcessor();
+		bean.setServiceDomains(platform.serviceDomains());
 
 		return bean;
 	}

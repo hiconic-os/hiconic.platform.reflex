@@ -35,19 +35,3 @@ public interface AccessContract extends RxExportContract {
 
 	AccessDomains accessDomains();
 }
-
-/*
- * access-configuration-model (defines base denotation type Access)
- * access-module-api
- * access-rx-module (implements: AccessContract & AccessExpertContract)
- *   - expert registration and usage
- *   - reading AccessConfiguration and automatically deploying it
- *   - Access to deployed Accesses via session factories
- *   
- * hibernate-access-configuration-model
- * hibernate-access-rx-module
- * 
- * smood-access-configuration-model
- * smood-access-rx-module
- * 
- */

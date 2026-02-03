@@ -31,6 +31,7 @@ import com.braintribe.model.processing.aop.api.aspect.AccessAspect;
 import com.braintribe.model.processing.core.expert.api.MutableDenotationMap;
 import com.braintribe.model.processing.core.expert.impl.PolymorphicDenotationMap;
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSessionFactory;
+import com.braintribe.model.resource.Resource;
 import com.braintribe.utils.lcd.Lazy;
 import com.braintribe.utils.lcd.NullSafe;
 
@@ -140,8 +141,13 @@ public class RxAccesses implements AccessDomains {
 		NullSafe.nonNull(dataModelName, "Access.dataModelName");
 
 		// This creates a new ServiceDomain in the system
-		ServiceDomainConfiguration serviceDomainConfiguration = serviceDomainConfigurations.byId(accessId);
-		serviceDomainConfiguration.addModel(modelConfigurations.byName(RxAccessConstants.ACCESS_BASE_MODEL_NAME));
+		ServiceDomainConfiguration sdConfiguration = serviceDomainConfigurations.byId(accessId);
+		ServiceDomain serviceDomain = serviceDomains.byId(accessId);
+
+		sdConfiguration.addModel(modelConfigurations.byName(RxAccessConstants.ACCESS_API_BASE_MODEL_NAME));
+
+		if (serviceDomain.modelOracle().findEntityTypeOracle(Resource.T) != null)
+			sdConfiguration.addModel(modelConfigurations.byName(RxAccessConstants.ACCESS_API_RESOURCE_MODEL_NAME));
 
 		if (accesses.putIfAbsent(accessId, new Lazy<>(rxAccessSupplier)) != null)
 			throw new IllegalArgumentException("Duplicate deployment of an Access with id: " + accessId);

@@ -50,7 +50,10 @@ public interface ModelConfiguration extends ModelReference {
 
 	<R extends ServiceRequest> void bindRequest(EntityType<R> requestType, Supplier<ServiceProcessor<? super R, ?>> serviceProcessorSupplier);
 
-	/** Bind method for {@link MappingServiceProcessor}s, i.e. ones where dispatching is generated based on methods annotated with {@link Service}. */
+	/**
+	 * Binds {@link MappingServiceProcessor}s, i.e. {@link ServiceProcessor}s where dispatching is configured by annotating methods with
+	 * {@link Service}.
+	 */
 	<R extends ServiceRequest> void bindRequestMapped(EntityType<R> requestType,
 			Supplier<MappingServiceProcessor<? super R, ?>> serviceProcessorSupplier);
 

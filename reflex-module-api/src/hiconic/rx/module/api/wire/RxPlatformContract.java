@@ -46,16 +46,18 @@ import hiconic.rx.module.api.state.RxApplicationStateManager;
 public interface RxPlatformContract extends WireSpace {
 	RxApplicationStateManager stateManager();
 
-	/** Standard request {@link Evaluator}. */
+	/** Standard request {@link Evaluator}, which has the same authorization as the caller. */
 	Evaluator<ServiceRequest> evaluator();
 
 	/**
 	 * {@link Evaluator} backed by {@link #systemAttributeContextSupplier()}, thus having system user (i.e. full) authorization when evaluating
 	 * requests.
+	 * <p>
+	 * Equivalent to: {@code this.evaluator(systemAttributeContextSupplier().get())}
 	 */
 	Evaluator<ServiceRequest> systemEvaluator();
 
-	/** {@link Evaluator} backed by given {@link AttributeContext}, which can e..g. */
+	/** {@link Evaluator} backed by given {@link AttributeContext}, which can e.g. have different authorization. */
 	Evaluator<ServiceRequest> evaluator(AttributeContext attributeContext);
 
 	/** {@link AttributeContext} equipped with the system user's {@link UserSession}. */
@@ -67,6 +69,8 @@ public interface RxPlatformContract extends WireSpace {
 	/** Returns the {@link ServiceDomains}. */
 	ServiceDomains serviceDomains();
 
+	
+	
 	/** Returns the {@link MarshallerRegistry} */
 	MarshallerRegistry marshallers();
 	Marshaller jsonMarshaller();
@@ -84,9 +88,9 @@ public interface RxPlatformContract extends WireSpace {
 
 	/** Holds the applicationId and nodeId information (not sure why this was introduced). */
 	InstanceId instanceId();
-	
+
 	RxLogManager logManager();
-	
+
 	/**
 	 * Returns a configuration for the given type or a reason why the configuration could not be retrieved.
 	 * <p>
@@ -112,5 +116,5 @@ public interface RxPlatformContract extends WireSpace {
 	TaskScheduler taskScheduler();
 
 	WorkerManager workerManager();
-	
+
 }

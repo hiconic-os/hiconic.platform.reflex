@@ -18,10 +18,12 @@ import static com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling.getOrTunn
 import com.braintribe.common.attribute.AttributeContext;
 import com.braintribe.gm._AccessApiModel_;
 import com.braintribe.gm._ModelEnvironmentApiModel_;
+import com.braintribe.gm._ResourceApiModel_;
 import com.braintribe.gm.model.persistence.reflection.api.PersistenceReflectionRequest;
 import com.braintribe.model.access.IncrementalAccess;
 import com.braintribe.model.accessapi.PersistenceRequest;
 import com.braintribe.model.generic.reflection.EntityType;
+import com.braintribe.model.resourceapi.base.ResourceSourceRequest;
 import com.braintribe.utils.collection.impl.AttributeContexts;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
@@ -32,8 +34,10 @@ import hiconic.rx.access.module.api.AccessContract;
 import hiconic.rx.access.module.api.AccessDomains;
 import hiconic.rx.access.module.api.AccessExpert;
 import hiconic.rx.access.module.api.AccessExpertContract;
+import hiconic.rx.access.module.api.AccessModelConfiguration;
 import hiconic.rx.access.module.api.PersistenceServiceDomain;
 import hiconic.rx.access.module.processing.PersistenceReflectionProcessor;
+import hiconic.rx.access.module.processing.ResourceRequestProcessor;
 import hiconic.rx.access.module.processing.RxAccessConstants;
 import hiconic.rx.access.module.processing.RxAccessModelConfigurations;
 import hiconic.rx.access.module.processing.RxAccesses;
@@ -63,6 +67,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 
 	@Override
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
+		// TODO why is this here and not in explorer module?
 		ServiceDomainConfiguration persistenceSd = configurations.byId(PersistenceServiceDomain.persistence);
 
 		persistenceSd.addModel(_ModelEnvironmentApiModel_.reflection); // brings ModelEnvironmentRequests...
@@ -73,12 +78,23 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 
 	@Override
 	public void configureModels(ModelConfigurations configurations) {
-		ModelConfiguration mc = configurations.byName(ACCESS_BASE_MODEL_NAME);
-		mc.addModel(_AccessApiModel_.reflection);
-		mc.bindRequest(PersistenceRequest.T, this::persistenceProcessor);
-
 		accesses().initModelConfigurations(configurations);
 		accessModelConfigurations().initModelConfigurations(configurations);
+
+		configurePersistenceProcessor(configurations);
+		configureResourceRequestProcessor();
+	}
+
+	private void configurePersistenceProcessor(ModelConfigurations configurations) {
+		ModelConfiguration mc = configurations.byName(ACCESS_API_BASE_MODEL_NAME);
+		mc.addModel(_AccessApiModel_.reflection);
+		mc.bindRequest(PersistenceRequest.T, this::persistenceProcessor);
+	}
+
+	private void configureResourceRequestProcessor() {
+		AccessModelConfiguration mc = accessModelConfigurations().byName(ACCESS_API_RESOURCE_MODEL_NAME);
+		mc.addModel(_ResourceApiModel_.reflection);
+		mc.bindAccessRequest(ResourceSourceRequest.T, this::resourceRequestProcessor);
 	}
 
 	@Managed
@@ -88,10 +104,20 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		return bean;
 	}
 
+	@Managed
+	private ResourceRequestProcessor resourceRequestProcessor() {
+		ResourceRequestProcessor bean = new ResourceRequestProcessor();
+		bean.setSystemEvaluator(platform.systemEvaluator());
+		return bean;
+	}
+
 	@Override
 	@Managed
 	public RxAccessModelConfigurations accessModelConfigurations() {
-		return new RxAccessModelConfigurations();
+		RxAccessModelConfigurations bean = new RxAccessModelConfigurations();
+		bean.setContextSessionFactory(contextSessionFactory());
+		bean.setSystemSessionFactory(systemSessionFactory());
+		return bean;
 	}
 
 	@Override
