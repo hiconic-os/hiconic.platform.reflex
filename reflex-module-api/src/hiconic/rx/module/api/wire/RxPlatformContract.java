@@ -30,6 +30,8 @@ import com.braintribe.model.processing.worker.api.WorkerManager;
 import com.braintribe.model.service.api.InstanceId;
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.model.usersession.UserSession;
+import com.braintribe.thread.api.DeferringThreadContextScoping;
+import com.braintribe.utils.stream.api.StreamPipeFactory;
 import com.braintribe.wire.api.space.WireSpace;
 
 import hiconic.rx.module.api.log.RxLogManager;
@@ -68,8 +70,10 @@ public interface RxPlatformContract extends WireSpace {
 
 	/** Returns the {@link ServiceDomains}. */
 	ServiceDomains serviceDomains();
-
 	
+	DeferringThreadContextScoping threadContextScoping();
+	
+	StreamPipeFactory streamPipeFactory();
 	
 	/** Returns the {@link MarshallerRegistry} */
 	MarshallerRegistry marshallers();

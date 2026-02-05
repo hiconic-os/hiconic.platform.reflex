@@ -13,6 +13,8 @@
 // ============================================================================
 package hiconic.rx.platform.wire.space;
 
+import static com.braintribe.wire.api.util.Lists.list;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -24,6 +26,10 @@ import com.braintribe.model.processing.worker.api.ConfigurableWorkerAspectRegist
 import com.braintribe.model.processing.worker.api.WorkerManager;
 import com.braintribe.model.service.api.InstanceId;
 import com.braintribe.provider.Box;
+import com.braintribe.thread.api.DeferringThreadContextScoping;
+import com.braintribe.thread.impl.ThreadContextScopingImpl;
+import com.braintribe.utils.stream.api.StreamPipeFactory;
+import com.braintribe.utils.stream.api.StreamPipes;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 import com.braintribe.wire.api.context.WireContext;
@@ -43,6 +49,7 @@ import hiconic.rx.platform.log.RxLogManagerImpl;
 import hiconic.rx.platform.model.configuration.ReflexAppConfiguration;
 import hiconic.rx.platform.models.RxModelConfigurations;
 import hiconic.rx.platform.processing.lifez.DeadlockChecker;
+import hiconic.rx.platform.processing.thread.AttributeContextThreadContextScope;
 import hiconic.rx.platform.processing.worker.BasicRxWorkerManager;
 import hiconic.rx.platform.processing.worker.BasicWorkerAspectRegistry;
 import hiconic.rx.platform.service.RxServiceDomain;
@@ -166,6 +173,19 @@ public class RxPlatformSpace extends CoreServicesSpace implements RxPlatformCont
 		bean.workerAspectRegistry = workerAspectRegistry();
 
 		return bean;
+	}
+	
+	@Override
+	@Managed
+	public DeferringThreadContextScoping threadContextScoping() {
+		ThreadContextScopingImpl bean = new ThreadContextScopingImpl();
+		bean.setScopeSuppliers(list(AttributeContextThreadContextScope.SUPPLIER));
+		return bean;
+	}
+	
+	@Override
+	public StreamPipeFactory streamPipeFactory() {
+		return StreamPipes.fileBackedFactory();
 	}
 
 	@Override
