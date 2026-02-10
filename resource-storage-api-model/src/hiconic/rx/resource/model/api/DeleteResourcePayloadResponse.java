@@ -22,4 +22,8 @@ public interface DeleteResourcePayloadResponse extends ResourcePayloadResponse {
 
 	EntityType<DeleteResourcePayloadResponse> T = EntityTypes.T(DeleteResourcePayloadResponse.class);
 
+	/** True if the underlying resource existed and was deleted, false if it didn't exist. */
+	boolean getDeleted();
+	void setDeleted(boolean beleted);
+
 }

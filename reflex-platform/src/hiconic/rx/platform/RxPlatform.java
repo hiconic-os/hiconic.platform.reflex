@@ -106,8 +106,7 @@ public class RxPlatform implements AutoCloseable {
 	}
 
 	public static void main(String[] args) {
-		try (RxPlatform platform = new RxPlatform(args)) {
-
+		try (@SuppressWarnings("unused") RxPlatform platform = new RxPlatform(args)) {
 			Object monitor = new Object();
 
 			// Registering the shutdown hook

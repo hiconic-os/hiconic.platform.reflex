@@ -13,20 +13,30 @@
 // ============================================================================
 package hiconic.rx.platform.module.wire.space;
 
+import java.io.File;
+
+import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.model.processing.service.api.ProcessorRegistry;
 import com.braintribe.model.processing.service.common.CompositeServiceProcessor;
 import com.braintribe.model.processing.service.common.UnicastProcessor;
+import com.braintribe.model.resource.source.FileSystemSource;
 import com.braintribe.model.service.api.CompositeRequest;
 import com.braintribe.model.service.api.UnicastRequest;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
+import hiconic.rx.module.api.resource.ResourceStorage;
 import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.module.api.wire.RxModuleContract;
-import hiconic.rx.module.api.wire.RxPlatformContract;
+import hiconic.rx.module.api.wire.RxPlatformConfigurator;
+import hiconic.rx.platform.resource.FsResourceStorage;
 import hiconic.rx.platform.resource.ResourcePayloadProcessor;
+import hiconic.rx.platform.resource.RxResourcesStorages;
+import hiconic.rx.platform.wire.contract.ExtendedRxPlatformContract;
 import hiconic.rx.resource.model.api.ResourcePayloadRequest;
+import hiconic.rx.resource.model.configuration.FileSystemResourceStorage;
+import hiconic.rx.resource.model.configuration.ResourceStorageConfiguration;
 
 /**
  * Module that brings core ...
@@ -35,7 +45,7 @@ import hiconic.rx.resource.model.api.ResourcePayloadRequest;
 public class CoreRxPlatformModuleSpace implements RxModuleContract {
 
 	// @formatter:off
-	@Import private RxPlatformContract platform;
+	@Import private ExtendedRxPlatformContract platform;
 	// @formatter:on
 
 	@Override
@@ -82,8 +92,40 @@ public class CoreRxPlatformModuleSpace implements RxModuleContract {
 	private ResourcePayloadProcessor resourceDownloadProcessor() {
 		ResourcePayloadProcessor bean = new ResourcePayloadProcessor();
 		bean.setServiceDomains(platform.serviceDomains());
+		bean.setResourceStorages(platform.resourceStorages());
 
 		return bean;
+	}
+
+	// ###############################################
+	// ## . . . . . .Configure Platform . . . . . . ##
+	// ###############################################
+
+	@Override
+	public void configurePlatform(RxPlatformConfigurator configurator) {
+		configurator.registerResourceStorageDeploymentExpert(FileSystemResourceStorage.T, FileSystemSource.T, this::deployFsResourceStorage);
+	}
+
+	private Maybe<ResourceStorage> deployFsResourceStorage(FileSystemResourceStorage storageDenotation) {
+		FsResourceStorage result = new FsResourceStorage();
+		result.setStorageId(storageDenotation.getStorageId());
+		result.setBaseDir(new File(storageDenotation.getBaseDir()));
+
+		return Maybe.complete(result);
+	}
+
+	@Override
+	public void onDeploy() {
+		configureResourceStorages();
+	}
+
+	private void configureResourceStorages() {
+		ResourceStorageConfiguration rsConfig = platform.readConfig(ResourceStorageConfiguration.T).get();
+
+		RxResourcesStorages resourceStorages = platform.resourceStorages();
+
+		for (hiconic.rx.resource.model.configuration.ResourceStorage storage : rsConfig.getStorages())
+			resourceStorages.deployLazy(storage);
 	}
 
 }

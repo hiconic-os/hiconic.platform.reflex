@@ -12,6 +12,6 @@ public interface DeleteResourcePayload extends ExistingResourcePayloadRequest {
 	EntityType<DeleteResourcePayload> T = EntityTypes.T(DeleteResourcePayload.class);
 
 	@Override
-	EvalContext<? extends DeleteResourcePayloadResponse> eval(Evaluator<ServiceRequest> evaluator);
+	EvalContext<DeleteResourcePayloadResponse> eval(Evaluator<ServiceRequest> evaluator);
 
 }

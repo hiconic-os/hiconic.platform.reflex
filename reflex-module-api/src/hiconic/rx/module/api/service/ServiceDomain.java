@@ -47,8 +47,10 @@ public interface ServiceDomain {
 	Evaluator<ServiceRequest> evaluator();
 
 	/**
-	 * The {@link ServiceRequest} that should be executed for this domain if no {@link ServiceRequest} was supplied. An example use-case is, when a
-	 * CLI application is started without any parameter and should execute a default request on a default {@link ServiceDomain}
+	 * The {@link ServiceRequest} that should be executed for this domain if no {@link ServiceRequest} was supplied.
+	 * <p>
+	 * An example use-case is, when a CLI application is started without any parameter and should execute a default request on a default
+	 * {@link ServiceDomain}
 	 */
 	ServiceRequest defaultRequest();
 

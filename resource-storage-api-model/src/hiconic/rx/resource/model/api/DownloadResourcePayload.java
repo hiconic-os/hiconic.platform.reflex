@@ -15,6 +15,7 @@ package hiconic.rx.resource.model.api;
 
 import java.util.Date;
 
+import com.braintribe.model.cache.CacheControl;
 import com.braintribe.model.generic.annotation.Abstract;
 import com.braintribe.model.generic.eval.EvalContext;
 import com.braintribe.model.generic.eval.Evaluator;
@@ -38,11 +39,17 @@ public interface DownloadResourcePayload extends ExistingResourcePayloadRequest,
 	// and it was comparing the condition value (e.g. md5) to the passed Resource value, i.e. comparing two values from the request.
 	// I am keeping it that way for now, but has to be addressed.
 
-	/** Value of {@link Resource#getMd5()} to evaluate {@link FingerprintMismatch} condition. */
+	/**
+	 * Value of {@link Resource#getMd5()} to evaluate {@link FingerprintMismatch} condition, and to return on the
+	 * {@link DownloadResourcePayloadResponse}'s {@link CacheControl}.
+	 */
 	String getMd5();
 	void setMd5(String md5);
 
-	/** Value of {@link Resource#getCreated()} to evaluate {@link ModifiedSince} condition. */
+	/**
+	 * Value of {@link Resource#getCreated()} to evaluate {@link ModifiedSince} condition, and to return on the
+	 * {@link DownloadResourcePayloadResponse}'s {@link CacheControl}.
+	 */
 	Date getCreated();
 	void setCreated(Date created);
 

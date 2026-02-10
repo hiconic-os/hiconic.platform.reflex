@@ -4,12 +4,14 @@ import java.util.function.Supplier;
 
 import com.braintribe.cfg.Required;
 import com.braintribe.gm.model.reason.Maybe;
+import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.config.ConfigurationError;
+import com.braintribe.gm.model.reason.essential.InvalidArgument;
 import com.braintribe.gm.model.reason.essential.NotFound;
-import com.braintribe.logging.Logger;
 import com.braintribe.model.generic.GMF;
 import com.braintribe.model.generic.reflection.EntityType;
+import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
 import com.braintribe.model.processing.service.impl.AbstractDispatchingServiceProcessor;
 import com.braintribe.model.processing.service.impl.DispatchConfiguration;
@@ -19,6 +21,7 @@ import hiconic.rx.model.service.processing.md.StoreWith;
 import hiconic.rx.module.api.resource.ResourceStorage;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.service.ServiceDomains;
+import hiconic.rx.module.api.wire.RxPlatformConfigurator;
 import hiconic.rx.resource.model.api.DeleteResourcePayload;
 import hiconic.rx.resource.model.api.DeleteResourcePayloadResponse;
 import hiconic.rx.resource.model.api.ExistingResourcePayloadRequest;
@@ -32,11 +35,14 @@ import hiconic.rx.resource.model.api.StoreResourcePayload;
 import hiconic.rx.resource.model.api.StoreResourcePayloadResponse;
 
 /**
+ * Processor for {@link ResourcePayloadRequest}s
+ * <p>
+ * It resolves the right {@link ResourceStorage} from the ones registered in the platform via {@link RxPlatformConfigurator} and delegates the request
+ * to it.
+ * 
  * @author peter.gazdik
  */
 public class ResourcePayloadProcessor extends AbstractDispatchingServiceProcessor<ResourcePayloadRequest, ResourcePayloadResponse> {
-
-	private static final Logger log = Logger.getLogger(ResourcePayloadProcessor.class);
 
 	private ServiceDomains serviceDomains;
 	private RxResourcesStorages resourceStorages;
@@ -96,11 +102,11 @@ public class ResourcePayloadProcessor extends AbstractDispatchingServiceProcesso
 	}
 
 	private Maybe<ResourceStorage> resolveStorageForNew(ServiceRequestContext context, StoreResourcePayload request) {
-		String storageName = request.getStorageName();
-		if (storageName != null) {
-			ResourceStorage resourceStorage = resourceStorages.byName(storageName);
+		String storageId = request.getStorageId();
+		if (storageId != null) {
+			ResourceStorage resourceStorage = resourceStorages.byId(storageId);
 
-			return wrapValueOrNotFound(resourceStorage, () -> "No ResourceStorage found with name: " + storageName);
+			return wrapValueOrNotFound(resourceStorage, () -> "No ResourceStorage found with storageId: " + storageId);
 		}
 
 		final EntityType<? extends ResourceSource> sourceType;
@@ -120,37 +126,54 @@ public class ResourcePayloadProcessor extends AbstractDispatchingServiceProcesso
 
 		String domainId = context.getDomainId();
 		if (domainId == null)
-			return defaultStorageFor(sourceType);
+			return defaultStorageFor(sourceType, domainId);
 
 		ServiceDomain serviceDomain = serviceDomains.byId(domainId);
 		if (serviceDomain == null)
 			return notFoundMaybe("No service domain found with id: " + domainId);
 
-		StoreWith storeWith = serviceDomains.byId(domainId) //
-				.contextCmdResolver() //
+		CmdResolver cmdResolver = serviceDomains.byId(domainId).contextCmdResolver();
+
+		StoreWith storeWith = cmdResolver//
 				.getMetaData() //
+				.lenient(true) //
 				.entityType(sourceType) //
 				.useCase(useCase) //
 				.meta(StoreWith.T) //
 				.exclusive();
 
-		if (storeWith == null)
-			return defaultStorageFor(sourceType);
+		if (storeWith == null) {
+			if (cmdResolver.getModelOracle().findEntityTypeOracle(sourceType) == null)
+				return error(InvalidArgument.T, "Source type [" + sourceType.getTypeSignature() + "] not part of service domain [" + domainId + "]");
 
-		ResourceStorage retrieval = storeWith.getAssociate();
+			return defaultStorageFor(sourceType, domainId);
+		}
 
-		if (retrieval == null)
-			Reasons.build(ConfigurationError.T) //
-					.text("No " + ResourceStorage.class.getSimpleName() + " associated with metadata: " + storeWith) //
-					.toMaybe();
+		ResourceStorage storage = storeWith.getResourceStorage();
+		if (storage == null) {
+			String storageId = storeWith.getStorageId();
+			if (storageId == null)
+				return error(ConfigurationError.T, "No storage nor storageId configured on type [" + sourceType.getTypeSignature() + "], domainId: ["
+						+ domainId + "], metadata: " + storeWith);
 
-		log.trace(() -> "Resolved binary retrieval processor " + retrieval + " for source type " + sourceType.getTypeSignature());
+			storage = resourceStorages.byId(storageId);
+			if (storage == null)
+				return error(ConfigurationError.T, "Storage not found by configured storageId [" + storageId + "] on type ["
+						+ sourceType.getTypeSignature() + "], domainId: [" + domainId + "], metadata: " + storeWith);
 
-		return Maybe.complete(retrieval);
+			storeWith.setResourceStorage(storage);
+		}
+
+		return Maybe.complete(storage);
 	}
 
-	private Maybe<ResourceStorage> defaultStorageFor(EntityType<? extends ResourceSource> sourceType) {
-		return resourceStorages.resolveDefaultStorage(sourceType);
+	private Maybe<ResourceStorage> defaultStorageFor(EntityType<? extends ResourceSource> sourceType, String domainId) {
+		Maybe<ResourceStorage> storageMaybe = resourceStorages.resolveDefaultStorage(sourceType);
+		if (storageMaybe.isSatisfied())
+			return storageMaybe;
+
+		Reason reason = storageMaybe.whyUnsatisfied();
+		return error(NotFound.T, "Could not find default storage for domain: " + domainId, reason);
 	}
 
 	private static <T> Maybe<T> wrapValueOrNotFound(T value, Supplier<String> textSupplier) {
@@ -161,6 +184,14 @@ public class ResourcePayloadProcessor extends AbstractDispatchingServiceProcesso
 	}
 
 	private static <T> Maybe<T> notFoundMaybe(String text) {
-		return Reasons.build(NotFound.T).text(text).toMaybe();
+		return error(NotFound.T, text);
+	}
+
+	private static <T> Maybe<T> error(EntityType<? extends Reason> reasonType, String text) {
+		return Reasons.build(reasonType).text(text).toMaybe();
+	}
+
+	private static <T> Maybe<T> error(EntityType<? extends Reason> reasonType, String text, Reason cause) {
+		return Reasons.build(reasonType).text(text).cause(cause).toMaybe();
 	}
 }

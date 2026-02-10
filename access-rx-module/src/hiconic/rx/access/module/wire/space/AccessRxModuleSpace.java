@@ -60,9 +60,8 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 	public void onDeploy() {
 		AccessConfiguration accessConfiguration = getOrTunnel(platform.readConfig(AccessConfiguration.T));
 
-		for (Access access : accessConfiguration.getAccesses()) {
+		for (Access access : accessConfiguration.getAccesses())
 			deploy(access);
-		}
 	}
 
 	@Override

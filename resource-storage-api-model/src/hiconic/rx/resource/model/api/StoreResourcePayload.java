@@ -32,12 +32,12 @@ public interface StoreResourcePayload extends ResourcePayloadRequest {
 	void setData(Resource data);
 
 	/**
-	 * Optional name of the ResourceStorage to use for storing this resource.
+	 * Optional storageId of the ResourceStorage to use for storing this resource.
 	 * <p>
 	 * If set, the {@link #getSourceType() sourceType} property is ignored.
 	 */
-	String getStorageName();
-	void setStorageName(String storageName);
+	String getStorageId();
+	void setStorageId(String storageId);
 
 	/**
 	 * UseCase used when resolving ResourceStorage MD.
@@ -51,8 +51,8 @@ public interface StoreResourcePayload extends ResourcePayloadRequest {
 	/**
 	 * Optional type signature of the desired {@link ResourceSource} type.
 	 * <p>
-	 * Only used for determining the ResourceStorage in case {@link #getStorageName() storageName} is not provided - by considering the StoreWith MD
-	 * on given type or picking the default ResourceStorage if MD configured.
+	 * Only used for determining the ResourceStorage in case {@link #getStorageId() storageName} is not provided - by considering the StoreWith MD on
+	 * given type or picking the default ResourceStorage if MD configured.
 	 * <p>
 	 * If not value is provided, {@link ResourceSource} is used for MD resolution.
 	 */
@@ -60,6 +60,6 @@ public interface StoreResourcePayload extends ResourcePayloadRequest {
 	void setSourceType(String sourceType);
 
 	@Override
-	EvalContext<? extends StoreResourcePayloadResponse> eval(Evaluator<ServiceRequest> evaluator);
+	EvalContext<StoreResourcePayloadResponse> eval(Evaluator<ServiceRequest> evaluator);
 
 }

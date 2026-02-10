@@ -16,6 +16,8 @@ package hiconic.rx.module.api.wire;
 import com.braintribe.codec.marshaller.api.ConfigurableMarshallerRegistry;
 import com.braintribe.model.processing.service.api.InterceptorRegistry;
 import com.braintribe.model.processing.service.api.ProcessorRegistry;
+import com.braintribe.wire.api.annotation.Import;
+import com.braintribe.wire.api.module.WireModule;
 import com.braintribe.wire.api.space.WireSpace;
 
 import hiconic.rx.module.api.service.ModelConfiguration;
@@ -24,12 +26,37 @@ import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 
 /**
- * Wire contract for reflex modules that need to be implemented by an according wire space which is to be injected with the classpath resource
- * META-INF/reflex-module.properties.
+ * Main contract which every Reflex module must implement and which adds configuration and features to the application.
+ * <p>
+ * A module can access the platform by {@link Import importing} {@link RxPlatformContract}.
+ * <p>
+ * The Platform loads the modules by calling this contract's methods in multiple rounds, and for each round all methods are called for all the
+ * modules. The order is given here:<br>
+ * <b>Round 1 - Model Configuration:</b>
+ * <ol>
+ * <li>{@link #configureMainPersistenceModel(ModelConfiguration)}
+ * <li>{@link #configureModels(ModelConfigurations)}
+ * </ol>
+ * <b>Round 2 - Hardwired Service and Platform Configuration:</b>
+ * <ol>
+ * <li>{@link #configureMainServiceDomain(ServiceDomainConfiguration)}
+ * <li>{@link #configureServiceDomains(ServiceDomainConfigurations)}
+ * <li>{@link #registerCrossDomainInterceptors(InterceptorRegistry)}
+ * <li>{@link #registerFallbackProcessors(ProcessorRegistry)}
+ * <li>{@link #configurePlatform(RxPlatformConfigurator)}
+ * </ol>
+ * <b>Round 3 - Modeled Service and Platform Configuration:</b>
+ * <ol>
+ * <li>{@link #onDeploy()}
+ * </ol>
+ * <b>Round 4 - Application Ready Notification:</b>
+ * <ol>
+ * <li>{@link #onApplicationReady()}
+ * </ol>
  * 
- * The reflex platform accesses modules via this contract while modules can access the platform via {@link RxPlatformContract}.
- * 
- * @author dirk.scheffler
+ * <p>
+ * IMPLEMENTATION NOTES: Each Reflex module must contain a classpath resource {@code META-INF/reflex-module.properties}, which contains the name of
+ * the {@link WireModule} which binds this contract to its implementation.
  */
 @SuppressWarnings("unused")
 public interface RxModuleContract extends WireSpace {
@@ -47,6 +74,7 @@ public interface RxModuleContract extends WireSpace {
 		// implement if needed
 	}
 
+	// TODO how can this be here, we don't even know if we have any persistence.
 	default void configureMainPersistenceModel(ModelConfiguration configuration) {
 		// implement if needed
 	}
@@ -86,10 +114,8 @@ public interface RxModuleContract extends WireSpace {
 	default void configurePlatform(RxPlatformConfigurator configurator) {
 		// implement if needed
 	}
-	
-	/**
-	 * Called when the platform application loaded and initialized all modules to allow module to deploy configurations
-	 */
+
+	/** Called when the platform application loaded and initialized all modules to allow module to deploy modeled configurations. */
 	default void onDeploy() {
 		// implement if needed
 	}

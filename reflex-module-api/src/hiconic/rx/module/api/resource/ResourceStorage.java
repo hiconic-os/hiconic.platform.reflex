@@ -19,6 +19,8 @@ import hiconic.rx.resource.model.api.StoreResourcePayloadResponse;
  */
 public interface ResourceStorage {
 
+	String storageId();
+
 	Maybe<StoreResourcePayloadResponse> storeResourcePayload(StoreResourcePayload request);
 
 	Maybe<DeleteResourcePayloadResponse> deleteResourcePayload(DeleteResourcePayload request);

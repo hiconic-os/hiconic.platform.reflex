@@ -24,6 +24,6 @@ public interface GetResourcePayload extends DownloadResourcePayload {
 	EntityType<GetResourcePayload> T = EntityTypes.T(GetResourcePayload.class);
 
 	@Override
-	EvalContext<? extends GetResourcePayloadResponse> eval(Evaluator<ServiceRequest> evaluator);
+	EvalContext<GetResourcePayloadResponse> eval(Evaluator<ServiceRequest> evaluator);
 
 }

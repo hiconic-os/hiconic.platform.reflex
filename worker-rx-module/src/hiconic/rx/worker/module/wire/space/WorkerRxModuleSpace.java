@@ -18,6 +18,7 @@ import java.util.concurrent.ExecutorService;
 
 import com.braintribe.execution.virtual.VirtualThreadExecutor;
 import com.braintribe.execution.virtual.VirtualThreadExecutorBuilder;
+import com.braintribe.model.processing.worker.api.WorkerManager;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
@@ -29,14 +30,14 @@ import hiconic.rx.worker.api.WorkerContract;
 import hiconic.rx.worker.module.processing.ClusterAwareWorkerManager;
 
 /**
- * This module's javadoc is yet to be written.
+ * This module registers a {@link ClusterAwareWorkerManager} via the {@link RxPlatformConfigurator#setWorkerManager(WorkerManager)}.
  */
 @Managed
 public class WorkerRxModuleSpace implements RxModuleContract, WorkerContract {
 
 	@Import
 	private RxPlatformContract platform;
-	
+
 	@Import
 	private LeadershipContract leadership;
 

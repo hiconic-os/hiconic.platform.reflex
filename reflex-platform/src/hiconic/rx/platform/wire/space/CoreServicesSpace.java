@@ -13,6 +13,7 @@
 // ============================================================================
 package hiconic.rx.platform.wire.space;
 
+import static com.braintribe.wire.api.util.Lists.list;
 import static com.braintribe.wire.api.util.Sets.set;
 
 import java.util.Date;
@@ -46,12 +47,16 @@ import com.braintribe.model.user.Role;
 import com.braintribe.model.user.User;
 import com.braintribe.model.usersession.UserSession;
 import com.braintribe.model.usersession.UserSessionType;
+import com.braintribe.thread.api.DeferringThreadContextScoping;
+import com.braintribe.thread.impl.ThreadContextScopingImpl;
 import com.braintribe.utils.collection.impl.AttributeContexts;
 import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.platform.models.RxCmdResolverManager;
 import hiconic.rx.platform.models.RxConfiguredModels;
 import hiconic.rx.platform.models.RxModelConfigurations;
+import hiconic.rx.platform.processing.thread.AttributeContextThreadContextScope;
+import hiconic.rx.platform.resource.RxResourcesStorages;
 import hiconic.rx.platform.service.ContextualizingServiceRequestEvaluator;
 import hiconic.rx.platform.service.RxServiceDomainDispatcher;
 import hiconic.rx.platform.service.RxServiceDomains;
@@ -285,4 +290,19 @@ public class CoreServicesSpace implements CoreServicesContract {
 		return bean;
 	}
 	
+	@Override
+	@Managed
+	public DeferringThreadContextScoping threadContextScoping() {
+		ThreadContextScopingImpl bean = new ThreadContextScopingImpl();
+		bean.setScopeSuppliers(list(AttributeContextThreadContextScope.SUPPLIER));
+		return bean;
+	}
+
+	@Managed
+	public RxResourcesStorages resourceStorages() {
+		RxResourcesStorages bean = new RxResourcesStorages();
+
+		return bean;
+	}
+
 }

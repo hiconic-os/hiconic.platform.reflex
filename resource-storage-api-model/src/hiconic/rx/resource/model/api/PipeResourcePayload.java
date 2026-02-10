@@ -30,6 +30,6 @@ public interface PipeResourcePayload extends DownloadResourcePayload {
 	void setCapture(CallStreamCapture capture);
 
 	@Override
-	EvalContext<? extends PipeResourcePayloadResponse> eval(Evaluator<ServiceRequest> evaluator);
+	EvalContext<PipeResourcePayloadResponse> eval(Evaluator<ServiceRequest> evaluator);
 
 }

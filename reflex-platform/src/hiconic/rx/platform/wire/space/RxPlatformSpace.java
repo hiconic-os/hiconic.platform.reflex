@@ -13,8 +13,6 @@
 // ============================================================================
 package hiconic.rx.platform.wire.space;
 
-import static com.braintribe.wire.api.util.Lists.list;
-
 import java.util.List;
 import java.util.UUID;
 
@@ -26,8 +24,6 @@ import com.braintribe.model.processing.worker.api.ConfigurableWorkerAspectRegist
 import com.braintribe.model.processing.worker.api.WorkerManager;
 import com.braintribe.model.service.api.InstanceId;
 import com.braintribe.provider.Box;
-import com.braintribe.thread.api.DeferringThreadContextScoping;
-import com.braintribe.thread.impl.ThreadContextScopingImpl;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 import com.braintribe.wire.api.context.WireContext;
@@ -38,7 +34,6 @@ import hiconic.rx.module.api.service.ConfiguredModel;
 import hiconic.rx.module.api.state.RxApplicationState;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformConfigurator;
-import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.module.api.wire.RxPlatformResourcesContract;
 import hiconic.rx.module.api.wire.RxProcessLaunchContract;
 import hiconic.rx.platform.conf.RxPlatformConfiguratorImpl;
@@ -47,16 +42,16 @@ import hiconic.rx.platform.log.RxLogManagerImpl;
 import hiconic.rx.platform.model.configuration.ReflexAppConfiguration;
 import hiconic.rx.platform.models.RxModelConfigurations;
 import hiconic.rx.platform.processing.lifez.DeadlockChecker;
-import hiconic.rx.platform.processing.thread.AttributeContextThreadContextScope;
 import hiconic.rx.platform.processing.worker.BasicRxWorkerManager;
 import hiconic.rx.platform.processing.worker.BasicWorkerAspectRegistry;
 import hiconic.rx.platform.service.RxServiceDomain;
 import hiconic.rx.platform.service.RxServiceDomainConfigurations;
 import hiconic.rx.platform.state.RxApplicationStateManagerImpl;
+import hiconic.rx.platform.wire.contract.ExtendedRxPlatformContract;
 import hiconic.rx.platform.wire.contract.RxPlatformConfigContract;
 
 @Managed
-public class RxPlatformSpace extends CoreServicesSpace implements RxPlatformContract, RxProcessLaunchContract {
+public class RxPlatformSpace extends CoreServicesSpace implements ExtendedRxPlatformContract, RxProcessLaunchContract {
 
 	@Import
 	private RxPlatformConfigContract config;
@@ -155,7 +150,7 @@ public class RxPlatformSpace extends CoreServicesSpace implements RxPlatformCont
 	public String applicationName() {
 		return config.properties().applicationName();
 	}
-	
+
 	@Override
 	@Managed
 	public RxLogManager logManager() {
@@ -167,20 +162,13 @@ public class RxPlatformSpace extends CoreServicesSpace implements RxPlatformCont
 	private RxPlatformConfigurator platformConfigurator() {
 		RxPlatformConfiguratorImpl bean = new RxPlatformConfiguratorImpl();
 		bean.workerManagerHolder = workerManagerHolder();
-		bean.marshallerRegistry = marshallers();
 		bean.workerAspectRegistry = workerAspectRegistry();
+		bean.marshallerRegistry = marshallers();
+		bean.resourceStorages = resourceStorages();
 
 		return bean;
 	}
-	
-	@Override
-	@Managed
-	public DeferringThreadContextScoping threadContextScoping() {
-		ThreadContextScopingImpl bean = new ThreadContextScopingImpl();
-		bean.setScopeSuppliers(list(AttributeContextThreadContextScope.SUPPLIER));
-		return bean;
-	}
-	
+
 	@Override
 	public WorkerManager workerManager() {
 		return workerManagerHolder().value;
@@ -215,7 +203,7 @@ public class RxPlatformSpace extends CoreServicesSpace implements RxPlatformCont
 		bean.addLivenessChecker(new DeadlockChecker());
 		return bean;
 	}
-	
+
 	@Override
 	@Managed
 	public String applicationId() {
@@ -262,4 +250,6 @@ public class RxPlatformSpace extends CoreServicesSpace implements RxPlatformCont
 	private ReflexAppConfiguration appConfiguration() {
 		return readConfig(ReflexAppConfiguration.T).get();
 	}
+
+
 }

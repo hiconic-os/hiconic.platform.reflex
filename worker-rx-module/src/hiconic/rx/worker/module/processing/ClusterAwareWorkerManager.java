@@ -30,7 +30,6 @@ import com.braintribe.model.processing.worker.api.WorkerManager;
 import com.braintribe.model.processing.worker.api.WorkerManagerControl;
 import com.braintribe.utils.RandomTools;
 import com.braintribe.utils.lcd.Lazy;
-import com.braintribe.utils.lcd.LazyInitialized;
 
 import hiconic.rx.platform.processing.worker.BasicRxWorkerManager;
 import hiconic.rx.platform.processing.worker.BasicRxWorkerManager.BasicWorkerContext;
@@ -134,7 +133,7 @@ public class ClusterAwareWorkerManager implements WorkerManager, WorkerManagerCo
 	public void preDestroy() {
 		ClusterAwareWorkerContext infos[] = workers.values().toArray(new ClusterAwareWorkerContext[workers.values().size()]);
 		for (ClusterAwareWorkerContext workerInfo : infos) {
-			logger.warn("undeploying worker that was not stopped from externally: " + workerInfo);
+			logger.info("Automatically undeploying worker: " + workerInfo);
 			try {
 				undeploy(workerInfo.worker);
 			} catch (Exception e) {

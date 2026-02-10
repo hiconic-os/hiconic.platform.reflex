@@ -3,7 +3,6 @@ package hiconic.rx.module.api.resource;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.UncheckedIOException;
 
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reasons;
@@ -11,7 +10,6 @@ import com.braintribe.gm.model.reason.essential.InvalidArgument;
 import com.braintribe.gm.model.reason.essential.IoError;
 import com.braintribe.logging.Logger;
 import com.braintribe.model.generic.session.OutputStreamProvider;
-import com.braintribe.model.resource.CallStreamCapture;
 import com.braintribe.model.resource.Resource;
 import com.braintribe.utils.IOTools;
 
@@ -38,6 +36,8 @@ import hiconic.rx.resource.model.api.PipeResourcePayloadResponse;
 		getPayload.setCondition(request.getCondition());
 		getPayload.setDomainId(request.getDomainId());
 		getPayload.setSessionId(request.getSessionId());
+		getPayload.setMd5(request.getMd5());
+		getPayload.setCreated(request.getCreated());
 
 		Maybe<GetResourcePayloadResponse> responseMaybe = resourceStorage.getResourcePayload(getPayload);
 		if (responseMaybe.isUnsatisfied())
@@ -46,21 +46,21 @@ import hiconic.rx.resource.model.api.PipeResourcePayloadResponse;
 		GetResourcePayloadResponse response = responseMaybe.get();
 
 		Resource resource = response.getResource();
-		try (InputStream in = resource.openStream(); OutputStream out = outputStreamProvider.openOutputStream()) {
-			IOTools.transferBytes(in, out);
-		} catch (IOException e) {
-			log.error("Error while transferring resource payload for resource: " + resource, e);
-			return Reasons.build(IoError.T).text("Failed to transfer resource payload for resource: " + resource.getName()).toMaybe();
-		}
+		if (resource != null)
+			try (InputStream in = resource.openStream(); OutputStream out = outputStreamProvider.openOutputStream()) {
+				IOTools.transferBytes(in, out);
+			} catch (IOException e) {
+				log.error("Error while transferring resource payload for resource: " + resource, e);
+				return Reasons.build(IoError.T).text("Failed to transfer resource payload for resource: " + resource.getName()).toMaybe();
+			}
 
 		return pipeResponse(response);
 	}
 
 	private static Maybe<PipeResourcePayloadResponse> pipeResponse(GetResourcePayloadResponse response) {
 		PipeResourcePayloadResponse result = PipeResourcePayloadResponse.T.create();
-		result.setStreamed(true);
-
-		if (response != null) {
+		if (response.getResource() != null) {
+			result.setStreamed(true);
 			result.setCacheControl(response.getCacheControl());
 			result.setRanged(response.getRanged());
 			result.setRangeStart(response.getRangeStart());

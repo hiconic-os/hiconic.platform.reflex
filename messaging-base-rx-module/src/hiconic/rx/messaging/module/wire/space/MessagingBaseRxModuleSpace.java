@@ -11,7 +11,6 @@ import com.braintribe.gm.marshaller.resource.aware.ResourceAwareMarshaller;
 import com.braintribe.gm.marshaller.threshold.ThresholdPersistenceMarshaller;
 import com.braintribe.model.generic.GMF;
 import com.braintribe.transport.messaging.api.MessagingContext;
-import com.braintribe.utils.lcd.NullSafe;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
@@ -42,8 +41,6 @@ public class MessagingBaseRxModuleSpace implements RxModuleContract, MessagingBa
 	private Marshaller messageMarshaller() {
 		OptionsEnrichingMarshaller bean = new OptionsEnrichingMarshaller();
 		bean.setDelegate(thresholdPersistenceMarshaller());
-		// TODO
-		// bean.setDeserializationOptionsEnricher(o -> o.derive().setRequiredTypesReceiver(marshalling.requiredTypeEnsurer()).build());
 		bean.setDeserializationOptionsEnricher(o -> o.derive().setRequiredTypesReceiver(requiredTypeEnsurer()).build());
 
 		return bean;
@@ -65,7 +62,7 @@ public class MessagingBaseRxModuleSpace implements RxModuleContract, MessagingBa
 	private ThresholdPersistenceMarshaller thresholdPersistenceMarshaller() {
 		ThresholdPersistenceMarshaller bean = new ThresholdPersistenceMarshaller();
 		bean.setDelegate(resourceAwareMarshaller());
-		bean.setSubstituteResourceMarshaller(binMarshaller());
+		bean.setSubstituteResourceMarshaller(platform.binMarshaller());
 		// TODO
 		bean.setThreshold(Long.MAX_VALUE);
 		bean.setAccessId("<TODO>");
@@ -80,13 +77,8 @@ public class MessagingBaseRxModuleSpace implements RxModuleContract, MessagingBa
 	private ResourceAwareMarshaller resourceAwareMarshaller() {
 		ResourceAwareMarshaller bean = new ResourceAwareMarshaller();
 		bean.setGmDataMimeType("application/gm");
-		bean.setMarshaller(binMarshaller());
+		bean.setMarshaller(platform.binMarshaller());
 		return bean;
-	}
-
-	private Marshaller binMarshaller() {
-		// TODO there must be a better way to get a marshaller
-		return NullSafe.nonNull(platform.marshallers().getMarshaller("gm/bin"), "bin Marshaller");
 	}
 
 }

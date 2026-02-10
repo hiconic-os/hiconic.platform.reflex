@@ -1,0 +1,4 @@
+storages:
+- !hiconic.rx.resource.model.configuration.FileSystemResourceStorage
+  storageId: 'test-file-storage'
+  baseDir: 'out/resourc-storage' 

@@ -31,7 +31,7 @@ import com.braintribe.model.service.api.InstanceId;
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.model.usersession.UserSession;
 import com.braintribe.thread.api.DeferringThreadContextScoping;
-import com.braintribe.utils.stream.api.StreamPipeFactory;
+import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.space.WireSpace;
 
 import hiconic.rx.module.api.log.RxLogManager;
@@ -40,12 +40,21 @@ import hiconic.rx.module.api.service.ServiceDomains;
 import hiconic.rx.module.api.state.RxApplicationStateManager;
 
 /**
- * Wire contract that exposes general features of the reflex platform available to reflex modules. To access the features you have to import this
- * contract in your wire space. See example in the documentation of {@link RxModuleContract}.
+ * Wire contract that exposes general features of the Reflex platform, and which can be {@link Import imported} to any Reflex module.
+ * <p>
+ * Additional contracts available to modules are:
+ * <ul>
+ * <li>{@link RxPlatformResourcesContract}
+ * <li>{@link RxTransientDataContract}
+ * <li>{@link RxProcessLaunchContract}
+ * </ul>
  * 
- * @author dirk.scheffler
+ * @see RxExportContract
+ * @see EnvironmentPropertiesContract
+ * @see SystemPropertiesContract
  */
 public interface RxPlatformContract extends WireSpace {
+
 	RxApplicationStateManager stateManager();
 
 	/** Standard request {@link Evaluator}, which has the same authorization as the caller. */
@@ -70,9 +79,9 @@ public interface RxPlatformContract extends WireSpace {
 
 	/** Returns the {@link ServiceDomains}. */
 	ServiceDomains serviceDomains();
-	
+
 	DeferringThreadContextScoping threadContextScoping();
-	
+
 	/** Returns the {@link MarshallerRegistry} */
 	MarshallerRegistry marshallers();
 	Marshaller jsonMarshaller();

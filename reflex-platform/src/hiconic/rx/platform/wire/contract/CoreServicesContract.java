@@ -25,6 +25,7 @@ import com.braintribe.logging.ThreadRenamer;
 import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.model.usersession.UserSession;
+import com.braintribe.thread.api.DeferringThreadContextScoping;
 import com.braintribe.wire.api.space.WireSpace;
 
 import hiconic.rx.module.api.service.ConfiguredModels;
@@ -51,6 +52,8 @@ public interface CoreServicesContract extends WireSpace {
 	ConfiguredModels configuredModels();
 
 	ServiceDomains serviceDomains();
+
+	DeferringThreadContextScoping threadContextScoping();
 
 	MarshallerRegistry marshallers();
 	Marshaller jsonMarshaller();

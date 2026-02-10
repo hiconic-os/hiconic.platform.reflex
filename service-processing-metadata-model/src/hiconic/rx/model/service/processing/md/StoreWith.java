@@ -13,19 +13,43 @@
 // ============================================================================
 package hiconic.rx.model.service.processing.md;
 
+import com.braintribe.model.generic.annotation.Transient;
 import com.braintribe.model.generic.annotation.meta.Description;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 import com.braintribe.model.meta.data.EntityTypeMetaData;
 
+import hiconic.rx.module.api.resource.ResourceStorage;
+
 @Description("Specifies ResourceStorage for given ResourceSource type.")
-public interface StoreWith extends EntityTypeMetaData, HasTransientAssociate {
+public interface StoreWith extends EntityTypeMetaData {
 
 	EntityType<StoreWith> T = EntityTypes.T(StoreWith.class);
 
-	static StoreWith create(Object serviceProcessor) {
+	/**
+	 * {@link ResourceStorage#storageId() storageId} of the actual {@link ResourceStorage} implementation.
+	 * <p>
+	 * Use this when actual instance is not yet available during model configuration.
+	 * <p>
+	 * Either this or {@link #getResourceStorage()} must be set.
+	 */
+	String getStorageId();
+	void setStorageId(String storageId);
+
+	/**
+	 * Actual {@link ResourceStorage} implementation.
+	 * <p>
+	 * Either this or {@link #getStorageId()} must be set.
+	 * <p>
+	 * NOTE if not configured, it will be assigned by the framework first time it revolves {@link #getStorageId()}.
+	 */
+	@Transient
+	ResourceStorage getResourceStorage();
+	void setResourceStorage(ResourceStorage associate);
+
+	static StoreWith create(ResourceStorage serviceProcessor) {
 		StoreWith processWith = StoreWith.T.create();
-		processWith.setAssociate(serviceProcessor);
+		processWith.setResourceStorage(serviceProcessor);
 		return processWith;
 	}
 

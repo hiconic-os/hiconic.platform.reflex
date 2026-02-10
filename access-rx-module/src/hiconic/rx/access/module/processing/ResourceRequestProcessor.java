@@ -44,6 +44,7 @@ import com.braintribe.model.resourceapi.stream.BinaryRetrievalResponse;
 import com.braintribe.model.resourceapi.stream.DownloadResource;
 import com.braintribe.model.resourceapi.stream.GetBinaryResponse;
 import com.braintribe.model.resourceapi.stream.GetResource;
+import com.braintribe.model.resourceapi.stream.StreamBinaryResponse;
 import com.braintribe.model.resourceapi.stream.StreamResource;
 import com.braintribe.model.service.api.ServiceRequest;
 
@@ -94,8 +95,10 @@ public class ResourceRequestProcessor extends AbstractDispatchingAccessRequestPr
 		if (resourceMaybe.isUnsatisfied())
 			return resourceMaybe.propagateReason();
 
+		Resource resource = resourceMaybe.get();
+
 		// Get the payload
-		GetResourcePayload getPayload = buildDlRequest(context, GetResourcePayload.T, resourceMaybe.get());
+		GetResourcePayload getPayload = buildDlRequest(context, GetResourcePayload.T, resource);
 
 		Maybe<? extends GetResourcePayloadResponse> responseMaybe = getPayload.eval(systemEvaluator).getReasoned();
 
@@ -108,12 +111,19 @@ public class ResourceRequestProcessor extends AbstractDispatchingAccessRequestPr
 		GetBinaryResponse result = GetBinaryResponse.T.create();
 		result.setCacheControl(response.getCacheControl());
 		result.setRanged(response.getRanged());
-		result.setResource(response.getResource());
+		result.setResource(mergeResourceMetaData(response.getResource(), resource));
 
 		return Maybe.complete(result);
 	}
 
-	private Maybe<PipeResourcePayloadResponse> stream(AccessRequestContext<StreamResource> context) {
+	private Resource mergeResourceMetaData(Resource responseResource, Resource accessResource) {
+		responseResource.setName(accessResource.getName());
+		responseResource.setMimeType(accessResource.getMimeType());
+
+		return responseResource;
+	}
+
+	private Maybe<StreamBinaryResponse> stream(AccessRequestContext<StreamResource> context) {
 		StreamResource request = context.getOriginalRequest();
 
 		// Query resource
@@ -121,8 +131,10 @@ public class ResourceRequestProcessor extends AbstractDispatchingAccessRequestPr
 		if (resourceMaybe.isUnsatisfied())
 			return resourceMaybe.propagateReason();
 
+		Resource resource = resourceMaybe.get();
+
 		// Stream the payload
-		PipeResourcePayload pipePayload = buildDlRequest(context, PipeResourcePayload.T, resourceMaybe.get());
+		PipeResourcePayload pipePayload = buildDlRequest(context, PipeResourcePayload.T, resource);
 		pipePayload.setCapture(request.getCapture());
 
 		Maybe<? extends PipeResourcePayloadResponse> responseMaybe = pipePayload.eval(systemEvaluator) //
@@ -135,10 +147,10 @@ public class ResourceRequestProcessor extends AbstractDispatchingAccessRequestPr
 		// Prepare response
 		PipeResourcePayloadResponse response = responseMaybe.get();
 
-		PipeResourcePayloadResponse result = PipeResourcePayloadResponse.T.create();
+		StreamBinaryResponse result = StreamBinaryResponse.T.create();
 		result.setCacheControl(response.getCacheControl());
 		result.setRanged(response.getRanged());
-		result.setStreamed(result.getStreamed());
+		result.setNotStreamed(!response.getStreamed());
 
 		return Maybe.complete(result);
 	}
