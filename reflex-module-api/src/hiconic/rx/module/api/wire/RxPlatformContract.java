@@ -73,8 +73,6 @@ public interface RxPlatformContract extends WireSpace {
 	
 	DeferringThreadContextScoping threadContextScoping();
 	
-	StreamPipeFactory streamPipeFactory();
-	
 	/** Returns the {@link MarshallerRegistry} */
 	MarshallerRegistry marshallers();
 	Marshaller jsonMarshaller();

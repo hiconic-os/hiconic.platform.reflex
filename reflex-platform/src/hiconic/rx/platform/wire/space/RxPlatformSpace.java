@@ -28,8 +28,6 @@ import com.braintribe.model.service.api.InstanceId;
 import com.braintribe.provider.Box;
 import com.braintribe.thread.api.DeferringThreadContextScoping;
 import com.braintribe.thread.impl.ThreadContextScopingImpl;
-import com.braintribe.utils.stream.api.StreamPipeFactory;
-import com.braintribe.utils.stream.api.StreamPipes;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 import com.braintribe.wire.api.context.WireContext;
@@ -183,11 +181,6 @@ public class RxPlatformSpace extends CoreServicesSpace implements RxPlatformCont
 		return bean;
 	}
 	
-	@Override
-	public StreamPipeFactory streamPipeFactory() {
-		return StreamPipes.fileBackedFactory();
-	}
-
 	@Override
 	public WorkerManager workerManager() {
 		return workerManagerHolder().value;
