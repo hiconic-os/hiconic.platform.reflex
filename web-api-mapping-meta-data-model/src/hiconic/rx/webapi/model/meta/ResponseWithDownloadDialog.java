@@ -11,16 +11,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.access.api;
+package hiconic.rx.webapi.model.meta;
 
-import com.braintribe.model.accessapi.AccessRequest;
+import com.braintribe.model.generic.reflection.EntityType;
+import com.braintribe.model.generic.reflection.EntityTypes;
+import com.braintribe.model.meta.data.EntityTypeMetaData;
+import com.braintribe.model.meta.data.Predicate;
 
 /**
- * TODO 
+ * This metadata controls whether an HTTP header is sent that instructs the browser to open a download dialog instead of displaying the content.
+ * <p>
+ * Annotation: {@link hiconic.rx.webapi.model.annotation.ResponseWithDownloadDialog}
+ * 
+ * @author dirk.scheffler
  */
-@FunctionalInterface
-public interface AccessRequestProcessor<P extends AccessRequest, R> {
+public interface ResponseWithDownloadDialog extends EntityTypeMetaData, Predicate {
 
-	R process(AccessRequestContext<P> context);
-
+	EntityType<ResponseWithDownloadDialog> T = EntityTypes.T(ResponseWithDownloadDialog.class);
 }

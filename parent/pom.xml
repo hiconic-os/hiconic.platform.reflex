@@ -42,6 +42,7 @@ limitations under the License.
         <V.io.undertow>2.3.19.Final</V.io.undertow>
         <V.jakarta.servlet>6.0.0</V.jakarta.servlet>
         <V.net.lingala.zip4j>2.11.5</V.net.lingala.zip4j>
+        <V.org.quartz-scheduler>2.3.2</V.org.quartz-scheduler>
     </properties>
     <licenses>
         <license>

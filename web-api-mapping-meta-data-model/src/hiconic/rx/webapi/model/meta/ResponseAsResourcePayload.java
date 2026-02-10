@@ -11,20 +11,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.access.module.api;
+package hiconic.rx.webapi.model.meta;
 
-import java.util.function.Supplier;
-
-import com.braintribe.model.accessapi.AccessRequest;
+import com.braintribe.model.generic.annotation.meta.Mandatory;
 import com.braintribe.model.generic.reflection.EntityType;
-import com.braintribe.model.processing.accessrequest.api.AccessRequestProcessor;
+import com.braintribe.model.generic.reflection.EntityTypes;
+import com.braintribe.model.meta.data.EntityTypeMetaData;
 
-import hiconic.rx.module.api.service.ModelConfiguration;
+/**
+ * This metadata controls how the response is being projected by following a property path to extract a sub graph
+ * <p>
+ * Annotation: {@link hiconic.rx.webapi.model.annotation.ResponseProjection}
+ * 
+ * @author dirk.scheffler
+ */
+public interface ResponseAsResourcePayload extends EntityTypeMetaData {
 
-public interface AccessModelConfiguration extends ModelConfiguration {
+	EntityType<ResponseAsResourcePayload> T = EntityTypes.T(ResponseAsResourcePayload.class);
 
-	AccessInterceptorBuilder bindAspect(String identifier);
-
-	<R extends AccessRequest> void bindAccessRequest(EntityType<R> request, Supplier<AccessRequestProcessor<? super R, ?>> processorSupplier);
-
+	/**
+	 * The path from the response root to the projected result
+	 */
+	@Mandatory
+	String getPath();
+	void setPath(String path);
 }

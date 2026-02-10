@@ -22,11 +22,11 @@ import java.util.function.Supplier;
 
 import com.braintribe.model.accessapi.AccessRequest;
 import com.braintribe.model.generic.reflection.EntityType;
+import com.braintribe.model.processing.accessrequest.api.AccessRequestProcessor;
 import com.braintribe.model.processing.aop.api.aspect.AccessAspect;
 import com.braintribe.model.processing.meta.editor.ModelMetaDataEditor;
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSessionFactory;
 
-import hiconic.rx.access.api.AccessRequestProcessor;
 import hiconic.rx.access.model.md.InterceptAccessWith;
 import hiconic.rx.access.module.api.AccessInterceptorBuilder;
 import hiconic.rx.access.module.api.AccessModelConfiguration;

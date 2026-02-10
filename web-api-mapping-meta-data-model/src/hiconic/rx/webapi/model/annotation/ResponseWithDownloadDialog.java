@@ -11,22 +11,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.access.api;
+package hiconic.rx.webapi.model.annotation;
 
-import static com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling.getOrTunnel;
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-import com.braintribe.gm.model.reason.Maybe;
-import com.braintribe.model.accessapi.AccessRequest;
-
-/**
- * TODO 
- */
-@FunctionalInterface
-public interface ReasonedAccessRequestProcessor<P extends AccessRequest, R> extends AccessRequestProcessor<P, R> {
-	@Override
-	default R process(AccessRequestContext<P> context) {
-		return getOrTunnel(processReasoned(context));
-	}
-	
-	Maybe<? extends R> processReasoned(AccessRequestContext<P> context);
+/** Annotation for {@link hiconic.rx.webapi.model.meta.ResponseWithDownloadDialog}. */
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ ElementType.TYPE })
+@Documented
+public @interface ResponseWithDownloadDialog {
+	String globalId() default "";
 }

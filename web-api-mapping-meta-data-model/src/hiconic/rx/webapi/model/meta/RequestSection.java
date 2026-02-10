@@ -11,20 +11,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.access.module.api;
+package hiconic.rx.webapi.model.meta;
 
-import java.util.function.Supplier;
-
-import com.braintribe.model.accessapi.AccessRequest;
+import com.braintribe.model.generic.annotation.meta.Mandatory;
 import com.braintribe.model.generic.reflection.EntityType;
-import com.braintribe.model.processing.accessrequest.api.AccessRequestProcessor;
+import com.braintribe.model.generic.reflection.EntityTypes;
+import com.braintribe.model.meta.data.EntityTypeMetaData;
 
-import hiconic.rx.module.api.service.ModelConfiguration;
+/**
+ * This metadata controls the sectioning of requests in named groups for a more structured api reflection
+ * <p>
+ * Annotation: {@link hiconic.rx.webapi.model.annotation.RequestSection}
+ * 
+ * @author dirk.scheffler
+ */
+public interface RequestSection extends EntityTypeMetaData {
 
-public interface AccessModelConfiguration extends ModelConfiguration {
+	EntityType<RequestSection> T = EntityTypes.T(RequestSection.class);
 
-	AccessInterceptorBuilder bindAspect(String identifier);
-
-	<R extends AccessRequest> void bindAccessRequest(EntityType<R> request, Supplier<AccessRequestProcessor<? super R, ?>> processorSupplier);
-
+	/**
+	 * The name of the section in which associated requests are listed
+	 */
+	@Mandatory
+	String getName();
+	void setName(String name);
 }

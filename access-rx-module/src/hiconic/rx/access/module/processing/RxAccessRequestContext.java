@@ -31,6 +31,7 @@ import com.braintribe.model.generic.eval.EvalContext;
 import com.braintribe.model.generic.manipulation.Manipulation;
 import com.braintribe.model.generic.session.exception.GmSessionException;
 import com.braintribe.model.generic.session.exception.GmSessionRuntimeException;
+import com.braintribe.model.processing.accessrequest.api.AccessRequestContext;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
 import com.braintribe.model.processing.service.api.ServiceRequestContextAspect;
 import com.braintribe.model.processing.service.api.ServiceRequestContextBuilder;
@@ -41,8 +42,6 @@ import com.braintribe.model.processing.session.api.persistence.PersistenceGmSess
 import com.braintribe.model.resource.CallStreamCapture;
 import com.braintribe.model.resource.source.TransientSource;
 import com.braintribe.model.service.api.ServiceRequest;
-
-import hiconic.rx.access.api.AccessRequestContext;
 
 public class RxAccessRequestContext<P extends AccessRequest> implements AccessRequestContext<P> {
 

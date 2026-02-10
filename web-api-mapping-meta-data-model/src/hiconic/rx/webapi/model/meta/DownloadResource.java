@@ -11,20 +11,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.access.module.api;
+package hiconic.rx.webapi.model.meta;
 
-import java.util.function.Supplier;
-
-import com.braintribe.model.accessapi.AccessRequest;
 import com.braintribe.model.generic.reflection.EntityType;
-import com.braintribe.model.processing.accessrequest.api.AccessRequestProcessor;
+import com.braintribe.model.generic.reflection.EntityTypes;
+import com.braintribe.model.meta.data.EntityTypeMetaData;
+import com.braintribe.model.meta.data.Predicate;
 
-import hiconic.rx.module.api.service.ModelConfiguration;
+/**
+ * This metadata controls that the response is given as binary content if the response is of type {@code Resource}
+ * <p>
+ * Annotation: {@link hiconic.rx.webapi.model.annotation.ResponseAsResourcePayload}
+ * 
+ * @author dirk.scheffler
+ */
+public interface DownloadResource extends EntityTypeMetaData, Predicate {
 
-public interface AccessModelConfiguration extends ModelConfiguration {
-
-	AccessInterceptorBuilder bindAspect(String identifier);
-
-	<R extends AccessRequest> void bindAccessRequest(EntityType<R> request, Supplier<AccessRequestProcessor<? super R, ?>> processorSupplier);
-
+	EntityType<DownloadResource> T = EntityTypes.T(DownloadResource.class);
 }

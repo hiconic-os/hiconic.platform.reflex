@@ -1,3 +1,7 @@
 hiconic.rx.webapi.model.annotation.RequestMethod,hiconic.rx.webapi.model.meta.RequestMethod,value,method
 hiconic.rx.webapi.model.annotation.RequestPath,hiconic.rx.webapi.model.meta.RequestPath,value,path
 hiconic.rx.webapi.model.annotation.RequestPathPrefix,hiconic.rx.webapi.model.meta.RequestPathPrefix,value,prefix
+hiconic.rx.webapi.model.annotation.RequestSection,hiconic.rx.webapi.model.meta.RequestSection,value,name
+hiconic.rx.webapi.model.annotation.ResponseProjection,hiconic.rx.webapi.model.meta.ResponseProjection,value,path
+hiconic.rx.webapi.model.annotation.ResponseAsResourcePayload,hiconic.rx.webapi.model.meta.ResponseAsResourcePayload
+hiconic.rx.webapi.model.annotation.ResponseWithDownloadDialog,hiconic.rx.webapi.model.meta.ResponseWithDownloadDialog

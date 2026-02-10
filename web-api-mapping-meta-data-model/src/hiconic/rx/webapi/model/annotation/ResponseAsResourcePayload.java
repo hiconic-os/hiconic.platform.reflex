@@ -11,22 +11,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.access.api;
+package hiconic.rx.webapi.model.annotation;
 
-import com.braintribe.model.accessapi.AccessRequest;
-import com.braintribe.model.processing.service.api.ServiceRequestContext;
-import com.braintribe.model.processing.session.api.persistence.PersistenceGmSession;
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-public interface AccessRequestContext<P extends AccessRequest> extends ServiceRequestContext {
-
-	PersistenceGmSession getSession();
-	PersistenceGmSession getSystemSession();
-	P getRequest();
-	P getSystemRequest();
-	P getOriginalRequest();
-	
-	/**
-	 * enables/disables auto inducing on the request session ({@link #getSession()}. Default is true
-	 */
-	void setAutoInducing(boolean autoInducing);
+/** Annotation for {@link hiconic.rx.webapi.model.meta.DownloadResource}. */
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ ElementType.TYPE })
+@Documented
+public @interface ResponseAsResourcePayload {
+	String globalId() default "";
 }

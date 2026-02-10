@@ -35,12 +35,11 @@ import com.braintribe.model.generic.reflection.Property;
 import com.braintribe.model.generic.reflection.StandardCloningContext;
 import com.braintribe.model.generic.reflection.StrategyOnCriterionMatch;
 import com.braintribe.model.generic.typecondition.basic.TypeKind;
+import com.braintribe.model.processing.accessrequest.api.AccessRequestProcessor;
 import com.braintribe.model.processing.service.api.ServiceProcessor;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSession;
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSessionFactory;
-
-import hiconic.rx.access.api.AccessRequestProcessor;
 
 public class AccessRequestProcessorAdapter<P extends AccessRequest, R> implements ServiceProcessor<P, R> {
 

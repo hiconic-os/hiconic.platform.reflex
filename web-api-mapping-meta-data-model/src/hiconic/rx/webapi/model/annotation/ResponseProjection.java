@@ -11,20 +11,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.access.module.api;
+package hiconic.rx.webapi.model.annotation;
 
-import java.util.function.Supplier;
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-import com.braintribe.model.accessapi.AccessRequest;
-import com.braintribe.model.generic.reflection.EntityType;
-import com.braintribe.model.processing.accessrequest.api.AccessRequestProcessor;
+/** Annotation for {@link hiconic.rx.webapi.model.meta.ResponseAsResourcePayload}. */
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ ElementType.TYPE })
+@Documented
+public @interface ResponseProjection {
+	String globalId() default "";
 
-import hiconic.rx.module.api.service.ModelConfiguration;
-
-public interface AccessModelConfiguration extends ModelConfiguration {
-
-	AccessInterceptorBuilder bindAspect(String identifier);
-
-	<R extends AccessRequest> void bindAccessRequest(EntityType<R> request, Supplier<AccessRequestProcessor<? super R, ?>> processorSupplier);
-
+	String value();
 }
