@@ -19,7 +19,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.assertj.core.api.Assertions;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.braintribe.model.service.api.PushRequest;
@@ -35,10 +34,6 @@ import hiconic.rx.web.server.api.WebServerContract;
 
 public class WebsocketTest extends AbstractRxTest {
 
-	@BeforeClass
-	public static void onBeforeClass() {
-	}
-
 	private int getPort() {
 		WebServerContract webServer = platform.getWireContext().contract(WebServerContract.class);
 		return webServer.getEffectiveServerPort();
@@ -46,41 +41,36 @@ public class WebsocketTest extends AbstractRxTest {
 
 	@Test
 	public void testGet() throws Exception {
-		String url = "http://localhost:" + getPort() + "/app/index.html";
-
 		PushChannelLifecyclePublisher publisher = platform.getWireContext().contract(PushContract.class).channelLifecyclePublisher();
-		
+
 		HubPromise<Boolean> promise = new HubPromise<>();
 
 		List<String> data = new ArrayList<>();
-		CountDownLatch latch = new CountDownLatch(3);
-		
+		CountDownLatch readyLatch = new CountDownLatch(1);
+		CountDownLatch closeLatch = new CountDownLatch(1);
+
 		class Listener implements PushChannelLifecycleListener {
 			String openedChannelId;
 			String closedChannelId;
-			
-			@Override
-			public void onConnectionEstablished(PushChannel channel) {
-				openedChannelId = channel.getChannelId();
-			}
-			
-			@Override
-			public void onConnectionClosed(PushChannel channel) {
-				closedChannelId = channel.getChannelId();
-				latch.countDown();
-			}
+
+			// @formatter:off
+			@Override public void onConnectionEstablished(PushChannel channel) { openedChannelId = channel.getChannelId(); }
+			@Override public void onConnectionClosed     (PushChannel channel) { closedChannelId = channel.getChannelId(); closeLatch.countDown(); }
+			// @formatter:on
 		}
-		
+
 		Listener listener = new Listener();
-		
 		publisher.addListener(listener);
 
-		try (var client = new WebSocketTestClient(getPort(), d -> {
+		try (var wsClient = new WebSocketTestClient(getPort(), d -> {
 			data.add(d);
-			latch.countDown();
+			readyLatch.countDown();
 		}, promise);) {
 
 			Assertions.assertThat(promise.get()).as("failed connection").isTrue();
+
+			if (!readyLatch.await(5, TimeUnit.SECONDS))
+				Assertions.fail("Timed out waiting for the first message to confirm WS connection!");
 
 			ReverseText reverseText = ReverseText.T.create();
 			reverseText.setText("Egal");
@@ -90,12 +80,12 @@ public class WebsocketTest extends AbstractRxTest {
 			push.setServiceRequest(reverseText);
 
 			evaluator.eval(push).get();
-			
-			
 		}
-		
-		latch.await(3, TimeUnit.SECONDS);
-		
+
+		if (!closeLatch.await(5, TimeUnit.SECONDS))
+			Assertions.fail("Timed out waiting for connection to close! Ready latch: " + readyLatch.getCount());
+
+		Assertions.assertThat(data).hasSize(2);
 		Assertions.assertThat(data.get(1)).as("did not get expected message").contains("ReverseText");
 		Assertions.assertThat(listener.openedChannelId).isEqualTo(data.get(0));
 		Assertions.assertThat(listener.closedChannelId).isEqualTo(data.get(0));

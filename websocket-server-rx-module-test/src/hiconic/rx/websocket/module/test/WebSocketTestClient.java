@@ -29,11 +29,13 @@ import jakarta.websocket.Session;
 import jakarta.websocket.WebSocketContainer;
 
 public class WebSocketTestClient implements MessageHandler.Whole<String>, AutoCloseable {
-	private Session session;
-	private Consumer<String> dataConsumer;
+
+	private final Session session;
+	private final Consumer<String> dataConsumer;
+
 	public WebSocketTestClient(int port, Consumer<String> dataConsumer, HubPromise<Boolean> established) throws Exception {
 		this.dataConsumer = dataConsumer;
-		String serverUri = "ws://localhost:" + port + "/ws?clientId=test&accept=application/json&sendChannelId=true"; 
+		String serverUri = "ws://localhost:" + port + "/ws?clientId=test&accept=application/json&sendChannelId=true";
 		WebSocketContainer container = ContainerProvider.getWebSocketContainer();
 		ClientEndpointConfig config = ClientEndpointConfig.Builder.create().build();
 
@@ -43,25 +45,21 @@ public class WebSocketTestClient implements MessageHandler.Whole<String>, AutoCl
 				session.addMessageHandler(WebSocketTestClient.this);
 				established.accept(true);
 			}
-			
+
 			@Override
 			public void onError(Session session, Throwable thr) {
 				established.accept(false);
 			}
-			
-			@Override
-			public void onClose(Session session, CloseReason closeReason) {
-			}
 
-		}, config, URI.create(serverUri));			
+		}, config, URI.create(serverUri));
 
 	}
-	
+
 	@Override
 	public void onMessage(String message) {
 		dataConsumer.accept(message);
 	}
-	
+
 	@Override
 	public void close() throws Exception {
 		session.close(new CloseReason(CloseCodes.NORMAL_CLOSURE, "bye bye"));
