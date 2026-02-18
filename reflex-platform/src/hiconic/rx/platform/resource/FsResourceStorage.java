@@ -34,6 +34,7 @@ import com.braintribe.utils.FileTools;
 import com.braintribe.utils.IOTools;
 import com.braintribe.utils.stream.RangeInputStream;
 
+import hiconic.rx.module.api.resource.AbstractResourceStorage;
 import hiconic.rx.resource.model.api.DeleteResourcePayload;
 import hiconic.rx.resource.model.api.DeleteResourcePayloadResponse;
 import hiconic.rx.resource.model.api.DownloadResourcePayload;

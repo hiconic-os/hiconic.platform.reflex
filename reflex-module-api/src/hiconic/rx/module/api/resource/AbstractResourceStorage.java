@@ -1,4 +1,4 @@
-package hiconic.rx.platform.resource;
+package hiconic.rx.module.api.resource;
 
 import static com.braintribe.utils.lcd.NullSafe.nonNull;
 
@@ -22,7 +22,6 @@ import com.braintribe.model.resourceapi.stream.condition.FingerprintMismatch;
 import com.braintribe.model.resourceapi.stream.condition.ModifiedSince;
 import com.braintribe.model.resourceapi.stream.condition.StreamCondition;
 
-import hiconic.rx.module.api.resource.ResourceStorage;
 import hiconic.rx.resource.model.api.DeleteResourcePayload;
 import hiconic.rx.resource.model.api.DeleteResourcePayloadResponse;
 import hiconic.rx.resource.model.api.DownloadResourcePayload;
@@ -81,7 +80,7 @@ public abstract class AbstractResourceStorage<P> implements ResourceStorage {
 		GetResourcePayloadResponse response = GetResourcePayloadResponse.T.create();
 		response.setCacheControl(cacheControl);
 
-		if (matchesCondition(cacheControl, request.getCondition()))
+		if (matchesCondition(payload, cacheControl, request.getCondition()))
 			return tryGetPayload(payload, request, response);
 		else
 			return Maybe.complete(response);
@@ -121,8 +120,10 @@ public abstract class AbstractResourceStorage<P> implements ResourceStorage {
 
 	/**
 	 * In Cortex, these values were taken from the Resource that was retrieved from the access, except for the lastModified date of a FileSystem
-	 * resource, which was read from the file. We thus for now keep it that way, but because these resource storage requests only get
-	 * {@link ResourceSource} as arguments, we have added extra props on {@link DownloadResourcePayload}.
+	 * resource, which was read from the file.
+	 * <p>
+	 * We thus for now keep it that way, but because these resource storage requests only get {@link ResourceSource} as arguments, we have added extra
+	 * props on {@link DownloadResourcePayload} such as {@link DownloadResourcePayload#getMd5()}. These are used when these methods return null.
 	 * 
 	 * @see DownloadResourcePayload
 	 */
@@ -170,7 +171,13 @@ public abstract class AbstractResourceStorage<P> implements ResourceStorage {
 	// #. . . . . . . Match Condition . . . . . . . ##
 	// ###############################################
 
-	private boolean matchesCondition(CacheControl cacheControl, StreamCondition streamCondition) {
+	/**
+	 * @param payload
+	 *            the actual payload. this is relevant when overriding this default implementation
+	 * @return true if conditions matches, indication the resource should be returned. False indicates the resource payload is the same as the client
+	 *         already has so no resources needs to be returned
+	 */
+	protected boolean matchesCondition(P payload, CacheControl cacheControl, StreamCondition streamCondition) {
 		if (streamCondition == null)
 			return true;
 
