@@ -57,7 +57,7 @@ public class HibernateAccessTest extends AbstractRxTest {
 	}
 	
 	private PersistenceGmSession newSession() {
-		AccessContract contract = platform.getWireContext().contract(AccessContract.class);
+		AccessContract contract = resolveExportContract(AccessContract.class);
 		return contract.systemSessionFactory().newSession("main-access");
 	}
 }

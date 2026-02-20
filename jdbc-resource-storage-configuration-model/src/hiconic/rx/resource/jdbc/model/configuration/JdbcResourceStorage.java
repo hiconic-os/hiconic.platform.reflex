@@ -11,13 +11,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.hibernate.access.module.test.wire;
+package hiconic.rx.resource.jdbc.model.configuration;
 
-import hiconic.rx.hibernate.access.module.test.wire.space.HibernateAccessRxModuleTestSpace;
-import hiconic.rx.module.api.wire.RxModule;
+import com.braintribe.model.generic.reflection.EntityType;
+import com.braintribe.model.generic.reflection.EntityTypes;
 
-public enum HibernateAccessRxModuleTest implements RxModule<HibernateAccessRxModuleTestSpace> {
+import hiconic.rx.resource.model.configuration.ResourceStorage;
 
-	INSTANCE;
+public interface JdbcResourceStorage extends ResourceStorage {
+
+	EntityType<JdbcResourceStorage> T = EntityTypes.T(JdbcResourceStorage.class);
+
+	String getDataSourceId();
+	void setDataSourceId(String dataSourceId);
+
+	String getTableName();
+	void setTableName(String tableName);
+
+	String getIdColumnName();
+	void setIdColumnName(String idColumnName);
+
+	String getBlobColumnName();
+	void setBlobColumnName(String blobColumnName);
 
 }

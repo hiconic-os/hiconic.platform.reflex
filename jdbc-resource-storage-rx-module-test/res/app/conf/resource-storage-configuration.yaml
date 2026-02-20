@@ -1,0 +1,7 @@
+storages:
+- !hiconic.rx.resource.jdbc.model.configuration.JdbcResourceStorage
+  storageId: test-jdbc-storage
+  dataSourceId: main-db
+  tableName: test_resources
+  idColumnName: id
+  blobColumnName: data

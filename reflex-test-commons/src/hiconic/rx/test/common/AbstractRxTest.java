@@ -22,6 +22,8 @@ import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
 import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.service.api.ServiceRequest;
 
+import hiconic.rx.module.api.wire.RxExportContract;
+import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.platform.RxPlatform;
 import hiconic.rx.platform.conf.RxProperties;
 import hiconic.rx.platform.conf.SystemProperties;
@@ -29,7 +31,39 @@ import hiconic.rx.platform.conf.SystemProperties;
 public abstract class AbstractRxTest {
 
 	protected RxPlatform platform;
+	protected RxPlatformContract platformContract;
 	protected Evaluator<ServiceRequest> evaluator;
+
+	@Before
+	public void onBefore() {
+		try {
+			platform = new RxPlatform(systemPropertyLookup(), applicationPropertyLookup());
+			platformContract = platform.getContract();
+			evaluator = platform.getContract().evaluator();
+
+		} catch (UnsatisfiedMaybeTunneling e) {
+			System.err.print(e.getMaybe().whyUnsatisfied().stringify());
+			throw e;
+		}
+	}
+
+	@After
+	public void onAfter() {
+		if (platform != null)
+			platform.close();
+	}
+
+	//
+	// Utils
+	//
+
+	protected <C extends RxExportContract> C resolveExportContract(Class<C> contractClass) {
+		return platform.getWireContext().contract(contractClass);
+	}
+
+	//
+	// Internal
+	//
 
 	private Function<String, String> systemPropertyLookup() {
 		return RxProperties.overrideLookup( //
@@ -56,23 +90,6 @@ public abstract class AbstractRxTest {
 					}
 				} //
 		);
-	}
-
-	@Before
-	public void onBefore() {
-		try {
-			platform = new RxPlatform(systemPropertyLookup(), applicationPropertyLookup());
-			evaluator = platform.getContract().evaluator();
-		} catch (UnsatisfiedMaybeTunneling e) {
-			System.err.print(e.getMaybe().whyUnsatisfied().stringify());
-			throw e;
-		}
-	}
-
-	@After
-	public void onAfter() {
-		if (platform != null)
-			platform.close();
 	}
 
 }

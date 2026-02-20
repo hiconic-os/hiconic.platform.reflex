@@ -1,4 +1,4 @@
-package hiconic.rx.platform.resource;
+package hiconic.rx.test.resource;
 
 import static com.braintribe.testing.junit.assertions.assertj.core.api.Assertions.assertThat;
 import static com.braintribe.testing.junit.assertions.gm.assertj.core.api.GmAssertions.assertThat;
@@ -6,26 +6,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.Date;
 
-import org.junit.Before;
 import org.junit.Test;
 
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.essential.NotFound;
+import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.resource.CallStreamCapture;
 import com.braintribe.model.resource.Resource;
-import com.braintribe.model.resource.source.FileSystemSource;
 import com.braintribe.model.resource.source.ResourceSource;
 import com.braintribe.model.resourceapi.stream.condition.FingerprintMismatch;
 import com.braintribe.model.resourceapi.stream.condition.ModifiedSince;
-import com.braintribe.utils.FileTools;
 import com.braintribe.utils.IOTools;
 
+import hiconic.rx.module.api.resource.ResourceStorage;
 import hiconic.rx.resource.model.api.DeleteResourcePayload;
 import hiconic.rx.resource.model.api.DeleteResourcePayloadResponse;
 import hiconic.rx.resource.model.api.GetResourcePayload;
@@ -37,34 +35,26 @@ import hiconic.rx.resource.model.api.StoreResourcePayloadResponse;
 import hiconic.rx.test.common.AbstractRxTest;
 
 /**
- * @author peter.gazdik
+ * Abstract base that tests a {@link ResourceStorage} implementation.
+ * <p>
+ * For reference see FsResourceStorageTest in reflext-platform-test.
  */
-public class FileSystemStorageTest extends AbstractRxTest {
+public abstract class AbstractResourceStorageRxTest<RS extends ResourceSource> extends AbstractRxTest {
 
-	// This is also configured in resourc-storage-configuration.yaml
-	private static File baseDir = new File("out/resourc-storage");
-
-	@Before
-	public void cleanStorage() {
-		if (baseDir.exists())
-			FileTools.deleteDirectoryRecursivelyUnchecked(baseDir);
-	}
+	protected abstract EntityType<RS> resourceSourceType();
 
 	@Test
-	public void happyPath() throws Exception {
-		String text = "Hello World!";
-
-		ResourceSource resourceSource;
-		File file;
+	public void happyPath() {
+		String payload = "Hello World!";
+		RS resourceSource;
 
 		// Store
 		{
-			Maybe<StoreResourcePayloadResponse> responseMaybe = storePayload(text);
+			Maybe<StoreResourcePayloadResponse> responseMaybe = storePayload(payload);
 			assertThat(responseMaybe).isSatisfied();
 
-			resourceSource = responseMaybe.get().getResourceSource();
-			file = assertFileExists(resourceSource);
-			assertFileContent(file, text);
+			resourceSource = assertCortectStoreResourceSource(responseMaybe);
+			assertStoredResourceSourceIsOk(resourceSource, payload);
 		}
 
 		// Download
@@ -73,7 +63,7 @@ public class FileSystemStorageTest extends AbstractRxTest {
 			assertThat(responseMaybe).isSatisfied();
 
 			Resource resource = responseMaybe.get().getResource();
-			assertResourceContant(resource, text);
+			assertResourceContent(resource, payload);
 		}
 
 		// Pipe
@@ -85,7 +75,7 @@ public class FileSystemStorageTest extends AbstractRxTest {
 			PipeResourcePayloadResponse response = responseMaybe.get();
 
 			assertThat(response.getStreamed()).isTrue();
-			assertThat(new String(baos.toByteArray())).isEqualTo(text);
+			assertThat(new String(baos.toByteArray())).isEqualTo(payload);
 		}
 
 		// Delete
@@ -97,14 +87,17 @@ public class FileSystemStorageTest extends AbstractRxTest {
 			DeleteResourcePayloadResponse response = responseMaybe.get();
 
 			assertThat(response.getDeleted()).isTrue();
-			assertThat(file).doesNotExist();
+			assertResourceSourceNotExists(resourceSource);
 		}
 	}
 
+	protected abstract void assertStoredResourceSourceIsOk(RS resourceSource, String expectedPayload);
+
+	protected abstract void assertResourceSourceNotExists(RS resourceSource);
+
 	@Test
-	public void nonExistentResource() throws Exception {
-		FileSystemSource resourceSource = FileSystemSource.T.create();
-		resourceSource.setPath("non/existent");
+	public void nonExistentResource() {
+		RS resourceSource = createNonExistentResourceSource();
 
 		// Download
 		{
@@ -120,18 +113,20 @@ public class FileSystemStorageTest extends AbstractRxTest {
 		}
 	}
 
+	protected abstract RS createNonExistentResourceSource();
+
 	@Test
-	public void nonMatchingMd5() throws Exception {
+	public void nonMatchingMd5() {
 		String text = "Some Content";
 
-		ResourceSource resourceSource;
+		RS resourceSource;
 
 		// Store
 		{
 			Maybe<StoreResourcePayloadResponse> responseMaybe = storePayload(text);
 			assertThat(responseMaybe).isSatisfied();
 
-			resourceSource = responseMaybe.get().getResourceSource();
+			resourceSource = assertCortectStoreResourceSource(responseMaybe);
 		}
 
 		FingerprintMismatch fingerprintMismatch = FingerprintMismatch.T.create();
@@ -168,17 +163,17 @@ public class FileSystemStorageTest extends AbstractRxTest {
 	}
 
 	@Test
-	public void nonMatchingCreateDate() throws Exception {
+	public void nonMatchingCreateDate() {
 		String text = "Some Content";
 
-		ResourceSource resourceSource;
+		RS resourceSource;
 
 		// Store
 		{
 			Maybe<StoreResourcePayloadResponse> responseMaybe = storePayload(text);
 			assertThat(responseMaybe).isSatisfied();
 
-			resourceSource = responseMaybe.get().getResourceSource();
+			resourceSource = assertCortectStoreResourceSource(responseMaybe);
 		}
 
 		Date now = new Date();
@@ -228,26 +223,16 @@ public class FileSystemStorageTest extends AbstractRxTest {
 
 		StoreResourcePayload storePayload = StoreResourcePayload.T.create();
 		storePayload.setData(resource);
-		storePayload.setSourceType(FileSystemSource.T.getTypeSignature());
+		storePayload.setSourceType(resourceSourceType().getTypeSignature());
 
 		return storePayload.eval(evaluator).getReasoned();
 	}
 
-	private File assertFileExists(ResourceSource resourceSource) {
-		assertThat(resourceSource).isInstanceOf(FileSystemSource.T);
+	private RS assertCortectStoreResourceSource(Maybe<StoreResourcePayloadResponse> responseMaybe) {
+		ResourceSource responseSource = responseMaybe.get().getResourceSource();
+		assertThat(responseSource).isInstanceOf(resourceSourceType());
 
-		FileSystemSource source = (FileSystemSource) resourceSource;
-		String path = source.getPath();
-
-		File file = new File(baseDir, path);
-		assertThat(file).exists();
-
-		return file;
-	}
-
-	private void assertFileContent(File file, String expectedContent) {
-		String actualContent = FileTools.read(file).asString();
-		assertThat(actualContent).isEqualTo(expectedContent);
+		return (RS) responseSource;
 	}
 
 	//
@@ -261,7 +246,7 @@ public class FileSystemStorageTest extends AbstractRxTest {
 		return getPayload.eval(evaluator).getReasoned();
 	}
 
-	private void assertResourceContant(Resource resource, String expectedContent) {
+	private void assertResourceContent(Resource resource, String expectedContent) {
 		try (InputStream is = resource.openStream(); ByteArrayOutputStream os = new ByteArrayOutputStream()) {
 			IOTools.pump(is, os);
 
