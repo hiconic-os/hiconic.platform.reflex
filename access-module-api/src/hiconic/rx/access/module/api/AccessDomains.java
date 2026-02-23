@@ -16,6 +16,14 @@ package hiconic.rx.access.module.api;
 import java.util.Set;
 
 public interface AccessDomains {
+	
+	static String accessDataModelName(AccessSymbol accessId) {
+		return accessDataModelName(accessId.name());
+	}
+
+	static String accessDataModelName(String accessId) {
+		return "rx:configured-" + accessId + "-data-model";
+	}
 
 	Set<String> domainIds();
 

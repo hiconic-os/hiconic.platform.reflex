@@ -23,6 +23,14 @@ import com.braintribe.model.service.api.ServiceRequest;
  * Registry of all {@link ServiceDomain}s.
  */
 public interface ServiceDomains {
+	
+	static String serviceDomainModelName(ServiceDomainSymbol domainId) {
+		return serviceDomainModelName(domainId.name());
+	}
+	
+	static String serviceDomainModelName(String domainId) {
+		return "rx:configured-" + domainId + "-api-model";
+	}
 
 	// @formatter:off
 	/** @see PlatformServiceDomains#main */

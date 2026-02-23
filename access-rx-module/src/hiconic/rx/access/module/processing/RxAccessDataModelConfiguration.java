@@ -20,46 +20,27 @@ import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.function.Supplier;
 
-import com.braintribe.model.accessapi.AccessRequest;
-import com.braintribe.model.generic.reflection.EntityType;
-import com.braintribe.model.processing.accessrequest.api.AccessRequestProcessor;
 import com.braintribe.model.processing.aop.api.aspect.AccessAspect;
 import com.braintribe.model.processing.meta.editor.ModelMetaDataEditor;
-import com.braintribe.model.processing.session.api.persistence.PersistenceGmSessionFactory;
 
 import hiconic.rx.access.model.md.InterceptAccessWith;
+import hiconic.rx.access.module.api.AccessDataModelConfiguration;
 import hiconic.rx.access.module.api.AccessInterceptorBuilder;
-import hiconic.rx.access.module.api.AccessModelConfiguration;
 import hiconic.rx.module.api.service.DelegatingModelConfiguration;
 import hiconic.rx.module.api.service.ModelConfiguration;
 
-public class RxAccessModelConfiguration implements AccessModelConfiguration, DelegatingModelConfiguration {
+public class RxAccessDataModelConfiguration implements AccessDataModelConfiguration, DelegatingModelConfiguration {
 
 	private final ModelConfiguration modelConfiguration;
 	private final List<AccessInterceptorEntry> interceptors = Collections.synchronizedList(new ArrayList<>());
 
-	private final PersistenceGmSessionFactory contextSessionFactory;
-	private final PersistenceGmSessionFactory systemSessionFactory;
-
-	public RxAccessModelConfiguration(ModelConfiguration modelConfiguration, PersistenceGmSessionFactory contextSessionFactory,
-			PersistenceGmSessionFactory systemSessionFactory) {
-
+	public RxAccessDataModelConfiguration(ModelConfiguration modelConfiguration) {
 		this.modelConfiguration = modelConfiguration;
-		this.contextSessionFactory = contextSessionFactory;
-		this.systemSessionFactory = systemSessionFactory;
 	}
 
 	@Override
 	public ModelConfiguration modelConfiguration() {
 		return modelConfiguration;
-	}
-
-	@Override
-	public <R extends AccessRequest> void bindAccessRequest(EntityType<R> request, Supplier<AccessRequestProcessor<? super R, ?>> processorSupplier) {
-		modelConfiguration.bindRequest(request, () -> {
-			var processor = processorSupplier.get();
-			return new AccessRequestProcessorAdapter<>(processor, contextSessionFactory, systemSessionFactory);
-		});
 	}
 
 	@Override
@@ -97,7 +78,7 @@ public class RxAccessModelConfiguration implements AccessModelConfiguration, Del
 					}
 
 					if (interceptors.size() == 1)
-						configureModel(RxAccessModelConfiguration.this::configureInterceptors);
+						configureModel(RxAccessDataModelConfiguration.this::configureInterceptors);
 				}
 			}
 		};

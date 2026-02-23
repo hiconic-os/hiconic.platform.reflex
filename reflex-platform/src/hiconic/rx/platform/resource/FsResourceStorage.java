@@ -61,7 +61,11 @@ public class FsResourceStorage extends AbstractResourceStorage<Path> {
 	}
 
 	@Override
-	protected Maybe<Path> resolvePayload(ExistingResourcePayloadRequest request) {
+	protected Maybe<Path> resolvePayload(GetResourcePayload  request) {
+		return resolvePayloadInternal(request);
+	}
+
+	private Maybe<Path> resolvePayloadInternal(ExistingResourcePayloadRequest  request) {
 		ResourceSource source = request.getResourceSource();
 		if (!(source instanceof FileSystemSource))
 			return error(InvalidArgument.T, "Resource source is not a FileSystemSource, but: " + source.entityType().getTypeSignature());
@@ -241,7 +245,7 @@ public class FsResourceStorage extends AbstractResourceStorage<Path> {
 
 	@Override
 	protected Maybe<DeleteResourcePayloadResponse> deletePayload(DeleteResourcePayload request) {
-		Maybe<Path> payloadMaybe = resolvePayload(request);
+		Maybe<Path> payloadMaybe = resolvePayloadInternal(request);
 		if (payloadMaybe.isUnsatisfied())
 			return payloadMaybe.propagateReason();
 

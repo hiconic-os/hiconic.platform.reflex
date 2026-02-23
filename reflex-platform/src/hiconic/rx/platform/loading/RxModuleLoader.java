@@ -51,7 +51,9 @@ import hiconic.rx.module.api.wire.EnvironmentPropertiesContract;
 import hiconic.rx.module.api.wire.RxContractSpaceResolverConfigurator;
 import hiconic.rx.module.api.wire.RxModule;
 import hiconic.rx.module.api.wire.RxModuleContract;
+import hiconic.rx.module.api.wire.RxPropertiesContract;
 import hiconic.rx.module.api.wire.SystemPropertiesContract;
+import hiconic.rx.platform.conf.RxPropertyResolver;
 import hiconic.rx.platform.loading.RxModuleAnalysis.RxExportEntry;
 
 public class RxModuleLoader implements LifecycleAware {
@@ -61,10 +63,17 @@ public class RxModuleLoader implements LifecycleAware {
 	private WireContext<?> parentContext;
 	private List<WireContext<RxModuleContract>> contexts;
 	private RxContractSpaceResolverConfigurator resolverConfigurator;
+	private RxPropertyResolver propertyResolver;
+	private final PropertyLookupContractResolver propertyLookupContractResolver = new PropertyLookupContractResolver();
 
 	@SuppressWarnings("unused")
 	private ExecutorService executorService;
 
+	@Required
+	public void setPropertyResolver(RxPropertyResolver propertyResolver) {
+		this.propertyResolver = propertyResolver;
+	}
+	
 	@Required
 	public void setParentContext(WireContext<?> parentContext) {
 		this.parentContext = parentContext;
@@ -158,7 +167,7 @@ public class RxModuleLoader implements LifecycleAware {
 
 			WireContext<RxModuleContract> wireContext = contextBuilder //
 					.parent(parentContext) //
-					.bindContracts(PropertyLookupContractResolver.INSTANCE) //
+					.bindContracts(propertyLookupContractResolver) //
 					.build();
 
 			for (RxExportEntry export : node.exports)
@@ -211,12 +220,14 @@ public class RxModuleLoader implements LifecycleAware {
 		return properties;
 	}
 
-	private static class PropertyLookupContractResolver implements ContractSpaceResolver {
-
-		public static final PropertyLookupContractResolver INSTANCE = new PropertyLookupContractResolver();
+	private class PropertyLookupContractResolver implements ContractSpaceResolver {
 
 		@Override
 		public ContractResolution resolveContractSpace(Class<? extends WireSpace> contractSpaceClass) {
+			if (RxPropertiesContract.class.isAssignableFrom(contractSpaceClass)) {
+				return f -> PropertyLookups.create(contractSpaceClass, propertyResolver::resolve);
+			}
+			
 			if (SystemPropertiesContract.class.isAssignableFrom(contractSpaceClass)) {
 				return f -> PropertyLookups.create(contractSpaceClass, System::getProperty);
 			}

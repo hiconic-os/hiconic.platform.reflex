@@ -61,7 +61,7 @@ public abstract class AbstractResourceStorage<P> implements ResourceStorage {
 		return storageId;
 	}
 
-	protected abstract Maybe<P> resolvePayload(ExistingResourcePayloadRequest request);
+	protected abstract Maybe<P> resolvePayload(GetResourcePayload request);
 
 	// ###############################################
 	// ## . . . . . . . Get Payload . . . . . . . . ##

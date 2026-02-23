@@ -27,13 +27,9 @@ public interface Access extends GenericEntity {
 	String getAccessId();
 	void setAccessId(String accessId);
 
-	@Mandatory
 	String getDataModelName();
 	void setDataModelName(String dataModelName);
 	
-	/**
-	 * Optional, otherwise it is generated from the accessId: configured-<accessId>-api-model
-	 */
 	String getServiceModelName();
 	void setServiceModelName(String serviceModelName);
 }

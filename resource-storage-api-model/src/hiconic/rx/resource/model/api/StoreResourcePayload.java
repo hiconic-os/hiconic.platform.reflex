@@ -30,7 +30,7 @@ public interface StoreResourcePayload extends ResourcePayloadRequest {
 	@Mandatory
 	Resource getData();
 	void setData(Resource data);
-
+	
 	/**
 	 * Optional storageId of the ResourceStorage to use for storing this resource.
 	 * <p>

@@ -13,11 +13,15 @@
 // ============================================================================
 package hiconic.rx.platform.wire.space;
 
+import static com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling.getOrTunnel;
+
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import com.braintribe.gm.config.yaml.ModeledYamlConfiguration;
 import com.braintribe.gm.model.reason.Maybe;
+import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.processing.worker.api.ConfigurableWorkerAspectRegistry;
@@ -37,7 +41,9 @@ import hiconic.rx.module.api.wire.RxPlatformConfigurator;
 import hiconic.rx.module.api.wire.RxPlatformResourcesContract;
 import hiconic.rx.module.api.wire.RxProcessLaunchContract;
 import hiconic.rx.platform.conf.RxPlatformConfiguratorImpl;
+import hiconic.rx.platform.conf.RxPropertyResolver;
 import hiconic.rx.platform.loading.RxModuleLoader;
+import hiconic.rx.platform.loading.RxPropertiesLoader;
 import hiconic.rx.platform.log.RxLogManagerImpl;
 import hiconic.rx.platform.model.configuration.ReflexAppConfiguration;
 import hiconic.rx.platform.models.RxModelConfigurations;
@@ -121,6 +127,7 @@ public class RxPlatformSpace extends CoreServicesSpace implements ExtendedRxPlat
 		bean.setExecutorService(executorService());
 		bean.setParentContext(wireContext);
 		bean.setContractSpaceResolverConfigurator(config.contractSpaceResolverConfigurator());
+		bean.setPropertyResolver(propertyResolver());
 		return bean;
 	}
 
@@ -133,6 +140,17 @@ public class RxPlatformSpace extends CoreServicesSpace implements ExtendedRxPlat
 	private ModeledYamlConfiguration modeledConfiguration() {
 		ModeledYamlConfiguration bean = new ModeledYamlConfiguration();
 		bean.setConfigFolder(platformResources.confPath().toFile());
+		bean.setEnableStandardProperties(false);
+		bean.setExternalPropertyLookup(propertyResolver()::resolve);
+		return bean;
+	}
+	
+	@Managed
+	private RxPropertyResolver propertyResolver() {
+		RxPropertyResolver bean = new RxPropertyResolver();
+
+		Map<String, String> rawProperties = getOrTunnel(RxPropertiesLoader.load(platformResources.confPath().resolve("properties.yaml").toFile(), yamlMarshaller()));
+		bean.setRawProperties(rawProperties);
 		return bean;
 	}
 

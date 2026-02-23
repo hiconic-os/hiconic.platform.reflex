@@ -9,6 +9,7 @@ import com.braintribe.utils.collection.impl.AttributeContexts;
  * @author peter.gazdik
  */
 public interface RxPlatform {
+	static String PROPERTY_DECRYPT_SECRET = "RX_DECRYPT_SECRET";
 
 	// TODO is there a better place for User-related info than RxPlatform? 
 	

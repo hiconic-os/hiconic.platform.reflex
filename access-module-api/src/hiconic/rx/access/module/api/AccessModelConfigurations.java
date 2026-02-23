@@ -13,19 +13,15 @@
 // ============================================================================
 package hiconic.rx.access.module.api;
 
-import java.util.List;
-
 import hiconic.rx.module.api.service.ModelConfiguration;
-import hiconic.rx.module.api.service.ModelReference;
 
 public interface AccessModelConfigurations {
+
+	AccessServiceModelConfiguration serviceModelConfiguration(ModelConfiguration modelConfiguration);
+	AccessServiceModelConfiguration serviceModelConfiguration(AccessSymbol accessId);
+	AccessServiceModelConfiguration serviceModelConfiguration(String accessId);
 	
-	AccessModelConfiguration byName(String modeName);
-	
-	AccessModelConfiguration byReference(ModelReference modelReference);
-	
-	AccessModelConfiguration byConfiguration(ModelConfiguration modelConfiguration);
-	
-	List<AccessModelConfiguration> listConfigurations();
-	
+	AccessDataModelConfiguration dataModelConfiguration(ModelConfiguration modelConfiguration);
+	AccessDataModelConfiguration dataModelConfiguration(AccessSymbol accessId);
+	AccessDataModelConfiguration dataModelConfiguration(String accessId);
 }

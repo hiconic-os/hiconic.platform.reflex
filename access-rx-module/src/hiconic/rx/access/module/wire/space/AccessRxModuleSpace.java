@@ -34,7 +34,7 @@ import hiconic.rx.access.module.api.AccessContract;
 import hiconic.rx.access.module.api.AccessDomains;
 import hiconic.rx.access.module.api.AccessExpert;
 import hiconic.rx.access.module.api.AccessExpertContract;
-import hiconic.rx.access.module.api.AccessModelConfiguration;
+import hiconic.rx.access.module.api.AccessServiceModelConfiguration;
 import hiconic.rx.access.module.api.PersistenceServiceDomain;
 import hiconic.rx.access.module.processing.PersistenceReflectionProcessor;
 import hiconic.rx.access.module.processing.ResourceRequestProcessor;
@@ -77,7 +77,6 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 
 	@Override
 	public void configureModels(ModelConfigurations configurations) {
-		accesses().initModelConfigurations(configurations);
 		accessModelConfigurations().initModelConfigurations(configurations);
 
 		configurePersistenceProcessor(configurations);
@@ -91,7 +90,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 	}
 
 	private void configureResourceRequestProcessor() {
-		AccessModelConfiguration mc = accessModelConfigurations().byName(ACCESS_API_RESOURCE_MODEL_NAME);
+		AccessServiceModelConfiguration mc = accessModelConfigurations().serviceModelConfiguration(ACCESS_API_RESOURCE_MODEL_NAME);
 		mc.addModel(_ResourceApiModel_.reflection);
 		mc.bindAccessRequest(ResourceSourceRequest.T, this::resourceRequestProcessor);
 	}
@@ -184,6 +183,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		bean.setServiceDomains(platform.serviceDomains());
 		bean.setContextSessionFactory(contextSessionFactory());
 		bean.setSystemSessionFactory(systemSessionFactory());
+		bean.setAccessModelConfigurations(accessModelConfigurations());
 		return bean;
 	}
 }

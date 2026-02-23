@@ -40,9 +40,9 @@ import hiconic.rx.access.model.md.InterceptAccessWith;
 import hiconic.rx.access.module.api.AccessDomain;
 import hiconic.rx.access.module.api.AccessDomains;
 import hiconic.rx.access.module.api.AccessExpert;
+import hiconic.rx.access.module.api.AccessModelConfigurations;
 import hiconic.rx.module.api.service.ConfiguredModel;
 import hiconic.rx.module.api.service.ConfiguredModels;
-import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
@@ -54,7 +54,7 @@ public class RxAccesses implements AccessDomains {
 	private final MutableDenotationMap<Access, AccessExpert<?>> experts = new PolymorphicDenotationMap<>(true);
 
 	private ConfiguredModels configuredModels;
-	private ModelConfigurations modelConfigurations;
+	private AccessModelConfigurations accessModelConfigurations;
 	private ServiceDomainConfigurations serviceDomainConfigurations;
 	private PersistenceGmSessionFactory systemSessionFactory;
 	private PersistenceGmSessionFactory contextSessionFactory;
@@ -69,7 +69,7 @@ public class RxAccesses implements AccessDomains {
 	public void setConfiguredModels(ConfiguredModels configuredModels) {
 		this.configuredModels = configuredModels;
 	}
-
+	
 	@Required
 	public void setSystemSessionFactory(PersistenceGmSessionFactory systemSessionFactory) {
 		this.systemSessionFactory = systemSessionFactory;
@@ -80,8 +80,9 @@ public class RxAccesses implements AccessDomains {
 		this.contextSessionFactory = contextSessionFactory;
 	}
 
-	public void initModelConfigurations(ModelConfigurations modelConfigurations) {
-		this.modelConfigurations = modelConfigurations;
+	@Required
+	public void setAccessModelConfigurations(AccessModelConfigurations accessModelConfigurations) {
+		this.accessModelConfigurations = accessModelConfigurations;
 	}
 
 	public void initServiceDomainConfigurations(ServiceDomainConfigurations serviceDomainConfigurations) {
@@ -136,18 +137,24 @@ public class RxAccesses implements AccessDomains {
 	private void deploy(Access access, Supplier<RxAccess> rxAccessSupplier) {
 		String accessId = access.getAccessId();
 		String dataModelName = access.getDataModelName();
+		String serviceModelName = access.getServiceModelName();
 
 		NullSafe.nonNull(accessId, "Access.accessId");
-		NullSafe.nonNull(dataModelName, "Access.dataModelName");
+		
+		if (dataModelName != null)
+			accessModelConfigurations.dataModelConfiguration(accessId).addModelByName(dataModelName);
 
 		// This creates a new ServiceDomain in the system
 		ServiceDomainConfiguration sdConfiguration = serviceDomainConfigurations.byId(accessId);
 		ServiceDomain serviceDomain = serviceDomains.byId(accessId);
 
-		sdConfiguration.addModel(modelConfigurations.byName(RxAccessConstants.ACCESS_API_BASE_MODEL_NAME));
+		sdConfiguration.addModelByName(RxAccessConstants.ACCESS_API_BASE_MODEL_NAME);
+		
+		if (serviceModelName != null)
+			sdConfiguration.addModelByName(serviceModelName);
 
 		if (serviceDomain.modelOracle().findEntityTypeOracle(Resource.T) != null)
-			sdConfiguration.addModel(modelConfigurations.byName(RxAccessConstants.ACCESS_API_RESOURCE_MODEL_NAME));
+			sdConfiguration.addModelByName(RxAccessConstants.ACCESS_API_RESOURCE_MODEL_NAME);
 
 		if (accesses.putIfAbsent(accessId, new Lazy<>(rxAccessSupplier)) != null)
 			throw new IllegalArgumentException("Duplicate deployment of an Access with id: " + accessId);
@@ -201,12 +208,12 @@ public class RxAccesses implements AccessDomains {
 	}
 
 	private ConfiguredModel getDataModelOf(Access access) {
-		String dataModelName = access.getDataModelName();
-
-		ConfiguredModel dataModel = configuredModels.byName(dataModelName);
+		String accessId = access.getAccessId();
+		String modelName = AccessDomains.accessDataModelName(accessId);
+		ConfiguredModel dataModel = configuredModels.byName(modelName);
 
 		// TODO: work with reasons here
-		return Objects.requireNonNull(dataModel, "Access.dataModelName = '" + dataModelName + "' not found for access: " + access.getAccessId());
+		return Objects.requireNonNull(dataModel, "Access configured data model '" + modelName + "' not found for access " + accessId);
 	}
 
 	private ConfiguredModel getServiceModelOf(Access access) {

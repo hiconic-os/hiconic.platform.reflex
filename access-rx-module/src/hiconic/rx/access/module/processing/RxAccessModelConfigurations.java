@@ -13,24 +13,21 @@
 // ============================================================================
 package hiconic.rx.access.module.processing;
 
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import com.braintribe.cfg.Required;
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSessionFactory;
 
-import hiconic.rx.access.module.api.AccessModelConfiguration;
+import hiconic.rx.access.module.api.AccessDataModelConfiguration;
+import hiconic.rx.access.module.api.AccessDomains;
 import hiconic.rx.access.module.api.AccessModelConfigurations;
+import hiconic.rx.access.module.api.AccessServiceModelConfiguration;
+import hiconic.rx.access.module.api.AccessSymbol;
 import hiconic.rx.module.api.service.ModelConfiguration;
 import hiconic.rx.module.api.service.ModelConfigurations;
-import hiconic.rx.module.api.service.ModelReference;
+import hiconic.rx.module.api.service.ServiceDomains;
 
 public class RxAccessModelConfigurations implements AccessModelConfigurations {
 
 	private ModelConfigurations modelConfigurations;
-	private final Map<ModelConfiguration, RxAccessModelConfiguration> accessModelConfigurations = new ConcurrentHashMap<>();
-
 	private PersistenceGmSessionFactory contextSessionFactory;
 	private PersistenceGmSessionFactory systemSessionFactory;
 
@@ -49,26 +46,32 @@ public class RxAccessModelConfigurations implements AccessModelConfigurations {
 	}
 
 	@Override
-	public AccessModelConfiguration byConfiguration(ModelConfiguration modelConfiguration) {
-		return accessModelConfigurations.computeIfAbsent(modelConfiguration, this::newRxModelConfiguration);
+	public AccessDataModelConfiguration dataModelConfiguration(AccessSymbol accessId) {
+		return dataModelConfiguration(modelConfigurations.byName(AccessDomains.accessDataModelName(accessId)));
 	}
-
-	private RxAccessModelConfiguration newRxModelConfiguration(ModelConfiguration modelconfiguration) {
-		return new RxAccessModelConfiguration(modelconfiguration, contextSessionFactory, systemSessionFactory);
-	}
+	
 	@Override
-	public AccessModelConfiguration byName(String modeName) {
-		return byConfiguration(modelConfigurations.byName(modeName));
+	public AccessDataModelConfiguration dataModelConfiguration(String accessId) {
+		return dataModelConfiguration(modelConfigurations.byName(AccessDomains.accessDataModelName(accessId)));
 	}
 
 	@Override
-	public AccessModelConfiguration byReference(ModelReference modelReference) {
-		return byConfiguration(modelConfigurations.byReference(modelReference));
+	public AccessDataModelConfiguration dataModelConfiguration(ModelConfiguration modelConfiguration) {
+		return new RxAccessDataModelConfiguration(modelConfiguration);
 	}
 
 	@Override
-	public List<AccessModelConfiguration> listConfigurations() {
-		return List.copyOf(accessModelConfigurations.values());
+	public AccessServiceModelConfiguration serviceModelConfiguration(AccessSymbol accessId) {
+		return serviceModelConfiguration(modelConfigurations.byName(ServiceDomains.serviceDomainModelName(accessId)));
 	}
 
+	@Override
+	public AccessServiceModelConfiguration serviceModelConfiguration(String accessId) {
+		return serviceModelConfiguration(modelConfigurations.byName(ServiceDomains.serviceDomainModelName(accessId)));
+	}
+	
+	@Override
+	public AccessServiceModelConfiguration serviceModelConfiguration(ModelConfiguration modelConfiguration) {
+		return new RxAccessServiceModelConfiguration(modelConfiguration, contextSessionFactory, systemSessionFactory);
+	}
 }
