@@ -134,6 +134,7 @@ public class RxAccesses implements AccessDomains {
 		deploy(accessDenotation, () -> register(accessDenotation, access));
 	}
 
+	/* TODO: extract the service-domain/model configuration into the right phase and only use it here */
 	private void deploy(Access access, Supplier<RxAccess> rxAccessSupplier) {
 		String accessId = access.getAccessId();
 		String dataModelName = access.getDataModelName();
@@ -153,6 +154,8 @@ public class RxAccesses implements AccessDomains {
 		if (serviceModelName != null)
 			sdConfiguration.addModelByName(serviceModelName);
 
+		/* TODO: this needs to be made explicit by the one setting up an access (its not clear that resource api is automatically part
+		   of the access and it complicates the configuration/deployment phases */
 		if (serviceDomain.modelOracle().findEntityTypeOracle(Resource.T) != null)
 			sdConfiguration.addModelByName(RxAccessConstants.ACCESS_API_RESOURCE_MODEL_NAME);
 
@@ -221,5 +224,4 @@ public class RxAccesses implements AccessDomains {
 		ServiceDomain serviceDomain = serviceDomains.byId(access.getAccessId());
 		return serviceDomain.configuredModel();
 	}
-
 }

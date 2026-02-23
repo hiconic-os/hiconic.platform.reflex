@@ -2,6 +2,7 @@ package hiconic.rx.platform.loading;
 
 import java.io.File;
 import java.io.UncheckedIOException;
+import java.util.Collections;
 import java.util.Map;
 
 import javax.imageio.stream.FileImageInputStream;
@@ -20,6 +21,9 @@ import com.braintribe.utils.FileTools;
 
 public class RxPropertiesLoader {
 	public static Maybe<Map<String,String>> load(File file, Marshaller marshaller) {
+		if (!file.exists())
+			return Maybe.complete(Collections.emptyMap());
+			
 		MapType stringToStringMapType = GMF.getTypeReflection().getMapType(EssentialTypes.TYPE_STRING, EssentialTypes.TYPE_STRING);
 		GmDeserializationOptions options = GmDeserializationOptions.deriveDefaults().setInferredRootType(stringToStringMapType).build();
 		

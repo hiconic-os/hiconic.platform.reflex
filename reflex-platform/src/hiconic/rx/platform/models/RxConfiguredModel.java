@@ -50,6 +50,7 @@ import hiconic.rx.model.service.processing.md.PreProcessWith;
 import hiconic.rx.model.service.processing.md.ProcessWith;
 import hiconic.rx.module.api.service.InterceptorBuilder;
 import hiconic.rx.module.api.service.ModelConfiguration;
+import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.service.ModelReference;
 import hiconic.rx.platform.service.RxInterceptor;
 
@@ -154,7 +155,12 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 
 	@Override
 	public void addModelByName(String modelName) {
-		addModel(GMF.getTypeReflection().getModel(modelName));
+		Model model = GMF.getTypeReflection().findModel(modelName);
+		
+		if (model == null)
+			addModel(configuredModels.byName(modelName));
+		else
+			addModel(model);
 	}
 
 	@Override

@@ -140,7 +140,11 @@ public class JdbcResourceStorage extends AbstractResourceStorage<String> impleme
 	// ######################################################
 
 	@Override
-	protected Maybe<String> resolvePayload(ExistingResourcePayloadRequest request) {
+	protected Maybe<String> resolvePayload(GetResourcePayload  request) {
+		return resolvePayloadInternal(request);
+	}
+
+	private Maybe<String> resolvePayloadInternal(ExistingResourcePayloadRequest  request) {
 		ResourceSource source = request.getResourceSource();
 		if (!(source instanceof SqlSource))
 			return error(InvalidArgument.T, "Resource source is not a SqlSource, but: " + source.entityType().getTypeSignature());
@@ -344,7 +348,7 @@ public class JdbcResourceStorage extends AbstractResourceStorage<String> impleme
 	}
 
 	private Maybe<DeleteResourcePayloadResponse> delete(Connection connection, DeleteResourcePayload request) throws SQLException {
-		Maybe<String> blobIdMaybe = resolvePayload(request);
+		Maybe<String> blobIdMaybe = resolvePayloadInternal(request);
 		if (blobIdMaybe.isUnsatisfied())
 			return blobIdMaybe.propagateReason();
 
