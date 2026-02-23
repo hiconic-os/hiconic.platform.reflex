@@ -80,7 +80,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		accessModelConfigurations().initModelConfigurations(configurations);
 
 		configurePersistenceProcessor(configurations);
-		configureResourceRequestProcessor();
+		configureResourceRequestProcessor(configurations);
 	}
 
 	private void configurePersistenceProcessor(ModelConfigurations configurations) {
@@ -89,8 +89,10 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		mc.bindRequest(PersistenceRequest.T, this::persistenceProcessor);
 	}
 
-	private void configureResourceRequestProcessor() {
-		AccessServiceModelConfiguration mc = accessModelConfigurations().serviceModelConfiguration(ACCESS_API_RESOURCE_MODEL_NAME);
+	private void configureResourceRequestProcessor(ModelConfigurations configurations) {
+		ModelConfiguration accessApiMc = configurations.byName(ACCESS_API_RESOURCE_MODEL_NAME);
+
+		AccessServiceModelConfiguration mc = accessModelConfigurations().serviceModelConfiguration(accessApiMc);
 		mc.addModel(_ResourceApiModel_.reflection);
 		mc.bindAccessRequest(ResourceSourceRequest.T, this::resourceRequestProcessor);
 	}
