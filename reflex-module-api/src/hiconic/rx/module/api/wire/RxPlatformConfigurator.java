@@ -26,7 +26,7 @@ import hiconic.rx.resource.model.configuration.ResourceStorage;
 /**
  * Configurator to override or extend the core platform APIs.
  * <p>
- * This configurator is passed to each module's {@link RxModuleContract#configurePlatform(RxPlatformConfigurator)} method during configuration phase.
+ * Passed to each module's during platform configuration phase via {@link RxModuleContract#configurePlatform(RxPlatformConfigurator)}.
  */
 public interface RxPlatformConfigurator {
 

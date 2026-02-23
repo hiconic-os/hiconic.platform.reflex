@@ -1,4 +1,4 @@
 databases:
 - name: main-db
-  url: "jdbc:h2:mem:hibernate-rx-module-test;DB_CLOSE_DELAY=-1"
+  url: "jdbc:h2:mem:jdbc-resources-test;DB_CLOSE_DELAY=-1"
   driver: org.h2.Driver

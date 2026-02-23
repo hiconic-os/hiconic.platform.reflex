@@ -14,7 +14,13 @@
 package hiconic.rx.access.module.api;
 
 import hiconic.rx.module.api.service.ModelConfiguration;
+import hiconic.rx.module.api.service.ModelConfigurations;
 
+/**
+ * A wrapper around {@link ModelConfigurations}
+ * 
+ * Accessible via {@link AccessContract#accessModelConfigurations()}.
+ */
 public interface AccessModelConfigurations {
 
 	AccessServiceModelConfiguration serviceModelConfiguration(ModelConfiguration modelConfiguration);
