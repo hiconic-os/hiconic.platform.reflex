@@ -9,10 +9,10 @@
     </root>
 
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${reflex.app.dir}/logs/reflex.log</file>
+        <file>res/out/logs/reflex.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <!-- daily rollover -->
-            <fileNamePattern>${reflex.app.dir}/logs/reflex.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <fileNamePattern>res/out/logs/reflex.%d{yyyy-MM-dd}.log</fileNamePattern>
             <!-- keep 30 days' worth of history -->
             <maxHistory>30</maxHistory>
         </rollingPolicy>

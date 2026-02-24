@@ -13,10 +13,8 @@
 // ============================================================================
 package hiconic.rx.hibernate.processing;
 
-import java.io.Serializable;
-
-import org.hibernate.EmptyInterceptor;
-import org.hibernate.EntityMode;
+import org.hibernate.Interceptor;
+import org.hibernate.metamodel.RepresentationMode;
 
 import com.braintribe.model.generic.GMF;
 import com.braintribe.model.generic.GenericEntity;
@@ -26,9 +24,8 @@ import com.braintribe.model.generic.reflection.GenericModelTypeReflection;
 /**
  * Interceptor which provides correct instances for {@link GenericEntity}s and resolves their names.
  */
-public class GmAdaptionInterceptor extends EmptyInterceptor {
+public class GmAdaptionInterceptor implements  Interceptor {
 
-	private static final long serialVersionUID = -5221026406788869293L;
 	private static final GenericModelTypeReflection typeReflection = GMF.getTypeReflection();
 
 	@Override
@@ -37,13 +34,13 @@ public class GmAdaptionInterceptor extends EmptyInterceptor {
 			return ((GenericEntity) object).entityType().getTypeSignature();
 
 		} else {
-			return super.getEntityName(object);
+			return Interceptor.super.getEntityName(object);
 		}
 	}
 
 	@Override
-	public Object instantiate(String entityName, EntityMode entityMode, Serializable id) {
-		if (entityMode == EntityMode.POJO) {
+	public Object instantiate(String entityName, RepresentationMode entityMode, Object id) {
+		if (entityMode == RepresentationMode.POJO) {
 			EntityType<?> entityType = typeReflection.getType(entityName);
 
 			GenericEntity ge = entityType.createPlain();
@@ -52,7 +49,7 @@ public class GmAdaptionInterceptor extends EmptyInterceptor {
 			return ge;
 
 		} else {
-			return super.instantiate(entityName, entityMode, id);
+			return Interceptor.super.instantiate(entityName, entityMode, id);
 		}
 
 	}

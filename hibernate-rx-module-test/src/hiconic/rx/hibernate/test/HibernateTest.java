@@ -49,7 +49,7 @@ public class HibernateTest extends AbstractRxTest {
 			Transaction transaction = session.beginTransaction();
 			Container c = Container.T.create();
 			c.setName(name);
-			session.save(c);
+			session.persist(c);
 
 			Element e1 = Element.T.create();
 			Element e2 = Element.T.create();
@@ -59,9 +59,9 @@ public class HibernateTest extends AbstractRxTest {
 			e2.setName("Element 2");
 			e3.setName("Element 3");
 
-			session.save(e1);
-			session.save(e2);
-			session.save(e3);
+			session.persist(e1);
+			session.persist(e2);
+			session.persist(e3);
 
 			c.getElements().add(e1);
 			c.getElements().add(e2);
@@ -100,7 +100,7 @@ public class HibernateTest extends AbstractRxTest {
 			Person p = Person.T.create();
 			p.setName(name);
 			p.setLastName(lastName);
-			session.save(p);
+			session.persist(p);
 			transaction.commit();
 			id = p.getId();
 		}

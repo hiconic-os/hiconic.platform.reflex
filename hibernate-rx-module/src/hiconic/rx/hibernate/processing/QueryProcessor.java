@@ -50,6 +50,7 @@ public class QueryProcessor<P extends ServiceRequest, R> implements PersistenceS
 	}
 
 	@Override
+	@SuppressWarnings("deprecation")
 	public Maybe<R> process(PersistenceContext context, Session session, P request) {
 		Query<?> query = isNative? // 
 				session.createNativeQuery(queryString): //
