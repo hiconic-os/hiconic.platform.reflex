@@ -380,9 +380,14 @@ public class ResourceRequestProcessor extends AbstractDispatchingAccessRequestPr
 	}
 
 	private void transferMetadata(Resource source, Resource target) {
-		target.setMd5(source.getMd5());
-		target.setFileSize(source.getFileSize());
-		target.setMimeType(source.getMimeType());
+		if (source.getMd5() != null)
+			target.setMd5(source.getMd5());
+
+		if (source.getFileSize() != null)
+			target.setFileSize(source.getFileSize());
+
+		if (source.getMimeType() != null)
+			target.setMimeType(source.getMimeType());
 
 		if (source.getName() != null)
 			target.setName(source.getName());
