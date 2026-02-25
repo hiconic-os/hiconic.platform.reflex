@@ -51,7 +51,7 @@ import hiconic.rx.model.service.processing.md.ProcessWith;
 import hiconic.rx.module.api.service.InterceptorBuilder;
 import hiconic.rx.module.api.service.ModelConfiguration;
 import hiconic.rx.module.api.service.ModelConfigurations;
-import hiconic.rx.module.api.service.ModelReference;
+import hiconic.rx.module.api.service.ModelSymbol;
 import hiconic.rx.platform.service.RxInterceptor;
 
 public class RxConfiguredModel extends AbstractRxConfiguredModel implements ModelConfiguration {
@@ -77,7 +77,7 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 	}
 	
 	@Override
-	public String modelName() {
+	public String name() {
 		return name;
 	}
 	
@@ -177,7 +177,7 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 	}
 
 	@Override
-	public void addModel(ModelReference modelReference) {
+	public void addModel(ModelSymbol modelReference) {
 		AbstractRxConfiguredModel configuredModel = configuredModels.acquire(modelReference);
 		addModel(configuredModel.modelOracle().getGmMetaModel());
 	}

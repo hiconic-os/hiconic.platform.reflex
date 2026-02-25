@@ -144,7 +144,7 @@ public class RxServiceDomains implements ServiceDomains {
 	}
 
 	private RxServiceDomain createServiceDomain(String domainId) {
-		RxConfiguredModel configuredModel = modelConfigurations.byName(_ReflexPlatform_.groupId + ":configured-" + domainId + "-api-model");
+		RxConfiguredModel configuredModel = modelConfigurations.byName(ServiceDomains.serviceDomainModelName(domainId));
 
 		return new RxServiceDomain(domainId, configuredModel, executorService, contextEvaluator, fallbackProcessor);
 	}

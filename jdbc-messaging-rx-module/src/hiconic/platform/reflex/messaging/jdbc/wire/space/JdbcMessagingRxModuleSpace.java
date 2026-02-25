@@ -75,7 +75,7 @@ public class JdbcMessagingRxModuleSpace implements RxModuleContract, MessagingCo
 	}
 
 	private DataSource dataSource(JdbcMessagingConfiguration configuration) {
-		Maybe<DataSource> dataSourceMaybe = database.dataSource(configuration.getMessagingDb());
+		Maybe<DataSource> dataSourceMaybe = database.dataSource(configuration.getDatabaseId());
 		return getOrTunnel(dataSourceMaybe);
 	}
 

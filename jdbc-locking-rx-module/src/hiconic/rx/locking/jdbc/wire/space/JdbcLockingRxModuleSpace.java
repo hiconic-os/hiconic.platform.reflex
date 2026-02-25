@@ -91,7 +91,7 @@ public class JdbcLockingRxModuleSpace implements RxModuleContract, LockingContra
 	}
 
 	private DataSource dataSource(JdbcLockingConfiguration configuration) {
-		Maybe<DataSource> dataSourceMaybe = database.dataSource(configuration.getMessagingDb());
+		Maybe<DataSource> dataSourceMaybe = database.dataSource(configuration.getDatabaseId());
 		return getOrTunnel(dataSourceMaybe);
 	}
 

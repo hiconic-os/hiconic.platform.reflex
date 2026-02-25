@@ -25,6 +25,7 @@ import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.service.common.context.UserSessionAspect;
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSession;
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSessionFactory;
+import com.braintribe.model.processing.session.api.resource.ResourceAccessFactory;
 import com.braintribe.model.processing.session.impl.persistence.BasicPersistenceGmSession;
 import com.braintribe.model.processing.session.impl.persistence.auth.BasicSessionAuthorization;
 import com.braintribe.model.service.api.ServiceRequest;
@@ -37,7 +38,13 @@ public class RxPersistenceGmSessionFactory implements PersistenceGmSessionFactor
 	private Supplier<AttributeContext> attributeContextSupplier;
 	private RxAccesses accesses;
 	private Function<AttributeContext, Evaluator<ServiceRequest>> evaluatorSupplier;
+	private ResourceAccessFactory<PersistenceGmSession> resourceAccessFactory; 
 
+	@Required
+	public void setResourceAccessFactory(ResourceAccessFactory<PersistenceGmSession> resourceAccessFactory) {
+		this.resourceAccessFactory = resourceAccessFactory;
+	}
+	
 	@Required
 	public void setAccesses(RxAccesses accesses) {
 		this.accesses = accesses;
@@ -66,9 +73,10 @@ public class RxPersistenceGmSessionFactory implements PersistenceGmSessionFactor
 		session.setIncrementalAccess(incrementalAccess);
 		session.setEquivalentSessionFactory(() -> newSession(accessId));
 		session.setModelAccessory(new RxModelAccessory(cmdResolver));
+		session.setResourcesAccessFactory(resourceAccessFactory);
 
 		session.setRequestEvaluator(evaluatorSupplier.apply(attributeContext));
-		session.setDescription("AccessContract PersistenceGmSession accessId=" + accessId + " model=" + configuredModel.modelName() + " accessType="
+		session.setDescription("AccessContract PersistenceGmSession accessId=" + accessId + " model=" + configuredModel.name() + " accessType="
 				+ access.access().entityType().getTypeSignature());
 
 		UserSession userSession = attributeContext.findOrDefault(UserSessionAspect.class, null);
@@ -84,9 +92,6 @@ public class RxPersistenceGmSessionFactory implements PersistenceGmSessionFactor
 
 			session.setSessionAuthorization(sessionAuthorization);
 		}
-
-		// TODO: how to apply Resource support
-		session.setResourcesAccessFactory(null);
 
 		return session;
 	}

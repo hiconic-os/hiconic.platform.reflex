@@ -1,17 +1,22 @@
 package hiconic.rx.platform.conf;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 import com.braintribe.cfg.Configurable;
+import com.braintribe.gm.config.yaml.PropertyResolutions;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reason;
+import com.braintribe.gm.model.reason.ReasonAggregator;
 import com.braintribe.gm.model.reason.Reasons;
-import com.braintribe.gm.model.reason.essential.ConfigurationError;
-import com.braintribe.gm.model.reason.essential.NotFound;
+import com.braintribe.gm.model.reason.config.ConfigurationError;
+import com.braintribe.gm.model.reason.config.PropertyNotFound;
+import com.braintribe.gm.model.reason.config.UnresolvedPlaceholder;
+import com.braintribe.gm.model.reason.config.UnresolvedProperty;
 import com.braintribe.gm.model.reason.essential.ParseError;
+import com.braintribe.gm.model.reason.essential.UnsupportedOperation;
 import com.braintribe.model.generic.template.Template;
 import com.braintribe.utils.encryption.Cryptor;
 import com.braintribe.ve.api.VirtualEnvironment;
@@ -41,7 +46,7 @@ public class RxPropertyResolver {
 	public String resolve(String name) {
 		Maybe<String> maybe = resolveReasoned(name);
 		
-		if (maybe.isUnsatisfiedBy(NotFound.T))
+		if (maybe.isUnsatisfiedBy(PropertyNotFound.T))
 			return null;
 		
 		return maybe.get();
@@ -51,38 +56,46 @@ public class RxPropertyResolver {
 		String rawValue = findRawValue(name);
 		
 		if (rawValue == null)
-			return Reasons.build(NotFound.T).text("Could not find property: " + name).toMaybe();
+			return PropertyNotFound.create(name).asMaybe();
 		
-		Maybe<String> maybe = evaluate(rawValue);
+		ReasonAggregator<UnresolvedProperty> errorAggregator = Reasons.aggregatorForceWrap(() -> UnresolvedProperty.create(name));
 		
-		if (maybe.isUnsatisfied())
-			return Reasons.build(ConfigurationError.T).text("Could not resolve property: " + name).cause(maybe.whyUnsatisfied()).toMaybe();
+		String value = evaluate(rawValue, errorAggregator);
 		
-		return maybe;
-	}
-	
-	private Maybe<String> evaluate(String rawValue) {
-		final Template template;
-		try {
-			template = Template.parse(rawValue);
-			if (template.isStaticOnly())
-				return Maybe.complete(rawValue);
-		}
-		catch (IllegalArgumentException e) {
-			return Reasons.build(ParseError.T).text("Could not parse expression [" + rawValue + "]: " + e.getMessage()).toMaybe();
-		}
-		
-		PlaceholderResolutionContext placeholderResolutionContext = new PlaceholderResolutionContext();
-
-		String value = template.evaluate(placeholderResolutionContext::resolvePlaceholder);
-		
-		if (placeholderResolutionContext.error != null)
-			return placeholderResolutionContext.error.asMaybe();
+		if (errorAggregator.hasReason())
+			return errorAggregator.get().asMaybe();
 		
 		return Maybe.complete(value);
 	}
 	
+	private String evaluate(String rawValue, Consumer<Reason> errorConsumer) {
+		final Template template;
+		try {
+			template = Template.parse(rawValue);
+			if (template.isStaticOnly())
+				return rawValue;
+		}
+		catch (IllegalArgumentException e) {
+			var error = Reasons.build(ParseError.T) //
+					.text("Could not parse expression [" + rawValue + "]: " + e.getMessage()) //
+					.toReason();
+			
+			errorConsumer.accept(error);
+			return null;
+		}
+		
+		PlaceholderResolutionContext placeholderResolutionContext = new PlaceholderResolutionContext(errorConsumer);
+
+		return template.evaluate(placeholderResolutionContext::resolvePlaceholder);
+	}
+	
 	private String findRawValue(String name) {
+		if (name.startsWith(PropertyResolutions.ENV_PREFIX)) {
+			String envName = name.substring(PropertyResolutions.ENV_PREFIX.length());
+
+			return virtualEnvironment.getEnv(envName);
+		}
+		
 		String value = rawProperties.get(name);
 		
 		if (value != null)
@@ -97,10 +110,24 @@ public class RxPropertyResolver {
 	}
 	
 	private class PlaceholderResolutionContext {
-		public Reason error;
+		private Consumer<Reason> errorConsumer;
+		
+		public PlaceholderResolutionContext(Consumer<Reason> errorConsumer) {
+			this.errorConsumer = errorConsumer;
+		}
 
 		public String resolvePlaceholder(String placeholder) {
-
+			var maybe = resolvePlaceholderReasoned(placeholder);
+			if (maybe.isSatisfied())
+				return maybe.get();
+			
+			var error = UnresolvedPlaceholder.create(placeholder);
+			error.getReasons().add(maybe.whyUnsatisfied());
+			errorConsumer.accept(error);
+			return "?";
+		}
+		
+		private Maybe<String> resolvePlaceholderReasoned(String placeholder) {
 			if (placeholder.contains("(") && placeholder.endsWith(")")) {
 				int idx1 = placeholder.indexOf("(");
 				int idx2 = placeholder.lastIndexOf(")");
@@ -114,28 +141,24 @@ public class RxPropertyResolver {
 								Maybe<String> maybeSecret = resolveReasoned(RxPlatform.PROPERTY_DECRYPT_SECRET);
 								
 								if (maybeSecret.isUnsatisfied()) {
-									error = Reasons.build(ConfigurationError.T).text("Could not resolve decryption secret") //
-											.cause(maybeSecret.whyUnsatisfied()).toReason();
-									return "?";
+									return Reasons.build(ConfigurationError.T).text("Could not resolve decryption secret") //
+											.cause(maybeSecret.whyUnsatisfied()).toMaybe();
 								}
 								
-								return Cryptor.decrypt(maybeSecret.get(), null, null, null, param);
+								try {
+									return Maybe.complete(Cryptor.decrypt(maybeSecret.get(), null, null, null, param));
+								} catch (Exception e) {
+									return Reasons.build(ConfigurationError.T).text("Wrong decryption secret").toMaybe();
+								}
 							}
 							break;
 						default:
-							throw new RuntimeException("Unsupported variable function: " + method);
+							return Reasons.build(UnsupportedOperation.T).text("Unsupported operation: " + method).toMaybe();
 					}
 				}
 			}
 
-			Maybe<String> maybeValue = resolveReasoned(placeholder);
-			
-			if (maybeValue.isUnsatisfied()) {
-				error = Reasons.build(ConfigurationError.T).text("Could not resolve placeholder: " + placeholder).cause(maybeValue.whyUnsatisfied()).toReason();
-				return "?";
-			}
-			
-			return maybeValue.get();
+			return resolveReasoned(placeholder);
 		}
 	}
 }

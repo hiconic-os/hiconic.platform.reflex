@@ -14,21 +14,22 @@
 package hiconic.rx.module.api.service;
 
 import com.braintribe.common.artifact.ArtifactReflection;
+import com.braintribe.common.symbol.Symbol;
 
 @FunctionalInterface
-public interface ModelReference {
+public interface ModelSymbol extends Symbol {
 
-	String modelName();
+	String name();
 
-	static ModelReference configured(ArtifactReflection artifactReflection) {
+	static ModelSymbol configured(ArtifactReflection artifactReflection) {
 		return prefixed("configured", artifactReflection);
 	}
-
-	static ModelReference prefixed(String prefix, ArtifactReflection artifactReflection) {
+	
+	static ModelSymbol prefixed(String prefix, ArtifactReflection artifactReflection) {
 		return of(artifactReflection.groupId() + ":" + prefix + "-" + artifactReflection.artifactId());
 	}
 
-	static ModelReference of(String name) {
+	static ModelSymbol of(String name) {
 		return () -> name;
 	}
 

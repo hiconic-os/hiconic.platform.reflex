@@ -46,7 +46,7 @@ public class OpenapiV3RxModuleSpace implements RxModuleContract {
 	
 	@Override
 	public void configureModels(ModelConfigurations configurations) {
-		ModelConfiguration modelConfiguration = configurations.byReference(AbstractOpenapiProcessor.basicOpenapiProcessingModelRef);
+		ModelConfiguration modelConfiguration = configurations.bySymbol(AbstractOpenapiProcessor.basicOpenapiProcessingModelRef);
 		modelConfiguration.addModel(_ServiceApiModel_.reflection);
 		modelConfiguration.addModel(ApiV1DdraEndpoint.T.getModel());
 	}

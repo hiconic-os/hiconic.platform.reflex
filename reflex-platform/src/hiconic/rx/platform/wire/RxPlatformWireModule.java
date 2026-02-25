@@ -18,6 +18,7 @@ import java.io.File;
 import com.braintribe.wire.api.context.WireContextBuilder;
 import com.braintribe.wire.api.module.WireTerminalModule;
 
+import hiconic.rx.module.api.wire.RxAuthContract;
 import hiconic.rx.module.api.wire.RxContractSpaceResolverConfigurator;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.module.api.wire.RxPlatformResourcesContract;
@@ -28,6 +29,7 @@ import hiconic.rx.platform.conf.SystemProperties;
 import hiconic.rx.platform.loading.RxConfigurableContractSpaceResolver;
 import hiconic.rx.platform.wire.contract.ExtendedRxPlatformContract;
 import hiconic.rx.platform.wire.contract.RxPlatformConfigContract;
+import hiconic.rx.platform.wire.space.RxAuthSpace;
 import hiconic.rx.platform.wire.space.RxPlatformResourcesSpace;
 import hiconic.rx.platform.wire.space.RxPlatformSpace;
 import hiconic.rx.platform.wire.space.RxTransientDataSpace;
@@ -73,6 +75,7 @@ public class RxPlatformWireModule implements WireTerminalModule<RxPlatformContra
 	public void configureContext(WireContextBuilder<?> contextBuilder) {
 		WireTerminalModule.super.configureContext(contextBuilder);
 		contextBuilder.bindContract(RxPlatformContract.class, RxPlatformSpace.class);
+		contextBuilder.bindContract(RxAuthContract.class, RxAuthSpace.class);
 		contextBuilder.bindContract(ExtendedRxPlatformContract.class, RxPlatformSpace.class);
 		contextBuilder.bindContract(RxPlatformResourcesContract.class, RxPlatformResourcesSpace.class);
 		contextBuilder.bindContract(RxTransientDataContract.class, RxTransientDataSpace.class);

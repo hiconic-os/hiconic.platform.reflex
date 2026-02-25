@@ -78,8 +78,8 @@ public class ResourceRequestProcessor extends AbstractDispatchingAccessRequestPr
 		dispatching.registerReasoned(StreamResource.T, this::stream);
 
 		dispatching.register(UploadResources.T, this::bulkUpload);
-		dispatching.register(UploadResource.T, this::upload);
-		dispatching.register(UpdateResource.T, this::update);
+		dispatching.registerReasoned(UploadResource.T, this::upload);
+		dispatching.registerReasoned(UpdateResource.T, this::update);
 		dispatching.registerReasoned(DeleteResource.T, this::delete);
 	}
 

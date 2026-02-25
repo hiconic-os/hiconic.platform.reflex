@@ -25,8 +25,8 @@ public interface JdbcLockingConfiguration extends GenericEntity {
 	EntityType<JdbcLockingConfiguration> T = EntityTypes.T(JdbcLockingConfiguration.class);
 
 	@Initializer("'locking'")
-	String getMessagingDb();
-	void setMessagingDb(String messagingDb);
+	String getDatabaseId();
+	void setDatabaseId(String databaseId);
 
 	@Initializer("true")
 	boolean getAutoUpdateSchema();

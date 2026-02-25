@@ -44,7 +44,7 @@ public interface DelegatingModelConfiguration extends ModelConfiguration {
 	}
 	
 	@Override
-	default void addModel(ModelReference modelReference) {
+	default void addModel(ModelSymbol modelReference) {
 		modelConfiguration().addModel(modelReference);
 	}
 	
@@ -76,8 +76,8 @@ public interface DelegatingModelConfiguration extends ModelConfiguration {
 	}
 	
 	@Override
-	default String modelName() {
-		return modelConfiguration().modelName();
+	default String name() {
+		return modelConfiguration().name();
 	}
 
 }

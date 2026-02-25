@@ -31,7 +31,6 @@ import com.braintribe.model.processing.aop.api.aspect.AccessAspect;
 import com.braintribe.model.processing.core.expert.api.MutableDenotationMap;
 import com.braintribe.model.processing.core.expert.impl.PolymorphicDenotationMap;
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSessionFactory;
-import com.braintribe.model.resource.Resource;
 import com.braintribe.utils.lcd.Lazy;
 import com.braintribe.utils.lcd.NullSafe;
 
@@ -41,6 +40,7 @@ import hiconic.rx.access.module.api.AccessDomain;
 import hiconic.rx.access.module.api.AccessDomains;
 import hiconic.rx.access.module.api.AccessExpert;
 import hiconic.rx.access.module.api.AccessModelConfigurations;
+import hiconic.rx.access.module.api.AccessModelSymbols;
 import hiconic.rx.module.api.service.ConfiguredModel;
 import hiconic.rx.module.api.service.ConfiguredModels;
 import hiconic.rx.module.api.service.ServiceDomain;
@@ -133,7 +133,7 @@ public class RxAccesses implements AccessDomains {
 	public void deploy(Access accessDenotation, IncrementalAccess access) {
 		deploy(accessDenotation, () -> register(accessDenotation, access));
 	}
-
+	
 	/* TODO: extract the service-domain/model configuration into the right phase and only use it here */
 	private void deploy(Access access, Supplier<RxAccess> rxAccessSupplier) {
 		String accessId = access.getAccessId();
@@ -147,17 +147,11 @@ public class RxAccesses implements AccessDomains {
 
 		// This creates a new ServiceDomain in the system
 		ServiceDomainConfiguration sdConfiguration = serviceDomainConfigurations.byId(accessId);
-		ServiceDomain serviceDomain = serviceDomains.byId(accessId);
 
-		sdConfiguration.addModelByName(RxAccessConstants.ACCESS_API_BASE_MODEL_NAME);
+		sdConfiguration.addModel(AccessModelSymbols.configuredAccessApiModel);
 		
 		if (serviceModelName != null)
 			sdConfiguration.addModelByName(serviceModelName);
-
-		/* TODO: this needs to be made explicit by the one setting up an access (its not clear that resource api is automatically part
-		   of the access and it complicates the configuration/deployment phases */
-		if (serviceDomain.modelOracle().findEntityTypeOracle(Resource.T) != null)
-			sdConfiguration.addModelByName(RxAccessConstants.ACCESS_API_RESOURCE_MODEL_NAME);
 
 		if (accesses.putIfAbsent(accessId, new Lazy<>(rxAccessSupplier)) != null)
 			throw new IllegalArgumentException("Duplicate deployment of an Access with id: " + accessId);

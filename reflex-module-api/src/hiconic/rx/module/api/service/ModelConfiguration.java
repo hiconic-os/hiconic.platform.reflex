@@ -26,7 +26,7 @@ import com.braintribe.model.processing.service.api.Service;
 import com.braintribe.model.processing.service.api.ServiceProcessor;
 import com.braintribe.model.service.api.ServiceRequest;
 
-public interface ModelConfiguration extends ModelReference {
+public interface ModelConfiguration extends ModelSymbol {
 
 	/**
 	 * @param modelName
@@ -44,7 +44,7 @@ public interface ModelConfiguration extends ModelReference {
 
 	void addModel(Model model);
 
-	void addModel(ModelReference modelReference);
+	void addModel(ModelSymbol modelReference);
 
 	void configureModel(Consumer<ModelMetaDataEditor> configurer);
 

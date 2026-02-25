@@ -23,14 +23,14 @@ import hiconic.rx.module.api.wire.RxModuleContract;
  * Passed to each module during model configuration phase via {@link RxModuleContract#configureModels(ModelConfigurations)}.
  */
 public interface ModelConfigurations {
-	ModelReference mainPersistenceModelRef = ModelReference.of("rx-platform:configured-main-persistence-model");
+	ModelSymbol mainPersistenceModelRef = ModelSymbol.of("rx-platform:configured-main-persistence-model");
 
 	/**
 	 * Acquires a {@link ModelConfiguration} with the given name as model name
 	 */
 	ModelConfiguration byName(String modelName);
 
-	ModelConfiguration byReference(ModelReference reference);
+	ModelConfiguration bySymbol(ModelSymbol reference);
 
 	/**
 	 * Acquires a {@link ModelConfiguration} via {@link #byReference} using {@link #mainPersistenceModelRef}
@@ -52,5 +52,5 @@ public interface ModelConfigurations {
 	 */
 	ModelConfiguration extendedModel(String prefix, ArtifactReflection baseModel);
 
-	ModelConfiguration extendedModel(ModelReference reference, ArtifactReflection baseModel);
+	ModelConfiguration extendedModel(ModelSymbol reference, ArtifactReflection baseModel);
 }

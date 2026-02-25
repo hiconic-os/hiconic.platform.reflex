@@ -24,8 +24,8 @@ public interface JdbcMessagingConfiguration extends GenericEntity {
 	EntityType<JdbcMessagingConfiguration> T = EntityTypes.T(JdbcMessagingConfiguration.class);
 
 	@Initializer("'messaging'")
-	String getMessagingDb();
-	void setMessagingDb(String messagingDb);
+	String getDatabaseId();
+	void setDatabaseId(String databaseId);
 
 	@Description("Prefix for tables, indices, triggers, functions created for this messaging.\n"
 			+ "Note that internally it expands the prefix with '_msg_', so that for sql prefix 'hc' the table names will be 'hc_msg_topic' and 'hc_msg_queue'.")

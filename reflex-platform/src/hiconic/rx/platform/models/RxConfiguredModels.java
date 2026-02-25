@@ -33,7 +33,7 @@ import com.braintribe.utils.lcd.Lazy;
 import hiconic.rx.module.api.service.ConfiguredModel;
 import hiconic.rx.module.api.service.ConfiguredModels;
 import hiconic.rx.module.api.service.ModelConfigurations;
-import hiconic.rx.module.api.service.ModelReference;
+import hiconic.rx.module.api.service.ModelSymbol;
 
 public class RxConfiguredModels implements ConfiguredModels {
 
@@ -75,8 +75,8 @@ public class RxConfiguredModels implements ConfiguredModels {
 	}
 	
 	@Override
-	public ConfiguredModel byReference(ModelReference reference) {
-		return byName(reference.modelName());
+	public ConfiguredModel byReference(ModelSymbol reference) {
+		return byName(reference.name());
 	}
 	
 	@Override
@@ -103,8 +103,8 @@ public class RxConfiguredModels implements ConfiguredModels {
 		return new RxConfiguredModel(this, modelName);
 	}
 	
-	public RxConfiguredModel acquire(ModelReference modelReference) {
-		return acquire(modelReference.modelName());
+	public RxConfiguredModel acquire(ModelSymbol modelReference) {
+		return acquire(modelReference.name());
 	}
 
 	@Override

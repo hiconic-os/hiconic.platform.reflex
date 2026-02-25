@@ -11,36 +11,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.access.module.processing;
+package hiconic.rx.access.module.api;
 
-import java.util.function.Supplier;
-
+import com.braintribe.gm._AccessApiModel_;
+import com.braintribe.gm._ResourceApiModel_;
 import com.braintribe.model.accessapi.PersistenceRequest;
 import com.braintribe.model.resource.Resource;
 import com.braintribe.model.resourceapi.base.ResourceRequest;
 
-import hiconic.rx.access.model.configuration.Access;
-import hiconic.rx.access.module.wire.space.AccessRxModuleSpace;
+import hiconic.rx.module.api.service.ModelSymbol;
 
-public interface RxAccessConstants {
+public interface AccessModelSymbols {
 
 	/**
 	 * This model is added to every service domain of every access.
 	 * <p>
-	 * It binds {@link PersistenceRequest} to {@link RxPersistenceProcessor}
-	 * 
-	 *  @see RxAccesses#deploy(Access, Supplier)
-	 *  @see AccessRxModuleSpace#configurePersistenceProcessor
+	 * It binds {@link PersistenceRequest} to its processor
 	 */
-	String ACCESS_API_BASE_MODEL_NAME = "reflex:access-api-base-model";
+	ModelSymbol configuredAccessApiModel = ModelSymbol.of("rx:configured-" + _AccessApiModel_.artifactId);
 
 	/**
 	 * This model is added to every service domain of every access which contains the {@link Resource} type.
 	 * <p>
-	 * It binds {@link ResourceRequest} to {@link ResourceRequestProcessor}
-	 * 
-	 *  @see RxAccesses#deploy(Access, Supplier)
-	 *  @see AccessRxModuleSpace#configureResourceRequestProcessor
+	 * It binds {@link ResourceRequest} to its processor
 	 */
-	String ACCESS_API_RESOURCE_MODEL_NAME = "reflex:access-api-resource-model";
+	ModelSymbol configuredResourceApiModel = ModelSymbol.of("rx:configured-" + _ResourceApiModel_.artifactId);
 }

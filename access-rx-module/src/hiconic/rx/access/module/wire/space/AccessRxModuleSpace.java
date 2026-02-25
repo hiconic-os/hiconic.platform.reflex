@@ -15,6 +15,10 @@ package hiconic.rx.access.module.wire.space;
 
 import static com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling.getOrTunnel;
 
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URL;
+
 import com.braintribe.common.attribute.AttributeContext;
 import com.braintribe.gm._AccessApiModel_;
 import com.braintribe.gm._ModelEnvironmentApiModel_;
@@ -23,38 +27,51 @@ import com.braintribe.gm.model.persistence.reflection.api.PersistenceReflectionR
 import com.braintribe.model.access.IncrementalAccess;
 import com.braintribe.model.accessapi.PersistenceRequest;
 import com.braintribe.model.generic.reflection.EntityType;
-import com.braintribe.model.resourceapi.base.ResourceSourceRequest;
+import com.braintribe.model.resourceapi.persistence.ManageResource;
+import com.braintribe.model.resourceapi.persistence.UploadResources;
+import com.braintribe.model.resourceapi.stream.DownloadResource;
 import com.braintribe.utils.collection.impl.AttributeContexts;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
+import hiconic.platform.reflex._ResourceStorageApiModel_;
 import hiconic.rx.access.model.configuration.Access;
 import hiconic.rx.access.model.configuration.AccessConfiguration;
 import hiconic.rx.access.module.api.AccessContract;
 import hiconic.rx.access.module.api.AccessDomains;
 import hiconic.rx.access.module.api.AccessExpert;
 import hiconic.rx.access.module.api.AccessExpertContract;
+import hiconic.rx.access.module.api.AccessModelSymbols;
 import hiconic.rx.access.module.api.AccessServiceModelConfiguration;
 import hiconic.rx.access.module.api.PersistenceServiceDomain;
 import hiconic.rx.access.module.processing.PersistenceReflectionProcessor;
 import hiconic.rx.access.module.processing.ResourceRequestProcessor;
-import hiconic.rx.access.module.processing.RxAccessConstants;
 import hiconic.rx.access.module.processing.RxAccessModelConfigurations;
 import hiconic.rx.access.module.processing.RxAccesses;
 import hiconic.rx.access.module.processing.RxPersistenceGmSessionFactory;
 import hiconic.rx.access.module.processing.RxPersistenceProcessor;
+import hiconic.rx.access.module.processing.resource.RxResourceAccessFactory;
+import hiconic.rx.access.module.processing.resource.RxResourceUrlBuilderSupplier;
 import hiconic.rx.module.api.service.ModelConfiguration;
 import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
+import hiconic.rx.module.api.wire.RxAuthContract;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
+import hiconic.rx.module.api.wire.RxTransientDataContract;
 
 @Managed
-public class AccessRxModuleSpace implements RxModuleContract, AccessContract, AccessExpertContract, RxAccessConstants {
+public class AccessRxModuleSpace implements RxModuleContract, AccessContract, AccessExpertContract, AccessModelSymbols {
 
 	@Import
 	private RxPlatformContract platform;
+	
+	@Import
+	private RxTransientDataContract transientData;
+	
+	@Import
+	private RxAuthContract auth;
 
 	@Override
 	public void onDeploy() {
@@ -84,17 +101,20 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 	}
 
 	private void configurePersistenceProcessor(ModelConfigurations configurations) {
-		ModelConfiguration mc = configurations.byName(ACCESS_API_BASE_MODEL_NAME);
+		ModelConfiguration mc = configurations.bySymbol(configuredAccessApiModel);
 		mc.addModel(_AccessApiModel_.reflection);
 		mc.bindRequest(PersistenceRequest.T, this::persistenceProcessor);
 	}
 
 	private void configureResourceRequestProcessor(ModelConfigurations configurations) {
-		ModelConfiguration accessApiMc = configurations.byName(ACCESS_API_RESOURCE_MODEL_NAME);
+		ModelConfiguration accessApiMc = configurations.bySymbol(configuredResourceApiModel);
 
 		AccessServiceModelConfiguration mc = accessModelConfigurations().serviceModelConfiguration(accessApiMc);
 		mc.addModel(_ResourceApiModel_.reflection);
-		mc.bindAccessRequest(ResourceSourceRequest.T, this::resourceRequestProcessor);
+		mc.addModel(_ResourceStorageApiModel_.reflection);
+		mc.bindAccessRequest(DownloadResource.T, this::resourceRequestProcessor);
+		mc.bindAccessRequest(ManageResource.T, this::resourceRequestProcessor);
+		mc.bindAccessRequest(UploadResources.T, this::resourceRequestProcessor);
 	}
 
 	@Managed
@@ -145,6 +165,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 	public RxPersistenceGmSessionFactory contextSessionFactory() {
 		RxPersistenceGmSessionFactory bean = new RxPersistenceGmSessionFactory();
 		bean.setAttributeContextSupplier(AttributeContexts::peek);
+		bean.setResourceAccessFactory(contextResourceAccessFactory());
 		configure(bean);
 		return bean;
 	}
@@ -153,6 +174,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 	public RxPersistenceGmSessionFactory sessionFactory(AttributeContext attributeContext) {
 		RxPersistenceGmSessionFactory bean = new RxPersistenceGmSessionFactory();
 		bean.setAttributeContextSupplier(() -> attributeContext);
+		bean.setResourceAccessFactory(resourceAccessFactory(attributeContext));
 		configure(bean);
 		return bean;
 	}
@@ -162,10 +184,79 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 	public RxPersistenceGmSessionFactory systemSessionFactory() {
 		RxPersistenceGmSessionFactory bean = new RxPersistenceGmSessionFactory();
 		bean.setAttributeContextSupplier(platform.systemAttributeContextSupplier());
+		bean.setResourceAccessFactory(systemResourceAccessFactory());
 		configure(bean);
 		return bean;
 	}
-
+	
+	private RxResourceAccessFactory resourceAccessFactory(AttributeContext attributeContext) {
+		RxResourceAccessFactory bean = new RxResourceAccessFactory();
+		bean.setShallowifyRequestResource(true);
+		bean.setStreamPipeFactory(transientData.streamPipeFactory());
+		bean.setUrlBuilderSupplier(resourceBuilderSupplier(attributeContext));
+		return bean;
+	}
+	
+	@Managed
+	private RxResourceAccessFactory contextResourceAccessFactory() {
+		RxResourceAccessFactory bean = new RxResourceAccessFactory();
+		bean.setShallowifyRequestResource(true);
+		bean.setStreamPipeFactory(transientData.streamPipeFactory());
+		bean.setUrlBuilderSupplier(contextResourceBuilderSupplier());
+		return bean;
+	}
+	@Managed
+	private RxResourceAccessFactory systemResourceAccessFactory() {
+		RxResourceAccessFactory bean = new RxResourceAccessFactory();
+		bean.setShallowifyRequestResource(true);
+		bean.setStreamPipeFactory(transientData.streamPipeFactory());
+		bean.setUrlBuilderSupplier(systemResourceBuilderSupplier());
+		return bean;
+	}
+	
+	@Managed
+	private RxResourceUrlBuilderSupplier contextResourceBuilderSupplier() {
+		var bean = new RxResourceUrlBuilderSupplier();
+		
+		bean.setSessionIdProvider(auth.contextUserSessionIdSupplier());
+		bean.setBaseStreamingUrl(streamingUrl());
+		bean.setResponseMimeType("application/json");
+		
+		return bean;
+	}
+	
+	@Managed
+	private RxResourceUrlBuilderSupplier resourceBuilderSupplier(AttributeContext attributeContext) {
+		var bean = new RxResourceUrlBuilderSupplier();
+		
+		bean.setSessionIdProvider(auth.userSessionIdSupplier(attributeContext));
+		bean.setBaseStreamingUrl(streamingUrl());
+		bean.setResponseMimeType("application/json");
+		
+		return bean;
+	}
+	
+	@Managed
+	private RxResourceUrlBuilderSupplier systemResourceBuilderSupplier() {
+		var bean = new RxResourceUrlBuilderSupplier();
+		
+		bean.setSessionIdProvider(auth.systemUserSessionIdSupplier());
+		bean.setBaseStreamingUrl(streamingUrl());
+		bean.setResponseMimeType("application/json");
+		
+		return bean;
+	}
+	
+	// TODO: needs to handled by the web-api extension which needs to communicate its knowledge to this layer (HOW?)
+	private URL streamingUrl() {
+		try {
+			return URI.create("http://localhost:8080/services/streaming").toURL();
+		}
+		catch (MalformedURLException e) {
+			throw new RuntimeException(e);
+		}
+	}
+	
 	@Managed
 	public PersistenceReflectionProcessor persistenceReflectionProcessor() {
 		PersistenceReflectionProcessor bean = new PersistenceReflectionProcessor();

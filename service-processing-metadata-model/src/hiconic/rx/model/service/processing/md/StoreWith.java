@@ -52,5 +52,11 @@ public interface StoreWith extends EntityTypeMetaData {
 		processWith.setResourceStorage(serviceProcessor);
 		return processWith;
 	}
+	
+	static StoreWith create(String storageId) {
+		StoreWith processWith = StoreWith.T.create();
+		processWith.setStorageId(storageId);
+		return processWith;
+	}
 
 }

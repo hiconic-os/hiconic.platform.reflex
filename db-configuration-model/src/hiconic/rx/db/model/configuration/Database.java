@@ -41,7 +41,6 @@ public interface Database extends GenericEntity {
 	String getPassword();
 	void setPassword(String password);
 	
-	@Mandatory
 	String getDriver();
 	void setDriver(String value);
 

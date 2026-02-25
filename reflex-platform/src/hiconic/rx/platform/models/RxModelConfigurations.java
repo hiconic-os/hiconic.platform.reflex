@@ -18,7 +18,7 @@ import com.braintribe.common.artifact.ArtifactReflection;
 
 import hiconic.rx.module.api.service.ModelConfiguration;
 import hiconic.rx.module.api.service.ModelConfigurations;
-import hiconic.rx.module.api.service.ModelReference;
+import hiconic.rx.module.api.service.ModelSymbol;
 
 public class RxModelConfigurations implements ModelConfigurations {
 	private RxConfiguredModels configuredModels;
@@ -38,8 +38,8 @@ public class RxModelConfigurations implements ModelConfigurations {
 	}
 	
 	@Override
-	public RxConfiguredModel byReference(ModelReference reference) {
-		return configuredModels.acquire(reference.modelName());
+	public RxConfiguredModel bySymbol(ModelSymbol reference) {
+		return configuredModels.acquire(reference.name());
 	}
 
 	@Override
@@ -56,15 +56,15 @@ public class RxModelConfigurations implements ModelConfigurations {
 	}
 	
 	@Override
-	public RxConfiguredModel extendedModel(ModelReference reference, ArtifactReflection baseModel) {
-		RxConfiguredModel configuredModel = byReference(reference);
+	public RxConfiguredModel extendedModel(ModelSymbol reference, ArtifactReflection baseModel) {
+		RxConfiguredModel configuredModel = bySymbol(reference);
 		configuredModel.addModel(baseModel);
 		return configuredModel;
 	}
 	
 	@Override
 	public ModelConfiguration mainPersistenceModel() {
-		return byReference(mainPersistenceModelRef);
+		return bySymbol(mainPersistenceModelRef);
 	}
 
 

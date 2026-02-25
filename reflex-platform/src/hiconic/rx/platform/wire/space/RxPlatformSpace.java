@@ -140,8 +140,7 @@ public class RxPlatformSpace extends CoreServicesSpace implements ExtendedRxPlat
 	private ModeledYamlConfiguration modeledConfiguration() {
 		ModeledYamlConfiguration bean = new ModeledYamlConfiguration();
 		bean.setConfigFolder(platformResources.confPath().toFile());
-		bean.setEnableStandardProperties(false);
-		bean.setExternalPropertyLookup(propertyResolver()::resolve);
+		bean.setExternalReasonedPropertyLookup(propertyResolver()::resolveReasoned);
 		return bean;
 	}
 	
@@ -149,7 +148,7 @@ public class RxPlatformSpace extends CoreServicesSpace implements ExtendedRxPlat
 	private RxPropertyResolver propertyResolver() {
 		RxPropertyResolver bean = new RxPropertyResolver();
 
-		Map<String, String> rawProperties = getOrTunnel(RxPropertiesLoader.load(platformResources.confPath().resolve("properties.yaml").toFile(), yamlMarshaller()));
+		Map<String, String> rawProperties = getOrTunnel(RxPropertiesLoader.loadFromFolder(platformResources.confPath().toFile(), "properties(-.*)?.yaml", yamlMarshaller()));
 		bean.setRawProperties(rawProperties);
 		return bean;
 	}

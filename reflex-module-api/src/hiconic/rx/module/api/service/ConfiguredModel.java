@@ -20,7 +20,7 @@ import com.braintribe.utils.collection.impl.AttributeContexts;
 
 import hiconic.rx.module.api.wire.RxPlatformContract;
 
-public interface ConfiguredModel extends ModelReference {
+public interface ConfiguredModel extends ModelSymbol {
 
 	/**
 	 * {@link CmdResolver} contextualized with the system {@link AttributeContext} taken from

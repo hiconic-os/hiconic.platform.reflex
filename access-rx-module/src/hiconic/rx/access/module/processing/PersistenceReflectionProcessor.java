@@ -139,7 +139,7 @@ public class PersistenceReflectionProcessor extends AbstractDispatchingServicePr
 		modelEnvironment.setDataAccessId(accessId);
 		modelEnvironment.setDataModel(dataModel);
 		modelEnvironment.setServiceModel(serviceModel);
-		modelEnvironment.setServiceModelName(configuredServiceModel.modelName());
+		modelEnvironment.setServiceModelName(configuredServiceModel.name());
 		modelEnvironment.setWorkbenchModel(workbenchModel);
 
 		return Maybe.complete(modelEnvironment);

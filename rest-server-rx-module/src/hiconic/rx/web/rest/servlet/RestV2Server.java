@@ -261,7 +261,7 @@ public class RestV2Server extends AbstractDdraRestServlet<RestV2EndpointContext<
 
 		if (types.isEmpty()) {
 			HttpExceptions.throwNotFound("Cannot find entity type with simple name %s in model %s", parameters.getTypeSignature(),
-					dataModel.modelName());
+					dataModel.name());
 		}
 		if (types.size() > 1) {
 			HttpExceptions.throwBadRequest("Found multiple (at least 2) entities with simple name %s in access %s: %s and %s",

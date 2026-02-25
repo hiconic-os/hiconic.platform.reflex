@@ -27,7 +27,7 @@ public class RxPlatformModel extends AbstractRxConfiguredModel {
 	}
 
 	@Override
-	public String modelName() {
+	public String name() {
 		return model.getName();
 	}
 

@@ -117,7 +117,10 @@ public class HikariDataSources {
 
 			HikariDataSource result = new HikariDataSource();
 
-			result.setDriverClassName(connectionPool.getDriver());
+			String driver = connectionPool.getDriver();
+			if (driver != null)
+				result.setDriverClassName(driver);
+			
 			result.setJdbcUrl(connectionPool.getUrl());
 			result.setUsername(connectionPool.getUser());
 			result.setPassword(connectionPool.getPassword());

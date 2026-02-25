@@ -106,7 +106,7 @@ public class RxAccessRequestContext<P extends AccessRequest> implements AccessRe
 	}
 
 	private String getAccessId() {
-		return requireNonNull(originalRequest.getDomainId(),
+		return requireNonNull(getDomainId(),
 				() -> "Cannot create session, " + originalRequest.entityType().getShortName() + ".domainId is null. Request: " + originalRequest);
 	}
 
