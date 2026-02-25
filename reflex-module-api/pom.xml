@@ -18,7 +18,7 @@ limitations under the License.
         <version>[1.0,1.1)</version>
     </parent>
     <artifactId>reflex-module-api</artifactId>
-    <version>1.0.36</version>
+    <version>1.0.37</version>
     <properties/>
     <licenses>
         <license>
