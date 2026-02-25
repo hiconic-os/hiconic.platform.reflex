@@ -155,10 +155,11 @@ public class FsResourceStorage extends AbstractResourceStorage<Path> {
 	@Override
 	protected Maybe<StoreResourcePayloadResponse> storePayload(StoreResourcePayload request) {
 		Resource resource = request.getData();
+		String useCase = request.getUseCase();
 
 		Path path = createNewEmptyFileForUpload();
 
-		FileSystemSource resourceSource = storePayload(resource, path);
+		FileSystemSource resourceSource = storePayload(resource, path, useCase);
 
 		// notifyListenersOnStore(context, request, managedResource);
 
@@ -194,9 +195,10 @@ public class FsResourceStorage extends AbstractResourceStorage<Path> {
 		}
 	}
 
-	private FileSystemSource storePayload(Resource inResource, Path path) {
+	private FileSystemSource storePayload(Resource inResource, Path path, String useCase) {
 		FileSystemSource resourceSource = FileSystemSource.T.create();
 		resourceSource.setPath(basePath.relativize(path).toString());
+		resourceSource.setUseCase(useCase);
 
 		// @formatter:off
 		try (

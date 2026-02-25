@@ -313,6 +313,7 @@ public class JdbcResourceStorage extends AbstractResourceStorage<String> impleme
 
 		SqlSource resourceSource = SqlSource.T.create();
 		resourceSource.setBlobId(id);
+		resourceSource.setUseCase(request.getUseCase());
 
 		StoreResourcePayloadResponse response = StoreResourcePayloadResponse.T.create();
 		response.setResourceSource(resourceSource);
