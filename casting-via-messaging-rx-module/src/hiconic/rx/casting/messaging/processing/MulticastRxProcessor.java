@@ -22,7 +22,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Supplier;
 
 import com.braintribe.cfg.Configurable;
 import com.braintribe.cfg.DestructionAware;
@@ -33,6 +32,7 @@ import com.braintribe.model.messaging.Topic;
 import com.braintribe.model.processing.service.api.ServiceProcessor;
 import com.braintribe.model.processing.service.api.ServiceProcessorException;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
+import com.braintribe.model.processing.service.api.SessionIdAspect;
 import com.braintribe.model.processing.service.common.FailureCodec;
 import com.braintribe.model.processing.service.common.ServiceResults;
 import com.braintribe.model.service.api.ExecuteAuthorized;
@@ -78,7 +78,6 @@ public class MulticastRxProcessor implements ServiceProcessor<MulticastRequest, 
 	// private long warningResponseTimeoutMs = parseLong(getProperty(ENVIRONMENT_MULTICAST_PROCESSING_WARNINGTHRESHOLD, "120000"));
 	private LiveInstances liveInstances;
 
-	private Supplier<Map<String, Object>> metaDataProvider;
 	private final Map<String, BlockingQueue<Message>> responsesMap = new ConcurrentHashMap<>();
 	private boolean localCallOptimizationEnabled = true;
 
@@ -142,11 +141,6 @@ public class MulticastRxProcessor implements ServiceProcessor<MulticastRequest, 
 		this.liveInstances = liveInstances;
 	}
 
-	@Required
-	public void setMetaDataProvider(Supplier<Map<String, Object>> metaDataProvider) {
-		this.metaDataProvider = metaDataProvider;
-	}
-
 	@Configurable
 	public void setDefaultResponseTimeoutMs(long defaultResponseTimeoutMs) {
 		this.defaultResponseTimeoutMs = defaultResponseTimeoutMs;
@@ -178,7 +172,7 @@ public class MulticastRxProcessor implements ServiceProcessor<MulticastRequest, 
 
 		boolean async = isAsync(request);
 
-		Message requestMessage = createRequestMessage(request, async);
+		Message requestMessage = createRequestMessage(requestContext, request, async);
 
 		InstanceId addressee = request.getAddressee();
 
@@ -360,18 +354,16 @@ public class MulticastRxProcessor implements ServiceProcessor<MulticastRequest, 
 		}
 	}
 
-	@SuppressWarnings("deprecation")
 	private boolean isAsync(MulticastRequest request) {
 		return request.getAsynchronous();
 	}
 
-	protected Message createRequestMessage(MulticastRequest request, boolean async) {
+	protected Message createRequestMessage(ServiceRequestContext requestContext, MulticastRequest request, boolean async) {
 		MulticastMsg msg = msg();
 
 		// We are maybe overwriting a session Id that has been set earlier
 		// TODO: Disk and Andre will review meta-data handling anyway
 		ServiceRequest serviceRequest = request.getServiceRequest();
-		enrichWithMetaData(serviceRequest);
 
 		request.setSender(senderId);
 
@@ -386,6 +378,8 @@ public class MulticastRxProcessor implements ServiceProcessor<MulticastRequest, 
 
 		requestMessage.setCorrelationId(correlationId);
 		requestMessage.setDestination(msg.requestTopic);
+		requestContext.findAttribute(SessionIdAspect.class) //
+			.ifPresent(sid -> requestMessage.getProperties().put(MessageProperties.producerSessionId.getName(), sid));
 		if (!async) {
 			requestMessage.setReplyTo(msg.responseTopic);
 		}
@@ -536,12 +530,5 @@ public class MulticastRxProcessor implements ServiceProcessor<MulticastRequest, 
 		}
 
 		log.trace(sb.toString());
-
 	}
-
-	protected void enrichWithMetaData(ServiceRequest request) {
-		Map<String, Object> metaData = metaDataProvider.get();
-		request.setMetaData(metaData);
-	}
-
 }

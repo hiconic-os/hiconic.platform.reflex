@@ -22,15 +22,15 @@ import hiconic.rx.messaging.api.MessagingDestinationsContract;
 @Deprecated
 public class MessagingDestinationsSpace implements MessagingDestinationsContract {
 
-	private static final String DEFAULT_MESSAGING_TOPIC_MULTICAST_REQUEST = "tf.topic.multicastRequest";
-	private static final String DEFAULT_MESSAGING_TOPIC_MULTICAST_RESPONSE = "tf.topic.multicastResponse";
-	private static final String DEFAULT_MESSAGING_QUEUE_TRUSTED_REQUEST = "tf.queue.trustedRequest";
-	private static final String DEFAULT_MESSAGING_TOPIC_TRUSTED_RESPONSE = "tf.topic.trustedResponse";
-	private static final String DEFAULT_MESSAGING_TOPIC_HEARTBEAT = "tf.topic.heartbeat";
-	private static final String DEFAULT_MESSAGING_TOPIC_UNLOCK = "tf.topic.unlock";
-	private static final String DEFAULT_MESSAGING_TOPIC_DBL_BROADCAST = "tf.topic.dblBroadcast";
-	private static final String DEFAULT_MESSAGING_TOPIC_DBL_REMOTE = "tf.topic.remoteToDbl";
-	private static final String DEFAULT_MESSAGING_QUEUE_DBL_REMOTE = "tf.queue.remoteToDbl";
+	private static final String DEFAULT_MESSAGING_TOPIC_MULTICAST_REQUEST = "rx.topic.multicastRequest";
+	private static final String DEFAULT_MESSAGING_TOPIC_MULTICAST_RESPONSE = "rx.topic.multicastResponse";
+	private static final String DEFAULT_MESSAGING_QUEUE_TRUSTED_REQUEST = "rx.queue.trustedRequest";
+	private static final String DEFAULT_MESSAGING_TOPIC_TRUSTED_RESPONSE = "rx.topic.trustedResponse";
+	private static final String DEFAULT_MESSAGING_TOPIC_HEARTBEAT = "rx.topic.heartbeat";
+	private static final String DEFAULT_MESSAGING_TOPIC_UNLOCK = "rx.topic.unlock";
+	private static final String DEFAULT_MESSAGING_TOPIC_DBL_BROADCAST = "rx.topic.dblBroadcast";
+	private static final String DEFAULT_MESSAGING_TOPIC_DBL_REMOTE = "rx.topic.remoteToDbl";
+	private static final String DEFAULT_MESSAGING_QUEUE_DBL_REMOTE = "rx.queue.remoteToDbl";
 
 	@Override
 	public String multicastRequestTopicName() {
