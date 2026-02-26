@@ -293,7 +293,7 @@ public class ResourceRequestProcessor extends AbstractDispatchingAccessRequestPr
 		String requestUseCase = request.getUseCase();
 
 		List<ResourceEnricher> preEnrichers = resovePreEnrichers(session, sourceType, requestUseCase);
-		preEnrich(preEnrichers, resource);
+		preEnrich(preEnrichers, resource, context);
 
 		StoreResourcePayload storePayload = StoreResourcePayload.T.create();
 		storePayload.setDomainId(context.getDomainId());
@@ -333,9 +333,9 @@ public class ResourceRequestProcessor extends AbstractDispatchingAccessRequestPr
 				.toList();
 	}
 
-	private void preEnrich(List<ResourceEnricher> preEnrichers, Resource resource) {
+	private void preEnrich(List<ResourceEnricher> preEnrichers, Resource resource, AccessRequestContext<?> context) {
 		for (ResourceEnricher enricher : preEnrichers)
-			enricher.enrich(resource);
+			enricher.enrich(resource, context);
 	}
 
 	private Maybe<DeleteResourceResponse> delete(AccessRequestContext<DeleteResource> context) {

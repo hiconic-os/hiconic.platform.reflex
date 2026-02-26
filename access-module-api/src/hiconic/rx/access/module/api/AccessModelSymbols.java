@@ -15,8 +15,9 @@ package hiconic.rx.access.module.api;
 
 import com.braintribe.gm._AccessApiModel_;
 import com.braintribe.gm._ResourceApiModel_;
+import com.braintribe.gm._ResourceModel_;
 import com.braintribe.model.accessapi.PersistenceRequest;
-import com.braintribe.model.resource.Resource;
+import com.braintribe.model.resource.source.ResourceSource;
 import com.braintribe.model.resourceapi.base.ResourceRequest;
 
 import hiconic.rx.module.api.service.ModelSymbol;
@@ -24,16 +25,22 @@ import hiconic.rx.module.api.service.ModelSymbol;
 public interface AccessModelSymbols {
 
 	/**
-	 * This model is added to every service domain of every access.
+	 * Binds processor for {@link PersistenceRequest}
 	 * <p>
-	 * It binds {@link PersistenceRequest} to its processor
+	 * This model is added to every service domain of every access.
 	 */
 	ModelSymbol configuredAccessApiModel = ModelSymbol.of("rx:configured-" + _AccessApiModel_.artifactId);
 
 	/**
-	 * This model is added to every service domain of every access which contains the {@link Resource} type.
-	 * <p>
-	 * It binds {@link ResourceRequest} to its processor
+	 * Binds processor for {@link ResourceRequest}.
 	 */
 	ModelSymbol configuredResourceApiModel = ModelSymbol.of("rx:configured-" + _ResourceApiModel_.artifactId);
+
+	/**
+	 * Configures resource enriching (PreEnrichResourceWith MD) on {@link ResourceSource}.
+	 * <p>
+	 * To take effect, add to the access's data model.
+	 */
+	ModelSymbol configuredResourceModel = ModelSymbol.of("rx:configured-" + _ResourceModel_.artifactId);
+
 }

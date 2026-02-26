@@ -14,6 +14,8 @@
 package hiconic.rx.access.module.wire.space;
 
 import static com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling.getOrTunnel;
+import static com.braintribe.wire.api.util.Maps.entry;
+import static com.braintribe.wire.api.util.Maps.map;
 
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -23,10 +25,13 @@ import com.braintribe.common.attribute.AttributeContext;
 import com.braintribe.gm._AccessApiModel_;
 import com.braintribe.gm._ModelEnvironmentApiModel_;
 import com.braintribe.gm._ResourceApiModel_;
+import com.braintribe.gm._ResourceModel_;
 import com.braintribe.gm.model.persistence.reflection.api.PersistenceReflectionRequest;
+import com.braintribe.mimetype.PlatformMimeTypeDetector;
 import com.braintribe.model.access.IncrementalAccess;
 import com.braintribe.model.accessapi.PersistenceRequest;
 import com.braintribe.model.generic.reflection.EntityType;
+import com.braintribe.model.resource.source.ResourceSource;
 import com.braintribe.model.resourceapi.persistence.ManageResource;
 import com.braintribe.model.resourceapi.persistence.UploadResources;
 import com.braintribe.model.resourceapi.stream.DownloadResource;
@@ -38,18 +43,23 @@ import hiconic.platform.reflex._ResourceStorageApiModel_;
 import hiconic.rx.access.model.configuration.Access;
 import hiconic.rx.access.model.configuration.AccessConfiguration;
 import hiconic.rx.access.module.api.AccessContract;
+import hiconic.rx.access.module.api.AccessDataModelConfiguration;
 import hiconic.rx.access.module.api.AccessDomains;
 import hiconic.rx.access.module.api.AccessExpert;
 import hiconic.rx.access.module.api.AccessExpertContract;
 import hiconic.rx.access.module.api.AccessModelSymbols;
 import hiconic.rx.access.module.api.AccessServiceModelConfiguration;
 import hiconic.rx.access.module.api.PersistenceServiceDomain;
+import hiconic.rx.access.module.api.ResourceEnricher;
 import hiconic.rx.access.module.processing.PersistenceReflectionProcessor;
 import hiconic.rx.access.module.processing.ResourceRequestProcessor;
 import hiconic.rx.access.module.processing.RxAccessModelConfigurations;
 import hiconic.rx.access.module.processing.RxAccesses;
 import hiconic.rx.access.module.processing.RxPersistenceGmSessionFactory;
 import hiconic.rx.access.module.processing.RxPersistenceProcessor;
+import hiconic.rx.access.module.processing.enriching.DelegatingSpecificationDetector;
+import hiconic.rx.access.module.processing.enriching.ImageSpecificationDetector;
+import hiconic.rx.access.module.processing.enriching.StandardResourcePrePersistenceEnricher;
 import hiconic.rx.access.module.processing.resource.RxResourceAccessFactory;
 import hiconic.rx.access.module.processing.resource.RxResourceUrlBuilderSupplier;
 import hiconic.rx.module.api.service.ModelConfiguration;
@@ -66,20 +76,12 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 
 	@Import
 	private RxPlatformContract platform;
-	
+
 	@Import
 	private RxTransientDataContract transientData;
-	
+
 	@Import
 	private RxAuthContract auth;
-
-	@Override
-	public void onDeploy() {
-		AccessConfiguration accessConfiguration = getOrTunnel(platform.readConfig(AccessConfiguration.T));
-
-		for (Access access : accessConfiguration.getAccesses())
-			deploy(access);
-	}
 
 	@Override
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
@@ -98,13 +100,29 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 
 		configurePersistenceProcessor(configurations);
 		configureResourceRequestProcessor(configurations);
+		configureResourceEnriching(configurations);
 	}
+
+	//
+	// Configure Persistence Processor
+	//
 
 	private void configurePersistenceProcessor(ModelConfigurations configurations) {
 		ModelConfiguration mc = configurations.bySymbol(configuredAccessApiModel);
 		mc.addModel(_AccessApiModel_.reflection);
 		mc.bindRequest(PersistenceRequest.T, this::persistenceProcessor);
 	}
+
+	@Managed
+	private RxPersistenceProcessor persistenceProcessor() {
+		RxPersistenceProcessor bean = new RxPersistenceProcessor();
+		bean.setAccessDomains(accesses());
+		return bean;
+	}
+
+	//
+	// Configure Resource Request Processor
+	//
 
 	private void configureResourceRequestProcessor(ModelConfigurations configurations) {
 		ModelConfiguration accessApiMc = configurations.bySymbol(configuredResourceApiModel);
@@ -118,18 +136,59 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 	}
 
 	@Managed
-	private RxPersistenceProcessor persistenceProcessor() {
-		RxPersistenceProcessor bean = new RxPersistenceProcessor();
-		bean.setAccessDomains(accesses());
-		return bean;
-	}
-
-	@Managed
 	private ResourceRequestProcessor resourceRequestProcessor() {
 		ResourceRequestProcessor bean = new ResourceRequestProcessor();
 		bean.setSystemEvaluator(platform.systemEvaluator());
 		return bean;
 	}
+
+	//
+	// Configure Resource Enriching
+	//
+
+	private void configureResourceEnriching(ModelConfigurations configurations) {
+		ModelConfiguration resourceMc = configurations.bySymbol(configuredResourceModel);
+
+		AccessDataModelConfiguration mc = accessModelConfigurations().dataModelConfiguration(resourceMc);
+		mc.addModel(_ResourceModel_.reflection);
+		mc.bindResourcePreEnricher(ResourceSource.T, this::standardPreEnricher);
+	}
+
+	@Managed
+	private ResourceEnricher standardPreEnricher() {
+		StandardResourcePrePersistenceEnricher bean = new StandardResourcePrePersistenceEnricher();
+		bean.setMimeTypeDetector(PlatformMimeTypeDetector.instance);
+		bean.setStreamPipeFactory(transientData.streamPipeFactory());
+		bean.setSpecificationDetector(standardSpecificationDetector());
+		return bean;
+	}
+
+	@Managed
+	public DelegatingSpecificationDetector standardSpecificationDetector() {
+		DelegatingSpecificationDetector bean = new DelegatingSpecificationDetector();
+
+		bean.setDetectorMap(map( //
+				entry("image/png", imageSpecificationDetector()), //
+				entry("image/jpeg", imageSpecificationDetector()), //
+				entry("image/bmp", imageSpecificationDetector()), //
+				entry("image/gif", imageSpecificationDetector()), //
+				entry("image/pjpeg", imageSpecificationDetector()), //
+				entry("image/tiff", imageSpecificationDetector()) //
+		// entry("application/pdf", pdfSpecificationDetector()) // The detect was not doing anything in Cortex
+		));
+
+		return bean;
+	}
+
+	@Managed
+	public ImageSpecificationDetector imageSpecificationDetector() {
+		ImageSpecificationDetector bean = new ImageSpecificationDetector();
+		return bean;
+	}
+
+	//
+	// Misc
+	//
 
 	@Override
 	@Managed
@@ -143,6 +202,14 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 	@Override
 	public <A extends Access> void registerAccessExpert(EntityType<A> accessType, AccessExpert<A> expert) {
 		accesses().registerExpert(accessType, expert);
+	}
+
+	@Override
+	public void onDeploy() {
+		AccessConfiguration accessConfiguration = getOrTunnel(platform.readConfig(AccessConfiguration.T));
+
+		for (Access access : accessConfiguration.getAccesses())
+			deploy(access);
 	}
 
 	@Override
@@ -188,7 +255,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		configure(bean);
 		return bean;
 	}
-	
+
 	private RxResourceAccessFactory resourceAccessFactory(AttributeContext attributeContext) {
 		RxResourceAccessFactory bean = new RxResourceAccessFactory();
 		bean.setShallowifyRequestResource(true);
@@ -196,7 +263,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		bean.setUrlBuilderSupplier(resourceBuilderSupplier(attributeContext));
 		return bean;
 	}
-	
+
 	@Managed
 	private RxResourceAccessFactory contextResourceAccessFactory() {
 		RxResourceAccessFactory bean = new RxResourceAccessFactory();
@@ -213,50 +280,49 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		bean.setUrlBuilderSupplier(systemResourceBuilderSupplier());
 		return bean;
 	}
-	
+
 	@Managed
 	private RxResourceUrlBuilderSupplier contextResourceBuilderSupplier() {
 		var bean = new RxResourceUrlBuilderSupplier();
-		
+
 		bean.setSessionIdProvider(auth.contextUserSessionIdSupplier());
 		bean.setBaseStreamingUrl(streamingUrl());
 		bean.setResponseMimeType("application/json");
-		
+
 		return bean;
 	}
-	
+
 	@Managed
 	private RxResourceUrlBuilderSupplier resourceBuilderSupplier(AttributeContext attributeContext) {
 		var bean = new RxResourceUrlBuilderSupplier();
-		
+
 		bean.setSessionIdProvider(auth.userSessionIdSupplier(attributeContext));
 		bean.setBaseStreamingUrl(streamingUrl());
 		bean.setResponseMimeType("application/json");
-		
+
 		return bean;
 	}
-	
+
 	@Managed
 	private RxResourceUrlBuilderSupplier systemResourceBuilderSupplier() {
 		var bean = new RxResourceUrlBuilderSupplier();
-		
+
 		bean.setSessionIdProvider(auth.systemUserSessionIdSupplier());
 		bean.setBaseStreamingUrl(streamingUrl());
 		bean.setResponseMimeType("application/json");
-		
+
 		return bean;
 	}
-	
-	// TODO: needs to handled by the web-api extension which needs to communicate its knowledge to this layer (HOW?)
+
+	// TODO: needs to be handled by the web-api extension which needs to communicate its knowledge to this layer (HOW?)
 	private URL streamingUrl() {
 		try {
 			return URI.create("http://localhost:8080/services/streaming").toURL();
-		}
-		catch (MalformedURLException e) {
+		} catch (MalformedURLException e) {
 			throw new RuntimeException(e);
 		}
 	}
-	
+
 	@Managed
 	public PersistenceReflectionProcessor persistenceReflectionProcessor() {
 		PersistenceReflectionProcessor bean = new PersistenceReflectionProcessor();
@@ -279,4 +345,5 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		bean.setAccessModelConfigurations(accessModelConfigurations());
 		return bean;
 	}
+
 }

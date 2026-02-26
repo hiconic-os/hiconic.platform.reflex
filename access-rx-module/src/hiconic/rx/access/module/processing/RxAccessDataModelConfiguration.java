@@ -20,12 +20,16 @@ import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.function.Supplier;
 
+import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.processing.aop.api.aspect.AccessAspect;
 import com.braintribe.model.processing.meta.editor.ModelMetaDataEditor;
+import com.braintribe.model.resource.source.ResourceSource;
 
 import hiconic.rx.access.model.md.InterceptAccessWith;
+import hiconic.rx.access.model.md.PreEnrichResourceWith;
 import hiconic.rx.access.module.api.AccessDataModelConfiguration;
 import hiconic.rx.access.module.api.AccessInterceptorBuilder;
+import hiconic.rx.access.module.api.ResourceEnricher;
 import hiconic.rx.module.api.service.DelegatingModelConfiguration;
 import hiconic.rx.module.api.service.ModelConfiguration;
 
@@ -42,6 +46,10 @@ public class RxAccessDataModelConfiguration implements AccessDataModelConfigurat
 	public ModelConfiguration modelConfiguration() {
 		return modelConfiguration;
 	}
+
+	// #################################################
+	// ## . . . . . . . . Bind Aspect . . . . . . . . ##
+	// #################################################
 
 	@Override
 	public AccessInterceptorBuilder bindAspect(String identification) {
@@ -121,4 +129,20 @@ public class RxAccessDataModelConfiguration implements AccessDataModelConfigurat
 
 	private static record AccessInterceptorEntry(String identification, Supplier<AccessAspect> interceptorSupplier) {
 	}
+
+	// #################################################
+	// ## . . . . Bind Resource Pre Enricher . . . . .##
+	// #################################################
+
+	@Override
+	public void bindResourcePreEnricher(EntityType<? extends ResourceSource> sourceType, Supplier<ResourceEnricher> enricherSupplier) {
+		configureModel(mdEditor -> {
+			PreEnrichResourceWith md = PreEnrichResourceWith.T.create();
+			md.setResourceEnricher(enricherSupplier.get());
+
+			mdEditor.onEntityType(sourceType).addMetaData(md);
+		});
+
+	}
+
 }

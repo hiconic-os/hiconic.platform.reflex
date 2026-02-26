@@ -1,6 +1,7 @@
 // ============================================================================
 package hiconic.rx.access.module.api;
 
+import com.braintribe.model.processing.service.api.ServiceRequestContext;
 import com.braintribe.model.resource.Resource;
 
 /**
@@ -9,6 +10,6 @@ import com.braintribe.model.resource.Resource;
 public interface ResourceEnricher {
 
 	/** @return true iff resource was enriched */
-	boolean enrich(Resource resource);
+	boolean enrich(Resource resource, ServiceRequestContext context);
 
 }
