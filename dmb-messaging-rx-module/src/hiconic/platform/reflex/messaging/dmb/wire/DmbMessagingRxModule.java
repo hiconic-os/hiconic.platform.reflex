@@ -11,20 +11,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.platform.reflex.messaging.jdbc.wire;
+package hiconic.platform.reflex.messaging.dmb.wire;
 
-import hiconic.platform.reflex.messaging.jdbc.wire.space.JdbcMessagingRxModuleSpace;
+import hiconic.platform.reflex.messaging.dmb.wire.space.DmbMessagingRxModuleSpace;
 import hiconic.rx.messaging.api.MessagingContract;
 import hiconic.rx.module.api.wire.Exports;
 import hiconic.rx.module.api.wire.RxModule;
 
-public enum JdbcMessagingRxModule implements RxModule<JdbcMessagingRxModuleSpace> {
+public enum DmbMessagingRxModule implements RxModule<DmbMessagingRxModuleSpace> {
 
 	INSTANCE;
 
 	@Override
 	public void bindExports(Exports exports) {
-		exports.bind(MessagingContract.class, JdbcMessagingRxModuleSpace.class);
+		exports.bind(MessagingContract.class, DmbMessagingRxModuleSpace.class);
 	}
 
 }

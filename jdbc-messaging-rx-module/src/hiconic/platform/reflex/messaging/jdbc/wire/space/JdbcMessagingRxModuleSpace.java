@@ -37,7 +37,7 @@ import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 
 /**
- * This module's javadoc is yet to be written.
+ * Messaging based on {@link JdbcConnectionProvider}
  */
 @Managed
 public class JdbcMessagingRxModuleSpace implements RxModuleContract, MessagingContract {
