@@ -13,13 +13,14 @@
 // ============================================================================
 package hiconic.rx.rest.module.test;
 
+import static com.braintribe.testing.junit.assertions.gm.assertj.core.api.GmAssertions.assertThat;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSession;
@@ -30,10 +31,6 @@ import hiconic.rx.test.common.AbstractRxTest;
 import hiconic.rx.web.server.api.WebServerContract;
 
 public class RestTest extends AbstractRxTest {
-	
-	@BeforeClass
-	public static void onBeforeClass() {
-	}
 	
 	private int getPort() {
 		WebServerContract webServer = platform.getWireContext().contract(WebServerContract.class);
@@ -51,8 +48,13 @@ public class RestTest extends AbstractRxTest {
 		
 		String body = response.body();
 		
-		System.out.println("Status Code was: " + response.statusCode());
-		System.out.println(body);
+		assertThat(response.statusCode()).isEqualTo(200);
+		assertThat(body) //
+				.contains(Person.T.getTypeSignature()) //
+				.contains("Hans") //
+		;
+
+		// System.out.println(body);
 	}
 	
 	private void generateData() {

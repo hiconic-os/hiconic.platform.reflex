@@ -21,7 +21,6 @@ import java.util.UUID;
 
 import com.braintribe.gm.config.yaml.ModeledYamlConfiguration;
 import com.braintribe.gm.model.reason.Maybe;
-import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.processing.worker.api.ConfigurableWorkerAspectRegistry;
@@ -143,12 +142,13 @@ public class RxPlatformSpace extends CoreServicesSpace implements ExtendedRxPlat
 		bean.setExternalReasonedPropertyLookup(propertyResolver()::resolveReasoned);
 		return bean;
 	}
-	
+
 	@Managed
 	private RxPropertyResolver propertyResolver() {
 		RxPropertyResolver bean = new RxPropertyResolver();
 
-		Map<String, String> rawProperties = getOrTunnel(RxPropertiesLoader.loadFromFolder(platformResources.confPath().toFile(), "properties(-.*)?.yaml", yamlMarshaller()));
+		Map<String, String> rawProperties = getOrTunnel(
+				RxPropertiesLoader.loadFromFolder(platformResources.confPath().toFile(), "properties(-.*)?.yaml", yamlMarshaller()));
 		bean.setRawProperties(rawProperties);
 		return bean;
 	}
@@ -267,6 +267,5 @@ public class RxPlatformSpace extends CoreServicesSpace implements ExtendedRxPlat
 	private ReflexAppConfiguration appConfiguration() {
 		return readConfig(ReflexAppConfiguration.T).get();
 	}
-
 
 }

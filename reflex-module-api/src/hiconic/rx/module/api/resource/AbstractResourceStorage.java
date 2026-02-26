@@ -25,7 +25,6 @@ import com.braintribe.model.resourceapi.stream.condition.StreamCondition;
 import hiconic.rx.resource.model.api.DeleteResourcePayload;
 import hiconic.rx.resource.model.api.DeleteResourcePayloadResponse;
 import hiconic.rx.resource.model.api.DownloadResourcePayload;
-import hiconic.rx.resource.model.api.ExistingResourcePayloadRequest;
 import hiconic.rx.resource.model.api.GetResourcePayload;
 import hiconic.rx.resource.model.api.GetResourcePayloadResponse;
 import hiconic.rx.resource.model.api.StoreResourcePayload;

@@ -19,7 +19,6 @@ import java.io.UncheckedIOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
@@ -128,7 +127,7 @@ public class RxResourceUrlBuilder implements ResourceUrlBuilder {
 	public ResourceUrlBuilder base(String baseUrl) {
 		if (baseUrl != null) {
 			try {
-				this.baseStreamingUrl = new URL(baseUrl);
+				this.baseStreamingUrl = URI.create(baseUrl).toURL();
 			} catch (MalformedURLException e) {
 				throw new UncheckedIOException(e);
 			}
@@ -240,19 +239,11 @@ public class RxResourceUrlBuilder implements ResourceUrlBuilder {
 	}
 
 	public URI asUri() {
-
 		String urlString = baseStreamingUrl + buildParameters();
 
 		log.debug(() -> "Assembled resource streaming URL: [ " + urlString + " ]");
 
-		try {
-			return new URL(urlString).toURI();
-		} catch (MalformedURLException e) {
-			throw new UncheckedIOException(e);
-		} catch (URISyntaxException e) {
-			throw new IllegalStateException(urlString + " could not be parsed as a URI reference", e);
-		}
-
+		return URI.create(urlString);
 	}
 
 	private String buildParameters() {

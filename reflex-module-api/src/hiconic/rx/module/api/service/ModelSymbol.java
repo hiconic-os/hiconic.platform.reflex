@@ -19,8 +19,6 @@ import com.braintribe.common.symbol.Symbol;
 @FunctionalInterface
 public interface ModelSymbol extends Symbol {
 
-	String name();
-
 	static ModelSymbol configured(ArtifactReflection artifactReflection) {
 		return prefixed("configured", artifactReflection);
 	}

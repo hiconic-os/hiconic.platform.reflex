@@ -33,7 +33,6 @@ import com.braintribe.model.processing.service.common.ConfigurableDispatchingSer
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.utils.lcd.Lazy;
 
-import hiconic.platform.reflex._ReflexPlatform_;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.service.ServiceDomainSymbol;
 import hiconic.rx.module.api.service.ServiceDomains;
@@ -151,7 +150,7 @@ public class RxServiceDomains implements ServiceDomains {
 
 	@Override
 	public List<ServiceDomain> list() {
-		return List.<ServiceDomain>copyOf(domains.values());
+		return List.<ServiceDomain> copyOf(domains.values());
 	}
 
 }

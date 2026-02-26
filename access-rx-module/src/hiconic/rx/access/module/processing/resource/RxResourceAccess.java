@@ -17,7 +17,6 @@ package hiconic.rx.access.module.processing.resource;
 
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -63,6 +62,7 @@ import com.braintribe.model.resourceapi.stream.StreamResource;
 import com.braintribe.model.resourceapi.stream.condition.StreamCondition;
 import com.braintribe.model.resourceapi.stream.range.StreamRange;
 import com.braintribe.model.service.api.ServiceRequest;
+import com.braintribe.utils.lcd.NullSafe;
 import com.braintribe.utils.stream.api.StreamPipe;
 import com.braintribe.utils.stream.api.StreamPipeFactory;
 
@@ -82,13 +82,9 @@ public class RxResourceAccess implements ResourceAccess {
 	private static final Logger log = Logger.getLogger(RxResourceAccess.class);
 
 	protected RxResourceAccess(PersistenceGmSession gmSession) {
-
-		Objects.requireNonNull(gmSession, "gmSession must not be null");
-
-		this.gmSession = gmSession;
+		this.gmSession = NullSafe.nonNull(gmSession, "gmSession");
 
 		initialize();
-
 	}
 
 	@Configurable
@@ -107,7 +103,6 @@ public class RxResourceAccess implements ResourceAccess {
 	}
 
 	protected void initialize() {
-
 		if (gmSession instanceof HasAccessId)
 			accessId = ((HasAccessId) gmSession).getAccessId();
 
@@ -120,39 +115,34 @@ public class RxResourceAccess implements ResourceAccess {
 
 	@Override
 	public ResourceUrlBuilder url(Resource resource) {
-
 		if (urlBuilderSupplier == null)
 			throw new UnsupportedOperationException("URL building is not supported as no URL builder is configured");
 
-		Objects.requireNonNull(resource, "resource must not be null");
+		NullSafe.nonNull(resource, "resource");
 
 		ResourceUrlBuilder urlBuilder = urlBuilderSupplier.apply(resource);
 		urlBuilder.accessId(accessId);
 
 		return urlBuilder;
-
 	}
 
 	@Override
 	public ResourceCreateBuilder create() {
 		return new ResourceCreateBuilderImpl();
-
 	}
 
 	@Override
 	public ResourceUpdateBuilder update(Resource resource) {
-		Objects.requireNonNull(resource, "resource must not be null");
+		NullSafe.nonNull(resource, "resource");
 
 		return new ResourceUpdateBuilderImpl(resource);
 	}
 
 	@Override
-	public ResourceRetrieveBuilder retrieve(final Resource resource) {
-
-		Objects.requireNonNull(resource, "resource must not be null");
+	public ResourceRetrieveBuilder retrieve(Resource resource) {
+		NullSafe.nonNull(resource, "resource");
 
 		return new ResourceRetrieveBuilder() {
-
 			private StreamCondition condition;
 			private Consumer<BinaryRetrievalResponse> consumer;
 			private StreamRange range;
@@ -171,13 +161,13 @@ public class RxResourceAccess implements ResourceAccess {
 
 			@Override
 			public void stream(OutputStream outputStream) {
-				Objects.requireNonNull(outputStream, "outputStream must not be null");
+				NullSafe.nonNull(outputStream, "outputStream");
 				writeToStream(resource, condition, range, consumer, StreamProviders.from(outputStream));
 			}
 
 			@Override
 			public void stream(OutputStreamProvider outputStreamProvider) {
-				Objects.requireNonNull(outputStreamProvider, "outputStreamProvider must not be null");
+				NullSafe.nonNull(outputStreamProvider, "outputStreamProvider");
 				writeToStream(resource, condition, range, consumer, outputStreamProvider);
 			}
 
@@ -191,22 +181,17 @@ public class RxResourceAccess implements ResourceAccess {
 				this.range = range;
 				return this;
 			}
-
 		};
-
 	}
 
 	@Override
-	public ResourceDeleteBuilder delete(final Resource resource) {
-
+	public ResourceDeleteBuilder delete(Resource resource) {
 		return new ResourceDeleteBuilder() {
-
-			private String useCase;
 			private DeletionScope scope;
 
 			@Override
+			@Deprecated
 			public ResourceDeleteBuilder useCase(String useCase) {
-				this.useCase = useCase;
 				return this;
 			}
 
@@ -220,9 +205,7 @@ public class RxResourceAccess implements ResourceAccess {
 			public void delete() {
 				RxResourceAccess.this.delete(resource, scope);
 			}
-
 		};
-
 	}
 
 	protected <T> T evaluate(EvalContext<T> evalContext) {
@@ -265,30 +248,24 @@ public class RxResourceAccess implements ResourceAccess {
 		UploadResourceResponse response = evaluate(evalContext);
 
 		return response.getResource();
-
 	}
 
 	private Resource _update(EntityType<? extends ResourceSource> sourceType, String useCase, Resource resource, boolean deleteOldResourceSource) {
 		UpdateResource request = UpdateResource.T.create();
-
 		request.setDeleteOldResourceSource(deleteOldResourceSource);
 		request.setResource(resource);
 		request.setUseCase(useCase);
-
-		if (sourceType != null) {
+		if (sourceType != null)
 			request.setSourceType(sourceType.getTypeSignature());
-		}
 
 		EvalContext<? extends UploadResourceResponse> evalContext = request.eval(gmSession);
 
 		UploadResourceResponse response = evaluate(evalContext);
 
 		return response.getResource();
-
 	}
 
 	private void delete(Resource resource, DeletionScope scope) {
-
 		DeleteResource request = DeleteResource.T.create();
 		request.setResource(shallowClone(resource));
 		request.setDeletionScope(scope);
@@ -296,7 +273,6 @@ public class RxResourceAccess implements ResourceAccess {
 		EvalContext<? extends DeleteResourceResponse> evalContext = request.eval(gmSession);
 
 		evaluate(evalContext);
-
 	}
 
 	private void writeToStream(Resource resource, StreamCondition condition, StreamRange range, Consumer<BinaryRetrievalResponse> consumer,
@@ -319,11 +295,9 @@ public class RxResourceAccess implements ResourceAccess {
 		}
 
 		evaluate(evalContext);
-
 	}
 
 	private InputStream openStream(Resource resource, StreamCondition condition, StreamRange range, Consumer<BinaryRetrievalResponse> consumer) {
-
 		GetResource request = GetResource.T.create();
 		request.setResource(shallowClone(resource));
 		request.setCondition(condition);
@@ -346,9 +320,7 @@ public class RxResourceAccess implements ResourceAccess {
 			evaluate(evalContext);
 
 			return inputConsumer.stream();
-
 		}
-
 	}
 
 	private final class ResourceUpdateBuilderImpl implements ResourceUpdateBuilder {
@@ -415,7 +387,7 @@ public class RxResourceAccess implements ResourceAccess {
 		}
 		@Override
 		public Resource store(InputStream inputStream) {
-			Objects.requireNonNull(inputStream, "inputStream must not be null");
+			NullSafe.nonNull(inputStream, "inputStream");
 			StreamPipe fileBackedPipe = streamPipeFactory.newPipe(getClass().getSimpleName() + "-" + accessId);
 			fileBackedPipe.feedFrom(inputStream);
 			resource.assignTransientSource(fileBackedPipe::openInputStream);
@@ -423,13 +395,13 @@ public class RxResourceAccess implements ResourceAccess {
 		}
 		@Override
 		public Resource store(InputStreamProvider inputStreamProvider) {
-			Objects.requireNonNull(inputStreamProvider, "inputStreamProvider must not be null");
+			NullSafe.nonNull(inputStreamProvider, "inputStreamProvider");
 			resource.assignTransientSource(inputStreamProvider);
 			return _update(sourceType, useCase, resource, deleteOldResourceSource);
 		}
 		@Override
 		public Resource store(OutputStreamer streamer) {
-			Objects.requireNonNull(streamer, "streamer must not be null");
+			NullSafe.nonNull(streamer, "streamer");
 			resource.assignTransientSource(StreamProviders.from(streamer, streamPipeFactory));
 			return _update(sourceType, useCase, resource, deleteOldResourceSource);
 		}
@@ -487,25 +459,24 @@ public class RxResourceAccess implements ResourceAccess {
 		}
 		@Override
 		public Resource store(InputStream inputStream) {
-			Objects.requireNonNull(inputStream, "inputStream must not be null");
+			NullSafe.nonNull(inputStream, "inputStream");
 			StreamPipe fileBackedPipe = streamPipeFactory.newPipe(getClass().getSimpleName() + "-" + accessId);
 			fileBackedPipe.feedFrom(inputStream);
 			return create(sourceType, useCase, mimeType, md5, tags, name, creator, specification, fileBackedPipe::openInputStream);
 		}
 		@Override
 		public Resource store(InputStreamProvider inputStreamProvider) {
-			Objects.requireNonNull(inputStreamProvider, "inputStreamProvider must not be null");
+			NullSafe.nonNull(inputStreamProvider, "inputStreamProvider");
 			return create(sourceType, useCase, mimeType, md5, tags, name, creator, specification, inputStreamProvider);
 		}
 		@Override
 		public Resource store(OutputStreamer streamer) {
-			Objects.requireNonNull(streamer, "streamer must not be null");
+			NullSafe.nonNull(streamer, "streamer");
 			return create(sourceType, useCase, mimeType, md5, tags, name, creator, specification, streamer);
 		}
 	}
 
 	protected static class InputStreamConsumer implements Consumer<BinaryRetrievalResponse> {
-
 		private InputStream input;
 
 		@Override
@@ -516,7 +487,6 @@ public class RxResourceAccess implements ResourceAccess {
 		private InputStream stream() {
 			return input;
 		}
-
 	}
 
 	private <T extends GenericEntity> T shallowClone(T original) {

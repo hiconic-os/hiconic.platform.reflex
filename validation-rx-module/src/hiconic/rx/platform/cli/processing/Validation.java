@@ -39,8 +39,6 @@ import com.braintribe.model.meta.data.constraint.Pattern;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.utils.StringTools;
 
-import hiconic.rx.platform.cli.processing.Validation.InstancePropertyValidator;
-
 public class Validation {
 	private final CmdResolver cmdResolver;
 	private final static Logger logger = System.getLogger(Validation.class.getName());
@@ -175,7 +173,7 @@ public class Validation {
 			if (value == null)
 				return null;
 
-			int compareTo = ((Comparable<Object>) value).compareTo((Object) limit);
+			int compareTo = ((Comparable<Object>) value).compareTo(limit);
 			boolean exclusive = limitMd.getExclusive();
 			final boolean match;
 			if (limitType == Min.T)

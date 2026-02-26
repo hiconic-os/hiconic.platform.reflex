@@ -33,7 +33,7 @@ public interface ModelConfigurations {
 	ModelConfiguration bySymbol(ModelSymbol reference);
 
 	/**
-	 * Acquires a {@link ModelConfiguration} via {@link #byReference} using {@link #mainPersistenceModelRef}
+	 * Acquires a {@link ModelConfiguration} via {@link #bySymbol} using {@link #mainPersistenceModelRef}
 	 */
 	ModelConfiguration mainPersistenceModel();
 
