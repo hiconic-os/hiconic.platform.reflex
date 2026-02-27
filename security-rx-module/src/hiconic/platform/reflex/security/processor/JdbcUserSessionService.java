@@ -21,6 +21,7 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.Date;
 import java.util.Map;
+import java.util.Set;
 
 import javax.sql.DataSource;
 
@@ -113,13 +114,13 @@ public class JdbcUserSessionService extends AbstractUserSessionService {
 	}
 
 	@Override
-	protected PersistenceUserSession createPersistenceUserSession(User user, UserSessionType type, TimeSpan maxIdleTime, TimeSpan maxAge,
+	protected PersistenceUserSession createPersistenceUserSession(User user, Set<String> additionalRoles, UserSessionType type, TimeSpan maxIdleTime, TimeSpan maxAge,
 			Date fixedExpiryDate, String internetAddress, Map<String, String> properties, String acquirationKey,
 			boolean blocksAuthenticationAfterLogout) {
 		UserSessionType userSessionType = type != null ? type : this.defaultUserSessionType;
 		Date now = new Date();
 
-		PersistenceUserSession pUserSession = initPersistenceUserSession(PersistenceUserSession.T.create(), user, maxIdleTime, maxAge,
+		PersistenceUserSession pUserSession = initPersistenceUserSession(PersistenceUserSession.T.create(), user, additionalRoles, maxIdleTime, maxAge,
 				fixedExpiryDate, internetAddress, properties, acquirationKey, blocksAuthenticationAfterLogout, userSessionType, now);
 
 		try (Connection conn = openJdbcConnection(); PreparedStatement stmt = conn.prepareStatement(getCreatePersistenceUserSessionStmt())) {
