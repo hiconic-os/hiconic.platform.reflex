@@ -42,6 +42,7 @@ import com.braintribe.utils.lcd.Lazy;
 import com.braintribe.wire.api.Wire;
 import com.braintribe.wire.api.context.WireContext;
 import com.braintribe.wire.api.context.WireContextBuilder;
+import com.braintribe.wire.api.module.WireModule;
 import com.braintribe.wire.api.space.ContractResolution;
 import com.braintribe.wire.api.space.ContractSpaceResolver;
 import com.braintribe.wire.api.space.WireSpace;
@@ -61,7 +62,10 @@ public class RxModuleLoader implements LifecycleAware {
 	private static final Logger logger = Logger.getLogger(RxModuleLoader.class);
 
 	private WireContext<?> parentContext;
-	private List<WireContext<RxModuleContract>> contexts;
+	
+	record LoadedModule(WireContext<RxModuleContract> wireContext, WireModule module) {}
+	
+	private List<LoadedModule> loadedModules;
 	private RxContractSpaceResolverConfigurator resolverConfigurator;
 	private RxPropertyResolver propertyResolver;
 	private final PropertyLookupContractResolver propertyLookupContractResolver = new PropertyLookupContractResolver();
@@ -90,8 +94,8 @@ public class RxModuleLoader implements LifecycleAware {
 	}
 
 	public List<RxModuleContract> listModuleContracts() {
-		return contexts.stream() //
-				.map(c -> c.contract()) //
+		return loadedModules.stream() //
+				.map(c -> c.wireContext().contract()) //
 				.toList();
 	}
 
@@ -102,6 +106,16 @@ public class RxModuleLoader implements LifecycleAware {
 		println();
 	}
 
+	public void onApplicationShutdown() {
+		for (LoadedModule module : loadedModules) {
+			try {
+				module.wireContext().contract().onApplicationShutdown();
+			} catch (Exception e) {
+				logger.error("Error while sending shutdown signal to module: " + module.module.getClass().getName());
+			}
+		}
+	}
+	
 	@Override
 	public void preDestroy() {
 		closeWireModuleContexts();
@@ -112,18 +126,18 @@ public class RxModuleLoader implements LifecycleAware {
 
 		RxModuleAnalysis rxAnalysis = RxModuleAnalyzer.analyze(maybeRxModules.get());
 
-		Maybe<List<WireContext<RxModuleContract>>> contextsMaybe = loadWireModuleContexts(rxAnalysis);
+		Maybe<List<LoadedModule>> contextsMaybe = loadWireModuleContexts(rxAnalysis);
 
-		contexts = contextsMaybe.get();
+		loadedModules = contextsMaybe.get();
 	}
 
 	private void closeWireModuleContexts() {
-		for (WireContext<RxModuleContract> context : contexts)
-			context.close();
+		for (LoadedModule module : loadedModules)
+			module.wireContext().close();
 	}
 
-	private Maybe<List<WireContext<RxModuleContract>>> loadWireModuleContexts(RxModuleAnalysis analysis) {
-		var contexts = new ArrayList<WireContext<RxModuleContract>>(analysis.nodes.size());
+	private Maybe<List<LoadedModule>> loadWireModuleContexts(RxModuleAnalysis analysis) {
+		var contexts = new ArrayList<LoadedModule>(analysis.nodes.size());
 
 		var lazyError = new Lazy<ConfigurationError>( //
 				() -> ConfigurationError.create("Error while loading rx-module wire contexts"));
@@ -139,7 +153,7 @@ public class RxModuleLoader implements LifecycleAware {
 			if (maybeWireCtx.isUnsatisfied())
 				lazyError.get().getReasons().add(maybeWireCtx.whyUnsatisfied());
 			else
-				contexts.add(maybeWireCtx.get());
+				contexts.add(new LoadedModule(maybeWireCtx.get(), node.module));
 		}
 
 		if (lazyError.isInitialized())

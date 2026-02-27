@@ -50,7 +50,7 @@ public class CortexSpace implements WireSpace {
 	private ReadOnlySmoodAccess cortexDenotation() {
 		ReadOnlySmoodAccess bean = ReadOnlySmoodAccess.T.create();
 		bean.setAccessId("cortex");
-		bean.setDataModelName(_ExplorerCortexModel_.name);
+		bean.getDataModelNames().add(_ExplorerCortexModel_.name);
 
 		return bean;
 	}
@@ -95,8 +95,8 @@ public class CortexSpace implements WireSpace {
 		result.setGlobalId("access:" + access.getAccessId());
 		result.setAccessId(access.getAccessId());
 		result.setAccessType(access.entityType().getShortName());
-		result.setDataModelName(access.getDataModelName());
-		result.setServiceModelName(access.getServiceModelName());
+		result.getDataModelNames().addAll(access.getDataModelNames());
+		result.getServiceModelNames().addAll(access.getServiceModelNames());
 
 		return result;
 	}

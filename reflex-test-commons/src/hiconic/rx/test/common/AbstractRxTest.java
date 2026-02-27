@@ -37,6 +37,7 @@ public abstract class AbstractRxTest {
 	@Before
 	public void onBefore() {
 		try {
+			System.out.println("Loading RxPlatform");
 			platform = new RxPlatform(systemPropertyLookup(), applicationPropertyLookup());
 			platformContract = platform.getContract();
 			evaluator = platform.getContract().evaluator();

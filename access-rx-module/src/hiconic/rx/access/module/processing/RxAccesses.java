@@ -137,20 +137,18 @@ public class RxAccesses implements AccessDomains {
 	/* TODO: extract the service-domain/model configuration into the right phase and only use it here */
 	private void deploy(Access access, Supplier<RxAccess> rxAccessSupplier) {
 		String accessId = access.getAccessId();
-		String dataModelName = access.getDataModelName();
-		String serviceModelName = access.getServiceModelName();
 
 		NullSafe.nonNull(accessId, "Access.accessId");
 		
-		if (dataModelName != null)
+		for (String dataModelName: access.getDataModelNames())
 			accessModelConfigurations.dataModelConfiguration(accessId).addModelByName(dataModelName);
 
 		// This creates a new ServiceDomain in the system
 		ServiceDomainConfiguration sdConfiguration = serviceDomainConfigurations.byId(accessId);
 
 		sdConfiguration.addModel(AccessModelSymbols.configuredAccessApiModel);
-		
-		if (serviceModelName != null)
+
+		for (String serviceModelName: access.getServiceModelNames())
 			sdConfiguration.addModelByName(serviceModelName);
 
 		if (accesses.putIfAbsent(accessId, new Lazy<>(rxAccessSupplier)) != null)

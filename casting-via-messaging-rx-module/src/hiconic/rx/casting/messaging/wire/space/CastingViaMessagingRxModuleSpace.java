@@ -71,12 +71,17 @@ public class CastingViaMessagingRxModuleSpace implements RxModuleContract {
 	}
 	
 	@Override
-	public void onDeploy() {
-		consumer();
+	public void onApplicationReady() {
+		server().start();
+	}
+	
+	@Override
+	public void onApplicationShutdown() {
+		server().stop();
 	}
 	
 	@Managed
-	private GmMqRpcServer consumer() {
+	private GmMqRpcServer server() {
 		GmMqRpcServer bean = new GmMqRpcServer();
 		bean.setRequestEvaluator(platform.evaluator());
 		bean.setMessagingSessionProvider(messaging.sessionProvider());

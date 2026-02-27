@@ -2,5 +2,6 @@ accesses:
   - !hiconic.rx.access.hibernate.model.configuration.HibernateAccess
     accessId: main-access
     #dataModelName: rx-test:configured-main-access-model
-    dataModelName: hiconic.platform.reflex:hibernate-test-model
+    dataModelNames: 
+    - hiconic.platform.reflex:hibernate-test-model
     databaseName: main-db

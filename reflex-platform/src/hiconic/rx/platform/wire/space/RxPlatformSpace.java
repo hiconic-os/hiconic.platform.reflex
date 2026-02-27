@@ -129,6 +129,11 @@ public class RxPlatformSpace extends CoreServicesSpace implements ExtendedRxPlat
 		bean.setPropertyResolver(propertyResolver());
 		return bean;
 	}
+	
+	@Override
+	public void onApplicationShutdown() {
+		moduleLoader().onApplicationShutdown();
+	}
 
 	@Override
 	public <C extends GenericEntity> Maybe<C> readConfig(EntityType<C> configType) {

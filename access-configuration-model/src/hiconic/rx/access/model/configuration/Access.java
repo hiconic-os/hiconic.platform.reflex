@@ -13,6 +13,8 @@
 // ============================================================================
 package hiconic.rx.access.model.configuration;
 
+import java.util.List;
+
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.annotation.Abstract;
 import com.braintribe.model.generic.annotation.meta.Mandatory;
@@ -27,9 +29,9 @@ public interface Access extends GenericEntity {
 	String getAccessId();
 	void setAccessId(String accessId);
 
-	String getDataModelName();
-	void setDataModelName(String dataModelName);
+	List<String> getDataModelNames();
+	void setDataModelNames(List<String> dataModelNames);
 	
-	String getServiceModelName();
-	void setServiceModelName(String serviceModelName);
+	List<String> getServiceModelNames();
+	void setServiceModelNames(List<String> serviceModelNames);
 }

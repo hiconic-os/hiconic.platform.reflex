@@ -45,6 +45,7 @@ import hiconic.rx.platform.conf.ApplicationProperties;
 import hiconic.rx.platform.conf.SystemProperties;
 import hiconic.rx.platform.loading.RxModuleLoader;
 import hiconic.rx.platform.wire.RxPlatformWireModule;
+import hiconic.rx.platform.wire.contract.ExtendedRxPlatformContract;
 
 public class RxPlatform implements AutoCloseable {
 	private static final Logger logger = System.getLogger(RxPlatform.class.getName());
@@ -54,7 +55,7 @@ public class RxPlatform implements AutoCloseable {
 
 	private String[] args;
 
-	private RxPlatformContract platformContract;
+	private ExtendedRxPlatformContract platformContract;
 
 	private WireContext<RxPlatformContract> wireContext;
 
@@ -143,7 +144,7 @@ public class RxPlatform implements AutoCloseable {
 		));
 
 		wireContext = Wire.context(new RxPlatformWireModule(args, applicationProperties, systemProperties));
-		platformContract = wireContext.contract();
+		platformContract = wireContext.contract(ExtendedRxPlatformContract.class);
 
 		long upTime = System.currentTimeMillis();
 		long startupDuration = upTime - startTime;
@@ -173,6 +174,7 @@ public class RxPlatform implements AutoCloseable {
 
 	@Override
 	public void close() {
+		platformContract.onApplicationShutdown();
 		wireContext.close();
 	}
 

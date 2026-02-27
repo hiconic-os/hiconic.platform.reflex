@@ -13,6 +13,8 @@
 // ============================================================================
 package hiconic.rx.explorer.model.cortex.access;
 
+import java.util.List;
+
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.annotation.meta.Mandatory;
 import com.braintribe.model.generic.reflection.EntityType;
@@ -31,11 +33,10 @@ public interface RxIncrementalAccess extends GenericEntity {
 	String getAccessType();
 	void setAccessType(String accessType);
 
-	@Mandatory
-	String getDataModelName();
-	void setDataModelName(String dataModelName);
+	List<String> getDataModelNames();
+	void setDataModelNames(List<String> dataModelNames);
 
-	String getServiceModelName();
-	void setServiceModelName(String serviceModelName);
+	List<String> getServiceModelNames();
+	void setServiceModelNames(List<String> serviceModelNames);
 
 }

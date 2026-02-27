@@ -96,7 +96,8 @@ public class HibernatePersistences implements DestructionAware {
 			var builder = new HibernateModelSessionFactoryBuilder(key);
 			builder.setOrmDebugOutputFolder(debugOrmOutputFolder);
 			builder.setDialectAutoSense(dialectAutoSense);
-			return builder.build();
+			SessionFactory sessionFactory = builder.build();
+			return sessionFactory;
 		}
 
 		@Override

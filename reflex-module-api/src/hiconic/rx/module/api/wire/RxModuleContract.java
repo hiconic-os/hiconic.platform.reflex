@@ -126,4 +126,11 @@ public interface RxModuleContract extends WireSpace {
 	default void onApplicationReady() {
 		// implement if needed
 	}
+	
+	/**
+	 * Called when the platform application received a shutdown signal and should stop processing requests
+	 */
+	default void onApplicationShutdown() {
+		// implement if needed
+	}
 }

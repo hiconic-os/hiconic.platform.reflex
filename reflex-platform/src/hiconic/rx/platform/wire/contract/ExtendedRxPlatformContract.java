@@ -32,5 +32,6 @@ import hiconic.rx.platform.resource.RxResourcesStorages;
 public interface ExtendedRxPlatformContract extends RxPlatformContract {
 
 	RxResourcesStorages resourceStorages();
+	void onApplicationShutdown();
 
 }

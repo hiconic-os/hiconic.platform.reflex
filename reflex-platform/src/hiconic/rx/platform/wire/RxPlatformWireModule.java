@@ -75,8 +75,8 @@ public class RxPlatformWireModule implements WireTerminalModule<RxPlatformContra
 	public void configureContext(WireContextBuilder<?> contextBuilder) {
 		WireTerminalModule.super.configureContext(contextBuilder);
 		contextBuilder.bindContract(RxPlatformContract.class, RxPlatformSpace.class);
-		contextBuilder.bindContract(RxAuthContract.class, RxAuthSpace.class);
 		contextBuilder.bindContract(ExtendedRxPlatformContract.class, RxPlatformSpace.class);
+		contextBuilder.bindContract(RxAuthContract.class, RxAuthSpace.class);
 		contextBuilder.bindContract(RxPlatformResourcesContract.class, RxPlatformResourcesSpace.class);
 		contextBuilder.bindContract(RxTransientDataContract.class, RxTransientDataSpace.class);
 		contextBuilder.bindContract(RxProcessLaunchContract.class, RxPlatformSpace.class);
