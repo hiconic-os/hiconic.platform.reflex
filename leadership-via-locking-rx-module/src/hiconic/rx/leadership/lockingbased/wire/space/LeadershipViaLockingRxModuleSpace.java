@@ -16,7 +16,7 @@ import tribefire.cortex.leadership.api.LeadershipManager;
 import tribefire.cortex.leadership.impl.LockingBasedLeadershipManager;
 
 /**
- * This module's javadoc is yet to be written.
+ * Binds {@link LockingBasedLeadershipManager} as the leadership implementation for {@link LeadershipContract}.
  */
 @Managed
 public class LeadershipViaLockingRxModuleSpace implements RxModuleContract, LeadershipContract {

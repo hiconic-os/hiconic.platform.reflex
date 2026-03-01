@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 
 <projectDescription>
-	<name>cluster-singleton-rx-moduler - hiconic.platform.reflex</name>
+	<name>cluster-singleton-rx-module - hiconic.platform.reflex</name>
 	<buildSpec>
 		<buildCommand>
 			<name>com.braintribe.devrock.arb.builder.ArtifactReflectionBuilder</name>
