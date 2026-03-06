@@ -29,10 +29,14 @@ public interface RequestSection extends EntityTypeMetaData {
 
 	EntityType<RequestSection> T = EntityTypes.T(RequestSection.class);
 
-	/**
-	 * The name of the section in which associated requests are listed
-	 */
 	@Mandatory
 	String getName();
 	void setName(String name);
+
+	static RequestSection create(String name) {
+		RequestSection result = T.create();
+		result.setName(name);
+		return result;
+	}
+
 }

@@ -19,7 +19,7 @@ import com.braintribe.model.generic.reflection.EntityTypes;
 import com.braintribe.model.meta.data.EntityTypeMetaData;
 
 /**
- * @author peter.gazdik
+ * The HTTP request method.
  */
 public interface RequestMethod extends EntityTypeMetaData {
 
@@ -28,5 +28,11 @@ public interface RequestMethod extends EntityTypeMetaData {
 	@Mandatory
 	HttpRequestMethod getMethod();
 	void setMethod(HttpRequestMethod method);
+
+	static RequestMethod create(HttpRequestMethod method) {
+		RequestMethod result = T.create();
+		result.setMethod(method);
+		return result;
+	}
 
 }

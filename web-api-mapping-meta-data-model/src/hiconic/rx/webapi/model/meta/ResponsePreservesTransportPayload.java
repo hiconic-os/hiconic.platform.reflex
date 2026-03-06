@@ -18,14 +18,9 @@ import com.braintribe.model.generic.reflection.EntityTypes;
 import com.braintribe.model.meta.data.EntityTypeMetaData;
 import com.braintribe.model.meta.data.ExplicitPredicate;
 
-/**
- * Controls whether an HTTP header is sent to instruct the browser to open a download dialog instead of displaying the content.
- * <p>
- * Annotation: {@link hiconic.rx.webapi.model.annotation.ResponseWithDownloadDialog}
- * 
- * @author dirk.scheffler
- */
-public interface ResponseWithDownloadDialog extends EntityTypeMetaData, ExplicitPredicate {
+// IMPLEMENTATION NOTE: This is currently not supported by web-api endpoint. See usages of SingleDdraMapping#getDefaultPreserveTransportPayload().
+public interface ResponsePreservesTransportPayload extends EntityTypeMetaData, ExplicitPredicate {
 
-	EntityType<ResponseWithDownloadDialog> T = EntityTypes.T(ResponseWithDownloadDialog.class);
+	EntityType<ResponsePreservesTransportPayload> T = EntityTypes.T(ResponsePreservesTransportPayload.class);
+
 }

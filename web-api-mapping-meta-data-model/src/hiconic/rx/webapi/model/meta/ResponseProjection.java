@@ -13,19 +13,27 @@
 // ============================================================================
 package hiconic.rx.webapi.model.meta;
 
+import com.braintribe.model.generic.annotation.meta.Mandatory;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 import com.braintribe.model.meta.data.EntityTypeMetaData;
-import com.braintribe.model.meta.data.ExplicitPredicate;
 
-/**
- * Controls whether an HTTP header is sent to instruct the browser to open a download dialog instead of displaying the content.
- * <p>
- * Annotation: {@link hiconic.rx.webapi.model.annotation.ResponseWithDownloadDialog}
- * 
- * @author dirk.scheffler
- */
-public interface ResponseWithDownloadDialog extends EntityTypeMetaData, ExplicitPredicate {
+/** Specifies, via a property path, which part of the annotated request's response will be returned. */
+public interface ResponseProjection extends EntityTypeMetaData {
 
-	EntityType<ResponseWithDownloadDialog> T = EntityTypes.T(ResponseWithDownloadDialog.class);
+	EntityType<ResponseProjection> T = EntityTypes.T(ResponseProjection.class);
+
+	/**
+	 * Path describing what to return, specified as a dot separated sequence of property names. I.e. the first one is a property of the response type.
+	 * E.g.{@code "company.logo"}
+	 */
+	@Mandatory
+	String getPath();
+	void setPath(String path);
+
+	static ResponseProjection create(String path) {
+		ResponseProjection result = T.create();
+		result.setPath(path);
+		return result;
+	}
 }

@@ -13,19 +13,37 @@
 // ============================================================================
 package hiconic.rx.webapi.model.meta;
 
+import com.braintribe.model.generic.annotation.meta.Mandatory;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 import com.braintribe.model.meta.data.EntityTypeMetaData;
-import com.braintribe.model.meta.data.ExplicitPredicate;
 
 /**
- * Controls whether an HTTP header is sent to instruct the browser to open a download dialog instead of displaying the content.
+ * Specifies how many levels of nested entities are included in the response.
  * <p>
- * Annotation: {@link hiconic.rx.webapi.model.annotation.ResponseWithDownloadDialog}
- * 
- * @author dirk.scheffler
+ * The default is 3 (backwards compatibility), but the only reasonable default would be "reachable", meaning the web-api endpoint returns the result
+ * as it was returned by the service processor (which knows what the correct result is).
  */
-public interface ResponseWithDownloadDialog extends EntityTypeMetaData, ExplicitPredicate {
+public interface ResponseDepth extends EntityTypeMetaData {
 
-	EntityType<ResponseWithDownloadDialog> T = EntityTypes.T(ResponseWithDownloadDialog.class);
+	EntityType<ResponseDepth> T = EntityTypes.T(ResponseDepth.class);
+
+	/**
+	 * Value is one of:
+	 * <ul>
+	 * <li>a positive integer (e.g. 3)
+	 * <li>"shallow"
+	 * <li>"reachable"
+	 * </ul>
+	 */
+	@Mandatory
+	String getDepth();
+	void setDepth(String depth);
+
+	static ResponseDepth create(String depth) {
+		ResponseDepth result = T.create();
+		result.setDepth(depth);
+		return result;
+	}
+
 }

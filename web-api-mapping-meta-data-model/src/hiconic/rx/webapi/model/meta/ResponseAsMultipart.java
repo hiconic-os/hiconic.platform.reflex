@@ -16,16 +16,19 @@ package hiconic.rx.webapi.model.meta;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 import com.braintribe.model.meta.data.EntityTypeMetaData;
-import com.braintribe.model.meta.data.ExplicitPredicate;
 
-/**
- * Controls whether an HTTP header is sent to instruct the browser to open a download dialog instead of displaying the content.
- * <p>
- * Annotation: {@link hiconic.rx.webapi.model.annotation.ResponseWithDownloadDialog}
- * 
- * @author dirk.scheffler
- */
-public interface ResponseWithDownloadDialog extends EntityTypeMetaData, ExplicitPredicate {
+/* IMPLEMENTATION NOTE: This is not a predicate, because we need to distinguish whether the MD was set or not, because the default 
+ * boolean value is different for different HTTP methods. See for usages of SingleDdraMapping#getAnnounceAsMultipart(). */
+public interface ResponseAsMultipart extends EntityTypeMetaData {
 
-	EntityType<ResponseWithDownloadDialog> T = EntityTypes.T(ResponseWithDownloadDialog.class);
+	EntityType<ResponseAsMultipart> T = EntityTypes.T(ResponseAsMultipart.class);
+
+	Boolean getAnnounceAsMultipart();
+	void setAnnounceAsMultipart(Boolean announceAsMultipart);
+
+	static ResponseAsMultipart create(Boolean announceAsMultipart) {
+		ResponseAsMultipart result = T.create();
+		result.setAnnounceAsMultipart(announceAsMultipart);
+		return result;
+	}
 }

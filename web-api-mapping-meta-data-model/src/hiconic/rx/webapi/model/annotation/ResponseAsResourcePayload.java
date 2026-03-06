@@ -19,7 +19,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/** Annotation for {@link hiconic.rx.webapi.model.meta.DownloadResource}. */
+/** Annotation for {@link hiconic.rx.webapi.model.meta.ResponseAsResourcePayload}. */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.TYPE })
 @Documented

@@ -16,16 +16,18 @@ package hiconic.rx.webapi.model.meta;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 import com.braintribe.model.meta.data.EntityTypeMetaData;
-import com.braintribe.model.meta.data.ExplicitPredicate;
 
-/**
- * Controls whether an HTTP header is sent to instruct the browser to open a download dialog instead of displaying the content.
- * <p>
- * Annotation: {@link hiconic.rx.webapi.model.annotation.ResponseWithDownloadDialog}
- * 
- * @author dirk.scheffler
- */
-public interface ResponseWithDownloadDialog extends EntityTypeMetaData, ExplicitPredicate {
+public interface ResponseEntityRecurrenceDepth extends EntityTypeMetaData {
 
-	EntityType<ResponseWithDownloadDialog> T = EntityTypes.T(ResponseWithDownloadDialog.class);
+	EntityType<ResponseEntityRecurrenceDepth> T = EntityTypes.T(ResponseEntityRecurrenceDepth.class);
+
+	Integer getDepth();
+	void setDepth(Integer depth);
+
+	static ResponseEntityRecurrenceDepth create(Integer depth) {
+		ResponseEntityRecurrenceDepth result = T.create();
+		result.setDepth(depth);
+		return result;
+	}
+
 }

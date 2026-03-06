@@ -19,13 +19,12 @@ import com.braintribe.model.meta.data.EntityTypeMetaData;
 import com.braintribe.model.meta.data.ExplicitPredicate;
 
 /**
- * Controls whether an HTTP header is sent to instruct the browser to open a download dialog instead of displaying the content.
+ * Implies the response marshaller will also write empty properties, i.e. nulls and empty collections.
  * <p>
- * Annotation: {@link hiconic.rx.webapi.model.annotation.ResponseWithDownloadDialog}
- * 
- * @author dirk.scheffler
+ * See WriteEmptyPropertiesOption.
  */
-public interface ResponseWithDownloadDialog extends EntityTypeMetaData, ExplicitPredicate {
+public interface ResponseIncludesEmptyProperties extends EntityTypeMetaData, ExplicitPredicate {
 
-	EntityType<ResponseWithDownloadDialog> T = EntityTypes.T(ResponseWithDownloadDialog.class);
+	EntityType<ResponseIncludesEmptyProperties> T = EntityTypes.T(ResponseIncludesEmptyProperties.class);
+
 }

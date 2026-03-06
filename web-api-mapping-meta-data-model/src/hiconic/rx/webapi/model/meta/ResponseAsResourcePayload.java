@@ -13,26 +13,25 @@
 // ============================================================================
 package hiconic.rx.webapi.model.meta;
 
-import com.braintribe.model.generic.annotation.meta.Mandatory;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 import com.braintribe.model.meta.data.EntityTypeMetaData;
+import com.braintribe.model.meta.data.ExplicitPredicate;
+import com.braintribe.model.resource.Resource;
 
 /**
- * This metadata controls how the response is being projected by following a property path to extract a sub graph
+ * Indicates that for the annotated request, which returns a {@link Resource}, we return the actual payload (binary data), rather than the Resource
+ * entity.
  * <p>
- * Annotation: {@link hiconic.rx.webapi.model.annotation.ResponseProjection}
+ * Annotation: {@link hiconic.rx.webapi.model.annotation.ResponseAsResourcePayload}
+ * 
+ * @see ResponseWithDownloadDialog
+ * @see ResponseProjection
  * 
  * @author dirk.scheffler
  */
-public interface ResponseAsResourcePayload extends EntityTypeMetaData {
+public interface ResponseAsResourcePayload extends EntityTypeMetaData, ExplicitPredicate {
 
 	EntityType<ResponseAsResourcePayload> T = EntityTypes.T(ResponseAsResourcePayload.class);
 
-	/**
-	 * The path from the response root to the projected result
-	 */
-	@Mandatory
-	String getPath();
-	void setPath(String path);
 }

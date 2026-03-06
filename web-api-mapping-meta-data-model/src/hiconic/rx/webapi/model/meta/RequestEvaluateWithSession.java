@@ -13,19 +13,19 @@
 // ============================================================================
 package hiconic.rx.webapi.model.meta;
 
+import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 import com.braintribe.model.meta.data.EntityTypeMetaData;
-import com.braintribe.model.meta.data.ExplicitPredicate;
+import com.braintribe.model.meta.data.Predicate;
 
 /**
- * Controls whether an HTTP header is sent to instruct the browser to open a download dialog instead of displaying the content.
+ * Whether or not to evaluate an <b>AccessRequest</b> with a session, or a "regular" {@link Evaluator}.
  * <p>
- * Annotation: {@link hiconic.rx.webapi.model.annotation.ResponseWithDownloadDialog}
- * 
- * @author dirk.scheffler
+ * Erasure is {@link RequestEvaluateWithoutSession}.
  */
-public interface ResponseWithDownloadDialog extends EntityTypeMetaData, ExplicitPredicate {
+public interface RequestEvaluateWithSession extends EntityTypeMetaData, Predicate {
 
-	EntityType<ResponseWithDownloadDialog> T = EntityTypes.T(ResponseWithDownloadDialog.class);
+	EntityType<RequestEvaluateWithSession> T = EntityTypes.T(RequestEvaluateWithSession.class);
+
 }

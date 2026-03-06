@@ -13,19 +13,23 @@
 // ============================================================================
 package hiconic.rx.webapi.model.meta;
 
+import com.braintribe.model.generic.annotation.meta.Mandatory;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 import com.braintribe.model.meta.data.EntityTypeMetaData;
-import com.braintribe.model.meta.data.Predicate;
 
-/**
- * This metadata controls that the response is given as binary content if the response is of type {@code Resource}
- * <p>
- * Annotation: {@link hiconic.rx.webapi.model.annotation.ResponseAsResourcePayload}
- * 
- * @author dirk.scheffler
- */
-public interface DownloadResource extends EntityTypeMetaData, Predicate {
+/** Specifies the mime-type header (content-type) for the response. */
+public interface ResponseMimeType extends EntityTypeMetaData {
 
-	EntityType<DownloadResource> T = EntityTypes.T(DownloadResource.class);
+	EntityType<ResponseMimeType> T = EntityTypes.T(ResponseMimeType.class);
+
+	@Mandatory
+	String getMimeType();
+	void setMimeType(String mimeType);
+
+	static ResponseMimeType create(String mimeType) {
+		ResponseMimeType result = T.create();
+		result.setMimeType(mimeType);
+		return result;
+	}
 }

@@ -1,6 +1,8 @@
 // ============================================================================
 package hiconic.rx.web.ddra.endpoints.api.v1;
 
+import static java.util.Collections.emptySet;
+
 import java.util.Set;
 
 import com.braintribe.model.generic.reflection.EntityType;
@@ -46,8 +48,8 @@ public class SingleDdraMappingImpl implements SingleDdraMapping {
 	public Boolean defaultPreserveTransportPayload;
 	public Boolean defaultDecodingLenience;
 
-	public Set<String> tags; // TODO use tags...
-	
+	public Set<String> tags = emptySet();
+
 	// @formatter:off
 	@Override public String getServiceDomain() { return serviceDomain; }
 	@Override public String getPathInfo() { return pathInfo; }

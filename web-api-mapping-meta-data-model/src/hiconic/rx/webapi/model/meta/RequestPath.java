@@ -58,4 +58,9 @@ public interface RequestPath extends EntityTypeMetaData {
 	// List<String> getOptionalProperties();
 	// void setOptionalProperties(List<String> optionalProperties);
 
+	static RequestPath create(String path) {
+		RequestPath result = T.create();
+		result.setPath(path);
+		return result;
+	}
 }

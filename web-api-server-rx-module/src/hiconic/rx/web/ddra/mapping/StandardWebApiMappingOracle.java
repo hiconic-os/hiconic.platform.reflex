@@ -13,14 +13,17 @@
 // ============================================================================
 package hiconic.rx.web.ddra.mapping;
 
+import static com.braintribe.utils.lcd.CollectionTools2.asSet;
 import static com.braintribe.utils.lcd.CollectionTools2.isEmpty;
 import static com.braintribe.utils.lcd.CollectionTools2.newMap;
 import static com.braintribe.utils.lcd.CollectionTools2.newSet;
+import static java.util.Collections.emptySet;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import com.braintribe.cfg.Required;
@@ -30,6 +33,7 @@ import com.braintribe.model.generic.processing.pr.fluent.TC;
 import com.braintribe.model.generic.reflection.CloningContext;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.StandardCloningContext;
+import com.braintribe.model.meta.data.MetaData;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.meta.cmd.builders.EntityMdResolver;
 import com.braintribe.model.processing.meta.oracle.ModelOracle;
@@ -42,10 +46,23 @@ import hiconic.rx.module.api.service.ServiceDomains;
 import hiconic.rx.web.ddra.endpoints.api.v1.SingleDdraMapping;
 import hiconic.rx.web.ddra.endpoints.api.v1.SingleDdraMappingImpl;
 import hiconic.rx.web.ddra.endpoints.api.v1.WebApiMappingOracle;
+import hiconic.rx.webapi.model.meta.HideSerializedRequest;
 import hiconic.rx.webapi.model.meta.HttpRequestMethod;
+import hiconic.rx.webapi.model.meta.RequestEvaluateWithSession;
 import hiconic.rx.webapi.model.meta.RequestMethod;
 import hiconic.rx.webapi.model.meta.RequestPath;
 import hiconic.rx.webapi.model.meta.RequestPathPrefix;
+import hiconic.rx.webapi.model.meta.RequestSection;
+import hiconic.rx.webapi.model.meta.ResponseAsMultipart;
+import hiconic.rx.webapi.model.meta.ResponseAsResourcePayload;
+import hiconic.rx.webapi.model.meta.ResponseDepth;
+import hiconic.rx.webapi.model.meta.ResponseEntityRecurrenceDepth;
+import hiconic.rx.webapi.model.meta.ResponseIncludesEmptyProperties;
+import hiconic.rx.webapi.model.meta.ResponseMimeType;
+import hiconic.rx.webapi.model.meta.ResponsePreservesTransportPayload;
+import hiconic.rx.webapi.model.meta.ResponseProjection;
+import hiconic.rx.webapi.model.meta.ResponseTypeExplicitness;
+import hiconic.rx.webapi.model.meta.ResponseWithDownloadDialog;
 
 /**
  * Standard {@link WebApiMappingOracle} implementation, backed by {@link ServiceDomains} and meta data like {@link RequestPath} configured on the
@@ -115,6 +132,7 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle {
 
 		private ServiceDomain serviceDomain;
 		private CmdResolver cmdResolver;
+		private EntityMdResolver requestMdResolver;
 		private ModelOracle modelOracle;
 
 		private EntityType<?> requestType;
@@ -144,6 +162,7 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle {
 
 			for (EntityType<?> _requestType : requestTypes) {
 				requestType = _requestType;
+				requestMdResolver = cmdResolver.getMetaData().entityType(requestType);
 				mappingMds = resolveMappingMds();
 
 				if (!mappingMds.hasMappings())
@@ -174,9 +193,28 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle {
 			result.method = method;
 			result.requestType = (EntityType<? extends ServiceRequest>) requestType;
 
+			result.hideSerializedRequest = requestMdResolver.is(HideSerializedRequest.T);
+			result.announceAsMultipart = mdProp(ResponseAsMultipart.T, ResponseAsMultipart::getAnnounceAsMultipart);
+			result.defaultUseSessionEvaluation = requestMdResolver.is(RequestEvaluateWithSession.T);
+			result.defaultDownloadResource = requestMdResolver.is(ResponseAsResourcePayload.T);
+			result.defaultDepth = mdProp(ResponseDepth.T, ResponseDepth::getDepth);
+			result.defaultEntityRecurrenceDepth = mdProp(ResponseEntityRecurrenceDepth.T, ResponseEntityRecurrenceDepth::getDepth);
+			result.defaultWriteEmptyProperties = requestMdResolver.is(ResponseIncludesEmptyProperties.T);
+			result.defaultMimeType = mdProp(ResponseMimeType.T, ResponseMimeType::getMimeType);
+			result.defaultPreserveTransportPayload = requestMdResolver.is(ResponsePreservesTransportPayload.T);
+			result.defaultProjection = mdProp(ResponseProjection.T, ResponseProjection::getPath);
+			result.defaultTypeExplicitness = mdProp(ResponseTypeExplicitness.T, ResponseTypeExplicitness::getTypeExplicitness);
+			result.defaultSaveLocally =  requestMdResolver.is(ResponseWithDownloadDialog.T);
+			result.tags = resolveTags();
+
 			result.transformRequest = mappingMds.transformRequest;
 
 			return result;
+		}
+
+		private <R, T extends MetaData> R mdProp(EntityType<T> mdType, Function<T, R> extractor) {
+			T md = requestMdResolver.meta(mdType).exclusive();
+			return md == null ? null : extractor.apply(md);
 		}
 
 		private Set<EntityType<?>> allRequestTypes() {
@@ -200,8 +238,6 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle {
 
 		private MappingMds resolveMappingMds() {
 			MappingMds apiMappings = new MappingMds();
-
-			EntityMdResolver requestMdResolver = cmdResolver.getMetaData().entityType(requestType);
 
 			apiMappings.pathPrefix = requestMdResolver.meta(RequestPathPrefix.T).exclusive();
 			apiMappings.path = requestMdResolver.meta(RequestPath.T).exclusive();
@@ -232,6 +268,12 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle {
 			return serviceDomainPrefix + pathPrefix + path;
 		}
 
+		private Set<String> resolveTags() {
+			RequestSection section = requestMdResolver.meta(RequestSection.T).exclusive();
+			String sectionName = section != null ? section.getName() : null;
+			return StringTools.isEmpty(sectionName) ? emptySet() : asSet(sectionName);
+		}
+
 	}
 
 	static class MappingMds {
@@ -239,7 +281,7 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle {
 		public RequestPath path;
 		public List<RequestMethod> methods;
 
-		// TODO support later?
+		// TODO support later? (DdraMapping.transformRequest)
 		public ServiceRequest transformRequest;
 
 		/** Returns an empty string or a prefix that ends with '/' */
