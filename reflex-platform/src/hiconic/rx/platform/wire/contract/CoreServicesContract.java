@@ -17,6 +17,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Supplier;
 
+import com.braintribe.codec.marshaller.api.CharacterMarshaller;
 import com.braintribe.codec.marshaller.api.Marshaller;
 import com.braintribe.codec.marshaller.api.MarshallerRegistry;
 import com.braintribe.common.attribute.AttributeContext;
@@ -56,8 +57,8 @@ public interface CoreServicesContract extends WireSpace {
 	DeferringThreadContextScoping threadContextScoping();
 
 	MarshallerRegistry marshallers();
-	Marshaller jsonMarshaller();
-	Marshaller yamlMarshaller();
+	CharacterMarshaller jsonMarshaller();
+	CharacterMarshaller yamlMarshaller();
 	Marshaller binMarshaller();
 
 	/** The one ThreadRenamer used in the entire application. */
