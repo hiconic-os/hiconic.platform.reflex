@@ -715,7 +715,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 				resource.writeToStream(responseOut);
 			}
 		} else {
-			try (OutputStream responseOut = context.openResponseOutputStream()) {
+			try (@SuppressWarnings("unused") OutputStream responseOut = context.openResponseOutputStream()) {
 				// Just open and close the stream, assuming that this means sending an empty response
 			}
 		}
