@@ -49,7 +49,7 @@ public class RxModelConfigurations implements ModelConfigurations {
 
 	@Override
 	public RxConfiguredModel extendedModel(String prefix, ArtifactReflection baseModel) {
-		RxConfiguredModel configuredModel = byName(baseModel.groupId() + ":" + prefix + "-" + baseModel.name());
+		RxConfiguredModel configuredModel = byName(baseModel.groupId() + ":" + prefix + "-" + baseModel.artifactId());
 		// even if this called multiple times it will be added only once
 		configuredModel.addModel(baseModel);
 		return configuredModel;
@@ -65,6 +65,11 @@ public class RxModelConfigurations implements ModelConfigurations {
 	@Override
 	public ModelConfiguration mainPersistenceModel() {
 		return bySymbol(mainPersistenceModelRef);
+	}
+
+	/** @see RxConfiguredModel#finalizeModelConfiguration() */
+	public void finalizeModelConfiguration() {
+		configuredModels.finalizeModelConfiguration();
 	}
 
 

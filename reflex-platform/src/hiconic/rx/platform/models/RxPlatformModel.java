@@ -19,8 +19,8 @@ import com.braintribe.model.processing.meta.oracle.ModelOracle;
 
 public class RxPlatformModel extends AbstractRxConfiguredModel {
 
-	private GmMetaModel model;
-	
+	private final GmMetaModel model;
+
 	public RxPlatformModel(RxConfiguredModels configuredModels, GmMetaModel model) {
 		super(configuredModels);
 		this.model = model;
@@ -29,6 +29,11 @@ public class RxPlatformModel extends AbstractRxConfiguredModel {
 	@Override
 	public String name() {
 		return model.getName();
+	}
+
+	@Override
+	public GmMetaModel gmModel() {
+		return model;
 	}
 
 	@Override

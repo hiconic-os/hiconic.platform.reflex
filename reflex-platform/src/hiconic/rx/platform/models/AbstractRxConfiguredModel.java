@@ -14,6 +14,7 @@
 package hiconic.rx.platform.models;
 
 import com.braintribe.common.attribute.AttributeContext;
+import com.braintribe.model.meta.GmMetaModel;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.meta.oracle.ModelOracle;
 import com.braintribe.utils.collection.impl.AttributeContexts;
@@ -58,4 +59,5 @@ public abstract class AbstractRxConfiguredModel implements ConfiguredModel {
 		return lazyModelOracle.get();
 	}
 
+	public abstract GmMetaModel gmModel();
 }

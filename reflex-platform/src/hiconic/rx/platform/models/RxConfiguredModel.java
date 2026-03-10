@@ -61,6 +61,8 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 	private final Set<GmMetaModel> models = new LinkedHashSet<>();
 	private final List<InterceptorEntry> interceptors = Collections.synchronizedList(new ArrayList<>());
 
+	private boolean configuringModels = true;
+	
 	public RxConfiguredModel(RxConfiguredModels configuredModels, String modelName) {
 		super(configuredModels);
 		this.name = modelName;
@@ -72,7 +74,7 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 		this.name = model.getName();
 		this.configurationModelBuilder = ConfigurationModels.extend(model);
 
-		models.addAll(model.getDependencies());
+		this.models.addAll(model.getDependencies());
 	}
 
 	@Override
@@ -81,18 +83,33 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 	}
 
 	@Override
-	protected ModelOracle buildModelOracle() {
-		GmMetaModel gmMetaModel = configurationModelBuilder.get();
-		if (gmMetaModel.getDependencies().isEmpty())
+	public GmMetaModel gmModel() {
+		GmMetaModel gmModel = configurationModelBuilder.get();
+		if (gmModel.getDependencies().isEmpty())
 			addModel(_RootModel_.reflection);
+		return gmModel;
+	}
 
-		BasicModelMetaDataEditor editor = new BasicModelMetaDataEditor(gmMetaModel);
+	/**
+	 * Applies all configurers registered via {@link ModelConfiguration#configureModel(Consumer)}. This includes those registered indirectly e.g. via
+	 * {@link ModelConfiguration#bindRequest(EntityType, Supplier)}.
+	 */
+	/* package */ void finalizeModelConfiguration() {
+		GmMetaModel gmModel = gmModel();
 
-		for (Consumer<ModelMetaDataEditor> configurer : modelConfigurers) {
+		BasicModelMetaDataEditor editor = new BasicModelMetaDataEditor(gmModel);
+		for (Consumer<ModelMetaDataEditor> configurer : modelConfigurers)
 			configurer.accept(editor);
-		}
 
-		return new BasicModelOracle(gmMetaModel);
+		configuringModels = false;
+	}
+
+	@Override
+	protected ModelOracle buildModelOracle() {
+		if (configuringModels)
+			throw new IllegalStateException("Cannot build ModelOracle at this phase, models are still being configured!");
+
+		return new BasicModelOracle(gmModel());
 	}
 
 	private void configureInterceptors(ModelMetaDataEditor editor) {
@@ -157,7 +174,7 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 		Model model = GMF.getTypeReflection().findModel(modelName);
 
 		if (model == null)
-			addModel(configuredModels.byName(modelName));
+			addRxModel(configuredModels.byName(modelName));
 		else
 			addModel(model);
 	}
@@ -168,7 +185,19 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 	}
 
 	@Override
+	public void addModel(ModelSymbol modelReference) {
+		addRxModel(configuredModels.acquire(modelReference));
+	}
+
+	private void addRxModel(AbstractRxConfiguredModel configuredModel) {
+		addModel(configuredModel.gmModel());
+	}
+
+	@Override
 	public void addModel(GmMetaModel gmModel) {
+		if (!configuringModels)
+			throwCannotConfigureModelException("Cannot add model ["+ gmModel.getName() + "]");
+		
 		synchronized (models) {
 			if (models.add(gmModel))
 				configurationModelBuilder.addDependency(gmModel);
@@ -176,18 +205,18 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 	}
 
 	@Override
-	public void addModel(ModelSymbol modelReference) {
-		AbstractRxConfiguredModel configuredModel = configuredModels.acquire(modelReference);
-		addModel(configuredModel.modelOracle().getGmMetaModel());
-	}
-
-	@Override
 	public void configureModel(Consumer<ModelMetaDataEditor> configurer) {
-		lazyModelOracle.close();
-		lazySystemCmdResolver.close();
+		if (!configuringModels)
+			throwCannotConfigureModelException("Cannot configure model");
+
 		modelConfigurers.add(configurer);
 	}
 
+	private void throwCannotConfigureModelException(String problem) {
+		throw new IllegalStateException(problem + 
+				" after model configuration has been finalized. Model can only be configured before onDeploy() phase.");
+	}
+	
 	@Override
 	public <R extends ServiceRequest> void bindRequest(EntityType<R> requestType, Supplier<ServiceProcessor<? super R, ?>> serviceProcessorSupplier) {
 		addModelIfNotNull(requestType.getModel());

@@ -18,19 +18,26 @@ import java.util.List;
 import com.braintribe.model.meta.GmMetaModel;
 
 public interface ConfiguredModels {
+
 	/**
-	 * Returns the {@link ServiceDomain} for given domainId if available otherwise null
+	 * Returns the {@link ConfiguredModel} for given model name if available, or null
+	 * <p>
+	 * In case a name of a model from classpath is used, an actual ConfiguredModel will be created and cached on first call.
 	 */
 	ConfiguredModel byName(String modelName);
-	
-	ConfiguredModel byReference(ModelSymbol reference);
-	
-	ConfiguredModel mainPersistenceModel();
-	
+
 	/**
-	 * Enumerates all available ServiceDomains
+	 * Equivalent not to {@code byName(reference.name())}}
+	 * 
+	 * @see #byName(String)
 	 */
+	ConfiguredModel byReference(ModelSymbol reference);
+
+	ConfiguredModel mainPersistenceModel();
+
+	/** Enumerates all available ServiceDomains */
 	List<? extends ConfiguredModel> list();
-	
+
 	List<? extends ConfiguredModel> listDependers(GmMetaModel model);
+
 }

@@ -31,7 +31,10 @@ import hiconic.rx.module.api.service.ServiceDomainConfigurations;
  * A module can access the platform by {@link Import importing} {@link RxPlatformContract}.
  * <p>
  * The Platform loads the modules by calling this contract's methods in multiple rounds, and for each round all methods are called for all the
- * modules. The order is given here:<br>
+ * modules. These methods are always first called for module's dependencies, i.e. modules that {@link RxExportContract export} contracts a given
+ * module is importing.
+ * <p>
+ * The order of calling these methods is given here:<br>
  * <b>Round 1 - Model Configuration:</b>
  * <ol>
  * <li>{@link #configureMainPersistenceModel(ModelConfiguration)}
@@ -115,7 +118,11 @@ public interface RxModuleContract extends WireSpace {
 		// implement if needed
 	}
 
-	/** Called when the platform application loaded and initialized all modules to allow module to deploy modeled configurations. */
+	/**
+	 * Called when the platform application loaded and initialized all modules to allow module to deploy modeled configurations.
+	 * <p>
+	 * NOTE that model configuration is now longer allowed at this point.
+	 */
 	default void onDeploy() {
 		// implement if needed
 	}
@@ -126,7 +133,7 @@ public interface RxModuleContract extends WireSpace {
 	default void onApplicationReady() {
 		// implement if needed
 	}
-	
+
 	/**
 	 * Called when the platform application received a shutdown signal and should stop processing requests
 	 */

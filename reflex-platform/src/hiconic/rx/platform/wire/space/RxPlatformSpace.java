@@ -98,14 +98,17 @@ public class RxPlatformSpace extends CoreServicesSpace implements ExtendedRxPlat
 			moduleContract.configurePlatform(platformConfigurator());
 		}
 
+		modelConfigurations.finalizeModelConfiguration();
+
+		// notify all modules about application being ready for the deployment inside modules
+		// TODO we should not allow any model changes from this moment on, but that is happening e.g. when accesses are being deployed
+		for (RxModuleContract moduleContract : moduleContracts) {
+			moduleContract.onDeploy();
+		}
+
 		for (ConfiguredModel configuredModel : configuredModels().list()) {
 			// TODO: trigger eager configuration
 			configuredModel.systemCmdResolver();
-		}
-
-		// notify all modules about application being ready for the deployment inside modules
-		for (RxModuleContract moduleContract : moduleContracts) {
-			moduleContract.onDeploy();
 		}
 
 		// notify all modules about application being ready for action
@@ -129,7 +132,7 @@ public class RxPlatformSpace extends CoreServicesSpace implements ExtendedRxPlat
 		bean.setPropertyResolver(propertyResolver());
 		return bean;
 	}
-	
+
 	@Override
 	public void onApplicationShutdown() {
 		moduleLoader().onApplicationShutdown();

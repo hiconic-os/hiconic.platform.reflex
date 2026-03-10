@@ -54,7 +54,7 @@ public class RxConfiguredModels implements ConfiguredModels {
 	}
 
 	@Override
-	public ConfiguredModel byName(String modelName) {
+	public AbstractRxConfiguredModel byName(String modelName) {
 		RxConfiguredModel rxConfiguredModel = models.get(modelName);
 		
 		if (rxConfiguredModel != null)
@@ -136,6 +136,12 @@ public class RxConfiguredModels implements ConfiguredModels {
 
 	public CmdResolver cmdResolver(AttributeContext attributeContext, ModelOracle modelOracle) {
 		return cmdResolverManager.cmdResolver(attributeContext, modelOracle);
+	}
+
+	/** @see RxConfiguredModel#finalizeModelConfiguration() */
+	/* package */ void finalizeModelConfiguration() {
+		for (RxConfiguredModel configuredModel : models.values())
+			configuredModel.finalizeModelConfiguration();
 	}
 
 }

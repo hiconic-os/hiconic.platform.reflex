@@ -84,17 +84,6 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 	private RxAuthContract auth;
 
 	@Override
-	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
-		// TODO why is this here and not in explorer module?
-		ServiceDomainConfiguration persistenceSd = configurations.byId(PersistenceServiceDomain.persistence);
-
-		persistenceSd.addModel(_ModelEnvironmentApiModel_.reflection); // brings ModelEnvironmentRequests...
-		persistenceSd.bindRequest(PersistenceReflectionRequest.T, this::persistenceReflectionProcessor);
-
-		accesses().initServiceDomainConfigurations(configurations);
-	}
-
-	@Override
 	public void configureModels(ModelConfigurations configurations) {
 		accessModelConfigurations().initModelConfigurations(configurations);
 
@@ -186,6 +175,38 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		return bean;
 	}
 
+	
+	@Override
+	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
+		// TODO why is this here and not in explorer module?
+		ServiceDomainConfiguration persistenceSd = configurations.byId(PersistenceServiceDomain.persistence);
+
+		persistenceSd.addModel(_ModelEnvironmentApiModel_.reflection); // brings ModelEnvironmentRequests...
+		persistenceSd.bindRequest(PersistenceReflectionRequest.T, this::persistenceReflectionProcessor);
+
+		accesses().initServiceDomainConfigurations(configurations);
+		
+		registerAccesses();
+	}
+
+	private void registerAccesses() {
+		AccessConfiguration accessConfiguration = getOrTunnel(platform.readConfig(AccessConfiguration.T));
+
+		for (Access access : accessConfiguration.getAccesses())
+			deploy(access);
+	}
+
+	@Override
+	public void deploy(Access accessDenotation) {
+		accesses().deploy(accessDenotation);
+	}
+
+	@Override
+	public void deploy(Access accessDenotation, IncrementalAccess access) {
+		accesses().deploy(accessDenotation, access);
+	}
+
+	
 	//
 	// Misc
 	//
@@ -202,24 +223,6 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 	@Override
 	public <A extends Access> void registerAccessExpert(EntityType<A> accessType, AccessExpert<A> expert) {
 		accesses().registerExpert(accessType, expert);
-	}
-
-	@Override
-	public void onDeploy() {
-		AccessConfiguration accessConfiguration = getOrTunnel(platform.readConfig(AccessConfiguration.T));
-
-		for (Access access : accessConfiguration.getAccesses())
-			deploy(access);
-	}
-
-	@Override
-	public void deploy(Access accessDenotation) {
-		accesses().deploy(accessDenotation);
-	}
-
-	@Override
-	public void deploy(Access accessDenotation, IncrementalAccess access) {
-		accesses().deploy(accessDenotation, access);
 	}
 
 	@Override

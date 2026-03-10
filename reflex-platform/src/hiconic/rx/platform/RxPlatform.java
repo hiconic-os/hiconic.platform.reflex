@@ -53,7 +53,7 @@ public class RxPlatform implements AutoCloseable {
 	private final SystemProperties systemProperties;
 	private final ApplicationProperties applicationProperties;
 
-	private String[] args;
+	private final String[] args;
 
 	private ExtendedRxPlatformContract platformContract;
 
@@ -74,7 +74,6 @@ public class RxPlatform implements AutoCloseable {
 				defaultSystemPropertyLookup(), //
 				defaultApplicationPropertyLookup() //
 		);
-		this.args = args;
 	}
 
 	public RxPlatform(Function<String, String> systemPropertyLookup, Function<String, String> applicationPropertyLookup) {

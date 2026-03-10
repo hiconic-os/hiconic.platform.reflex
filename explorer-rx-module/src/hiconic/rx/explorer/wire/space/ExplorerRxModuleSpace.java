@@ -54,6 +54,8 @@ public class ExplorerRxModuleSpace implements RxModuleContract {
 		explorerSd.bindRequest(AvailableAccessesRequest.T, this::availableAccessesProcessor);
 		explorerSd.bindRequest(CurrentUserInformationRequest.T, this::currentUserInformationProcessor);
 		explorerSd.bindRequest(PlatformReflectionRequest.T, platformReflection::platformReflectionProcessor);
+
+		cortex.registerCortexAccess();
 	}
 
 	@Managed
@@ -73,7 +75,6 @@ public class ExplorerRxModuleSpace implements RxModuleContract {
 	public void onDeploy() {
 		webapps.registerWebapps();
 		checks.registerChecks();
-		cortex.registerCortexAccess();
 	}
 
 	@Override
