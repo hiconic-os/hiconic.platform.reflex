@@ -21,7 +21,6 @@ import com.braintribe.wire.api.annotation.Managed;
 import hiconic.platform.reflex._HibernateTestModel_;
 import hiconic.rx.db.module.api.DatabaseContract;
 import hiconic.rx.hibernate.module.api.HibernateContract;
-import hiconic.rx.hibernate.service.api.HibernatePersistence;
 import hiconic.rx.hibernate.test.model.api.GetPersonByName;
 import hiconic.rx.hibernate.test.model.api.GetPersons;
 import hiconic.rx.hibernate.test.processing.PersonPersistenceProcessor;
@@ -66,12 +65,10 @@ public class HibernateRxTestModuleSpace implements RxModuleContract, HibernateTe
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
 		ServiceDomainConfiguration mainDomainConfig = configurations.main();
 
-		HibernatePersistence mainPersistence = hibernate.mainPersistence();
-
 		mainDomainConfig.bindRequest(GetPersons.T, //
-				() -> mainPersistence.asServiceProcessor(processor()));
+				() -> hibernate.mainPersistence().asServiceProcessor(processor()));
 
 		mainDomainConfig.bindRequest(GetPersonByName.T, //
-				() -> mainPersistence.queryProcessor(GetPersonByName.T, "from Person where name = :name"));
+				() -> hibernate.mainPersistence().queryProcessor(GetPersonByName.T, "from Person where name = :name"));
 	}
 }

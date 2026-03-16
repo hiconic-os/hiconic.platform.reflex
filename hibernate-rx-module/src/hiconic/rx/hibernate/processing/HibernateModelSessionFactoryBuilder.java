@@ -83,7 +83,7 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 		Configuration configuration = new Configuration();
 
 		Properties properties = configuration.getProperties();
-		properties.put(Environment.DATASOURCE, dataSource);
+		properties.put(Environment.JAKARTA_JTA_DATASOURCE, dataSource);
 		properties.put(Environment.INTERCEPTOR, new GmAdaptionInterceptor());
 		properties.put(Environment.TC_CLASSLOADER, itwOrModuleClassLoader());
 		// TODO review - bring model change detection from cortex
@@ -94,11 +94,19 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 		if (dialectAutoSense != null)
 			properties.put(Environment.DIALECT, dialectAutoSense.senseDialect(dataSource));
 
+		if (isMappingVersion1())
+			properties.put(Environment.ID_DB_STRUCTURE_NAMING_STRATEGY, "single");
+
 		addConfigureadProperties(properties, hpConfiguration.getProperties());
 
 		generateMappings(configuration);
 
 		return configuration.buildSessionFactory();
+	}
+
+	private boolean isMappingVersion1() {
+		Integer v = hpConfiguration.getMappingVersion();
+		return v != null && v == HbmXmlGeneratingService.MAPPING_VERSION_1;
 	}
 
 	private void addConfigureadProperties(Properties properties, Map<String, String> additionalProperties) {
