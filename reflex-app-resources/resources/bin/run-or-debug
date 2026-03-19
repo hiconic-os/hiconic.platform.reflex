@@ -1,0 +1,10 @@
+#!/bin/bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# Check if DEBUG is set to "true" (case-insensitive check)
+if [ "${DEBUG,,}" = "true" ]; then
+    echo "--- Starting in DEBUG mode ---"
+    exec "$DIR/run-debug"
+else
+    echo "--- Starting in NORMAL mode ---"
+    "$DIR/run" "$@"
+fi
