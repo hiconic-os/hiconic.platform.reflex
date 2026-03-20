@@ -44,11 +44,12 @@ import hiconic.platform.reflex.security.processor.AuthorizingServiceInterceptor;
 import hiconic.platform.reflex.security.processor.SecurityServiceProcessor;
 import hiconic.platform.reflex.security.processor.SimpleSecurityServiceProcessor;
 import hiconic.platform.reflex.security.processor.SystemUserScopingWorkerAspect;
+import hiconic.rx.module.api.config.RxPlatformConfigurator;
 import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.module.api.wire.RxModuleContract;
-import hiconic.rx.module.api.wire.RxPlatformConfigurator;
 import hiconic.rx.module.api.wire.RxPlatformContract;
+import hiconic.rx.module.api.wire.RxServiceProcessingContract;
 import hiconic.rx.security.api.SecurityContract;
 import hiconic.rx.security.api.SecurityServiceDomain;
 import hiconic.rx.security.model.configuration.SecurityConfiguration;
@@ -59,6 +60,9 @@ public class SecurityRxModuleSpace implements RxModuleContract, SecurityContract
 	@Import
 	private RxPlatformContract platform;
 
+	@Import
+	private RxServiceProcessingContract serviceProcessing;
+	
 	@Import
 	private CredentialProcessorsSpace credentialProcessors;
 
@@ -112,7 +116,7 @@ public class SecurityRxModuleSpace implements RxModuleContract, SecurityContract
 	@Managed
 	private SecurityServiceProcessor securityProcessor() {
 		SecurityServiceProcessor bean = new SecurityServiceProcessor();
-		bean.setEvaluator(platform.evaluator());
+		bean.setEvaluator(serviceProcessing.evaluator());
 		bean.setUserService(userServices.standardUserService());
 		bean.setUserSessionService(userServices.userSessionService());
 		return bean;
@@ -127,7 +131,7 @@ public class SecurityRxModuleSpace implements RxModuleContract, SecurityContract
 	@Override
 	public UserSessionScoping userSessionScoping() {
 		StandardUserSessionScoping bean = new StandardUserSessionScoping();
-		bean.setRequestEvaluator(platform.evaluator());
+		bean.setRequestEvaluator(serviceProcessing.evaluator());
 		bean.setDefaultUserSessionSupplier(userSessionProvider());
 		bean.setUserSessionStack(userSessionStack());
 		return bean;
@@ -212,6 +216,6 @@ public class SecurityRxModuleSpace implements RxModuleContract, SecurityContract
 
 	@Managed
 	private SecurityConfiguration securityConfiguration() {
-		return UnsatisfiedMaybeTunneling.getOrTunnel(platform.readConfig(SecurityConfiguration.T));
+		return UnsatisfiedMaybeTunneling.getOrTunnel(platform.configuration().readConfig(SecurityConfiguration.T));
 	}
 }

@@ -23,8 +23,8 @@ import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.leadership.api.LeadershipContract;
+import hiconic.rx.module.api.config.RxPlatformConfigurator;
 import hiconic.rx.module.api.wire.RxModuleContract;
-import hiconic.rx.module.api.wire.RxPlatformConfigurator;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.worker.api.WorkerContract;
 import hiconic.rx.worker.module.processing.ClusterAwareWorkerManager;
@@ -57,7 +57,7 @@ public class WorkerRxModuleSpace implements RxModuleContract, WorkerContract {
 		ClusterAwareWorkerManager bean = new ClusterAwareWorkerManager();
 		bean.setLeadershipManagerSupplier(leadership::leadershipManager);
 		bean.setExecutorService(threadPool());
-		bean.setApplicationId(platform.applicationId());
+		bean.setApplicationId(platform.application().applicationId());
 		return bean;
 	}
 

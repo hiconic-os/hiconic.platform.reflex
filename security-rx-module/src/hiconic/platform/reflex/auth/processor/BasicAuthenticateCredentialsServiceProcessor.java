@@ -42,11 +42,8 @@ public abstract class BasicAuthenticateCredentialsServiceProcessor<T extends Cre
 	}
 
 	/**
-	 * <p>
 	 * Fetches a single user from the authentication access using the identification given by the {@code userIdentification}
 	 * parameter.
-	 * <p>
-	 * This method will retrieve and discard a {@link PersistenceGmSession} for accessing the authentication data.
 	 * 
 	 * @param userIdentification
 	 *            {@link UserIdentification} used for fetching a user from the authentication access
@@ -61,11 +58,8 @@ public abstract class BasicAuthenticateCredentialsServiceProcessor<T extends Cre
 	}
 
 	/**
-	 * <p>
 	 * Fetches a single user from the authentication access using the identification given by the {@code userIdentification}
 	 * parameter.
-	 * <p>
-	 * This method will retrieve and discard a {@link PersistenceGmSession} for accessing the authentication data.
 	 * 
 	 * @param userIdentification
 	 *            {@link UserIdentification} used for fetching a user from the authentication access
@@ -80,14 +74,9 @@ public abstract class BasicAuthenticateCredentialsServiceProcessor<T extends Cre
 	}
 
 	/**
-	 * <p>
 	 * Fetches a single user id from the authentication access using the identification given by the
 	 * {@code userIdentification} parameter.
-	 * <p>
-	 * This method will use the given {@link PersistenceGmSession} for accessing the authentication data.
 	 * 
-	 * @param gmSession
-	 *            {@link PersistenceGmSession} used for accessing the authentication access
 	 * @param userIdentification
 	 *            {@link UserIdentification} used for fetching a user from the authentication access
 	 * @return the {@link User} id found based on the given {@code userIdentification}

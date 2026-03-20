@@ -25,7 +25,7 @@ import hiconic.rx.test.common.AbstractRxTest;
 public class ValidationTest extends AbstractRxTest {
 	@Test
 	public void testValidation() {
-		System.out.println(platform.getContract().applicationName());
+		System.out.println(platform.getContract().application().applicationName());
 		
 		
 		ReverseText reverseText = ReverseText.T.create();

@@ -11,14 +11,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.platform.reflex.web_server.processing;
+package hiconic.rx.module.api.wire;
 
-import com.braintribe.logging.Logger;
+import com.braintribe.wire.api.context.WireContext;
+import com.braintribe.wire.api.space.ContractSpaceResolver;
 
-public class ReflexAccessLogReceiver implements io.undertow.server.handlers.accesslog.AccessLogReceiver {
-	private final Logger logger = Logger.getLogger(ReflexAccessLogReceiver.class);
-	@Override
-	public void logMessage(String message) {
-		//logger.info(message);
-	}
+/**
+ * Configures {@link ContractSpaceResolver}s on the platform's {@link WireContext}, which is also the parent context of individual module's contexts.
+ */
+// TODO move to platform
+public interface RxContractSpaceResolverConfigurator {
+
+	void addResolver(ContractSpaceResolver resolver);
+
 }

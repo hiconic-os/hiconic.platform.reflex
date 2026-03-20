@@ -47,16 +47,16 @@ import hiconic.rx.web.server.api.WebServerContract;
 public class RestServerRxModuleSpace implements RxModuleContract {
 
 	private static final String DEFAULT_MIME_TYPE = "application/json";
-	
+
 	@Import
 	private RxPlatformContract platform;
-	
+
 	@Import
 	private WebServerContract webServer;
-	
+
 	@Import
 	private AccessContract access;
-	
+
 	@Import
 	private TcSpace tc;
 
@@ -64,49 +64,48 @@ public class RestServerRxModuleSpace implements RxModuleContract {
 	public void onDeploy() {
 		webServer.addServlet("rest", "/rest/*", server());
 	}
-	
+
 	@Managed
 	private RestV2Server server() {
 		RestV2Server bean = new RestV2Server();
 		bean.setAccessDomains(access.accessDomains());
-		bean.setEvaluator(platform.evaluator());
+		bean.setEvaluator(platform.serviceProcessing().evaluator());
 		bean.setExceptionHandler(exceptionHandler());
 		bean.setHandlers(handlers());
-		bean.setMarshallerRegistry(platform.marshallers());
+		bean.setMarshallerRegistry(platform.marshalling().marshallers());
 		bean.setTraversingCriteriaMap(tc.criteriaMap());
 		return bean;
 	}
-	
+
 	@Managed
 	private DdraEndpointsExceptionHandler exceptionHandler() {
 		DdraEndpointsExceptionHandler handler = new DdraEndpointsExceptionHandler();
 		handler.setIncludeDebugInformation(true);
-		handler.setDefaultMarshaller(platform.marshallers().getMarshaller(DEFAULT_MIME_TYPE));
+		handler.setDefaultMarshaller(platform.marshalling().marshallers().getMarshaller(DEFAULT_MIME_TYPE));
 		handler.setDefaultMimeType(DEFAULT_MIME_TYPE);
 
 		return handler;
 	}
-	
-	
+
 	@Managed
 	public Map<RestHandlerKey, RestV2Handler<?>> handlers() {
 		Map<RestHandlerKey, RestV2Handler<?>> handlers = new HashMap<>();
 
 		// entities
-		handlers.put(new RestHandlerKey("GET","entities"), getEntities());
-		handlers.put(new RestHandlerKey("POST","entities"), postEntities());
-		handlers.put(new RestHandlerKey("PUT","entities"), putEntities());
-		handlers.put(new RestHandlerKey("PATCH","entities"), patchEntities());
-		handlers.put(new RestHandlerKey("DELETE","entities"), deleteEntities());
-		handlers.put(new RestHandlerKey("OPTIONS","entities"), optionsHandler());
+		handlers.put(new RestHandlerKey("GET", "entities"), getEntities());
+		handlers.put(new RestHandlerKey("POST", "entities"), postEntities());
+		handlers.put(new RestHandlerKey("PUT", "entities"), putEntities());
+		handlers.put(new RestHandlerKey("PATCH", "entities"), patchEntities());
+		handlers.put(new RestHandlerKey("DELETE", "entities"), deleteEntities());
+		handlers.put(new RestHandlerKey("OPTIONS", "entities"), optionsHandler());
 
 		// properties
-		handlers.put(new RestHandlerKey("GET","properties"), getProperties());
-		handlers.put(new RestHandlerKey("POST","properties"), postProperties());
-		handlers.put(new RestHandlerKey("PUT","properties"), putProperties());
-		handlers.put(new RestHandlerKey("PATCH","properties"), patchProperties());
-		handlers.put(new RestHandlerKey("DELETE","properties"), deleteProperties());
-		handlers.put(new RestHandlerKey("OPTIONS","properties"), optionsHandler());
+		handlers.put(new RestHandlerKey("GET", "properties"), getProperties());
+		handlers.put(new RestHandlerKey("POST", "properties"), postProperties());
+		handlers.put(new RestHandlerKey("PUT", "properties"), putProperties());
+		handlers.put(new RestHandlerKey("PATCH", "properties"), patchProperties());
+		handlers.put(new RestHandlerKey("DELETE", "properties"), deleteProperties());
+		handlers.put(new RestHandlerKey("OPTIONS", "properties"), optionsHandler());
 
 		return handlers;
 	}
@@ -191,10 +190,10 @@ public class RestServerRxModuleSpace implements RxModuleContract {
 		configureHandlerCommons(handler);
 		return handler;
 	}
-	
+
 	private void configureHandlerCommons(AbstractRestV2Handler<?> handler) {
-		handler.setEvaluator(platform.evaluator());
-		handler.setMarshallerRegistry(platform.marshallers());
+		handler.setEvaluator(platform.serviceProcessing().evaluator());
+		handler.setMarshallerRegistry(platform.marshalling().marshallers());
 		handler.setTraversingCriteriaMap(tc.criteriaMap());
 	}
 

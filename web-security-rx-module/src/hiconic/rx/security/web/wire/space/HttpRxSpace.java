@@ -8,7 +8,7 @@ import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 import com.braintribe.wire.api.space.WireSpace;
 
-import hiconic.rx.module.api.wire.RxPlatformContract;
+import hiconic.rx.module.api.wire.RxConfigurationContract;
 import hiconic.rx.security.web.model.configuration.WebSecurityConfiguration;
 import hiconic.rx.security.web.processing.servlet.cookie.DefaultCookieHandler;
 import hiconic.rx.security.web.processing.servlet.providers.OpenUserSessionConfigurationProviderImpl;
@@ -21,11 +21,11 @@ import jakarta.servlet.http.HttpServletRequest;
 public class HttpRxSpace implements WireSpace {
 
 	@Import
-	private RxPlatformContract platform;
+	private RxConfigurationContract configuration;
 
 	@Managed
 	public DefaultCookieHandler cookieHandler() {
-		WebSecurityConfiguration config = platform.readConfig(WebSecurityConfiguration.T).get();
+		WebSecurityConfiguration config = configuration.readConfig(WebSecurityConfiguration.T).get();
 
 		DefaultCookieHandler bean = new DefaultCookieHandler();
 		bean.setCookieDomain(config.getCookieDomain());
@@ -41,7 +41,7 @@ public class HttpRxSpace implements WireSpace {
 	@Managed
 	public OpenUserSessionConfigurationProviderImpl openUserSessionConfigurationProvider() {
 		OpenUserSessionConfigurationProviderImpl bean = new OpenUserSessionConfigurationProviderImpl();
-		bean.setOpenUserSessionConfiguration(platform.readConfig(OpenUserSessionConfiguration.T).get());
+		bean.setOpenUserSessionConfiguration(configuration.readConfig(OpenUserSessionConfiguration.T).get());
 		return bean;
 	}
 

@@ -73,7 +73,7 @@ public class DbRxModuleSpace implements RxModuleContract, DatabaseContract {
 	}
 
 	private DatabaseConfiguration dbConfiguration() {
-		return platform.readConfig(DatabaseConfiguration.T).get();
+		return platform.configuration().readConfig(DatabaseConfiguration.T).get();
 	}
 
 	@Override

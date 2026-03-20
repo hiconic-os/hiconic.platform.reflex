@@ -11,14 +11,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.platform.reflex.web_server.processing;
+package hiconic.rx.module.api.wire;
 
-import com.braintribe.logging.Logger;
+import com.braintribe.codec.marshaller.api.CharacterMarshaller;
+import com.braintribe.codec.marshaller.api.Marshaller;
+import com.braintribe.codec.marshaller.api.MarshallerRegistry;
+import com.braintribe.wire.api.space.WireSpace;
 
-public class ReflexAccessLogReceiver implements io.undertow.server.handlers.accesslog.AccessLogReceiver {
-	private final Logger logger = Logger.getLogger(ReflexAccessLogReceiver.class);
-	@Override
-	public void logMessage(String message) {
-		//logger.info(message);
-	}
+public interface RxMarshallingContract extends WireSpace {
+
+	MarshallerRegistry marshallers();
+
+	CharacterMarshaller jsonMarshaller();
+	CharacterMarshaller yamlMarshaller();
+	Marshaller binMarshaller();
+
 }

@@ -60,7 +60,7 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 	@Managed
 	private LogoutRxServlet logoutServlet() {
 		LogoutRxServlet bean = new LogoutRxServlet();
-		bean.setRequestEvaluator(platform.evaluator());
+		bean.setRequestEvaluator(platform.serviceProcessing().evaluator());
 
 		String loginPath = loginPath();
 		if (!StringTools.isBlank(loginPath))
@@ -74,8 +74,8 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 		AuthRxServlet bean = new AuthRxServlet();
 		bean.setCookieHandler(http.cookieHandler());
 		bean.setRemoteAddressResolver(webServer.remoteAddressResolver());
-		bean.setMarshallerRegistry(platform.marshallers());
-		bean.setRequestEvaluator(platform.systemEvaluator());
+		bean.setMarshallerRegistry(platform.marshalling().marshallers());
+		bean.setRequestEvaluator(platform.serviceProcessing().systemEvaluator());
 		bean.setEntryPointProvider(http.openUserSessionConfigurationProvider()::findEntryPointName);
 
 		return bean;
@@ -94,7 +94,7 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 	@Managed
 	private AuthRxFilter authFilterAdminStrict() {
 		// TODO move to security contract
-		SecurityConfiguration securityConfig = platform.readConfig(SecurityConfiguration.T).get();
+		SecurityConfiguration securityConfig = platform.configuration().readConfig(SecurityConfiguration.T).get();
 
 		AuthRxFilter bean = new AuthRxFilter();
 		bean.setStrict(true);
@@ -112,7 +112,7 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 	}
 
 	private void configureAuthFilter(AuthRxFilter authFilter) {
-		authFilter.setRequestEvaluator(platform.systemEvaluator());
+		authFilter.setRequestEvaluator(platform.serviceProcessing().systemEvaluator());
 		// TODO threadRenamer
 		// if (logger.isDebugEnabled()) {
 		// authFilter.setThreadRenamer(runtime.threadRenamer());
@@ -159,7 +159,7 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 	}
 
 	private String loginPath() {
-		WebSecurityConfiguration webSecurityConfig = platform.readConfig(WebSecurityConfiguration.T).get();
+		WebSecurityConfiguration webSecurityConfig = platform.configuration().readConfig(WebSecurityConfiguration.T).get();
 		return webSecurityConfig.getLoginPath();
 	}
 

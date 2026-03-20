@@ -33,6 +33,7 @@ import hiconic.rx.module.api.service.PlatformServiceDomains;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
+import hiconic.rx.module.api.wire.RxServiceProcessingContract;
 import hiconic.rx.security.web.api.AuthFilters;
 import hiconic.rx.security.web.api.WebSecurityContract;
 import hiconic.rx.web.ddra.endpoints.api.WebApiServerContract;
@@ -57,6 +58,9 @@ public class WebApiServerRxModuleSpace implements RxModuleContract, WebApiServer
 	private RxPlatformContract platform;
 
 	@Import
+	private RxServiceProcessingContract serviceProcessing;
+	
+	@Import
 	private TcSpace tc;
 
 	@Import
@@ -79,15 +83,15 @@ public class WebApiServerRxModuleSpace implements RxModuleContract, WebApiServer
 	private WebApiV1Server server() {
 		WebApiV1Server bean = new WebApiV1Server();
 		bean.setDefaultServiceDomain(PlatformServiceDomains.main.name());
-		bean.setEvaluator(platform.evaluator());
+		bean.setEvaluator(serviceProcessing.evaluator());
 		bean.setExceptionHandler(exceptionHandler());
 		bean.setMappingOralce(mappingOracle());
-		bean.setMarshallerRegistry(platform.marshallers());
+		bean.setMarshallerRegistry(platform.marshalling().marshallers());
 		bean.setMdResolverProvider(this::cmdResolverForDomain);
 		bean.setRestServletUtils(servletUtils());
 		bean.setStreamPipeFactory(StreamPipes.simpleFactory());
 		bean.setTraversingCriteriaMap(tc.criteriaMap());
-		bean.setDomainAvailability(s -> platform.serviceDomains().byId(s) != null);
+		bean.setDomainAvailability(s -> serviceProcessing.serviceDomains().byId(s) != null);
 		return bean;
 	}
 
@@ -95,7 +99,7 @@ public class WebApiServerRxModuleSpace implements RxModuleContract, WebApiServer
 	@Managed
 	public WebApiMappingOracle mappingOracle() {
 		StandardWebApiMappingOracle bean = new StandardWebApiMappingOracle();
-		bean.setServiceDomains(platform.serviceDomains());
+		bean.setServiceDomains(serviceProcessing.serviceDomains());
 
 		return bean;
 	}
@@ -107,7 +111,7 @@ public class WebApiServerRxModuleSpace implements RxModuleContract, WebApiServer
 	}
 
 	private CmdResolver cmdResolverForDomain(String domainId) {
-		ServiceDomain domain = platform.serviceDomains().byId(domainId);
+		ServiceDomain domain = serviceProcessing.serviceDomains().byId(domainId);
 
 		if (domain == null)
 			return null;
@@ -191,7 +195,7 @@ public class WebApiServerRxModuleSpace implements RxModuleContract, WebApiServer
 		DdraEndpointsExceptionHandler bean = new DdraEndpointsExceptionHandler();
 
 		bean.setDefaultMimeType(MIME_TYPE_JSON);
-		bean.setDefaultMarshaller(platform.marshallers().getMarshaller(MIME_TYPE_JSON));
+		bean.setDefaultMarshaller(platform.marshalling().marshallers().getMarshaller(MIME_TYPE_JSON));
 		bean.setIncludeDebugInformation(false);
 
 		return bean;

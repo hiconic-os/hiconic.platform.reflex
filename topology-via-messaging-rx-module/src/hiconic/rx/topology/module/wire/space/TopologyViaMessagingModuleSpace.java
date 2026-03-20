@@ -47,7 +47,7 @@ public class TopologyViaMessagingModuleSpace implements RxModuleContract, Topolo
 
 	@Override
 	public void onApplicationReady() {
-		logger.info(() -> "Starting RxHeartbeatManager signalling instance id: " + platform.instanceId());
+		logger.info(() -> "Starting RxHeartbeatManager signalling instance id: " + platform.application().instanceId());
 		heartbeatManager().startHeartbeatBroadcasting();
 	}
 
@@ -55,7 +55,7 @@ public class TopologyViaMessagingModuleSpace implements RxModuleContract, Topolo
 	@Managed
 	public RxLiveInstances liveInstances() {
 		RxLiveInstances bean = new RxLiveInstances();
-		bean.setCurrentInstanceId(platform.instanceId());
+		bean.setCurrentInstanceId(platform.application().instanceId());
 		bean.setEnabled(consumeHeartbeats());
 		bean.setAliveAge(30000); // 30 seconds
 		bean.setMaxHeartbeatAge(30000); // 30 seconds
@@ -87,7 +87,7 @@ public class TopologyViaMessagingModuleSpace implements RxModuleContract, Topolo
 	@Managed
 	private ScheduledExecutorService heartbeatBroadcastingService() {
 		ExtendedScheduledThreadPoolExecutor bean = new ExtendedScheduledThreadPoolExecutor(1,
-				new CountingVirtualThreadFactory("reflex.heartbeat.sender[" + platform.instanceId() + "]-"));
+				new CountingVirtualThreadFactory("reflex.heartbeat.sender[" + platform.application().instanceId() + "]-"));
 		bean.setDescription("Rx Heartbeat Sender");
 		return bean;
 	}

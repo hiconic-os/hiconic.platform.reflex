@@ -12,8 +12,10 @@ import hiconic.rx.module.api.service.ModelConfiguration;
 import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
+import hiconic.rx.module.api.wire.RxConfigurationContract;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
+import hiconic.rx.module.api.wire.RxServiceProcessingContract;
 import hiconic.rx.openapi.v3.processing.processor.export.AbstractOpenapiProcessor;
 import hiconic.rx.openapi.v3.processing.processor.export.ApiV1OpenapiProcessor;
 import hiconic.rx.openapi.v3.processing.processor.export.EntityOpenapiProcessor;
@@ -36,6 +38,12 @@ public class OpenapiV3RxModuleSpace implements RxModuleContract {
 	private RxPlatformContract platform;
 
 	@Import
+	private RxConfigurationContract configuration;
+
+	@Import
+	private RxServiceProcessingContract serviceProcessing;
+
+	@Import
 	private AccessContract access;
 
 	@Import
@@ -43,7 +51,7 @@ public class OpenapiV3RxModuleSpace implements RxModuleContract {
 
 	@Import
 	private WebServerContract webServer;
-	
+
 	@Override
 	public void configureModels(ModelConfigurations configurations) {
 		ModelConfiguration modelConfiguration = configurations.bySymbol(AbstractOpenapiProcessor.basicOpenapiProcessingModelRef);
@@ -68,7 +76,7 @@ public class OpenapiV3RxModuleSpace implements RxModuleContract {
 	@Managed
 	private OpenapiUiServlet openapiUiServlet() {
 		OpenapiUiServlet bean = new OpenapiUiServlet();
-		bean.setServiceDomains(platform.serviceDomains());
+		bean.setServiceDomains(serviceProcessing.serviceDomains());
 		bean.setAccessDomains(access.accessDomains());
 
 		// TODO configure api and rest paths, once they are configurable
@@ -84,8 +92,8 @@ public class OpenapiV3RxModuleSpace implements RxModuleContract {
 		bean.setPublicUrl(webServer.publicUrl());
 		bean.setWebApiMappingOracle(webApiServer.mappingOracle());
 		bean.setWebApiServletPath(webApiServer.servletPath());
-		bean.setConfiguredModels(platform.configuredModels());
-		bean.setServiceDomains(platform.serviceDomains());
+		bean.setConfiguredModels(configuration.configuredModels());
+		bean.setServiceDomains(serviceProcessing.serviceDomains());
 
 		return bean;
 	}
@@ -94,7 +102,7 @@ public class OpenapiV3RxModuleSpace implements RxModuleContract {
 	private EntityOpenapiProcessor openapiEntitiesProcessor() {
 		EntityOpenapiProcessor bean = new EntityOpenapiProcessor();
 		bean.setPublicUrl(webServer.publicUrl());
-		bean.setConfiguredModels(platform.configuredModels());
+		bean.setConfiguredModels(configuration.configuredModels());
 		bean.setAccessDomains(access.accessDomains());
 
 		return bean;
@@ -104,7 +112,7 @@ public class OpenapiV3RxModuleSpace implements RxModuleContract {
 	private PropertyOpenapiProcessor openapiPropertiesProcessor() {
 		PropertyOpenapiProcessor bean = new PropertyOpenapiProcessor();
 		bean.setPublicUrl(webServer.publicUrl());
-		bean.setConfiguredModels(platform.configuredModels());
+		bean.setConfiguredModels(configuration.configuredModels());
 		bean.setAccessDomains(access.accessDomains());
 
 		return bean;

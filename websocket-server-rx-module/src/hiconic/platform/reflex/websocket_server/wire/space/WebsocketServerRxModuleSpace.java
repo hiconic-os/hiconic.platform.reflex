@@ -49,9 +49,9 @@ public class WebsocketServerRxModuleSpace implements RxModuleContract, PushContr
 	@Managed
 	private WsServer server() {
 		WsServer bean = new WsServer();
-		bean.setMarshallerRegistry(platform.marshallers());
-		bean.setProcessingInstanceId(platform.instanceId());
-		bean.setEvaluator(platform.systemEvaluator());
+		bean.setMarshallerRegistry(platform.marshalling().marshallers());
+		bean.setProcessingInstanceId(platform.application().instanceId());
+		bean.setEvaluator(platform.serviceProcessing().systemEvaluator());
 		bean.setPushChannelLifecycleHub(channelLifecyclePublisher());
 		return bean;
 	}

@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.module.api.wire;
+package hiconic.rx.module.api.config;
 
 import com.braintribe.codec.marshaller.api.ConfigurableMarshallerRegistry;
 import com.braintribe.model.generic.reflection.EntityType;
@@ -21,6 +21,8 @@ import com.braintribe.model.processing.worker.api.WorkerManager;
 import com.braintribe.model.resource.source.ResourceSource;
 
 import hiconic.rx.module.api.resource.ResourceStorageDeploymentExpert;
+import hiconic.rx.module.api.wire.RxModuleContract;
+import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.resource.model.configuration.ResourceStorage;
 
 /**

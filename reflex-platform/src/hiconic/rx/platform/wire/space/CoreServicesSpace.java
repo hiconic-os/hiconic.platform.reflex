@@ -13,296 +13,117 @@
 // ============================================================================
 package hiconic.rx.platform.wire.space;
 
-import static com.braintribe.wire.api.util.Lists.list;
-import static com.braintribe.wire.api.util.Sets.set;
-
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Supplier;
 
+import com.braintribe.codec.marshaller.api.CharacterMarshaller;
 import com.braintribe.codec.marshaller.api.Marshaller;
-import com.braintribe.codec.marshaller.bin.Bin2Marshaller;
-import com.braintribe.codec.marshaller.common.BasicConfigurableMarshallerRegistry;
-import com.braintribe.codec.marshaller.jse.JseMarshaller;
-import com.braintribe.codec.marshaller.json.JsonStreamMarshaller;
-import com.braintribe.codec.marshaller.stax.StaxMarshaller;
-import com.braintribe.codec.marshaller.yaml.YamlMarshaller;
+import com.braintribe.codec.marshaller.api.MarshallerRegistry;
 import com.braintribe.common.attribute.AttributeContext;
 import com.braintribe.common.concurrent.TaskScheduler;
-import com.braintribe.common.concurrent.TaskSchedulerImpl;
-import com.braintribe.execution.ExtendedScheduledThreadPoolExecutor;
-import com.braintribe.execution.ExtendedThreadPoolExecutor;
-import com.braintribe.execution.ThreadPoolBuilder;
-import com.braintribe.execution.virtual.CountingVirtualThreadFactory;
 import com.braintribe.logging.ThreadRenamer;
-import com.braintribe.model.processing.service.common.ConfigurableDispatchingServiceProcessor;
-import com.braintribe.model.processing.service.common.context.UserSessionAspect;
-import com.braintribe.model.processing.service.common.eval.ConfigurableServiceRequestEvaluator;
+import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.service.api.ServiceRequest;
-import com.braintribe.model.user.Role;
-import com.braintribe.model.user.User;
-import com.braintribe.model.usersession.UserSession;
-import com.braintribe.model.usersession.UserSessionType;
 import com.braintribe.thread.api.DeferringThreadContextScoping;
-import com.braintribe.thread.impl.ThreadContextScopingImpl;
-import com.braintribe.utils.collection.impl.AttributeContexts;
+import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
-import hiconic.rx.platform.models.RxCmdResolverManager;
-import hiconic.rx.platform.models.RxConfiguredModels;
-import hiconic.rx.platform.models.RxModelConfigurations;
-import hiconic.rx.platform.processing.thread.AttributeContextThreadContextScope;
-import hiconic.rx.platform.resource.RxResourcesStorages;
-import hiconic.rx.platform.service.ContextualizingServiceRequestEvaluator;
-import hiconic.rx.platform.service.RxServiceDomainDispatcher;
-import hiconic.rx.platform.service.RxServiceDomains;
+import hiconic.rx.module.api.service.ConfiguredModels;
+import hiconic.rx.module.api.service.ServiceDomains;
 import hiconic.rx.platform.wire.contract.CoreServicesContract;
 
 @Managed
 public class CoreServicesSpace implements CoreServicesContract {
 
+	@Import
+	private RxAuthSpace auth;
+
+	@Import
+	private RxConfigurationSpace configuration;
+
+	@Import
+	private RxExecutionSpace execution;
+
+	@Import
+	private RxMarshallingSpace marshalling;
+
+	@Import
+	private RxServiceProcessingSpace serviceProcessing;
+
 	@Override
-	@Managed
-	public RxServiceDomains serviceDomains() {
-		RxServiceDomains bean = new RxServiceDomains();
-		bean.setContextEvaluator(evaluator());
-		bean.setFallbackProcessor(fallbackProcessor());
-		bean.setExecutorService(executorService());
-		bean.setModelConfigurations(modelConfigurations());
-		return bean;
+	public Evaluator<ServiceRequest> evaluator() {
+		return serviceProcessing.evaluator();
 	}
 
 	@Override
-	@Managed
-	public RxConfiguredModels configuredModels() {
-		RxConfiguredModels bean = new RxConfiguredModels();
-		bean.setCmdResolverManager(cmdResolverManager());
-		bean.setSystemAttributeContextSupplier(systemAttributeContextSupplier());
-		return bean;
+	public Evaluator<ServiceRequest> systemEvaluator() {
+		return serviceProcessing.systemEvaluator();
 	}
 
 	@Override
-	@Managed
+	public Evaluator<ServiceRequest> evaluator(AttributeContext attributeContext) {
+		return serviceProcessing.evaluator(attributeContext);
+	}
+
+	@Override
 	public Supplier<AttributeContext> systemAttributeContextSupplier() {
-		return () -> AttributeContexts.derivePeek().set(UserSessionAspect.class, systemUserSession()).build();
-	}
-
-	@Managed
-	protected UserSession systemUserSession() {
-		UserSession bean = UserSession.T.create();
-
-		User user = systemUser();
-
-		Set<String> effectiveRoles = new HashSet<>();
-		effectiveRoles.add("$all");
-		effectiveRoles.add("$user-" + user.getName());
-		for (Role userRole : user.getRoles())
-			effectiveRoles.add(userRole.getName());
-
-		Date now = new Date();
-
-		bean.setSessionId(UUID.randomUUID().toString());
-		bean.setType(UserSessionType.internal);
-		bean.setCreationInternetAddress("0:0:0:0:0:0:0:1");
-		bean.setCreationDate(now);
-		bean.setLastAccessedDate(now);
-		bean.setUser(user);
-		bean.setEffectiveRoles(effectiveRoles);
-
-		return bean;
-	}
-
-	private static final Set<String> internalRoles = set("internal");
-	private static final String internalName = "internal";
-
-	@Managed
-	protected User systemUser() {
-
-		User bean = User.T.create();
-		bean.setId(internalName);
-		bean.setName(internalName);
-
-		for (String internalRoleName : internalRoles) {
-			Role internalRole = Role.T.create();
-			internalRole.setId(internalRoleName);
-			internalRole.setName(internalRoleName);
-			bean.getRoles().add(internalRole);
-		}
-
-		return bean;
-	}
-
-	@Managed
-	protected RxCmdResolverManager cmdResolverManager() {
-		RxCmdResolverManager bean = new RxCmdResolverManager();
-		return bean;
-	}
-
-	@Managed
-	public RxModelConfigurations modelConfigurations() {
-		RxModelConfigurations bean = new RxModelConfigurations();
-		bean.setConfiguredModels(configuredModels());
-		return bean;
-	}
-
-	@Managed
-	@Override
-	public BasicConfigurableMarshallerRegistry marshallers() {
-		BasicConfigurableMarshallerRegistry bean = new BasicConfigurableMarshallerRegistry();
-		bean.registerMarshaller("application/json", jsonMarshaller());
-		bean.registerMarshaller("text/yaml", yamlMarshaller());
-		bean.registerMarshaller("application/yaml", yamlMarshaller());
-		bean.registerMarshaller("gm/jse", jseMarshaller());
-		bean.registerMarshaller("gm/xml", xmlMarshaller());
-		bean.registerMarshaller("gm/bin", binMarshaller());
-		return bean;
-	}
-
-	@Managed
-	protected StaxMarshaller xmlMarshaller() {
-		StaxMarshaller bean = new StaxMarshaller();
-		return bean;
-	}
-	
-	@Managed 
-	protected JseMarshaller jseMarshaller() {
-		JseMarshaller bean = new JseMarshaller();
-		return bean;
-	}
-	
-	@Override
-	@Managed
-	public JsonStreamMarshaller jsonMarshaller() {
-		JsonStreamMarshaller bean = new JsonStreamMarshaller();
-		bean.setUseBufferingDecoder(true);
-		return bean;
+		return auth.systemAttributeContextSupplier();
 	}
 
 	@Override
-	@Managed
-	public YamlMarshaller yamlMarshaller() {
-		return new YamlMarshaller();
+	public ConfiguredModels configuredModels() {
+		return configuration.configuredModels();
 	}
 
 	@Override
-	@Managed
-	public Marshaller binMarshaller() {
-		Bin2Marshaller bean = new Bin2Marshaller();
-		//bean.setRequiredTypesReceiver(requiredTypeEnsurer());
-		return bean;
+	public ServiceDomains serviceDomains() {
+		return serviceProcessing.serviceDomains();
 	}
 
 	@Override
-	@Managed
-	public ConfigurableServiceRequestEvaluator evaluator() {
-		ConfigurableServiceRequestEvaluator bean = new ConfigurableServiceRequestEvaluator();
-		bean.setExecutorService(executorService());
-		bean.setServiceProcessor(rootServiceProcessor());
-		return bean;
-	}
-
-	@Override
-	public ContextualizingServiceRequestEvaluator evaluator(AttributeContext attributeContext) {
-		return evaluator(() -> attributeContext);
-	}
-
-	@Override
-	@Managed
-	public ContextualizingServiceRequestEvaluator systemEvaluator() {
-		return evaluator(systemAttributeContextSupplier());
-	}
-
-	protected ContextualizingServiceRequestEvaluator evaluator(Supplier<AttributeContext> attributeContextSupplier) {
-		ContextualizingServiceRequestEvaluator bean = new ContextualizingServiceRequestEvaluator();
-		bean.setDelegate(evaluator());
-		bean.setAttributeContextProvider(attributeContextSupplier);
-		return bean;
-	}
-
-	@Managed
-	public ConfigurableDispatchingServiceProcessor rootServiceProcessor() {
-		ConfigurableDispatchingServiceProcessor bean = new ConfigurableDispatchingServiceProcessor();
-
-		bean.register(ServiceRequest.T, serviceDomainDispatcher());
-		bean.registerInterceptor("domain-validation").register(serviceDomainDispatcher());
-
-		return bean;
-	}
-
-	@Managed
-	protected RxServiceDomainDispatcher serviceDomainDispatcher() {
-		RxServiceDomainDispatcher bean = new RxServiceDomainDispatcher();
-		bean.setServiceDomains(serviceDomains());
-		return bean;
-	}
-
-	@Managed
-	public ConfigurableDispatchingServiceProcessor fallbackProcessor() {
-		ConfigurableDispatchingServiceProcessor bean = new ConfigurableDispatchingServiceProcessor();
-		return bean;
-	}
-
-	@Override
-	@Managed
-	public ThreadRenamer threadRenamer() {
-		ThreadRenamer bean = new ThreadRenamer(true);
-		return bean;
-	}
-	
-	@Override
-	@Managed
-	public ExecutorService executorService() {
-		// TODO use virtual thread executor (from WorkerRxModuleSpace)?
-		ExtendedThreadPoolExecutor bean = ThreadPoolBuilder.newPool() //
-				.poolSize(5, Integer.MAX_VALUE) //
-				.workQueue(new SynchronousQueue<>()) //
-				.threadNamePrefix("rx.platform-") //
-				.description("Rx Platform Thread-Pool") //
-				.build();
-		return bean;
-	}
-
-	@Override
-	@Managed
-	public ExtendedScheduledThreadPoolExecutor scheduledExecutorService() {
-		ExtendedScheduledThreadPoolExecutor bean = new ExtendedScheduledThreadPoolExecutor( //
-				5, //
-				new CountingVirtualThreadFactory("rx.scheduled-") //
-		);
-		bean.setAddThreadContextToNdc(true);
-		bean.allowCoreThreadTimeOut(true);
-		bean.setDescription("Rx Platform Scheduled Thread-Pool");
-
-		return bean;
-	}
-
-	@Override
-	@Managed
-	public TaskScheduler taskScheduler() {
-		TaskSchedulerImpl bean = new TaskSchedulerImpl();
-		bean.setName("Rx Platform-Task-Scheduler");
-		bean.setExecutor(scheduledExecutorService());
-
-		return bean;
-	}
-	
-	@Override
-	@Managed
 	public DeferringThreadContextScoping threadContextScoping() {
-		ThreadContextScopingImpl bean = new ThreadContextScopingImpl();
-		bean.setScopeSuppliers(list(AttributeContextThreadContextScope.SUPPLIER));
-		return bean;
+		return execution.threadContextScoping();
 	}
 
-	@Managed
-	public RxResourcesStorages resourceStorages() {
-		RxResourcesStorages bean = new RxResourcesStorages();
+	@Override
+	public MarshallerRegistry marshallers() {
+		return marshalling.marshallers();
+	}
 
-		return bean;
+	@Override
+	public CharacterMarshaller jsonMarshaller() {
+		return marshalling.jsonMarshaller();
+	}
+
+	@Override
+	public CharacterMarshaller yamlMarshaller() {
+		return marshalling.yamlMarshaller();
+	}
+
+	@Override
+	public Marshaller binMarshaller() {
+		return marshalling.binMarshaller();
+	}
+
+	@Override
+	public ThreadRenamer threadRenamer() {
+		return execution.threadRenamer();
+	}
+
+	@Override
+	public ExecutorService executorService() {
+		return execution.executorService();
+	}
+
+	@Override
+	public ScheduledExecutorService scheduledExecutorService() {
+		return execution.scheduledExecutorService();
+	}
+
+	@Override
+	public TaskScheduler taskScheduler() {
+		return execution.taskScheduler();
 	}
 
 }

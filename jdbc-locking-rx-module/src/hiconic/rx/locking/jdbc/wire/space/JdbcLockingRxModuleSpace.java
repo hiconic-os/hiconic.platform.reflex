@@ -70,7 +70,7 @@ public class JdbcLockingRxModuleSpace implements RxModuleContract, LockingContra
 	private void configureLockRefreshing(DbLocking bean, InstanceConfiguration instanceConfiguration, int lockExpirationInSecs) {
 		int refreshSecs = lockExpirationInSecs / 3;
 
-		TaskScheduler scheduler = platform.taskScheduler();
+		TaskScheduler scheduler = platform.execution().taskScheduler();
 		ScheduledTask task = scheduler
 				.scheduleAtFixedRate("db-locking-refresher", bean::refreshLockedLocks, refreshSecs, refreshSecs, TimeUnit.SECONDS).done();
 
@@ -102,7 +102,7 @@ public class JdbcLockingRxModuleSpace implements RxModuleContract, LockingContra
 
 	@Managed
 	private JdbcLockingConfiguration configuration() {
-		return getOrTunnel(platform.readConfig(JdbcLockingConfiguration.T));
+		return getOrTunnel(platform.configuration().readConfig(JdbcLockingConfiguration.T));
 	}
 
 }

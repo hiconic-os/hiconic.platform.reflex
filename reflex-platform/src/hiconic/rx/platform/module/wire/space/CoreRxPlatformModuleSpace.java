@@ -25,11 +25,11 @@ import com.braintribe.model.service.api.UnicastRequest;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
+import hiconic.rx.module.api.config.RxPlatformConfigurator;
 import hiconic.rx.module.api.resource.ResourceStorage;
 import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.module.api.wire.RxModuleContract;
-import hiconic.rx.module.api.wire.RxPlatformConfigurator;
 import hiconic.rx.platform.resource.FsResourceStorage;
 import hiconic.rx.platform.resource.ResourcePayloadProcessor;
 import hiconic.rx.platform.resource.RxResourcesStorages;
@@ -67,7 +67,7 @@ public class CoreRxPlatformModuleSpace implements RxModuleContract {
 	@Managed
 	private UnicastProcessor unicastProcessor() {
 		UnicastProcessor bean = new UnicastProcessor();
-		bean.setCurrentInstance(platform.instanceId());
+		bean.setCurrentInstance(platform.application().instanceId());
 		return bean;
 	}
 
@@ -91,7 +91,7 @@ public class CoreRxPlatformModuleSpace implements RxModuleContract {
 	@Managed
 	private ResourcePayloadProcessor resourceDownloadProcessor() {
 		ResourcePayloadProcessor bean = new ResourcePayloadProcessor();
-		bean.setServiceDomains(platform.serviceDomains());
+		bean.setServiceDomains(platform.serviceProcessing().serviceDomains());
 		bean.setResourceStorages(platform.resourceStorages());
 
 		return bean;
@@ -120,7 +120,7 @@ public class CoreRxPlatformModuleSpace implements RxModuleContract {
 	}
 
 	private void configureResourceStorages() {
-		ResourceStorageConfiguration rsConfig = platform.readConfig(ResourceStorageConfiguration.T).get();
+		ResourceStorageConfiguration rsConfig = platform.configuration().readConfig(ResourceStorageConfiguration.T).get();
 
 		RxResourcesStorages resourceStorages = platform.resourceStorages();
 

@@ -82,7 +82,7 @@ public class JdbcMessagingRxModuleSpace implements RxModuleContract, MessagingCo
 	private void configureExpiredMessagesDeleting(JdbcConnectionProvider bean, InstanceConfiguration instanceConfiguration) {
 		int refreshHour = 1;
 
-		TaskScheduler scheduler = platform.taskScheduler();
+		TaskScheduler scheduler = platform.execution().taskScheduler();
 		ScheduledTask task = scheduler
 				.scheduleAtFixedRate("jdbc-messagingBase-expired-deleting", bean::deleteExpiredMessages, refreshHour, refreshHour, TimeUnit.HOURS)
 				.done();
@@ -95,7 +95,7 @@ public class JdbcMessagingRxModuleSpace implements RxModuleContract, MessagingCo
 
 	@Managed
 	private JdbcMessagingConfiguration configuration() {
-		return getOrTunnel(platform.readConfig(JdbcMessagingConfiguration.T));
+		return getOrTunnel(platform.configuration().readConfig(JdbcMessagingConfiguration.T));
 	}
 
 }

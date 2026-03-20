@@ -46,12 +46,12 @@ public class UserServicesSpace implements RxModuleContract {
 
 	@Managed
 	private SecurityConfiguration configuration() {
-		return getOrTunnel(platform.readConfig(SecurityConfiguration.T));
+		return getOrTunnel(platform.configuration().readConfig(SecurityConfiguration.T));
 	}
 	
 	@Managed
 	private UsersConfiguration usersConfiguration() {
-		return getOrTunnel(platform.readConfig(UsersConfiguration.T));
+		return getOrTunnel(platform.configuration().readConfig(UsersConfiguration.T));
 	}
 
 	public UserSessionService userSessionService() {
@@ -75,7 +75,7 @@ public class UserServicesSpace implements RxModuleContract {
 	private StandardUserSessionService standardUserSessionService() {
 		StandardUserSessionService bean = new StandardUserSessionService();
 		bean.setSessionIdProvider(userSessionIdFactory());
-		bean.setNodeId(platform.nodeId());
+		bean.setNodeId(platform.application().nodeId());
 		bean.setDefaultUserSessionMaxIdleTime(TimeSpan.create(24, TimeUnit.hour));
 		return bean;
 	}
@@ -85,7 +85,7 @@ public class UserServicesSpace implements RxModuleContract {
 		JdbcUserSessionService bean = new JdbcUserSessionService();
 		bean.setDataSource(dataSource);
 		bean.setSessionIdProvider(userSessionIdFactory());
-		bean.setNodeId(platform.nodeId());
+		bean.setNodeId(platform.application().nodeId());
 		bean.setDefaultUserSessionMaxIdleTime(TimeSpan.create(24, TimeUnit.hour));
 		return bean;
 	}

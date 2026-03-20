@@ -13,30 +13,23 @@
 // ============================================================================
 package hiconic.rx.module.api.wire;
 
-import java.nio.file.Path;
-
+import com.braintribe.gm.model.reason.Maybe;
+import com.braintribe.model.generic.GenericEntity;
+import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.wire.api.space.WireSpace;
 
-/**
- * 
- */
-public interface RxPlatformResourcesContract extends WireSpace {
+import hiconic.rx.module.api.service.ConfiguredModels;
 
-	/** Returns a resource relative to the root path, typically the app directory. */
-	RxResourcesBuilder resource(String path);
+public interface RxConfigurationContract extends WireSpace {
 
-	RxResourcesBuilder tmp(String path);
+	/** Returns the {@link ConfiguredModels}. */
+	ConfiguredModels configuredModels();
 
-	RxResourcesBuilder cache(String path);
-
-	RxResourcesBuilder data(String path);
-
-	RxResourcesBuilder conf(String path);
-
-	Path rootPath();
-	Path tmpPath();
-	Path cachePath();
-	Path dataPath();
-	Path confPath();
+	/**
+	 * Returns a configuration for the given type or a reason why the configuration could not be retrieved.
+	 * <p>
+	 * If an explicit configuration cannot be found a default initialized instance of the configType will be returned.
+	 */
+	<C extends GenericEntity> Maybe<C> readConfig(EntityType<C> configType);
 
 }

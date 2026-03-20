@@ -19,9 +19,9 @@ import hiconic.rx.check.model.api.request.CheckRequest;
 import hiconic.rx.check.processing.BasicCheckProcessorRegistry;
 import hiconic.rx.check.processing.CheckResponseHtmlMarshaller;
 import hiconic.rx.check.processing.CheckRxProcessor;
+import hiconic.rx.module.api.config.RxPlatformConfigurator;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.module.api.wire.RxModuleContract;
-import hiconic.rx.module.api.wire.RxPlatformConfigurator;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 
 /**
@@ -61,8 +61,8 @@ public class CheckRxModuleSpace implements RxModuleContract, CheckContract {
 	@Managed
 	private CheckRxProcessor checkRxProcessor() {
 		CheckRxProcessor bean = new CheckRxProcessor();
-		bean.setEvaluator(platform.systemEvaluator());
-		bean.setInstanceId(platform.instanceId());
+		bean.setEvaluator(platform.serviceProcessing().systemEvaluator());
+		bean.setInstanceId(platform.application().instanceId());
 		bean.setThreadContextScoping(threadContextScoping());
 		bean.setRegistry(checkProcessorRegistry());
 

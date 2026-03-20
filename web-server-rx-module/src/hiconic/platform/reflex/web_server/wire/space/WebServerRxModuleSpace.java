@@ -24,7 +24,6 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Set;
 
-import org.xnio.Option;
 import org.xnio.Options;
 
 import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
@@ -51,7 +50,6 @@ import io.undertow.Handlers;
 import io.undertow.Undertow;
 import io.undertow.Undertow.Builder;
 import io.undertow.Undertow.ListenerInfo;
-import io.undertow.UndertowOptions;
 import io.undertow.server.handlers.PathHandler;
 import io.undertow.server.handlers.accesslog.AccessLogHandler;
 import io.undertow.server.handlers.resource.FileResourceManager;
@@ -96,7 +94,7 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 
 	@Override
 	public void onLoaded(WireContextConfiguration configuration) {
-		platform.logManager().setLogLevel("io.undertow.request.error-response", System.Logger.Level.INFO);
+		platform.application().logManager().setLogLevel("io.undertow.request.error-response", System.Logger.Level.INFO);
 		undertowServer().start();
 
 		println( //
@@ -270,7 +268,7 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	
 	@Managed
 	private ApplicationStateGateHandler applicationStateGateHandler() {
-		ApplicationStateGateHandler bean = new ApplicationStateGateHandler(platform.stateManager());
+		ApplicationStateGateHandler bean = new ApplicationStateGateHandler(platform.application().stateManager());
 		return bean;
 	}
 
@@ -316,7 +314,7 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	}
 
 	private StaticWebServerConfiguration webServerConfiguration() {
-		return platform.readConfig(StaticWebServerConfiguration.T).get();
+		return platform.configuration().readConfig(StaticWebServerConfiguration.T).get();
 	}
 
 	@Managed
@@ -380,7 +378,7 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	}
 
 	private WebServerConfiguration configuration() {
-		return platform.readConfig(WebServerConfiguration.T).get();
+		return platform.configuration().readConfig(WebServerConfiguration.T).get();
 	}
 
 	private void registerFilter(DeploymentInfo deploymentInfo, String name, Filter filter, String pathMapping, DispatcherType dispatcherType) {
@@ -400,7 +398,7 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	@Managed
 	private DefaultRxServlet defaultServlet() {
 		DefaultRxServlet bean = new DefaultRxServlet();
-		bean.setApplicationName(platform.applicationName());
+		bean.setApplicationName(platform.application().applicationName());
 
 		return bean;
 	}

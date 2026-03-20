@@ -45,7 +45,7 @@ public class WebRpcClientRxModuleSpace implements RxModuleContract, WebRpcClient
 	public Evaluator<ServiceRequest> remoteEvaluator(WebRpcClientConnection connection) {
 		ConfigurableServiceRequestEvaluator bean = new ConfigurableServiceRequestEvaluator();
 		bean.setServiceProcessor(remoteServiceProcessor(connection));
-		bean.setExecutorService(platform.executorService());
+		bean.setExecutorService(platform.execution().executorService());
 		return bean;
 	}
 	

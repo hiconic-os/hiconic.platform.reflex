@@ -57,7 +57,7 @@ public class HibernateRxModuleSpace implements RxModuleContract, HibernateContra
 
 	@Override
 	public HibernatePersistence mainPersistence() {
-		return persistence(null, platform.configuredModels().mainPersistenceModel(), getOrTunnel(database.mainDataSource()));
+		return persistence(null, platform.configuration().configuredModels().mainPersistenceModel(), getOrTunnel(database.mainDataSource()));
 	}
 
 	@Managed

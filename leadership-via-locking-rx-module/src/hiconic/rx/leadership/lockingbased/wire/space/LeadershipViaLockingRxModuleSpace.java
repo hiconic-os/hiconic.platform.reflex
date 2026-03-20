@@ -42,7 +42,7 @@ public class LeadershipViaLockingRxModuleSpace implements RxModuleContract, Lead
 	}
 
 	private void configureLeadershipRefresh(LockingBasedLeadershipManager leadershipManager, InstanceConfiguration instanceConfiguration) {
-		TaskScheduler scheduler = platform.taskScheduler();
+		TaskScheduler scheduler = platform.execution().taskScheduler();
 
 		ScheduledTask task = scheduler.scheduleAtFixedRate( //
 				"leadership-refresher", //

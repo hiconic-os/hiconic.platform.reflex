@@ -43,8 +43,8 @@ public class WebRpcServerRxModuleSpace implements RxModuleContract {
 	private GmWebRpcServer webRpcServer() {
 		GmWebRpcServer bean = new GmWebRpcServer();
 		
-		bean.setEvaluator(platform.evaluator());
-		bean.setMarshallerRegistry(platform.marshallers());
+		bean.setEvaluator(platform.serviceProcessing().evaluator());
+		bean.setMarshallerRegistry(platform.marshalling().marshallers());
 		bean.setStreamPipeFactory(StreamPipes.simpleFactory());
 		
 		return bean;

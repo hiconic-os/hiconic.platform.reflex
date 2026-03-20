@@ -17,7 +17,7 @@ import com.braintribe.utils.stream.stats.BlockKind;
 import com.braintribe.utils.stream.stats.StreamPipeBlockStats;
 
 import hiconic.rx.module.api.wire.RxPlatformContract;
-import hiconic.rx.module.api.wire.RxPlatformResourcesContract;
+import hiconic.rx.module.api.wire.RxApplicationFilesContract;
 import hiconic.rx.reflection.model.application.RxAppInfo;
 import hiconic.rx.reflection.model.streampipes.PoolKind;
 import hiconic.rx.reflection.model.streampipes.StreamPipeBlocksInfo;
@@ -30,7 +30,7 @@ import hiconic.rx.reflection.model.system.disk.FolderInfo;
 public class StandardRxAppInfoProvider implements Supplier<RxAppInfo> {
 
 	private RxPlatformContract platform;
-	private RxPlatformResourcesContract platformResources;
+	private RxApplicationFilesContract platformResources;
 
 	private CompoundBlockPool compoundBlockPool;
 
@@ -40,7 +40,7 @@ public class StandardRxAppInfoProvider implements Supplier<RxAppInfo> {
 	}
 
 	@Required
-	public void setPlatformResourcesContract(RxPlatformResourcesContract platformResources) {
+	public void setPlatformResourcesContract(RxApplicationFilesContract platformResources) {
 		this.platformResources = platformResources;
 	}
 

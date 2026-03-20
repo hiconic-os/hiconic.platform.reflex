@@ -127,7 +127,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 	@Managed
 	private ResourceRequestProcessor resourceRequestProcessor() {
 		ResourceRequestProcessor bean = new ResourceRequestProcessor();
-		bean.setSystemEvaluator(platform.systemEvaluator());
+		bean.setSystemEvaluator(platform.serviceProcessing().systemEvaluator());
 		return bean;
 	}
 
@@ -190,7 +190,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 	}
 
 	private void registerAccesses() {
-		AccessConfiguration accessConfiguration = getOrTunnel(platform.readConfig(AccessConfiguration.T));
+		AccessConfiguration accessConfiguration = getOrTunnel(platform.configuration().readConfig(AccessConfiguration.T));
 
 		for (Access access : accessConfiguration.getAccesses())
 			deploy(access);
@@ -253,7 +253,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 	@Managed
 	public RxPersistenceGmSessionFactory systemSessionFactory() {
 		RxPersistenceGmSessionFactory bean = new RxPersistenceGmSessionFactory();
-		bean.setAttributeContextSupplier(platform.systemAttributeContextSupplier());
+		bean.setAttributeContextSupplier(platform.auth().systemAttributeContextSupplier());
 		bean.setResourceAccessFactory(systemResourceAccessFactory());
 		configure(bean);
 		return bean;
@@ -335,14 +335,14 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 
 	private void configure(RxPersistenceGmSessionFactory bean) {
 		bean.setAccesses(accesses());
-		bean.setEvaluatorSupplier(platform::evaluator);
+		bean.setEvaluatorSupplier(platform.serviceProcessing()::evaluator);
 	}
 
 	@Managed
 	private RxAccesses accesses() {
 		RxAccesses bean = new RxAccesses();
-		bean.setConfiguredModels(platform.configuredModels());
-		bean.setServiceDomains(platform.serviceDomains());
+		bean.setConfiguredModels(platform.configuration().configuredModels());
+		bean.setServiceDomains(platform.serviceProcessing().serviceDomains());
 		bean.setContextSessionFactory(contextSessionFactory());
 		bean.setSystemSessionFactory(systemSessionFactory());
 		bean.setAccessModelConfigurations(accessModelConfigurations());

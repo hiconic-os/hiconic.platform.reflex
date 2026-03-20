@@ -159,7 +159,7 @@ public class RxPlatform implements AutoCloseable {
 				cyan(formattedStartupDuration + "s") //
 		));
 
-		String domainIds = platformContract.serviceDomains().list().stream().map(ServiceDomain::domainId).collect(Collectors.joining("\n\t"));
+		String domainIds = platformContract.serviceProcessing().serviceDomains().list().stream().map(ServiceDomain::domainId).collect(Collectors.joining("\n\t"));
 		ConsoleOutputs.println(sequence( //
 				text("Service Domains:\n\t"), //
 				cyan(domainIds)) //

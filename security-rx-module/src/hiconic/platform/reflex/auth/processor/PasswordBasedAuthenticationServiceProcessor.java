@@ -29,7 +29,6 @@ import com.braintribe.model.meta.data.crypto.PropertyCrypting;
 import com.braintribe.model.processing.crypto.provider.CryptorProvider;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.securityservice.api.exceptions.SecurityServiceError;
-import com.braintribe.model.processing.session.api.persistence.PersistenceGmSession;
 import com.braintribe.model.securityservice.credentials.Credentials;
 import com.braintribe.model.securityservice.credentials.UserPasswordCredentials;
 import com.braintribe.model.securityservice.credentials.identification.UserIdentification;

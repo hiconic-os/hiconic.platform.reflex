@@ -17,7 +17,7 @@ import hiconic.rx.leadership.api.LeadershipContract;
 import hiconic.rx.locking.api.LockingContract;
 import hiconic.rx.messaging.api.MessagingContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
-import hiconic.rx.module.api.wire.RxPlatformResourcesContract;
+import hiconic.rx.module.api.wire.RxApplicationFilesContract;
 import hiconic.rx.module.api.wire.RxTransientDataContract;
 import hiconic.rx.reflection.model.application.RxAppInfo;
 import hiconic.rx.security.api.SecurityContract;
@@ -30,7 +30,7 @@ public class PlatformReflectionSpace implements WireSpace {
 
 	// @formatter:off
 	@Import private RxPlatformContract platform;
-	@Import private RxPlatformResourcesContract platformResources;
+	@Import private RxApplicationFilesContract platformResources;
 	@Import private RxTransientDataContract transientData;
 	
 	@Import private CheckContract check;

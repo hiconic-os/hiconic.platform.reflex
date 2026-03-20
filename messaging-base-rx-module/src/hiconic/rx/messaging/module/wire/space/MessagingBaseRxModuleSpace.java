@@ -32,8 +32,8 @@ public class MessagingBaseRxModuleSpace implements RxModuleContract, MessagingBa
 	public MessagingContext context() {
 		MessagingContext bean = new MessagingContext();
 		bean.setMarshaller(messageMarshaller());
-		bean.setApplicationId(platform.applicationId());
-		bean.setNodeId(platform.nodeId());
+		bean.setApplicationId(platform.application().applicationId());
+		bean.setNodeId(platform.application().nodeId());
 		return bean;
 	}
 
@@ -62,13 +62,13 @@ public class MessagingBaseRxModuleSpace implements RxModuleContract, MessagingBa
 	private ThresholdPersistenceMarshaller thresholdPersistenceMarshaller() {
 		ThresholdPersistenceMarshaller bean = new ThresholdPersistenceMarshaller();
 		bean.setDelegate(resourceAwareMarshaller());
-		bean.setSubstituteResourceMarshaller(platform.binMarshaller());
+		bean.setSubstituteResourceMarshaller(platform.marshalling().binMarshaller());
 		// TODO
 		bean.setThreshold(Long.MAX_VALUE);
 		bean.setAccessId("<TODO>");
 		// bean.setThreshold(messagingRuntimeProperties.TRIBEFIRE_MESSAGING_TRANSIENT_PERSISTENCE_THRESHOLD());
 		// bean.setAccessId(TribefireConstants.ACCESS_TRANSIENT_MESSAGING_DATA);
-		bean.setEvaluator(platform.systemEvaluator());
+		bean.setEvaluator(platform.serviceProcessing().systemEvaluator());
 
 		return bean;
 	}
@@ -77,7 +77,7 @@ public class MessagingBaseRxModuleSpace implements RxModuleContract, MessagingBa
 	private ResourceAwareMarshaller resourceAwareMarshaller() {
 		ResourceAwareMarshaller bean = new ResourceAwareMarshaller();
 		bean.setGmDataMimeType("application/gm");
-		bean.setMarshaller(platform.binMarshaller());
+		bean.setMarshaller(platform.marshalling().binMarshaller());
 		return bean;
 	}
 

@@ -32,7 +32,6 @@ import com.braintribe.model.securityservice.OpenUserSessionResponse;
 import com.braintribe.model.securityservice.credentials.Credentials;
 import com.braintribe.model.securityservice.credentials.GrantedCredentials;
 import com.braintribe.model.securityservice.credentials.identification.UserIdentification;
-import com.braintribe.model.user.Role;
 import com.braintribe.model.user.User;
 
 /**
@@ -103,13 +102,6 @@ public class GrantedCredentialsAuthenticationServiceProcessor extends BasicAuthe
 		}
 
 		return Maybe.complete(buildAuthenticatedUserFrom(userMaybe.get()));
-	}
-
-	private Role roleFromStr(String roleName) {
-		Role role = Role.T.create();
-		role.setName(roleName);
-
-		return role;
 	}
 
 	protected Reason checkGrantingPermission(AuthenticateCredentialsResponse authenticateCredentialsResponse) {

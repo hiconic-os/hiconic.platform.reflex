@@ -15,7 +15,7 @@ import hiconic.platform.reflex.web_server.processing.cors.handler.BasicCorsHandl
 import hiconic.platform.reflex.web_server.processing.exception.ExceptionFilter;
 import hiconic.platform.reflex.web_server.processing.exception.StandardExceptionHandler;
 import hiconic.rx.module.api.wire.RxPlatformContract;
-import hiconic.rx.module.api.wire.RxPlatformResourcesContract;
+import hiconic.rx.module.api.wire.RxApplicationFilesContract;
 import hiconic.rx.web.server.model.config.WebServerConfiguration;
 import jakarta.servlet.Filter;
 
@@ -29,7 +29,7 @@ public class FiltersSpace implements WireSpace {
 	private RxPlatformContract platform;
 
 	@Import
-	private RxPlatformResourcesContract platformResources;
+	private RxApplicationFilesContract platformResources;
 	
 	@Import
 	private WebServerRxModuleSpace webServer;
@@ -56,7 +56,7 @@ public class FiltersSpace implements WireSpace {
 	@Managed
 	public ThreadRenamerFilter threadRenamerFilter() {
 		ThreadRenamerFilter bean = new ThreadRenamerFilter();
-		bean.setThreadRenamer(platform.threadRenamer());
+		bean.setThreadRenamer(platform.execution().threadRenamer());
 		return bean;
 	}
 
@@ -80,7 +80,7 @@ public class FiltersSpace implements WireSpace {
 		StandardExceptionHandler bean = new StandardExceptionHandler();
 		bean.setExceptionExposure(webConfig.getExceptionExposure());
 		bean.setTracebackIdExposure(webConfig.getExposeTracebackId());
-		bean.setMarshallerRegistry(platform.marshallers());
+		bean.setMarshallerRegistry(platform.marshalling().marshallers());
 		bean.setRemoteAddressResolver(webServer.remoteAddressResolver());
 
 		return bean;
@@ -93,7 +93,7 @@ public class FiltersSpace implements WireSpace {
 	}
 
 	private WebServerConfiguration configuration() {
-		return platform.readConfig(WebServerConfiguration.T).get();
+		return platform.configuration().readConfig(WebServerConfiguration.T).get();
 	}
 
 }

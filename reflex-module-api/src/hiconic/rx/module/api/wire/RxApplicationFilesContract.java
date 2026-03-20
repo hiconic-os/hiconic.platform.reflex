@@ -13,14 +13,33 @@
 // ============================================================================
 package hiconic.rx.module.api.wire;
 
-import com.braintribe.wire.api.context.WireContext;
-import com.braintribe.wire.api.space.ContractSpaceResolver;
+import java.nio.file.Path;
+
+import com.braintribe.wire.api.space.WireSpace;
+
+import hiconic.rx.module.api.resource.RxResourcesBuilder;
 
 /**
- * Configures {@link ContractSpaceResolver}s on the platform's {@link WireContext}, which is also the parent context of individual module's contexts.
+ * 
  */
-public interface RxContractSpaceResolverConfigurator {
+// RxApplicationFilesContract
+public interface RxApplicationFilesContract extends WireSpace {
 
-	void addResolver(ContractSpaceResolver resolver);
+	/** Returns a resource relative to the root path, typically the app directory. */
+	RxResourcesBuilder resource(String path);
+
+	RxResourcesBuilder tmp(String path);
+
+	RxResourcesBuilder cache(String path);
+
+	RxResourcesBuilder data(String path);
+
+	RxResourcesBuilder conf(String path);
+
+	Path rootPath();
+	Path tmpPath();
+	Path cachePath();
+	Path dataPath();
+	Path confPath();
 
 }

@@ -1,16 +1,13 @@
 package hiconic.platform.reflex.web_server.processing;
 
-import java.lang.System.Logger;
-import java.lang.System.Logger.Level;
-
 import hiconic.rx.module.api.state.RxApplicationStateManager;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 
 public class ApplicationStateGateHandler implements HttpHandler {
-	private Logger logger = System.getLogger(ApplicationStateGateHandler.class.getName());
-	private BlockingHolder<HttpHandler> standardHandler = new BlockingHolder<>();
-	private RxApplicationStateManager stateManager;
+
+	private final BlockingHolder<HttpHandler> standardHandler = new BlockingHolder<>();
+	private final RxApplicationStateManager stateManager;
 	
 	public ApplicationStateGateHandler(RxApplicationStateManager stateManager) {
 		super();

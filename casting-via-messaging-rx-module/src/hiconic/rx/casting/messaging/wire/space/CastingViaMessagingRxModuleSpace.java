@@ -13,10 +13,7 @@
 // ============================================================================
 package hiconic.rx.casting.messaging.wire.space;
 
-import java.util.Collections;
-
 import com.braintribe.model.messaging.Topic;
-import com.braintribe.model.processing.bootstrapping.TribefireRuntime;
 import com.braintribe.model.processing.mqrpc.server.GmMqRpcServer;
 import com.braintribe.model.processing.service.api.aspect.EndpointExposureAspect;
 import com.braintribe.model.service.api.MulticastRequest;
@@ -64,7 +61,7 @@ public class CastingViaMessagingRxModuleSpace implements RxModuleContract {
 		bean.setMessagingSessionProvider(messaging.sessionProvider());
 		bean.setRequestTopicName(messagingDestinations.multicastRequestTopicName());
 		bean.setResponseTopicName(messagingDestinations.multicastResponseTopicName());
-		bean.setSenderId(platform.instanceId());
+		bean.setSenderId(platform.application().instanceId());
 		bean.setLiveInstances(topology.liveInstances());
 
 		return bean;
@@ -83,13 +80,13 @@ public class CastingViaMessagingRxModuleSpace implements RxModuleContract {
 	@Managed
 	private GmMqRpcServer server() {
 		GmMqRpcServer bean = new GmMqRpcServer();
-		bean.setRequestEvaluator(platform.evaluator());
+		bean.setRequestEvaluator(platform.serviceProcessing().evaluator());
 		bean.setMessagingSessionProvider(messaging.sessionProvider());
 		bean.setRequestDestinationName(messagingDestinations.multicastRequestTopicName());
 		bean.setRequestDestinationType(Topic.T);
-		bean.setConsumerId(platform.instanceId());
-		bean.setExecutor(platform.executorService());
-		bean.setThreadRenamer(platform.threadRenamer());
+		bean.setConsumerId(platform.application().instanceId());
+		bean.setExecutor(platform.execution().executorService());
+		bean.setThreadRenamer(platform.execution().threadRenamer());
 		bean.setTrusted(false);
 		bean.setKeepAliveInterval(10000L);
 		bean.setEndpointExposure(EndpointExposureAspect.MULTICAST);

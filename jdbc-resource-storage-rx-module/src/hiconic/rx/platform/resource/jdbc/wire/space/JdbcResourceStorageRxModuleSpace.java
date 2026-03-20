@@ -8,9 +8,9 @@ import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.db.module.api.DatabaseContract;
+import hiconic.rx.module.api.config.RxPlatformConfigurator;
 import hiconic.rx.module.api.resource.ResourceStorage;
 import hiconic.rx.module.api.wire.RxModuleContract;
-import hiconic.rx.module.api.wire.RxPlatformConfigurator;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.platform.resource.jdbc.processing.JdbcResourceStorage;
 

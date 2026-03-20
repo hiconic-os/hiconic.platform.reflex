@@ -37,8 +37,8 @@ public class EntityScan {
 	private final EnqueuedScan deferringAnchor = new EnqueuedScan(null, null, null);
 	private EnqueuedScan lastNode = deferringAnchor;
 	private boolean directPropertyAccess;
-	private EntityScanListener listener;
-	private Set<GenericEntity> visited = Collections.newSetFromMap(new IdentityHashMap<GenericEntity, Boolean>());
+	private final EntityScanListener listener;
+	private final Set<GenericEntity> visited = Collections.newSetFromMap(new IdentityHashMap<GenericEntity, Boolean>());
 	
 	public EntityScan(EntityScanListener listener) {
 		super();
@@ -142,7 +142,7 @@ public class EntityScan {
 					if (handleKey)
 						visit(keyType, mapKey, depth + 1, kpe);
 					
-					if (handleValue);
+					if (handleValue)
 						visit(valueType, mapValue, depth + 1, new TraversingMapValueModelPathElement(kpe));
 				}
 				return;
