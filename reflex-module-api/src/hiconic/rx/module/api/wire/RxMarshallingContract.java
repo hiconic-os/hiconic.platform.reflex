@@ -13,33 +13,17 @@
 // ============================================================================
 package hiconic.rx.module.api.wire;
 
-import java.nio.file.Path;
-
+import com.braintribe.codec.marshaller.api.CharacterMarshaller;
+import com.braintribe.codec.marshaller.api.Marshaller;
+import com.braintribe.codec.marshaller.api.MarshallerRegistry;
 import com.braintribe.wire.api.space.WireSpace;
 
-import hiconic.rx.module.api.resource.RxResourcesBuilder;
+public interface RxMarshallingContract extends WireSpace {
 
-/**
- * 
- */
-// RxApplicationFilesContract
-public interface RxPlatformResourcesContract extends WireSpace {
+	MarshallerRegistry marshallers();
 
-	/** Returns a resource relative to the root path, typically the app directory. */
-	RxResourcesBuilder resource(String path);
-
-	RxResourcesBuilder tmp(String path);
-
-	RxResourcesBuilder cache(String path);
-
-	RxResourcesBuilder data(String path);
-
-	RxResourcesBuilder conf(String path);
-
-	Path rootPath();
-	Path tmpPath();
-	Path cachePath();
-	Path dataPath();
-	Path confPath();
+	CharacterMarshaller jsonMarshaller();
+	CharacterMarshaller yamlMarshaller();
+	Marshaller binMarshaller();
 
 }

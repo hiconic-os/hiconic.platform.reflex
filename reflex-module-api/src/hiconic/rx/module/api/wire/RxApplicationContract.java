@@ -13,35 +13,28 @@
 // ============================================================================
 package hiconic.rx.module.api.wire;
 
-import com.braintribe.wire.api.annotation.Import;
+import com.braintribe.model.service.api.InstanceId;
+import com.braintribe.wire.api.space.WireSpace;
 
-/**
- * Main contract that serves as a library of all contracts {@link Import imported} to any Reflex module.
- * 
- * @see RxExportContract
- * @see EnvironmentPropertiesContract
- * @see SystemPropertiesContract
- * @see RxPropertiesContract
- */
-@SuppressWarnings("deprecation")
-public interface RxPlatformContract extends DeprecatedRxPlatformContract {
+import hiconic.rx.module.api.log.RxLogManager;
+import hiconic.rx.module.api.state.RxApplicationStateManager;
 
-	RxApplicationContract application();
+public interface RxApplicationContract extends WireSpace {
 
-	RxAuthContract auth();
+	RxLogManager logManager();
 
-	RxConfigurationContract configuration();
+	RxApplicationStateManager stateManager();
 
-	RxExecutionContract execution();
+	/** The name of the application which the platform is hosting given by the applicationName property in META-INF/rx-app.properties */
+	String applicationName();
 
-	RxMarshallingContract marshalling();
+	/** The technical application id. */
+	String applicationId();
 
-	RxPlatformResourcesContract platformResources();
+	/** The nodeId of this instance in distributed systems */
+	String nodeId();
 
-	RxProcessLaunchContract processLaunch();
-
-	RxServiceProcessingContract serviceProcessing();
-
-	RxTransientDataContract transientData();
+	/** Holds the applicationId and nodeId information (not sure why this was introduced). */
+	InstanceId instanceId();
 
 }

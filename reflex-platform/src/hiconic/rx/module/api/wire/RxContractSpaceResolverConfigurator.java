@@ -13,35 +13,15 @@
 // ============================================================================
 package hiconic.rx.module.api.wire;
 
-import com.braintribe.wire.api.annotation.Import;
+import com.braintribe.wire.api.context.WireContext;
+import com.braintribe.wire.api.space.ContractSpaceResolver;
 
 /**
- * Main contract that serves as a library of all contracts {@link Import imported} to any Reflex module.
- * 
- * @see RxExportContract
- * @see EnvironmentPropertiesContract
- * @see SystemPropertiesContract
- * @see RxPropertiesContract
+ * Configures {@link ContractSpaceResolver}s on the platform's {@link WireContext}, which is also the parent context of individual module's contexts.
  */
-@SuppressWarnings("deprecation")
-public interface RxPlatformContract extends DeprecatedRxPlatformContract {
+// TODO move to platform
+public interface RxContractSpaceResolverConfigurator {
 
-	RxApplicationContract application();
-
-	RxAuthContract auth();
-
-	RxConfigurationContract configuration();
-
-	RxExecutionContract execution();
-
-	RxMarshallingContract marshalling();
-
-	RxPlatformResourcesContract platformResources();
-
-	RxProcessLaunchContract processLaunch();
-
-	RxServiceProcessingContract serviceProcessing();
-
-	RxTransientDataContract transientData();
+	void addResolver(ContractSpaceResolver resolver);
 
 }

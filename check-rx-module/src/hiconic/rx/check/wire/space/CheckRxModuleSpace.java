@@ -19,9 +19,9 @@ import hiconic.rx.check.model.api.request.CheckRequest;
 import hiconic.rx.check.processing.BasicCheckProcessorRegistry;
 import hiconic.rx.check.processing.CheckResponseHtmlMarshaller;
 import hiconic.rx.check.processing.CheckRxProcessor;
+import hiconic.rx.module.api.config.RxPlatformConfigurator;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.module.api.wire.RxModuleContract;
-import hiconic.rx.module.api.wire.RxPlatformConfigurator;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 
 /**

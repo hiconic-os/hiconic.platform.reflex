@@ -18,10 +18,10 @@ import com.braintribe.model.processing.service.impl.DispatchConfiguration;
 import com.braintribe.model.resource.source.ResourceSource;
 
 import hiconic.rx.model.service.processing.md.StoreWith;
+import hiconic.rx.module.api.config.RxPlatformConfigurator;
 import hiconic.rx.module.api.resource.ResourceStorage;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.service.ServiceDomains;
-import hiconic.rx.module.api.wire.RxPlatformConfigurator;
 import hiconic.rx.resource.model.api.DeleteResourcePayload;
 import hiconic.rx.resource.model.api.DeleteResourcePayloadResponse;
 import hiconic.rx.resource.model.api.ExistingResourcePayloadRequest;

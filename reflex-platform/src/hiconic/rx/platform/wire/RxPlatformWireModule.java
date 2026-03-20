@@ -18,20 +18,30 @@ import java.io.File;
 import com.braintribe.wire.api.context.WireContextBuilder;
 import com.braintribe.wire.api.module.WireTerminalModule;
 
+import hiconic.rx.module.api.wire.RxApplicationContract;
 import hiconic.rx.module.api.wire.RxAuthContract;
+import hiconic.rx.module.api.wire.RxConfigurationContract;
 import hiconic.rx.module.api.wire.RxContractSpaceResolverConfigurator;
+import hiconic.rx.module.api.wire.RxExecutionContract;
+import hiconic.rx.module.api.wire.RxMarshallingContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.module.api.wire.RxPlatformResourcesContract;
 import hiconic.rx.module.api.wire.RxProcessLaunchContract;
+import hiconic.rx.module.api.wire.RxServiceProcessingContract;
 import hiconic.rx.module.api.wire.RxTransientDataContract;
 import hiconic.rx.platform.conf.ApplicationProperties;
 import hiconic.rx.platform.conf.SystemProperties;
 import hiconic.rx.platform.loading.RxConfigurableContractSpaceResolver;
 import hiconic.rx.platform.wire.contract.ExtendedRxPlatformContract;
 import hiconic.rx.platform.wire.contract.RxPlatformConfigContract;
+import hiconic.rx.platform.wire.space.RxApplicationSpace;
 import hiconic.rx.platform.wire.space.RxAuthSpace;
+import hiconic.rx.platform.wire.space.RxConfigurationSpace;
+import hiconic.rx.platform.wire.space.RxExecutionSpace;
+import hiconic.rx.platform.wire.space.RxMarshallingSpace;
 import hiconic.rx.platform.wire.space.RxPlatformResourcesSpace;
 import hiconic.rx.platform.wire.space.RxPlatformSpace;
+import hiconic.rx.platform.wire.space.RxServiceProcessingSpace;
 import hiconic.rx.platform.wire.space.RxTransientDataSpace;
 
 public class RxPlatformWireModule implements WireTerminalModule<RxPlatformContract> {
@@ -76,8 +86,13 @@ public class RxPlatformWireModule implements WireTerminalModule<RxPlatformContra
 		WireTerminalModule.super.configureContext(contextBuilder);
 		contextBuilder.bindContract(RxPlatformContract.class, RxPlatformSpace.class);
 		contextBuilder.bindContract(ExtendedRxPlatformContract.class, RxPlatformSpace.class);
+		contextBuilder.bindContract(RxApplicationContract.class, RxApplicationSpace.class);
 		contextBuilder.bindContract(RxAuthContract.class, RxAuthSpace.class);
+		contextBuilder.bindContract(RxConfigurationContract.class, RxConfigurationSpace.class);
+		contextBuilder.bindContract(RxExecutionContract.class, RxExecutionSpace.class);
+		contextBuilder.bindContract(RxMarshallingContract.class, RxMarshallingSpace.class);
 		contextBuilder.bindContract(RxPlatformResourcesContract.class, RxPlatformResourcesSpace.class);
+		contextBuilder.bindContract(RxServiceProcessingContract.class, RxServiceProcessingSpace.class);
 		contextBuilder.bindContract(RxTransientDataContract.class, RxTransientDataSpace.class);
 		contextBuilder.bindContract(RxProcessLaunchContract.class, RxPlatformSpace.class);
 		contextBuilder.bindContract(RxPlatformConfigContract.class, config);

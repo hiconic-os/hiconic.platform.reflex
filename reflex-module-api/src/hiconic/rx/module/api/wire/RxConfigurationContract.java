@@ -13,14 +13,23 @@
 // ============================================================================
 package hiconic.rx.module.api.wire;
 
-import com.braintribe.wire.api.context.WireContext;
-import com.braintribe.wire.api.space.ContractSpaceResolver;
+import com.braintribe.gm.model.reason.Maybe;
+import com.braintribe.model.generic.GenericEntity;
+import com.braintribe.model.generic.reflection.EntityType;
+import com.braintribe.wire.api.space.WireSpace;
 
-/**
- * Configures {@link ContractSpaceResolver}s on the platform's {@link WireContext}, which is also the parent context of individual module's contexts.
- */
-public interface RxContractSpaceResolverConfigurator {
+import hiconic.rx.module.api.service.ConfiguredModels;
 
-	void addResolver(ContractSpaceResolver resolver);
+public interface RxConfigurationContract extends WireSpace {
+
+	/** Returns the {@link ConfiguredModels}. */
+	ConfiguredModels configuredModels();
+
+	/**
+	 * Returns a configuration for the given type or a reason why the configuration could not be retrieved.
+	 * <p>
+	 * If an explicit configuration cannot be found a default initialized instance of the configType will be returned.
+	 */
+	<C extends GenericEntity> Maybe<C> readConfig(EntityType<C> configType);
 
 }

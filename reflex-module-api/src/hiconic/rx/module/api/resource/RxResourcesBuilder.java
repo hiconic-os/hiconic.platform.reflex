@@ -1,5 +1,5 @@
 // ============================================================================
-package hiconic.rx.module.api.wire;
+package hiconic.rx.module.api.resource;
 
 import java.io.UncheckedIOException;
 
@@ -28,12 +28,14 @@ public interface RxResourcesBuilder extends ResourceHandle {
 	 * @throws MarshallException
 	 *             Upon failures while unmarshalling the resource.
 	 */
+	@Deprecated
 	<T> T asAssembly(Marshaller marshaller) throws UncheckedIOException, MarshallException;
 
 	/**
 	 * Similar to {@link #asAssembly(Marshaller)}, but returns the default value if the underlying resource (e.g. File)
 	 * does not exist.
 	 */
+	@Deprecated
 	<T> T asAssembly(Marshaller marshaller, T defaultValue);
 
 }

@@ -40,7 +40,7 @@ public abstract class AbstractRxTest {
 			System.out.println("Loading RxPlatform");
 			platform = new RxPlatform(systemPropertyLookup(), applicationPropertyLookup());
 			platformContract = platform.getContract();
-			evaluator = platform.getContract().evaluator();
+			evaluator = platform.getContract().serviceProcessing().evaluator();
 
 		} catch (UnsatisfiedMaybeTunneling e) {
 			System.err.print(e.getMaybe().whyUnsatisfied().stringify());

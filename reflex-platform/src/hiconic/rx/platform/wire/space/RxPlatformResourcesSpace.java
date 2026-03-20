@@ -22,8 +22,8 @@ import com.braintribe.utils.lcd.NullSafe;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
+import hiconic.rx.module.api.resource.RxResourcesBuilder;
 import hiconic.rx.module.api.wire.RxPlatformResourcesContract;
-import hiconic.rx.module.api.wire.RxResourcesBuilder;
 import hiconic.rx.platform.processing.resource.RxResourcesBuilding.RxPathResourcesBuilder;
 import hiconic.rx.platform.wire.contract.RxPlatformConfigContract;
 

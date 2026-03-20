@@ -7,8 +7,8 @@ import com.braintribe.model.processing.worker.api.WorkerManager;
 import com.braintribe.model.resource.source.ResourceSource;
 import com.braintribe.provider.Box;
 
+import hiconic.rx.module.api.config.RxPlatformConfigurator;
 import hiconic.rx.module.api.resource.ResourceStorageDeploymentExpert;
-import hiconic.rx.module.api.wire.RxPlatformConfigurator;
 import hiconic.rx.platform.resource.RxResourcesStorages;
 import hiconic.rx.resource.model.configuration.ResourceStorage;
 

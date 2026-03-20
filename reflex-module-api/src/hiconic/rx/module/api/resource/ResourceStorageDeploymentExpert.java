@@ -3,7 +3,7 @@ package hiconic.rx.module.api.resource;
 
 import com.braintribe.gm.model.reason.Maybe;
 
-import hiconic.rx.module.api.wire.RxPlatformConfigurator;
+import hiconic.rx.module.api.config.RxPlatformConfigurator;
 
 /**
  * Expert for instantiating a {@link ResourceStorage} implementation out of a {@link hiconic.rx.resource.model.configuration.ResourceStorage}
