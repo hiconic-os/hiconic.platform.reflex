@@ -30,7 +30,6 @@ import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.processing.worker.api.WorkerManager;
 import com.braintribe.model.service.api.InstanceId;
 import com.braintribe.model.service.api.ServiceRequest;
-import com.braintribe.model.usersession.UserSession;
 import com.braintribe.thread.api.DeferringThreadContextScoping;
 import com.braintribe.wire.api.space.WireSpace;
 
@@ -39,101 +38,99 @@ import hiconic.rx.module.api.service.ConfiguredModels;
 import hiconic.rx.module.api.service.ServiceDomains;
 import hiconic.rx.module.api.state.RxApplicationStateManager;
 
+/**
+ * These methods were originally put on {@link RxPlatformContract}, which was then refactored to be purely a catalog of other contracts available by
+ * the platform.
+ */
 @Deprecated
 public interface DeprecatedRxPlatformContract extends WireSpace {
 
-	/** Standard request {@link Evaluator}, which has the same authorization as the caller. */
+	/** @deprecated use {@link RxServiceProcessingContract#evaluator()} */
 	@Deprecated
 	Evaluator<ServiceRequest> evaluator();
 
-	/**
-	 * {@link Evaluator} backed by {@link #systemAttributeContextSupplier()}, thus having system user (i.e. full) authorization when evaluating
-	 * requests.
-	 * <p>
-	 * Equivalent to: {@code this.evaluator(systemAttributeContextSupplier().get())}
-	 */
+	/** @deprecated use {@link RxServiceProcessingContract#systemEvaluator()} */
 	@Deprecated
 	Evaluator<ServiceRequest> systemEvaluator();
 
-	/** {@link Evaluator} backed by given {@link AttributeContext}, which can e.g. have different authorization. */
+	/** @deprecated use {@link RxServiceProcessingContract#evaluator(AttributeContext)} */
 	@Deprecated
 	Evaluator<ServiceRequest> evaluator(AttributeContext attributeContext);
 
-	/** Returns the {@link ServiceDomains}. */
+	/** @deprecated use {@link RxServiceProcessingContract#serviceDomains()} */
 	@Deprecated
 	ServiceDomains serviceDomains();
 
-	/** {@link AttributeContext} equipped with the system user's {@link UserSession}. */
+	/** @deprecated use {@link RxAuthContract#systemAttributeContextSupplier()} */
 	@Deprecated
 	Supplier<AttributeContext> systemAttributeContextSupplier();
 
-	/** Returns the {@link ConfiguredModels}. */
+	/** @deprecated use {@link RxConfigurationContract#configuredModels()} */
 	@Deprecated
 	ConfiguredModels configuredModels();
 
-	/**
-	 * Returns a configuration for the given type or a reason why the configuration could not be retrieved.
-	 * <p>
-	 * If an explicit configuration cannot be found a default initialized instance of the configType will be returned.
-	 */
+	/** @deprecated use {@link RxConfigurationContract#readConfig(EntityType)} */
 	@Deprecated
 	<C extends GenericEntity> Maybe<C> readConfig(EntityType<C> configType);
 
+	/** @deprecated use {@link RxMarshallingContract#marshallers()} */
 	@Deprecated
 	MarshallerRegistry marshallers();
+	/** @deprecated use {@link RxMarshallingContract#jsonMarshaller()} */
 	@Deprecated
 	CharacterMarshaller jsonMarshaller();
+	/** @deprecated use {@link RxMarshallingContract#yamlMarshaller()} */
 	@Deprecated
 	CharacterMarshaller yamlMarshaller();
+	/** @deprecated use {@link RxMarshallingContract#binMarshaller()} */
 	@Deprecated
 	Marshaller binMarshaller();
 
+	/** @deprecated use {@link RxApplicationContract#logManager()} */
 	@Deprecated
 	RxLogManager logManager();
 
+	/** @deprecated use {@link RxApplicationContract#stateManager()} */
 	@Deprecated
 	RxApplicationStateManager stateManager();
 
-	/** The name of the application which the platform is hosting given by the applicationName property in META-INF/rx-app.properties */
+	/** @deprecated use {@link RxApplicationContract#applicationName()} */
 	@Deprecated
 	String applicationName();
 
-	/** The technical application id. */
+	/** @deprecated use {@link RxApplicationContract#applicationId()} */
 	@Deprecated
 	String applicationId();
 
-	/** The nodeId of this instance in distributed systems */
+	/** @deprecated use {@link RxApplicationContract#nodeId()} */
 	@Deprecated
 	String nodeId();
 
-	/** Holds the applicationId and nodeId information (not sure why this was introduced). */
+	/** @deprecated use {@link RxApplicationContract#instanceId()} */
 	@Deprecated
 	InstanceId instanceId();
 
-	/** The one ThreadRenamer used in the entire application. */
+	/** @deprecated use {@link RxExecutionContract#threadRenamer()} */
 	@Deprecated
 	ThreadRenamer threadRenamer();
 
-	/** General purpose thread pool. */
+	/** @deprecated use {@link RxExecutionContract#executorService()} */
 	@Deprecated
 	ExecutorService executorService();
 
+	/** @deprecated use {@link RxExecutionContract#scheduledExecutorService()} */
 	@Deprecated
 	ScheduledExecutorService scheduledExecutorService();
 
+	/** @deprecated use {@link RxExecutionContract#threadContextScoping()} */
 	@Deprecated
 	DeferringThreadContextScoping threadContextScoping();
 
-	/**
-	 * {@link TaskScheduler} for tasks which should be run periodically.
-	 * <p>
-	 * This scheduler is shut down on server shutdown, but waits for the tasks running at the moment of shutdown to finish.
-	 * <p>
-	 * The time period as to how long it waits is configurable per task.
-	 */
+	/** @deprecated use {@link RxExecutionContract#taskScheduler()} */
 	@Deprecated
 	TaskScheduler taskScheduler();
 
+	/** @deprecated use {@link RxExecutionContract#workerManager()} */
 	@Deprecated
 	WorkerManager workerManager();
 
