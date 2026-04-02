@@ -14,6 +14,7 @@
 package hiconic.rx.module.api.config;
 
 import com.braintribe.codec.marshaller.api.ConfigurableMarshallerRegistry;
+import com.braintribe.mimetype.MimeTypeDetector;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.processing.worker.api.ConfigurableWorkerAspectRegistry;
 import com.braintribe.model.processing.worker.api.Worker;
@@ -42,6 +43,9 @@ public interface RxPlatformConfigurator {
 	 */
 	void setWorkerManager(WorkerManager workerManager);
 
+	/** Overrides the default  MimeTypeDetector */
+	void setMimeTypeDetector(MimeTypeDetector mimeTypeDetector);
+	
 	ConfigurableMarshallerRegistry marshallerRegistry();
 
 	ConfigurableWorkerAspectRegistry workerAspectRegistry();

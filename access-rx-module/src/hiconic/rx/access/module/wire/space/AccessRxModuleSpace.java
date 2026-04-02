@@ -27,7 +27,6 @@ import com.braintribe.gm._ModelEnvironmentApiModel_;
 import com.braintribe.gm._ResourceApiModel_;
 import com.braintribe.gm._ResourceModel_;
 import com.braintribe.gm.model.persistence.reflection.api.PersistenceReflectionRequest;
-import com.braintribe.mimetype.PlatformMimeTypeDetector;
 import com.braintribe.model.access.IncrementalAccess;
 import com.braintribe.model.accessapi.PersistenceRequest;
 import com.braintribe.model.generic.reflection.EntityType;
@@ -146,7 +145,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 	@Managed
 	private ResourceEnricher standardPreEnricher() {
 		StandardResourcePrePersistenceEnricher bean = new StandardResourcePrePersistenceEnricher();
-		bean.setMimeTypeDetector(PlatformMimeTypeDetector.instance);
+		bean.setMimeTypeDetector(transientData.mimeTypeDetector());
 		bean.setStreamPipeFactory(transientData.streamPipeFactory());
 		bean.setSpecificationDetector(standardSpecificationDetector());
 		return bean;

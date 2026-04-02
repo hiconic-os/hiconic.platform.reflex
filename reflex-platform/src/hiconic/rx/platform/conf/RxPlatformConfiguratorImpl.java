@@ -1,6 +1,7 @@
 package hiconic.rx.platform.conf;
 
 import com.braintribe.codec.marshaller.api.ConfigurableMarshallerRegistry;
+import com.braintribe.mimetype.MimeTypeDetector;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.processing.worker.api.ConfigurableWorkerAspectRegistry;
 import com.braintribe.model.processing.worker.api.WorkerManager;
@@ -18,6 +19,7 @@ import hiconic.rx.resource.model.configuration.ResourceStorage;
 public class RxPlatformConfiguratorImpl implements RxPlatformConfigurator {
 
 	public Box<WorkerManager> workerManagerHolder;
+	public Box<MimeTypeDetector> mimeTypeDetectorHolder;
 	public ConfigurableMarshallerRegistry marshallerRegistry;
 	public ConfigurableWorkerAspectRegistry workerAspectRegistry;
 	public RxResourcesStorages resourceStorages;
@@ -25,6 +27,11 @@ public class RxPlatformConfiguratorImpl implements RxPlatformConfigurator {
 	@Override
 	public void setWorkerManager(WorkerManager workerManager) {
 		workerManagerHolder.value = workerManager;
+	}
+
+	@Override
+	public void setMimeTypeDetector(MimeTypeDetector mimeTypeDetector) {
+		mimeTypeDetectorHolder.value = mimeTypeDetector;
 	}
 
 	@Override

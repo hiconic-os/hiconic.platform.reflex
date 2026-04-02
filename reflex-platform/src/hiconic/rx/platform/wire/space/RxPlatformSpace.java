@@ -152,6 +152,7 @@ public class RxPlatformSpace extends CoreServicesSpace implements ExtendedRxPlat
 	@Managed
 	private RxPlatformConfigurator platformConfigurator() {
 		RxPlatformConfiguratorImpl bean = new RxPlatformConfiguratorImpl();
+		bean.mimeTypeDetectorHolder = transientData.mimeTypeDetectorHolder();
 		bean.workerManagerHolder = execution.workerManagerHolder();
 		bean.workerAspectRegistry = execution.workerAspectRegistry();
 		bean.marshallerRegistry = marshalling.marshallers();

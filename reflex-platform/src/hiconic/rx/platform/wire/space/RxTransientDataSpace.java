@@ -15,8 +15,11 @@ package hiconic.rx.platform.wire.space;
 
 import java.io.File;
 
+import com.braintribe.mimetype.MimeTypeDetector;
+import com.braintribe.mimetype.PlatformMimeTypeDetector;
 import com.braintribe.model.resource.api.ResourceBuilder;
 import com.braintribe.model.resource.utils.StreamPipeTransientResourceBuilder;
+import com.braintribe.provider.Box;
 import com.braintribe.utils.FileTools;
 import com.braintribe.utils.stream.pools.CompoundBlockPool;
 import com.braintribe.utils.stream.pools.SmartBlockPoolFactory;
@@ -53,6 +56,17 @@ public class RxTransientDataSpace implements RxTransientDataContract {
 		File tempDir = FileTools.getTempDir();
 		File bean = new File(tempDir, "platform/basicStreamPipe");
 
+		return bean;
+	}
+
+	@Override
+	public MimeTypeDetector mimeTypeDetector() {
+		return mimeTypeDetectorHolder().value;
+	}
+
+	@Managed
+	public Box<MimeTypeDetector> mimeTypeDetectorHolder() {
+		Box<MimeTypeDetector> bean = Box.of(PlatformMimeTypeDetector.instance);
 		return bean;
 	}
 

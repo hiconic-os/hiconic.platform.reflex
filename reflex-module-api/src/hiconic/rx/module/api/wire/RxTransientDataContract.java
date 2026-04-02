@@ -15,6 +15,7 @@ package hiconic.rx.module.api.wire;
 
 import java.io.File;
 
+import com.braintribe.mimetype.MimeTypeDetector;
 import com.braintribe.model.resource.Resource;
 import com.braintribe.model.resource.api.ResourceBuilder;
 import com.braintribe.utils.stream.api.StreamPipe;
@@ -42,5 +43,7 @@ public interface RxTransientDataContract extends WireSpace {
 	 * {@link #streamPipeFactory()}.
 	 */
 	ResourceBuilder transientResourceBuilder();
+
+	MimeTypeDetector mimeTypeDetector();
 
 }
