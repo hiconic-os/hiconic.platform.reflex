@@ -43,7 +43,7 @@ public class RxConfigurationSpace implements RxConfigurationContract {
 	private RxMarshallingSpace marshalling;
 
 	@Import
-	private RxApplicationFilesSpace platformResources;
+	private RxApplicationFilesSpace applicationFiles;
 
 	@Override
 	@Managed
@@ -75,7 +75,7 @@ public class RxConfigurationSpace implements RxConfigurationContract {
 	@Managed
 	private ModeledYamlConfiguration modeledConfiguration() {
 		ModeledYamlConfiguration bean = new ModeledYamlConfiguration();
-		bean.setConfigFolder(platformResources.confPath().toFile());
+		bean.setConfigFolder(applicationFiles.confPath().toFile());
 		bean.setExternalReasonedPropertyLookup(propertyResolver()::resolveReasoned);
 		return bean;
 	}
@@ -85,7 +85,7 @@ public class RxConfigurationSpace implements RxConfigurationContract {
 		RxPropertyResolver bean = new RxPropertyResolver();
 
 		Map<String, String> rawProperties = getOrTunnel(
-				RxPropertiesLoader.loadFromFolder(platformResources.confPath().toFile(), "properties(-.*)?.yaml", marshalling.yamlMarshaller()));
+				RxPropertiesLoader.loadFromFolder(applicationFiles.confPath().toFile(), "properties(-.*)?.yaml", marshalling.yamlMarshaller()));
 		bean.setRawProperties(rawProperties);
 		return bean;
 	}
