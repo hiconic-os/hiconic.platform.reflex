@@ -30,6 +30,7 @@ import org.hibernate.cfg.Configuration;
 import org.hibernate.cfg.Environment;
 
 import com.braintribe.cfg.Configurable;
+import com.braintribe.model.accessdeployment.hibernate.meta.MappingVersion;
 import com.braintribe.model.generic.GMF;
 import com.braintribe.model.processing.deployment.hibernate.mapping.HbmXmlGeneratingService;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
@@ -94,19 +95,29 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 		if (dialectAutoSense != null)
 			properties.put(Environment.DIALECT, dialectAutoSense.senseDialect(dataSource));
 
-		if (isMappingVersion1())
+		Integer mappingVersion = mappingVersion();
+		if (isMappingVersion1(mappingVersion))
 			properties.put(Environment.ID_DB_STRUCTURE_NAMING_STRATEGY, "single");
 
 		addConfigureadProperties(properties, hpConfiguration.getProperties());
 
-		generateMappings(configuration);
+		generateMappings(configuration, mappingVersion);
 
 		return configuration.buildSessionFactory();
 	}
 
-	private boolean isMappingVersion1() {
-		Integer v = hpConfiguration.getMappingVersion();
-		return v != null && v == HbmXmlGeneratingService.MAPPING_VERSION_1;
+	private Integer mappingVersion() {
+		Integer result = hpConfiguration.getMappingVersion();
+		if (result == null && cmdResolver != null) {
+			MappingVersion mv = cmdResolver.getMetaData().meta(MappingVersion.T).exclusive();
+			if (mv != null)
+				result = mv.getVersion();
+		}
+		return result;
+	}
+
+	private boolean isMappingVersion1(Integer mappingVersion) {
+		return mappingVersion != null && mappingVersion == MappingVersion.MAPPING_VERSION_1;
 	}
 
 	private void addConfigureadProperties(Properties properties, Map<String, String> additionalProperties) {
@@ -121,9 +132,9 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 		}
 	}
 
-	private void generateMappings(Configuration configuration) {
+	private void generateMappings(Configuration configuration, Integer mappingVersion) {
 		new HbmXmlGeneratingService() //
-				.mappingVersion(hpConfiguration.getMappingVersion()) //
+				.mappingVersion(mappingVersion) //
 				.defaultSchema(hpConfiguration.getDefaultSchema()) //
 				.defaultCatalog(hpConfiguration.getDefaultCatalog()) //
 				.tablePrefix(getTableNamePrefix()) //
