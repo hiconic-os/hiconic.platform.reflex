@@ -229,9 +229,7 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 	private Maybe<UserSession> buildUserSession(ServiceRequestContext context, OpenUserSession openUserSession,
 			AuthenticateCredentialsResponse authenticatedCredentialsResponse, String acquirationKey) {
 
-		if (authenticatedCredentialsResponse instanceof AuthenticatedUser) {
-			AuthenticatedUser authenticatedUser = (AuthenticatedUser) authenticatedCredentialsResponse;
-
+		if (authenticatedCredentialsResponse instanceof AuthenticatedUser authenticatedUser) {
 			log.trace(() -> "Creating session for client from IP: " + context.getRequestorAddress());
 
 			User user = authenticatedUser.getUser();

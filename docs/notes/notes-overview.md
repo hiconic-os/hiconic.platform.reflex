@@ -44,7 +44,7 @@ The purpose of a _Reflex_ module is to:
 
 ### Extension Mechanism
 
-An API to be used by other modules is exposed as an `RxExportContract` (which is a `WireSpace`), e.g.
+An API to be used by other modules is exposed as an `RxExportContract`, e.g.
 ```java
 public interface ImageWatermarkContract extends RxExportContract {
     ImageWatermarker imageWatermarker();
@@ -66,7 +66,9 @@ public class MyAppSpace implements MyAppContract {
 }
 ```
 
-This way there is no dependency on a specific implementation, which might come from another module, which binds a `Space` to this `Contract`.
+This way there is no dependency on a specific implementation.
+
+A module which brings the implementation implements the `Space` for the exported `Contract` and binds it in its `RxModule`:
 ```java
 public enum MyWatermarkRxModule implements RxModule<MyWatermarkRxModuleSpace> {
 	INSTANCE;
@@ -131,6 +133,85 @@ Note that the system detects a model-configuration related violation internally 
 
 ### Modeled Configuration
 
+We model configuration with models typically called `xyz-configuration-model`, each entity can be specified as a YAML file placed inside the `conf/` folder of our application, with a name derived from its type name for convenient resolving.
+
+**Example:**
+
+We have a `my-component-configuration-model` with `MyComponent`:
+```filesystem
+my-component-configuration-model/
+  src/
+    my/pckg/
+	  MyComponent.java
+```
+
+```java
+public interface MyComponent extends GenericEntity {
+	EntityType<MyComponent> T = EntityTypes.T(MyComponent.class);
+
+	@Mandatory
+	String getApiKey();
+	void setApiKey(String apiKey);
+
+	long getConnectionTimeouInMs();
+	void setConnectionTimeoutInMs(long connectionTimeoutInMs);
+}
+```
+
+The YAML file for our app:
+```filesystem
+my-app/
+  conf/
+    my-component.yaml
+```
+
+`my-component.yaml`:
+```yaml
+apiKey: "${MY_COMPONENT_API_KEY}"
+connectionTimeoutInMs: 5000
+```
+
+We can read this configuration via `RxConfigurationContract#readConfig(...)`:
+```java
+@Import
+RxConfigurationContract configuration;
+
+...
+
+MyComponent myComponent = configuration.readConfig(MyComponent.T).get();
+```
+
+### Property Configuration
+Modeled configuration files also support properties, e.g. `MY_COMPONENT_API_KEY` above.
+
+This property can specified in different ways, and the order of resolution is as follows:
+<ol>
+<li>System property (i.e. passed to JVM)</li>
+<li>Environment variable (ENV)</li>
+<li>Properties YAML file</li>
+</ol>
+
+Properties YAML file is one of files in the `conf/` folder called `properties.yaml` or with an extra suffix starting with `-`.
+
+**Example:**
+
+`properties-my-component.yaml`:
+```yaml
+MY_COMPONENT_API_KEY: "AbCdEfGh-123-xyz"
+```
+
+Note that properties can also be accessed directly from the application, via `RxPropertiesContract`s:
+
+```java
+public interface XyzPropertiesContract extends RxPropertiesContract {
+	String EXTERNAL_SERVICE_URL();
+
+	@Default("4")
+	Integer NUMBER_OF_THREADS_FOR_SOME_TASK();
+
+	String SOME_DB_PASSWORD();
+}
+```
 
 
 ## Service Domains

@@ -152,15 +152,6 @@ wire-module=com.example.wire.MyRxModule
 
 All modules in the platform are iterated through each round before proceeding to the next round, ensuring a consistent global ordering.
 
-### 3.3 Module Discovery
-
-Modules are discovered via a classpath-based mechanism:
-
-1. The platform enumerates all `META-INF/rx-module.properties` resources from the classpath.
-2. Each file contains a `wire-module` property pointing to a Java enum class.
-3. The platform loads the enum's `INSTANCE` field, which must implement `RxModule<? extends RxModuleContract>`.
-4. Loading is parallelized for performance.
-
 ### 3.4 Module Dependency Graph and Export/Import
 
 Modules can define inter-module dependencies through the **Export/Import** mechanism:
@@ -425,80 +416,6 @@ String result = Greet.T.create()
     .get();
 ```
 
----
-
-## 7. Platform Contracts — What the Platform Provides
-
-The platform exposes several Wire contracts that modules can `@Import` to access platform services.
-
-### 7.1 RxPlatformContract
-
-The primary contract providing all core platform services:
-
-| Bean | Type | Description |
-|---|---|---|
-| `evaluator()` | `Evaluator<ServiceRequest>` | Evaluate requests in the current context |
-| `systemEvaluator()` | `Evaluator<ServiceRequest>` | Evaluate requests as the system user |
-| `serviceDomains()` | `ServiceDomains` | Access and query service domains |
-| `configuredModels()` | `ConfiguredModels` | Access configured models and their metadata resolvers |
-| `marshallers()` | `MarshallerRegistry` | Registry of available marshallers (JSON, YAML, binary, etc.) |
-| `jsonMarshaller()` | `CharacterMarshaller` | JSON marshaller |
-| `yamlMarshaller()` | `CharacterMarshaller` | YAML marshaller |
-| `binMarshaller()` | `Marshaller` | Binary marshaller |
-| `stateManager()` | `RxApplicationStateManager` | Application lifecycle and health state |
-| `readConfig(EntityType)` | `Maybe<C>` | Read typed configuration from YAML files |
-| `executorService()` | `ExecutorService` | Thread pool for parallel work |
-| `scheduledExecutorService()` | `ScheduledExecutorService` | Scheduled thread pool |
-| `taskScheduler()` | `TaskScheduler` | Higher-level task scheduling |
-| `workerManager()` | `WorkerManager` | Manage background workers |
-| `threadContextScoping()` | `DeferringThreadContextScoping` | Propagate `AttributeContext` across threads |
-| `logManager()` | `RxLogManager` | Dynamic log level adjustment |
-| `applicationName()` | `String` | Application name from configuration |
-| `applicationId()` | `String` | Unique application identifier |
-| `nodeId()` | `String` | Unique node identifier |
-| `instanceId()` | `InstanceId` | Combined application + node identity |
-
-### 7.2 RxPlatformResourcesContract
-
-Provides access to the application's file system layout:
-
-| Method | Returns | Description |
-|---|---|---|
-| `rootPath()` | `Path` | Application root directory |
-| `confPath()` | `Path` | Configuration directory (`conf/`) |
-| `dataPath()` | `Path` | Persistent data directory (`data/`) |
-| `cachePath()` | `Path` | Cache directory (`cache/`) |
-| `tmpPath()` | `Path` | Temporary files directory (`tmp/`) |
-| `resource(path)` | `RxResourcesBuilder` | Build a resource handle relative to root |
-| `conf(path)` | `RxResourcesBuilder` | Build a resource handle relative to `conf/` |
-| `data(path)` | `RxResourcesBuilder` | Build a resource handle relative to `data/` |
-
-`RxResourcesBuilder` extends `ResourceHandle` and supports reading resources as files, input streams, assemblies (deserialized objects), or properties.
-
-### 7.3 RxAuthContract
-
-Provides authentication-related suppliers:
-
-- `systemUserSessionSupplier()` / `contextUserSessionSupplier()`: Access the system or current user's `UserSession`.
-- `systemUserSessionIdSupplier()` / `contextUserSessionIdSupplier()`: Session ID suppliers.
-- `systemAttributeContextSupplier()` / `contextAttributeContextSupplier()`: `AttributeContext` suppliers.
-
-### 7.4 RxTransientDataContract
-
-Provides transient (in-memory or temp-file) data handling:
-
-- `streamPipeFactory()`: Creates `StreamPipe`s for efficiently buffering data between producers and consumers.
-- `transientResourceBuilder()`: Creates transient `Resource` instances backed by stream pipes.
-
-### 7.5 RxProcessLaunchContract
-
-Exposes process launch information:
-
-- `cliArguments()`: The raw command-line arguments passed to the application.
-- `launchScriptName()`: The name of the launch script used to start the application.
-
----
-
 ## 8. Configuration
 
 ### 8.1 Configuration Models
@@ -562,7 +479,7 @@ The `RxPropertyResolver` resolves properties recursively and reports structured 
 Configuration is loaded from YAML files in the application's `conf/` directory. The platform:
 
 1. Scans `conf/` for files matching a configurable regex pattern.
-2. Unmarshals each file using the GM YAML marshaller into a `Map<String, String>`.
+2. Unmarshalls each file using the GM YAML marshaller into a `Map<String, String>`.
 3. Provides these properties to modules through property contracts.
 
 For typed configuration, `readConfig(EntityType<C>)` loads a configuration entity from YAML, validating it against the model.
