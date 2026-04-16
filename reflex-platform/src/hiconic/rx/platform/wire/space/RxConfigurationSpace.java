@@ -20,6 +20,7 @@ import java.util.function.Supplier;
 
 import com.braintribe.common.attribute.AttributeContext;
 import com.braintribe.gm.config.yaml.ModeledYamlConfiguration;
+import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.reflection.EntityType;
@@ -76,6 +77,8 @@ public class RxConfigurationSpace implements RxConfigurationContract {
 	private ModeledYamlConfiguration modeledConfiguration() {
 		ModeledYamlConfiguration bean = new ModeledYamlConfiguration();
 		bean.setConfigFolder(applicationFiles.confPath().toFile());
+		bean.setClasspathConfPath("HICONIC-CONF/");
+		bean.setClasspathIndex(new ClasspathIndex());
 		bean.setExternalReasonedPropertyLookup(propertyResolver()::resolveReasoned);
 		return bean;
 	}
