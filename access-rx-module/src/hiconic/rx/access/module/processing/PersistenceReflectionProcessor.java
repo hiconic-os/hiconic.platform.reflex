@@ -30,7 +30,7 @@ import com.braintribe.gm.model.reason.essential.InvalidArgument;
 import com.braintribe.logging.Logger;
 import com.braintribe.model.accessapi.ModelEnvironment;
 import com.braintribe.model.generic.GMF;
-import com.braintribe.model.generic.reflection.EntityType;
+import com.braintribe.model.generic.reflection.CustomType;
 import com.braintribe.model.meta.GmMetaModel;
 import com.braintribe.model.processing.service.common.context.UserSessionAspect;
 import com.braintribe.model.processing.service.impl.AbstractDispatchingServiceProcessor;
@@ -69,7 +69,8 @@ public class PersistenceReflectionProcessor extends AbstractDispatchingServicePr
 		return getModelAndWorkbenchEnvironment(r.getAccessId(), r.getFoldersByPerspective());
 	}
 
-	private Maybe<ModelEnvironment> getModelAndWorkbenchEnvironment(String accessId, @SuppressWarnings("unused") Set<String> workbenchPerspectiveNames) {
+	private Maybe<ModelEnvironment> getModelAndWorkbenchEnvironment(String accessId,
+			@SuppressWarnings("unused") Set<String> workbenchPerspectiveNames) {
 		Maybe<ModelEnvironment> modelEnvironmentMaybe = getModelEnvironment(accessId);
 		if (modelEnvironmentMaybe.isUnsatisfied())
 			return modelEnvironmentMaybe.propagateReason();
@@ -154,20 +155,20 @@ public class PersistenceReflectionProcessor extends AbstractDispatchingServicePr
 	}
 
 	private Maybe<GmMetaModel> getModelForTypes(Collection<String> typeSignatures) {
-		List<EntityType<?>> entityTypes = newList();
+		List<CustomType> types = newList();
 
 		for (String typeSignature : typeSignatures) {
-			EntityType<?> entityType = GMF.getTypeReflection().findEntityType(typeSignature);
-			if (entityType == null)
+			CustomType type = GMF.getTypeReflection().findType(typeSignature);
+			if (type == null)
 				return Reasons.build(InvalidArgument.T) //
-						.text("Unknown entity type: " + typeSignature) //
+						.text("Unknown Gm type: " + typeSignature) //
 						.toMaybe();
 
-			entityTypes.add(entityType);
+			types.add(type);
 		}
 
 		NewMetaModelGeneration newMmg = new NewMetaModelGeneration();
-		GmMetaModel result = newMmg.buildMetaModel("reflex:virtual-model-for-given-types", entityTypes);
+		GmMetaModel result = newMmg.buildMetaModel("reflex:virtual-model-for-given-types", types);
 		result.setVersion("1.0");
 
 		return Maybe.complete(result);

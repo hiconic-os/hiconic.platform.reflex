@@ -25,7 +25,6 @@ import com.braintribe.model.bapi.AvailableAccessesRequest;
 import com.braintribe.model.processing.service.api.ReasonedServiceProcessor;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
 
-import hiconic.rx.access.module.api.AccessDomain;
 import hiconic.rx.access.module.api.AccessDomains;
 
 /**
@@ -57,14 +56,21 @@ public class AvailableAccessesProcessor implements ReasonedServiceProcessor<Avai
 	}
 
 	private IncrementalAccess accessIdToIncrementalAccess(String accessId) {
-		AccessDomain accessDomain = accessDomains.byId(accessId);
-		
 		HardwiredAccess result = HardwiredAccess.T.create();
 		result.setExternalId(accessId);
 		result.setGlobalId("rx-access:" + accessId);
 		result.setName(accessId);
-		result.setMetaModel(accessDomain.configuredDataModel().modelOracle().getGmMetaModel());
-		result.setServiceModel(accessDomain.configuredServiceModel().modelOracle().getGmMetaModel());
+
+		// ----------------------------------------------------------------------------------------------------
+		// Explore doesn't seem to need the models, so let's reduce complexity.
+		// This also causes problems if the name of the access is "cortex":
+		// - If these models contain MD which explorer doesn't know, it needs to ensure them.
+		// - if access is "cortex", it assumes it's models contain the relevant types and only ensures those
+		// - for any other access, it would send GetMetaModelForTypes request
+		// ----------------------------------------------------------------------------------------------------
+		// AccessDomain accessDomain = accessDomains.byId(accessId);
+		// result.setMetaModel(accessDomain.configuredDataModel().modelOracle().getGmMetaModel());
+		// result.setServiceModel(accessDomain.configuredServiceModel().modelOracle().getGmMetaModel());
 
 		return result;
 	}

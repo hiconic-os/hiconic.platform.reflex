@@ -2,6 +2,7 @@
 package hiconic.rx.explorer.processing.servlet.home;
 
 import static com.braintribe.utils.lcd.CollectionTools2.newList;
+import static hiconic.rx.explorer.wire.space.CortexSpace.CORTEX_ACCESS_ID;
 
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -286,13 +287,16 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 	private void fillAdminGroup(LinkGroup administrationGroup) {
 		LinkCollection cortexgroup = LinkCollection.T.create();
 		cortexgroup.setDisplayName("Cortex");
-		cortexgroup.setUrl("controlCenterUrl" + "#default");
+		// cortexgroup.setUrl("controlCenterUrl" + "#default");
+		cortexgroup.setUrl("controlCenterUrl" + "?accessId=" + CORTEX_ACCESS_ID + "#default");
+
 		cortexgroup.setTarget("tfControlCenter-cortex");
 		cortexgroup.setIconRef("./webpages/images/cortex/tf-cortex.png");
 
-		cortexgroup.getNestedLinks().add(createLink("Administration", explorerUrlWithTrailingSlash + "#default", "tfControlCenter-cortex", null));
+		cortexgroup.getNestedLinks().add(createLink("Administration", explorerUrlWithTrailingSlash + "?accessId=" + CORTEX_ACCESS_ID + "#default",
+				"tfControlCenter-cortex", null));
 
-		configureAccessDomainLink(cortexgroup, "cortex");
+		configureAccessDomainLink(cortexgroup, CORTEX_ACCESS_ID);
 
 		administrationGroup.getLinks().add(cortexgroup);
 

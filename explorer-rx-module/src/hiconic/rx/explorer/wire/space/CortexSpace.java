@@ -38,6 +38,14 @@ import hiconic.rx.explorer.processing.access.StaticNonIncrementalAccess;
 @Managed
 public class CortexSpace implements WireSpace {
 
+	// We avoid the name "cortex" because of this issue:
+	// Situation:
+	// - Explorer loads some data of types it doesn't know, e.g. via GetAvailableAccesses (models with MD)
+	// Problem:
+	// - if access is "cortex", Explorer assumes its models (data+api) contain the relevant types and only ensures those
+	// - for any other access, it would send GetMetaModelForTypes request, which is fine
+	public static final String CORTEX_ACCESS_ID = "cortex-rx";
+
 	// @formatter:off
 	@Import private AccessContract access;
 	// @formatter:on
@@ -49,7 +57,7 @@ public class CortexSpace implements WireSpace {
 	@Managed
 	private ReadOnlySmoodAccess cortexDenotation() {
 		ReadOnlySmoodAccess bean = ReadOnlySmoodAccess.T.create();
-		bean.setAccessId("cortex");
+		bean.setAccessId(CORTEX_ACCESS_ID);
 		bean.getDataModelNames().add(_ExplorerCortexModel_.name);
 
 		return bean;
@@ -62,7 +70,7 @@ public class CortexSpace implements WireSpace {
 		dataDelegate.setDataSupplier(() -> cortexData());
 
 		hiconic.rx.explorer.processing.access.ReadOnlySmoodAccess bean = new hiconic.rx.explorer.processing.access.ReadOnlySmoodAccess();
-		bean.setAccessId("cortex");
+		bean.setAccessId(CORTEX_ACCESS_ID);
 		bean.setModelName(_ExplorerCortexModel_.name);
 		bean.setDataDelegate(dataDelegate);
 
