@@ -17,6 +17,7 @@ import java.io.File;
 
 import com.braintribe.mimetype.MimeTypeDetector;
 import com.braintribe.model.resource.Resource;
+import com.braintribe.model.resource.api.MimeTypeRegistry;
 import com.braintribe.model.resource.api.ResourceBuilder;
 import com.braintribe.utils.stream.api.StreamPipe;
 import com.braintribe.utils.stream.api.StreamPipeFactory;
@@ -43,6 +44,8 @@ public interface RxTransientDataContract extends WireSpace {
 	 * {@link #streamPipeFactory()}.
 	 */
 	ResourceBuilder transientResourceBuilder();
+
+	MimeTypeRegistry mimeTypeRegistry();
 
 	MimeTypeDetector mimeTypeDetector();
 

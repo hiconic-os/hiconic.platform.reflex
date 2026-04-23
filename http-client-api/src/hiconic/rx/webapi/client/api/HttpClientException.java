@@ -1,4 +1,6 @@
 // ============================================================================
+// Copyright BRAINTRIBE TECHNOLOGY GMBH, Austria, 2002-2022
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,22 +13,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.platform.reflex.security.wire;
+package hiconic.rx.webapi.client.api;
 
-import hiconic.platform.reflex.security.wire.space.SecurityRxModuleSpace;
-import hiconic.rx.module.api.wire.Exports;
-import hiconic.rx.module.api.wire.RxModule;
-import hiconic.rx.security.api.SecurityContract;
-import hiconic.rx.security.api.SecurityExtensionContract;
+public class HttpClientException extends RuntimeException {
 
-public enum SecurityRxModule implements RxModule<SecurityRxModuleSpace> {
+	private static final long serialVersionUID = 4496096894702154536L;
 
-	INSTANCE;
+	public HttpClientException() {
+	}
 
-	@Override
-	public void bindExports(Exports exports) {
-		exports.bind(SecurityContract.class, SecurityRxModuleSpace.class);
-		exports.bind(SecurityExtensionContract.class, SecurityRxModuleSpace.class);
+	public HttpClientException(String message) {
+		super(message);
+	}
+
+	public HttpClientException(Throwable cause) {
+		super(cause);
+	}
+
+	public HttpClientException(String message, Throwable cause) {
+		super(message, cause);
+	}
+
+	public HttpClientException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
+		super(message, cause, enableSuppression, writableStackTrace);
 	}
 
 }

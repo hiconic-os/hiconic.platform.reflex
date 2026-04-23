@@ -1,4 +1,6 @@
 // ============================================================================
+// Copyright BRAINTRIBE TECHNOLOGY GMBH, Austria, 2002-2022
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,22 +13,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.platform.reflex.security.wire;
+package hiconic.rx.webapi.client.model.meta.methods;
 
-import hiconic.platform.reflex.security.wire.space.SecurityRxModuleSpace;
-import hiconic.rx.module.api.wire.Exports;
-import hiconic.rx.module.api.wire.RxModule;
-import hiconic.rx.security.api.SecurityContract;
-import hiconic.rx.security.api.SecurityExtensionContract;
+import com.braintribe.model.generic.annotation.meta.Mandatory;
+import com.braintribe.model.generic.reflection.EntityType;
+import com.braintribe.model.generic.reflection.EntityTypes;
 
-public enum SecurityRxModule implements RxModule<SecurityRxModuleSpace> {
+import hiconic.rx.webapi.client.model.meta.HttpMethod;
 
-	INSTANCE;
+public interface HttpCustomMethod extends HttpMethod {
 
+	final EntityType<HttpCustomMethod> T = EntityTypes.T(HttpCustomMethod.class);
+	
+	@Mandatory
+	String getMethod();
+	void setMethod(String method);
+	
 	@Override
-	public void bindExports(Exports exports) {
-		exports.bind(SecurityContract.class, SecurityRxModuleSpace.class);
-		exports.bind(SecurityExtensionContract.class, SecurityRxModuleSpace.class);
+	default String methodType() {
+		return getMethod();
 	}
 
 }

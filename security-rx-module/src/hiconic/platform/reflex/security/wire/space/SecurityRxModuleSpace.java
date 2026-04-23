@@ -19,14 +19,18 @@ import java.util.Set;
 
 import com.braintribe.exception.Exceptions;
 import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
+import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.processing.securityservice.api.UserSessionScoping;
 import com.braintribe.model.processing.securityservice.commons.provider.StaticUserSessionHolder;
 import com.braintribe.model.processing.securityservice.commons.scope.StandardUserSessionScoping;
 import com.braintribe.model.processing.service.api.InterceptorRegistry;
+import com.braintribe.model.processing.service.api.ServiceProcessor;
 import com.braintribe.model.processing.service.common.context.UserSessionStack;
 import com.braintribe.model.securityservice.AuthenticateCredentials;
+import com.braintribe.model.securityservice.AuthenticateCredentialsResponse;
 import com.braintribe.model.securityservice.SecurityRequest;
 import com.braintribe.model.securityservice.SimplifiedOpenUserSession;
+import com.braintribe.model.securityservice.credentials.Credentials;
 import com.braintribe.model.securityservice.credentials.ExistingSessionCredentials;
 import com.braintribe.model.securityservice.credentials.GrantedCredentials;
 import com.braintribe.model.securityservice.credentials.TrustedCredentials;
@@ -51,18 +55,19 @@ import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.module.api.wire.RxServiceProcessingContract;
 import hiconic.rx.security.api.SecurityContract;
+import hiconic.rx.security.api.SecurityExtensionContract;
 import hiconic.rx.security.api.SecurityServiceDomain;
 import hiconic.rx.security.model.configuration.SecurityConfiguration;
 
 @Managed
-public class SecurityRxModuleSpace implements RxModuleContract, SecurityContract {
+public class SecurityRxModuleSpace implements RxModuleContract, SecurityContract, SecurityExtensionContract {
 
 	@Import
 	private RxPlatformContract platform;
 
 	@Import
 	private RxServiceProcessingContract serviceProcessing;
-	
+
 	@Import
 	private CredentialProcessorsSpace credentialProcessors;
 
@@ -101,6 +106,13 @@ public class SecurityRxModuleSpace implements RxModuleContract, SecurityContract
 	private AuthorizingServiceInterceptor authorizingServiceInterceptor() {
 		AuthorizingServiceInterceptor bean = new AuthorizingServiceInterceptor();
 		return bean;
+	}
+
+	@Override
+	public <C extends Credentials> void registerCredentialProcessor(EntityType<C> credentialType,
+			ServiceProcessor<? extends AuthenticateCredentials, AuthenticateCredentialsResponse> processor) {
+
+		authenticationProcessor().register(credentialType, processor);
 	}
 
 	@Managed

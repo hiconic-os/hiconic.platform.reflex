@@ -17,7 +17,9 @@ import java.io.File;
 
 import com.braintribe.mimetype.MimeTypeDetector;
 import com.braintribe.mimetype.PlatformMimeTypeDetector;
+import com.braintribe.model.resource.api.MimeTypeRegistry;
 import com.braintribe.model.resource.api.ResourceBuilder;
+import com.braintribe.model.resource.utils.MimeTypeRegistryImpl;
 import com.braintribe.model.resource.utils.StreamPipeTransientResourceBuilder;
 import com.braintribe.provider.Box;
 import com.braintribe.utils.FileTools;
@@ -57,6 +59,13 @@ public class RxTransientDataSpace implements RxTransientDataContract {
 		File bean = new File(tempDir, "platform/basicStreamPipe");
 
 		return bean;
+	}
+
+	@Override
+	@Managed
+	public MimeTypeRegistry mimeTypeRegistry() {
+		// TODO initialize; see e.g. WebApiServerRxModuleSpace
+		return new MimeTypeRegistryImpl();
 	}
 
 	@Override

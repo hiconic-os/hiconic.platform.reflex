@@ -85,7 +85,8 @@ public class RxRequestDispatcher implements ServiceProcessor<ServiceRequest, Obj
 		List<InterceptWith> interceptWiths = mdResolver.meta(InterceptWith.T).list();
 
 		for (InterceptWith interceptWith : interceptWiths) {
-			RxInterceptor interceptor = Objects.requireNonNull(interceptWith.getAssociate(), "Corrupted InterceptWith");
+			RxInterceptor interceptor = Objects.requireNonNull(interceptWith.getAssociate(),
+					() -> "Corrupt " + interceptWith.entityType().getShortName() + " configured on request " + request.entityType().getShortName());
 
 			if (interceptor.predicate().test(request)) {
 				InterceptionType interceptionType = interceptWith.interceptionType();

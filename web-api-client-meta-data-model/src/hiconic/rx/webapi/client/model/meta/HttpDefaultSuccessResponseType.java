@@ -11,22 +11,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.platform.reflex.security.wire;
+package hiconic.rx.webapi.client.model.meta;
 
-import hiconic.platform.reflex.security.wire.space.SecurityRxModuleSpace;
-import hiconic.rx.module.api.wire.Exports;
-import hiconic.rx.module.api.wire.RxModule;
-import hiconic.rx.security.api.SecurityContract;
-import hiconic.rx.security.api.SecurityExtensionContract;
+import com.braintribe.model.generic.reflection.EntityType;
+import com.braintribe.model.generic.reflection.EntityTypes;
+import com.braintribe.model.meta.data.EntityTypeMetaData;
 
-public enum SecurityRxModule implements RxModule<SecurityRxModuleSpace> {
+public interface HttpDefaultSuccessResponseType extends EntityTypeMetaData {
 
-	INSTANCE;
+	final EntityType<HttpDefaultSuccessResponseType> T = EntityTypes.T(HttpDefaultSuccessResponseType.class);
 
-	@Override
-	public void bindExports(Exports exports) {
-		exports.bind(SecurityContract.class, SecurityRxModuleSpace.class);
-		exports.bind(SecurityExtensionContract.class, SecurityRxModuleSpace.class);
-	}
+	String getResponseTypeSignature();
+	void setResponseTypeSignature(String responseTypeSignature);
 
 }
