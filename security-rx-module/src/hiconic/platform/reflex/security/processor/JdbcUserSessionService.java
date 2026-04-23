@@ -200,6 +200,7 @@ public class JdbcUserSessionService extends AbstractUserSessionService {
 		PersistenceUserSession pUserSession = PersistenceUserSession.T.create();
 		pUserSession.setId(result.getString("ID"));
 		pUserSession.setUserName(result.getString("USER_NAME"));
+		pUserSession.setClosed(result.getBoolean("CLOSED"));
 		pUserSession.setUserFirstName(result.getString("USER_FIRST_NAME"));
 		pUserSession.setUserLastName(result.getString("USER_LAST_NAME"));
 		pUserSession.setUserEmail(result.getString("USER_EMAIL"));

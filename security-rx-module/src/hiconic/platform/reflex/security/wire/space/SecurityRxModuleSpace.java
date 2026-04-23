@@ -24,7 +24,7 @@ import com.braintribe.model.processing.securityservice.api.UserSessionScoping;
 import com.braintribe.model.processing.securityservice.commons.provider.StaticUserSessionHolder;
 import com.braintribe.model.processing.securityservice.commons.scope.StandardUserSessionScoping;
 import com.braintribe.model.processing.service.api.InterceptorRegistry;
-import com.braintribe.model.processing.service.api.ServiceProcessor;
+import com.braintribe.model.processing.service.api.ReasonedServiceProcessor;
 import com.braintribe.model.processing.service.common.context.UserSessionStack;
 import com.braintribe.model.securityservice.AuthenticateCredentials;
 import com.braintribe.model.securityservice.AuthenticateCredentialsResponse;
@@ -110,7 +110,7 @@ public class SecurityRxModuleSpace implements RxModuleContract, SecurityContract
 
 	@Override
 	public <C extends Credentials> void registerCredentialProcessor(EntityType<C> credentialType,
-			ServiceProcessor<? extends AuthenticateCredentials, AuthenticateCredentialsResponse> processor) {
+			ReasonedServiceProcessor<? extends AuthenticateCredentials, AuthenticateCredentialsResponse> processor) {
 
 		authenticationProcessor().register(credentialType, processor);
 	}

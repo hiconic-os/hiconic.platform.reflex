@@ -28,9 +28,9 @@ import com.braintribe.model.securityservice.AuthenticateCredentialsResponse;
 import com.braintribe.model.securityservice.credentials.Credentials;
 
 public class AuthenticationProcessor implements ReasonedServiceProcessor<AuthenticateCredentials, AuthenticateCredentialsResponse> {
-	private MutableDenotationMap<Credentials, ServiceProcessor<AuthenticateCredentials, AuthenticateCredentialsResponse>> credentialProcessors = new PolymorphicDenotationMap<>(true);
+	private final MutableDenotationMap<Credentials, ServiceProcessor<AuthenticateCredentials, AuthenticateCredentialsResponse>> credentialProcessors = new PolymorphicDenotationMap<>(true);
 	
-	public <C extends Credentials> void register(EntityType<C> credentialType, ServiceProcessor<? extends AuthenticateCredentials, AuthenticateCredentialsResponse> processor) {
+	public <C extends Credentials> void register(EntityType<C> credentialType, ReasonedServiceProcessor<? extends AuthenticateCredentials, AuthenticateCredentialsResponse> processor) {
 		credentialProcessors.put(credentialType, (ServiceProcessor<AuthenticateCredentials, AuthenticateCredentialsResponse>) processor);
 	}
 	
@@ -42,11 +42,11 @@ public class AuthenticationProcessor implements ReasonedServiceProcessor<Authent
 		if (credentials == null)
 			return Reasons.build(InvalidArgument.T).text("AuthenticateCredentials.credentials must not be null").toMaybe();
 		
-		ServiceProcessor<AuthenticateCredentials, AuthenticateCredentialsResponse> delegateProcessor = credentialProcessors.find(credentials);
+		ReasonedServiceProcessor<AuthenticateCredentials, AuthenticateCredentialsResponse> delegateProcessor = credentialProcessors.find(credentials);
 		
 		if (delegateProcessor == null)
 			return Reasons.build(UnsupportedOperation.T).text("Missing processor for credential type: " + credentials.entityType().getTypeSignature()).toMaybe();
 
-		return Maybe.complete(delegateProcessor.process(context, request));
+		return delegateProcessor.processReasoned(context, request);
 	}
 }

@@ -1,7 +1,7 @@
 package hiconic.rx.security.api;
 
 import com.braintribe.model.generic.reflection.EntityType;
-import com.braintribe.model.processing.service.api.ServiceProcessor;
+import com.braintribe.model.processing.service.api.ReasonedServiceProcessor;
 import com.braintribe.model.securityservice.AuthenticateCredentials;
 import com.braintribe.model.securityservice.AuthenticateCredentialsResponse;
 import com.braintribe.model.securityservice.credentials.Credentials;
@@ -30,6 +30,6 @@ public interface SecurityExtensionContract extends RxExportContract {
 	 * </ul>
 	 */
 	<C extends Credentials> void registerCredentialProcessor(EntityType<C> credentialType,
-			ServiceProcessor<? extends AuthenticateCredentials, AuthenticateCredentialsResponse> processor);
+			ReasonedServiceProcessor<? extends AuthenticateCredentials, AuthenticateCredentialsResponse> processor);
 
 }
