@@ -16,7 +16,7 @@ import com.braintribe.utils.stream.pools.CompoundBlockPool;
 import com.braintribe.utils.stream.stats.BlockKind;
 import com.braintribe.utils.stream.stats.StreamPipeBlockStats;
 
-import hiconic.rx.module.api.wire.RxPlatformContract;
+import hiconic.rx.module.api.wire.RxApplicationContract;
 import hiconic.rx.module.api.wire.RxApplicationFilesContract;
 import hiconic.rx.reflection.model.application.RxAppInfo;
 import hiconic.rx.reflection.model.streampipes.PoolKind;
@@ -29,19 +29,19 @@ import hiconic.rx.reflection.model.system.disk.FolderInfo;
  */
 public class StandardRxAppInfoProvider implements Supplier<RxAppInfo> {
 
-	private RxPlatformContract platform;
-	private RxApplicationFilesContract platformResources;
+	private RxApplicationContract application;
+	private RxApplicationFilesContract applicationFiles;
 
 	private CompoundBlockPool compoundBlockPool;
 
 	@Required
-	public void setPlatformContract(RxPlatformContract platform) {
-		this.platform = platform;
+	public void setPlatformApplicationContract(RxApplicationContract application) {
+		this.application = application;
 	}
 
 	@Required
-	public void setPlatformResourcesContract(RxApplicationFilesContract platformResources) {
-		this.platformResources = platformResources;
+	public void setApplicationFilesContract(RxApplicationFilesContract applicationFiles) {
+		this.applicationFiles = applicationFiles;
 	}
 
 	@Configurable
@@ -52,10 +52,10 @@ public class StandardRxAppInfoProvider implements Supplier<RxAppInfo> {
 	@Override
 	public RxAppInfo get() {
 		RxAppInfo result = RxAppInfo.T.create();
-		result.setApplicationName(platform.applicationName());
-		result.setApplicationId(platform.applicationId());
+		result.setApplicationName(application.applicationName());
+		result.setApplicationId(application.applicationId());
 		result.setStreamPipeInfo(prepareStreamPipeBlocksInfo());
-		result.setTempDirInfo(createFolderInfo(platformResources.tmpPath()));
+		result.setTempDirInfo(createFolderInfo(applicationFiles.tmpPath()));
 
 		return result;
 	}

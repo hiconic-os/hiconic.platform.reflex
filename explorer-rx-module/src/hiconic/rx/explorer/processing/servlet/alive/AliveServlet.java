@@ -15,26 +15,34 @@ package hiconic.rx.explorer.processing.servlet.alive;
 
 import java.io.IOException;
 
+import com.braintribe.cfg.Required;
+
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-
 /**
- * Explorer makes periodic POST requests to base services URL to see if the server is running.  
+ * Explorer makes periodic POST requests to base services URL to see if the server is running.
  */
 public class AliveServlet extends HttpServlet {
 
 	private static final long serialVersionUID = -3371378397236984055L;
-	
+
+	private String homeRelativePath;
+
+	@Required
+	public void setHomeRelativePath(String homeRelativePath) {
+		this.homeRelativePath = homeRelativePath;
+	}
+
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		resp.getOutputStream().write("OK".getBytes());
 	}
-	
+
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		super.doGet(req, resp);
+		resp.sendRedirect(homeRelativePath);
 	}
 }

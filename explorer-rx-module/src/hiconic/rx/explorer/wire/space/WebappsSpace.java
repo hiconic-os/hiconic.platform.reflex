@@ -32,6 +32,7 @@ import hiconic.rx.explorer.processing.servlet.explorer.SymbolTranslationServlet;
 import hiconic.rx.explorer.processing.servlet.home.HomeRxServlet;
 import hiconic.rx.explorer.processing.servlet.home.OpenApiLandingPageLinkConfigurer;
 import hiconic.rx.module.api.wire.RxPlatformContract;
+import hiconic.rx.module.api.wire.RxServiceProcessingContract;
 import hiconic.rx.security.web.api.AuthFilters;
 import hiconic.rx.topology.api.TopologyContract;
 import hiconic.rx.web.server.api.WebServerContract;
@@ -45,6 +46,7 @@ public class WebappsSpace implements WireSpace {
 
 	// @formatter:off
 	@Import private RxPlatformContract platform;
+	@Import private RxServiceProcessingContract serviceProcessing;
 
 	@Import private AccessContract access;
 	@Import private TopologyContract topology;
@@ -72,6 +74,8 @@ public class WebappsSpace implements WireSpace {
 	@Managed
 	private AliveServlet aliveServlet() {
 		AliveServlet bean = new AliveServlet();
+		// possibly make it configurable, used to be "TRIBEFIRE_LANDING_PAGE_URL"
+		bean.setHomeRelativePath("home");
 		return bean;
 	}
 
@@ -83,9 +87,9 @@ public class WebappsSpace implements WireSpace {
 	@Managed
 	private HomeRxServlet homeServlet() {
 		HomeRxServlet bean = new HomeRxServlet();
-		bean.setApplicationName(platform.applicationName());
+		bean.setApplicationName(platform.application().applicationName());
 		bean.setExplorerUrl("/tribefire-explorer"); // relative path works
-		bean.setServiceDomains(platform.serviceDomains());
+		bean.setServiceDomains(serviceProcessing.serviceDomains());
 		bean.setAccessDomains(access.accessDomains());
 
 		bean.addAccessLinkConfigurer(openApiLandingPageLinkConfigurer());
@@ -103,10 +107,10 @@ public class WebappsSpace implements WireSpace {
 	@Managed
 	private AboutRxServlet aboutServlet() {
 		AboutRxServlet bean = new AboutRxServlet();
-		bean.setRequestEvaluator(platform.evaluator());
+		bean.setRequestEvaluator(serviceProcessing.evaluator());
 		bean.setLiveInstances(topology.liveInstances());
-		bean.setLocalInstanceId(platform.instanceId());
-		bean.setExecutor(platform.executorService());
+		bean.setLocalInstanceId(platform.application().instanceId());
+		bean.setExecutor(platform.execution().executorService());
 
 		bean.setDiagnosticMultinode(aboutDiagnosticMultinode());
 		bean.setThreaddump(aboutThreaddump());
@@ -123,7 +127,7 @@ public class WebappsSpace implements WireSpace {
 	@Managed
 	private DiagnosticMultinode aboutDiagnosticMultinode() {
 		DiagnosticMultinode bean = new DiagnosticMultinode();
-		bean.setRequestEvaluator(platform.evaluator());
+		bean.setRequestEvaluator(serviceProcessing.evaluator());
 		return bean;
 	}
 	@Managed

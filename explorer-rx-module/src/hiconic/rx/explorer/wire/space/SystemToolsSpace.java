@@ -19,7 +19,7 @@ public class SystemToolsSpace implements WireSpace {
 	private RxPlatformContract platform;
 
 	public void startTasks() {
-		platform.taskScheduler() //
+		platform.execution().taskScheduler() //
 				.scheduleAtFixedRate("Process-Terminator", processTerminator(), 0, 10, TimeUnit.SECONDS) //
 				.interruptOnCancel(false) //
 				.done();

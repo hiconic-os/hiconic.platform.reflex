@@ -46,14 +46,14 @@ public class PlatformReflectionSpace implements WireSpace {
 	@Managed
 	public PlatformReflectionProcessor platformReflectionProcessor() {
 		PlatformReflectionProcessor bean = new PlatformReflectionProcessor();
-		bean.setApplicationId(platform.applicationId());
-		bean.setInstanceId(platform.instanceId());
+		bean.setApplicationId(platform.application().applicationId());
+		bean.setInstanceId(platform.application().instanceId());
 		bean.setAllowedRoles(security.adminAndInternalRoles());
 		bean.setSystemInformationProvider(systemInformationProvider());
 		bean.setRxAppInfoProvider(rxAppInfoProvider());
 		bean.setCommandExecution(systemTools.commandExecution());
 		bean.setStreamPipeFactory(transientData.streamPipeFactory());
-		bean.setJsonMarshaller(platform.jsonMarshaller());
+		bean.setJsonMarshaller(platform.marshalling().jsonMarshaller());
 		bean.setCheckResultMarshaller(check.checkResultToHtmlMarshaller());
 		
 		// TODO make zip password configurable
@@ -85,8 +85,8 @@ public class PlatformReflectionSpace implements WireSpace {
 	@Managed
 	private Supplier<RxAppInfo> rxAppInfoProvider() {
 		StandardRxAppInfoProvider bean = new StandardRxAppInfoProvider();
-		bean.setPlatformContract(platform);
-		bean.setPlatformResourcesContract(platformResources);
+		bean.setPlatformApplicationContract(platform.application());
+		bean.setApplicationFilesContract(platformResources);
 		if (transientData.streamPipeFactory() instanceof CompoundBlockPool blockPool)
 			bean.setCompoundBlockPool(blockPool);
 		return bean;

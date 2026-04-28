@@ -75,15 +75,15 @@ public class ChecksSpace implements WireSpace {
 		// TODO review checking locking/leadership - was only set in Cortex based on ENV variables
 		bean.setLocking(locking.locking());
 		bean.setLeadershipManager(leadership.leadershipManager());
-		bean.setScheduledExecutorService(platform.scheduledExecutorService());
-		bean.setRequestEvaluator(platform.evaluator());
+		bean.setScheduledExecutorService(platform.execution().scheduledExecutorService());
+		bean.setRequestEvaluator(platform.serviceProcessing().evaluator());
 		return bean;
 	}
 
 	@Managed
 	private BaseConnectivityCheckProcessor baseConnectivityCheckProcessor() {
 		BaseConnectivityCheckProcessor bean = new BaseConnectivityCheckProcessor();
-		bean.setScheduledExecutorService(platform.scheduledExecutorService());
+		bean.setScheduledExecutorService(platform.execution().scheduledExecutorService());
 		bean.setMessagingSessionProviderSupplier(() -> messaging.sessionProvider());
 		bean.setDatabaseInformationProvider(platformReflection.databaseInformationProvider());
 		return bean;
