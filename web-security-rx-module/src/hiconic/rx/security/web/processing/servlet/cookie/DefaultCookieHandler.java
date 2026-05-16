@@ -22,7 +22,7 @@ import com.braintribe.model.security.service.config.OpenUserSessionEntryPoint;
 
 import hiconic.rx.security.web.api.CookieHandler;
 import hiconic.rx.security.web.api.Cookies;
-import hiconic.rx.security.web.processing.WebSecurityConstants;
+import hiconic.rx.security.web.api.WebSecurityConstants;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

@@ -18,7 +18,7 @@ import org.apache.velocity.VelocityContext;
 
 import com.braintribe.cfg.InitializationAware;
 
-import hiconic.rx.security.web.processing.WebSecurityConstants;
+import hiconic.rx.security.web.api.WebSecurityConstants;
 import hiconic.rx.servlet.velocity.BasicTemplateBasedServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

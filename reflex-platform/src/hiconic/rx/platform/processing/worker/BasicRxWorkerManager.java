@@ -1,4 +1,16 @@
 // ============================================================================
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ============================================================================
 package hiconic.rx.platform.processing.worker;
 
 import java.util.LinkedHashSet;
@@ -13,6 +25,7 @@ import java.util.concurrent.Future;
 import com.braintribe.cfg.DestructionAware;
 import com.braintribe.cfg.Required;
 import com.braintribe.logging.Logger;
+import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.processing.core.commons.IdentificationBuilders;
 import com.braintribe.model.processing.securityservice.api.UserSessionScoping;
 import com.braintribe.model.processing.securityservice.api.exceptions.SecurityServiceException;
@@ -96,8 +109,11 @@ public class BasicRxWorkerManager implements WorkerManager, WorkerManagerControl
 	}
 
 	public static String buildWorkerIdentification(Worker worker, String applicationId) {
-		return IdentificationBuilders.//
-				fromInstance(worker.getWorkerIdentification()) //
+		GenericEntity wi = worker.getWorkerIdentification();
+		if (wi.getId() == null)
+			throw new IllegalArgumentException("Worker identification must have an id!");
+
+		return IdentificationBuilders.fromInstance(wi) //
 				.outerNamespace(applicationId) //
 				.namespaceFromType() //
 				.build();

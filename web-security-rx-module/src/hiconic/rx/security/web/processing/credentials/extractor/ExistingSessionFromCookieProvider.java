@@ -11,7 +11,7 @@ import com.braintribe.gm.model.reason.essential.NotFound;
 import com.braintribe.logging.Logger;
 
 import hiconic.rx.security.web.api.Cookies;
-import hiconic.rx.security.web.processing.WebSecurityConstants;
+import hiconic.rx.security.web.api.WebSecurityConstants;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 

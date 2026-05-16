@@ -23,11 +23,12 @@ import javax.net.ssl.SSLContext;
 import hiconic.rx.web.server.model.config.WebServerConfiguration;
 
 public record SslConfig(int port, SSLContext sslContext) {
+
 	public static SslConfig buildFromConfig(WebServerConfiguration config) {
 		Integer port = config.getSslPort();
 		if (port == null)
 			return null;
-		
+
 		String certPath = config.getSslKeyStore();
 		if (certPath == null)
 			return null;
@@ -35,13 +36,8 @@ public record SslConfig(int port, SSLContext sslContext) {
 		File certificateFile = new File(certPath);
 		
 		String password = config.getSslKeyStorePassword();
-		
 		if (password == null)
 			return null;
-		
-		
-		String keystorePath = "server.p12"; // Path to your keystore file
-        String keystorePassword = "password"; // Keystore password
 
         // Set up the SSL context
 		SSLContext sslContext;
@@ -54,10 +50,11 @@ public record SslConfig(int port, SSLContext sslContext) {
 
 			// Initialize KeyManagerFactory
 			KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-			keyManagerFactory.init(keyStore, keystorePassword.toCharArray());
+			keyManagerFactory.init(keyStore, password.toCharArray());
 
 			sslContext = SSLContext.getInstance("TLS");
 			sslContext.init(keyManagerFactory.getKeyManagers(), null, null);
+
 		} catch (Exception e) {
 			throw new RuntimeException("Error while reading ssl configuration", e);
 		}

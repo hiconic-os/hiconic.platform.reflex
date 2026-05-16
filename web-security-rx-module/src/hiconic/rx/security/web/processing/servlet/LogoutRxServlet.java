@@ -21,7 +21,7 @@ import com.braintribe.util.servlet.remote.DefaultRemoteClientAddressResolver;
 import com.braintribe.util.servlet.remote.RemoteClientAddressResolver;
 import com.braintribe.utils.collection.impl.AttributeContexts;
 
-import hiconic.rx.security.web.processing.WebSecurityConstants;
+import hiconic.rx.security.web.api.WebSecurityConstants;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;

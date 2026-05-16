@@ -22,7 +22,7 @@ import com.braintribe.model.security.service.config.OpenUserSessionEntryPoint;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 
-import hiconic.rx.security.web.processing.WebSecurityConstants;
+import hiconic.rx.security.web.api.WebSecurityConstants;
 import hiconic.rx.security.web.processing.servlet.OpenUserSessionConfigurationProvider;
 import jakarta.servlet.http.HttpServletRequest;
 

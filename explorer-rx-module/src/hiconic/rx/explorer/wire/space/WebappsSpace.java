@@ -13,6 +13,7 @@
 // ============================================================================
 package hiconic.rx.explorer.wire.space;
 
+import com.braintribe.utils.StringTools;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 import com.braintribe.wire.api.space.WireSpace;
@@ -34,6 +35,7 @@ import hiconic.rx.explorer.processing.servlet.home.OpenApiLandingPageLinkConfigu
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.module.api.wire.RxServiceProcessingContract;
 import hiconic.rx.security.web.api.AuthFilters;
+import hiconic.rx.security.web.api.WebSecurityContract;
 import hiconic.rx.topology.api.TopologyContract;
 import hiconic.rx.web.server.api.WebServerContract;
 import jakarta.servlet.DispatcherType;
@@ -51,6 +53,7 @@ public class WebappsSpace implements WireSpace {
 	@Import private AccessContract access;
 	@Import private TopologyContract topology;
 	@Import private WebServerContract webServer;
+	@Import private WebSecurityContract webSecurity;
 	// @formatter:on
 
 	public void registerWebapps() {
@@ -75,7 +78,7 @@ public class WebappsSpace implements WireSpace {
 	private AliveServlet aliveServlet() {
 		AliveServlet bean = new AliveServlet();
 		// possibly make it configurable, used to be "TRIBEFIRE_LANDING_PAGE_URL"
-		bean.setHomeRelativePath("home");
+		bean.setHomeRelativePath(webServer.resolveDefaultEndpointPath("home"));
 		return bean;
 	}
 
@@ -94,6 +97,11 @@ public class WebappsSpace implements WireSpace {
 
 		bean.addAccessLinkConfigurer(openApiLandingPageLinkConfigurer());
 		bean.addServiceDomainLinkConfigurer(openApiLandingPageLinkConfigurer());
+
+		String relativeSignInPath = webSecurity.defaultLoginPath();
+		if (!StringTools.isBlank(relativeSignInPath)) {
+			bean.setRelativeSignInPath(relativeSignInPath);
+		}
 
 		return bean;
 	}

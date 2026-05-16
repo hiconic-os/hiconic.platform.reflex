@@ -23,11 +23,13 @@ import java.io.File;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import org.xnio.Options;
 
 import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
+import com.braintribe.provider.Box;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 import com.braintribe.wire.api.context.WireContextConfiguration;
@@ -64,6 +66,7 @@ import io.undertow.util.URLUtils;
 import io.undertow.websockets.jsr.WebSocketDeploymentInfo;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.Filter;
+import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.websocket.Endpoint;
@@ -97,15 +100,27 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 		platform.application().logManager().setLogLevel("io.undertow.request.error-response", System.Logger.Level.INFO);
 		undertowServer().start();
 
+		WebServerConfiguration config = configuration();
 		println( //
 				sequence( //
 						text("Web Server running. "), //
 						cyan("URL:"), //
-						text(" http://" + configuration().getHostName() + ":" + configuration().getPort()) //
+						text(" http://" + config.getHostName() + ":" + config.getPort()) //
 				) //
 		);
+
+		SslConfig sslConfig = sslConfigBox().value;
+		if (sslConfig != null) {
+			println( //
+					sequence( //
+							text("HTTPS enabled. "), //
+							cyan("URL:"), //
+							text(" https://" + config.getHostName() + ":" + sslConfig.port()) //
+					) //
+			);
+		}
 	}
-	
+
 	@Override
 	public void addServlet(String name, String path, HttpServlet servlet) {
 		addServlet(defaultEndpointsBasePath(), name, path, servlet);
@@ -119,15 +134,28 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	}
 
 	@Override
+	public Supplier<ServletContext> servletContextSupplier() {
+		return servletContextSupplier(defaultEndpointsBasePath());
+	}
+
+	@Override
+	public Supplier<ServletContext> servletContextSupplier(String basePath) {
+		return () -> {
+			// TODO check if we are already in onApplicationReady, otherwise throw an exception because servlets are still being registered
+			return servletDeploymentManager(normalizeBasePath(basePath)).getDeployment().getServletContext();
+		};
+	}
+
+	@Override
 	public void addStaticFileResource(String path, String rootDir, String... welcomeFiles) {
 		addStaticFileResource(applicationHandler(), path, rootDir, welcomeFiles);
 	}
-	
+
 	private void addStaticFileResource(PathHandler pathHandler, String path, String rootDir, String... welcomeFiles) {
 		ResourceHandler resourceHandler = new ResourceHandler(new FileResourceManager(new File(rootDir), 100)) //
 				.setWelcomeFiles(welcomeFiles) //
 				.setDirectoryListingEnabled(false);
-		
+
 		pathHandler.addPrefixPath(path, resourceHandler);
 	}
 
@@ -206,8 +234,32 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 		WebServerConfiguration config = configuration();
 
 		String result = config.getPublicUrl();
-		if (result == null)
-			result = config.getHostName() + ":" + config.getPort();
+		if (result == null) {
+			SslConfig sslConfig = sslConfigBox().value;
+			if (sslConfig != null)
+				result = "https://" + config.getHostName() + ":" + sslConfig.port();
+			 else
+				result = "http://" + config.getHostName() + ":" + config.getPort();
+		}
+
+		return result;
+	}
+
+	@Override
+	public boolean isSslEnabled() {
+		return sslConfigBox().value != null;
+	}
+
+	@Override
+	@Managed
+	public String defaultEndpointUrl() {
+		return resolvedDfaultEndpointUrl();
+	}
+
+	private String resolvedDfaultEndpointUrl() {
+		String result = publicUrl() + "/" + resolveDefaultEndpointPath("");
+		while (result.endsWith("/"))
+			result = result.substring(0, result.length() - 1);
 
 		return result;
 	}
@@ -237,7 +289,7 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	private PathHandler applicationHandler() {
 		return Handlers.path();
 	}
-	
+
 	private void addEndpointsHandlers(PathHandler pathHandler) {
 		for (String basePath : basePaths())
 			try {
@@ -246,26 +298,26 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 				throw new RuntimeException(e);
 			}
 	}
-	
+
 	private void addResourceHandlers(PathHandler pathHandler) {
 		for (StaticFilesystemResourceMapping mapping : webServerConfiguration().getResourceMappings()) {
 			addStaticFileResource( //
-					pathHandler,
+					pathHandler, //
 					mapping.getPath(), //
 					mapping.getRootDir(), //
 					// TODO: ask Peter about "index.html" in old code
-					mapping.getWelcomeFiles().toArray(new String[0])//
+					mapping.getWelcomeFiles().toArray(new String[0]) //
 			);
 
 			// old code
-//			ResourceHandler resourceHandler = new ResourceHandler(new FileResourceManager(new File(mapping.getRootDir()), 100)) //
-//					.setWelcomeFiles("index.html") //
-//					.setDirectoryListingEnabled(false);
-//
-//			pathHandler.addPrefixPath(mapping.getPath(), resourceHandler);
+			// ResourceHandler resourceHandler = new ResourceHandler(new FileResourceManager(new File(mapping.getRootDir()), 100)) //
+			// .setWelcomeFiles("index.html") //
+			// .setDirectoryListingEnabled(false);
+			//
+			// pathHandler.addPrefixPath(mapping.getPath(), resourceHandler);
 		}
 	}
-	
+
 	@Managed
 	private ApplicationStateGateHandler applicationStateGateHandler() {
 		ApplicationStateGateHandler bean = new ApplicationStateGateHandler(platform.application().stateManager());
@@ -275,29 +327,34 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	@Managed
 	private Undertow undertowServer() {
 		WebServerConfiguration configuration = configuration();
-		
+
 		Builder builder = Undertow.builder() //
 				.addHttpListener(configuration.getPort(), "0.0.0.0") //
 				.setHandler(accessLogHandler());
-		
+
 		Integer ioThreads = configuration.getIoThreads();
 		if (ioThreads != null)
 			builder.setIoThreads(ioThreads);
-		
+
 		Integer coreThreads = configuration.getCoreThreads();
 		if (coreThreads != null)
 			builder.setWorkerOption(Options.WORKER_TASK_CORE_THREADS, coreThreads);
-			
+
 		Integer maxThreads = configuration.getMaxThreads();
 		if (maxThreads != null)
 			builder.setWorkerOption(Options.WORKER_TASK_MAX_THREADS, maxThreads);
 
-		SslConfig sslConfig = SslConfig.buildFromConfig(configuration);
+		SslConfig sslConfig = sslConfigBox().value;
 		if (sslConfig != null)
 			builder.addHttpsListener(sslConfig.port(), "0.0.0.0", sslConfig.sslContext());
 
 		Undertow bean = builder.build();
 		return bean;
+	}
+
+	@Managed
+	private Box<SslConfig> sslConfigBox() {
+		return Box.of(SslConfig.buildFromConfig(configuration()));
 	}
 
 	@Managed

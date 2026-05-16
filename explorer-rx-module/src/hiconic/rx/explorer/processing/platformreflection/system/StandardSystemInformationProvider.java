@@ -530,13 +530,13 @@ public class StandardSystemInformationProvider implements SystemInformationProvi
 		String lcName = name.toLowerCase();
 
 		return TribefireRuntime.isPropertyPrivate(name) || //
-				lcName.endsWith("password") || //
-				lcName.endsWith("pwd") || //
-				lcName.endsWith("key") || //
-				lcName.endsWith("secret") || //
-				lcName.endsWith("token") || //
-				lcName.endsWith("credential") || //
-				lcName.endsWith("credentials");
+				lcName.contains("password") || //
+				lcName.contains("pwd") || //
+				lcName.contains("key") || //
+				lcName.contains("secret") || //
+				lcName.contains("token") || //
+				lcName.contains("credential") || //
+				lcName.contains("credentials");
 	}
 
 	protected List<PowerSource> getPowerInfo(oshi.SystemInfo si) {

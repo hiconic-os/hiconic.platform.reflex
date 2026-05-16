@@ -9,4 +9,7 @@ public interface WebSecurityContract extends RxExportContract {
 
 	CookieHandler cookieHandler();
 
+	/** WebSecurityConfiguration#loginPath */
+	String defaultLoginPath();
+
 }

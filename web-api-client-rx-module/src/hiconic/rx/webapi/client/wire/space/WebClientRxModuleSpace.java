@@ -86,7 +86,7 @@ public class WebClientRxModuleSpace implements RxModuleContract, WebApiClientCon
 	@Managed
 	private SslSocketFactoryProvider sslSocketFactoryProvider() {
 		// TODO this used to be TribefireRuntime.getAcceptSslCertificates(), which resolves TRIBEFIRE_ACCEPT_SSL_CERTIFICATES
-		boolean acceptSslCertificates = false;
+		boolean acceptSslCertificates = true;
 
 		SslSocketFactoryProvider bean = acceptSslCertificates ? //
 				new EasySslSocketFactoryProvider() : //

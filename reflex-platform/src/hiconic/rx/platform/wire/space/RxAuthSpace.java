@@ -66,8 +66,9 @@ public class RxAuthSpace implements RxAuthContract {
 		return () -> AttributeContexts.derivePeek().set(UserSessionAspect.class, systemUserSession()).build();
 	}
 
+	@Override
 	@Managed
-	private UserSession systemUserSession() {
+	public UserSession systemUserSession() {
 		UserSession bean = UserSession.T.create();
 
 		User user = systemUser();
@@ -91,11 +92,13 @@ public class RxAuthSpace implements RxAuthContract {
 		return bean;
 	}
 
-	private static final Set<String> internalRoles = set("internal");
+	private static final String internalRole = "internal";
+	private static final Set<String> internalRoles = set(internalRole);
 	private static final String internalName = "internal";
 
+	@Override
 	@Managed
-	private User systemUser() {
+	public User systemUser() {
 		User bean = User.T.create();
 		bean.setId(internalName);
 		bean.setName(internalName);

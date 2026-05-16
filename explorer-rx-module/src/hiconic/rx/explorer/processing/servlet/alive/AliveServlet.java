@@ -33,6 +33,9 @@ public class AliveServlet extends HttpServlet {
 
 	@Required
 	public void setHomeRelativePath(String homeRelativePath) {
+		if (!homeRelativePath.startsWith("/"))
+			homeRelativePath = "/" + homeRelativePath;
+
 		this.homeRelativePath = homeRelativePath;
 	}
 

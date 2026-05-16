@@ -88,7 +88,7 @@ public class RxConfigurationSpace implements RxConfigurationContract {
 		RxPropertyResolver bean = new RxPropertyResolver();
 
 		Map<String, String> rawProperties = getOrTunnel(
-				RxPropertiesLoader.loadFromFolder(applicationFiles.confPath().toFile(), "properties(-.*)?.yaml", marshalling.yamlMarshaller()));
+				RxPropertiesLoader.loadFromFolder(applicationFiles.confPath().toFile(), "properties(\\..*)?.yaml", marshalling.yamlMarshaller()));
 		bean.setRawProperties(rawProperties);
 		return bean;
 	}

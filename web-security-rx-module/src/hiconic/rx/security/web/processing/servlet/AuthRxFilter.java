@@ -55,7 +55,7 @@ import com.braintribe.utils.lcd.Lazy;
 
 import dev.hiconic.servlet.api.HttpFilter;
 import dev.hiconic.servlet.impl.util.ServletTools;
-import hiconic.rx.security.web.processing.WebSecurityConstants;
+import hiconic.rx.security.web.api.WebSecurityConstants;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

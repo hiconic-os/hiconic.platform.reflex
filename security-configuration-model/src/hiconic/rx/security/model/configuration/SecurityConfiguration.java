@@ -31,7 +31,7 @@ public interface SecurityConfiguration extends GenericEntity {
 	Set<String> getAdminRoles();
 	void setAdminRoles(Set<String> adminRoles);
 
-	@Initializer("'rx-internal'")
+	@Initializer("'internal'") // matches RxAuthSpace.internalRole
 	String getInternalRole();
 	void setInternalRole(String internalRole);
 

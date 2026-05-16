@@ -343,8 +343,7 @@ function logout() {
 		
 		
 		<div id="tf_caption" style="top:20%; font-weight:300; font-size:3em">
-			<div>Welcome to Tribefire.</div>
-			<div style="font-size:20px">The Smart Data Platform.</div>
+			<div>Welcome.</div>
 			<div><a class="button" href="$!{loginUrl}" target="">Sign in</a></div>
 		</div>
 		

@@ -27,6 +27,7 @@ import com.braintribe.gm.model.persistence.reflection.api.PersistenceReflectionR
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
+import com.braintribe.gm.model.reason.essential.NotFound;
 import com.braintribe.logging.Logger;
 import com.braintribe.model.accessapi.ModelEnvironment;
 import com.braintribe.model.generic.GMF;
@@ -41,6 +42,7 @@ import com.braintribe.model.workbench.WorkbenchConfiguration;
 import com.braintribe.utils.StringTools;
 import com.braintribe.utils.collection.impl.AttributeContexts;
 
+import hiconic.rx.access.module.api.AccessDomain;
 import hiconic.rx.module.api.service.ConfiguredModel;
 
 public class PersistenceReflectionProcessor extends AbstractDispatchingServiceProcessor<PersistenceReflectionRequest, Object> {
@@ -126,7 +128,11 @@ public class PersistenceReflectionProcessor extends AbstractDispatchingServicePr
 					.text("GetModelEnvironment.accessId must not be null") //
 					.toMaybe();
 
-		RxAccess rxAccess = accesses.getAccess(accessId);
+		AccessDomain rxAccess = accesses.byId(accessId);
+		if (rxAccess == null)
+			return Reasons.build(NotFound.T) //
+					.text("No access found for id: " + accessId) //
+					.toMaybe();
 
 		ModelEnvironment modelEnvironment = ModelEnvironment.T.create();
 
@@ -161,7 +167,7 @@ public class PersistenceReflectionProcessor extends AbstractDispatchingServicePr
 			CustomType type = GMF.getTypeReflection().findType(typeSignature);
 			if (type == null)
 				return Reasons.build(InvalidArgument.T) //
-						.text("Unknown Gm type: " + typeSignature) //
+						.text("Unknown GM type: " + typeSignature) //
 						.toMaybe();
 
 			types.add(type);

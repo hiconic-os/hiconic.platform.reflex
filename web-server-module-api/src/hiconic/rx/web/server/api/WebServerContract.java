@@ -13,10 +13,13 @@
 // ============================================================================
 package hiconic.rx.web.server.api;
 
+import java.util.function.Supplier;
+
 import dev.hiconic.servlet.api.remote.RemoteClientAddressResolver;
 import hiconic.rx.module.api.wire.RxExportContract;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.Filter;
+import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.websocket.Endpoint;
 
@@ -32,13 +35,32 @@ public interface WebServerContract extends RxExportContract {
 	void addServlet(String name, String path, HttpServlet servlet);
 	void addServlet(String basePath, String name, String path, HttpServlet servlet);
 
+	Supplier<ServletContext> servletContextSupplier();
+	Supplier<ServletContext> servletContextSupplier(String basePath);
+
 	void addStaticFileResource(String path, String rootDir, String... welcomeFiles);
 
 	/**
 	 * URL with which the server can be reached from the outside. It is called public as it can be the URL of the proxy that propagates the request to
 	 * the server behind it.
+	 * <p>
+	 * Includes the protocol, either {@code http} or {@code https}, {@code  hostname} and {@code  port}.
+	 * <p>
+	 * Configured via {@code WebServerConfiguration}, either directly, or based on the {@code  hostname} and {@code  port}, in which case the HTTPS
+	 * URL is used if SSL is enabled.
+	 * <p>
+	 * The value DOES NOT END WITH '/'!!!
 	 */
 	String publicUrl();
+
+	/**
+	 * {@link #publicUrl()}, possibly with the default endpoint path
+	 * <p>
+	 * The value DOES NOT END WITH '/'!!!
+	 */
+	String defaultEndpointUrl();
+
+	boolean isSslEnabled();
 
 	/**
 	 * Resolves given path relative to the default endpoint path.<br>

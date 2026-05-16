@@ -19,7 +19,7 @@ import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.essential.NotFound;
 
-import hiconic.rx.security.web.processing.WebSecurityConstants;
+import hiconic.rx.security.web.api.WebSecurityConstants;
 import jakarta.servlet.http.HttpServletRequest;
 
 public class ExistingSessionFromHeaderParameterProvider implements ExistingSessionWebCredentialProvider {

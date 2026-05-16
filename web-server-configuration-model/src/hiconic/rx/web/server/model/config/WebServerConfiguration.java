@@ -46,26 +46,28 @@ public interface WebServerConfiguration extends GenericEntity {
 	Integer getSslPort();
 	void setSslPort(Integer sslPort);
 
+	// Self-signed certificate can be generated with JDK's keytool:
+	// keytool -genkeypair -alias reflex -keyalg RSA -keysize 2048 -keystore keystore-local.jks -validity 1500
 	String getSslKeyStore();
 	void setSslKeyStore(String sslKeyStore);
 
 	@Confidential
 	String getSslKeyStorePassword();
 	void setSslKeyStorePassword(String sslKeyStorePassword);
-	
+
 	Integer getIoThreads();
 	void setIoThreads(Integer ioThreads);
-	
+
 	Integer getMaxThreads();
 	void setMaxThreads(Integer maxThreads);
-	
+
 	Integer getCoreThreads();
 	void setCoreThreads(Integer coreThreads);
 
 	CorsConfiguration getCorsConfiguration();
 	void setCorsConfiguration(CorsConfiguration corsConfiguration);
 
-	@Description("Public URL of the server. Does not include defaultEndpointsBasePath. The value must not end with '/'")
+	@Description("Public URL of the server, should include protocol, hostname and potentially port. Does not include defaultEndpointsBasePath. The value must not end with '/'")
 	@Pattern(".*[^\\/]$")
 	String getPublicUrl();
 	void setPublicUrl(String publicUrl);

@@ -4,11 +4,13 @@ import com.braintribe.utils.StringTools;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
+import hiconic.rx.module.api.wire.RxConfigurationContract;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.security.model.configuration.SecurityConfiguration;
 import hiconic.rx.security.web.api.AuthFilters;
 import hiconic.rx.security.web.api.CookieHandler;
+import hiconic.rx.security.web.api.WebSecurityConfigurationContract;
 import hiconic.rx.security.web.api.WebSecurityContract;
 import hiconic.rx.security.web.model.configuration.WebSecurityConfiguration;
 import hiconic.rx.security.web.processing.credentials.extractor.BasicAuthCredentialsProvider;
@@ -27,15 +29,18 @@ import jakarta.servlet.DispatcherType;
  * This module's javadoc is yet to be written.
  */
 @Managed
-public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityContract {
+public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityContract, WebSecurityConfigurationContract {
 
 	// @formatter:off
 	@Import private RxPlatformContract platform;
-
 	@Import private WebServerContract webServer;
-
 	@Import private HttpRxSpace http;
 	// @formatter:on
+
+	@Override
+	public void setDefaultLoginPath(String path) {
+		configurationManager().setDefaultLoginPath(path);
+	}
 
 	@Override
 	public void onDeploy() {
@@ -43,10 +48,12 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 		webServer.addFilter(AuthFilters.lenientAuthFilter, authFilterLenient());
 		webServer.addFilter(AuthFilters.strictAdminAuthFilter, authFilterAdminStrict());
 
-		webServer.addServlet("login-servlet", "login", loginServlet());
-		webServer.addServlet("login-auth-servlet", "login/auth", loginAuthServlet());
+		if (configurationManager().loginServletEnabled()) {
+			webServer.addServlet("login-servlet", "login", loginServlet());
+			webServer.addServlet("login-auth-servlet", "login/auth", loginAuthServlet());
+		}
 
-		webServer.addServlet("logout-servlet", "logout", loginServlet());
+		webServer.addServlet("logout-servlet", "logout", logoutServlet());
 		// TODO explain why lenient filter?
 		webServer.addFilterMapping(AuthFilters.lenientAuthFilter, "/logout/*", DispatcherType.REQUEST);
 	}
@@ -62,7 +69,7 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 		LogoutRxServlet bean = new LogoutRxServlet();
 		bean.setRequestEvaluator(platform.serviceProcessing().evaluator());
 
-		String loginPath = loginPath();
+		String loginPath = defaultLoginPath();
 		if (!StringTools.isBlank(loginPath))
 			bean.setRelativeLoginPath(loginPath);
 
@@ -126,7 +133,7 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 		authFilter.addWebCredentialProvider("jwt", jwtCredentialsProvider());
 		authFilter.addWebCredentialProvider("header-parameter", existingSessionFromHeaderParameterProvider());
 
-		String loginPath = loginPath();
+		String loginPath = defaultLoginPath();
 		if (!StringTools.isBlank(loginPath))
 			authFilter.setRelativeLoginPath(loginPath);
 	}
@@ -158,9 +165,9 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 		return new JwtCredentialsProvider();
 	}
 
-	private String loginPath() {
-		WebSecurityConfiguration webSecurityConfig = platform.configuration().readConfig(WebSecurityConfiguration.T).get();
-		return webSecurityConfig.getLoginPath();
+	@Override
+	public String defaultLoginPath() {
+		return configurationManager().getDefaultLoginPath();
 	}
 
 	@Override
@@ -168,4 +175,40 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 		return http.cookieHandler();
 	}
 
+	@Managed
+	private WebSecurityConfigurationManager configurationManager() {
+		WebSecurityConfigurationManager bean = new WebSecurityConfigurationManager();
+		bean.setConfigurationConract(platform.configuration());
+		return bean;
+	}
+
+}
+
+class WebSecurityConfigurationManager {
+
+	public WebSecurityConfiguration wsConfig;
+	private String defaultLoginPathSetProgrammatically;
+
+	public void setConfigurationConract(RxConfigurationContract configuration) {
+		this.wsConfig = configuration.readConfig(WebSecurityConfiguration.T).get();
+	}
+
+	public void setDefaultLoginPath(String defaultLoginPath) {
+		this.defaultLoginPathSetProgrammatically = defaultLoginPath;
+	}
+
+	public boolean loginServletEnabled() {
+		Boolean standardLoginEnabled = wsConfig.getStandardLoginEnabled();
+		if (standardLoginEnabled != null)
+			return standardLoginEnabled;
+
+		return defaultLoginPathSetProgrammatically == null;
+	}
+
+	public String getDefaultLoginPath() {
+		if (!StringTools.isBlank(defaultLoginPathSetProgrammatically))
+			return defaultLoginPathSetProgrammatically;
+		else
+			return wsConfig.getLoginPath();
+	}
 }
