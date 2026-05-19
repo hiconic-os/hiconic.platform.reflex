@@ -26,6 +26,7 @@ public class UserSessionJdbcTableDefinition {
 	public final GmTable gmTable;
 	
 	public final GmColumn<String> id;
+	public final GmColumn<String> userId;
 	public final GmColumn<String> userName;
 	public final GmColumn<String> userFirstName;
 	public final GmColumn<String> userLastName;
@@ -53,9 +54,9 @@ public class UserSessionJdbcTableDefinition {
 	public final GmColumn<String> properties;
 
 	public UserSessionJdbcTableDefinition(GmDb gmDb, String tableName) {
-		super();
 		this.gmDb = gmDb;
 		this.id = gmDb.shortString255("id").primaryKey().notNull().done();
+		this.userId = gmDb.shortString255("USER_ID").done();
 		this.userName = gmDb.shortString255("USER_NAME").done();
 		this.userFirstName = gmDb.shortString255("USER_FIRST_NAME").done();
 		this.userLastName = gmDb.shortString255("USER_LAST_NAME").done();
@@ -86,6 +87,7 @@ public class UserSessionJdbcTableDefinition {
 		
 		gmTable = gmDb.newTable(tableName).withColumns(
 				 id,
+				 userId,
 				 userName,
 				 userFirstName,
 				 userLastName,

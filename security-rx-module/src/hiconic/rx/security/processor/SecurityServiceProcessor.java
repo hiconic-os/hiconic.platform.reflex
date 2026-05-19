@@ -404,15 +404,15 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 		return requestContext.findAttribute(UserSessionAspect.class).map(UserSession::getUser).orElse(null);
 	}
 
-	private void collectStatisticsUponLogin(UserSession userSession) {
+	private void collectStatisticsUponLogin(@SuppressWarnings("unused") UserSession userSession) {
 		if (!enableUserStatistics)
 			return;
-
+		// TODO support user statistics
 	}
 
-	private void collectStatisticsUponLogout(DeletedSessionInfo deletedSessionInfo) {
+	private void collectStatisticsUponLogout(@SuppressWarnings("unused") DeletedSessionInfo deletedSessionInfo) {
 		if (!enableUserStatistics)
 			return;
-
+		// TODO support user statistics
 	}
 }

@@ -47,12 +47,12 @@ public class JdbcUserSessionService extends AbstractUserSessionService {
 	protected String getCreatePersistenceUserSessionStmt() {
 		return "INSERT INTO " + tableName + " (" +
 				"ID, "+
-				"USER_NAME, USER_FIRST_NAME, USER_LAST_NAME, USER_EMAIL, " +
+				"USER_ID, USER_NAME, USER_FIRST_NAME, USER_LAST_NAME, USER_EMAIL, " +
 				"CREATION_DATE, FIXED_EXPIRY_DATE, EXPIRY_DATE, LAST_ACCESSED_DATE, " +
 				"MAX_IDLE_TIME, EFFECTIVE_ROLES, SESSION_TYPE, CREATION_INTERNET_ADDRESS, CREATION_NODE_ID, PROPERTIES, "+
 				"ACQUIRATION_KEY, BLOCKS_AUTHENTICATION_AFTER_LOGOUT" +
 			") VALUES ("+
-				"?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?"+
+				"?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?"+
 			")";
 	}
 	
@@ -125,26 +125,27 @@ public class JdbcUserSessionService extends AbstractUserSessionService {
 
 		try (Connection conn = openJdbcConnection(); PreparedStatement stmt = conn.prepareStatement(getCreatePersistenceUserSessionStmt())) {
 			stmt.setString(1, pUserSession.getId());
-			stmt.setString(2, pUserSession.getUserName());
-			stmt.setString(3, pUserSession.getUserFirstName());
-			stmt.setString(4, pUserSession.getUserLastName());
-			stmt.setString(5, pUserSession.getUserEmail());
-			stmt.setTimestamp(6, new Timestamp(pUserSession.getCreationDate().getTime()));
-			stmt.setTimestamp(7, pUserSession.getFixedExpiryDate() != null ? new Timestamp(pUserSession.getFixedExpiryDate().getTime()) : null);
-			stmt.setTimestamp(8, pUserSession.getExpiryDate() != null ? new Timestamp(pUserSession.getExpiryDate().getTime()) : null);
-			stmt.setTimestamp(9, new Timestamp(pUserSession.getLastAccessedDate().getTime()));
+			stmt.setString(2, pUserSession.getUserId());
+			stmt.setString(3, pUserSession.getUserName());
+			stmt.setString(4, pUserSession.getUserFirstName());
+			stmt.setString(5, pUserSession.getUserLastName());
+			stmt.setString(6, pUserSession.getUserEmail());
+			stmt.setTimestamp(7, new Timestamp(pUserSession.getCreationDate().getTime()));
+			stmt.setTimestamp(8, pUserSession.getFixedExpiryDate() != null ? new Timestamp(pUserSession.getFixedExpiryDate().getTime()) : null);
+			stmt.setTimestamp(9, pUserSession.getExpiryDate() != null ? new Timestamp(pUserSession.getExpiryDate().getTime()) : null);
+			stmt.setTimestamp(10, new Timestamp(pUserSession.getLastAccessedDate().getTime()));
 			if (pUserSession.getMaxIdleTime() != null) {
-				stmt.setLong(10, pUserSession.getMaxIdleTime());
+				stmt.setLong(11, pUserSession.getMaxIdleTime());
 			} else {
-				stmt.setNull(10, Types.BIGINT);
+				stmt.setNull(11, Types.BIGINT);
 			}
-			stmt.setString(11, pUserSession.getEffectiveRoles());
-			stmt.setString(12, pUserSession.getSessionType());
-			stmt.setString(13, pUserSession.getCreationInternetAddress());
-			stmt.setString(14, pUserSession.getCreationNodeId());
-			stmt.setString(15, pUserSession.getProperties());
-			stmt.setString(16, pUserSession.getAcquirationKey());
-			stmt.setBoolean(17, pUserSession.getBlocksAuthenticationAfterLogout());
+			stmt.setString(12, pUserSession.getEffectiveRoles());
+			stmt.setString(13, pUserSession.getSessionType());
+			stmt.setString(14, pUserSession.getCreationInternetAddress());
+			stmt.setString(15, pUserSession.getCreationNodeId());
+			stmt.setString(16, pUserSession.getProperties());
+			stmt.setString(17, pUserSession.getAcquirationKey());
+			stmt.setBoolean(18, pUserSession.getBlocksAuthenticationAfterLogout());
 
 			stmt.execute();
 		} catch (Exception e) {
@@ -199,6 +200,7 @@ public class JdbcUserSessionService extends AbstractUserSessionService {
 		}
 		PersistenceUserSession pUserSession = PersistenceUserSession.T.create();
 		pUserSession.setId(result.getString("ID"));
+		pUserSession.setUserId(result.getString("USER_ID"));
 		pUserSession.setUserName(result.getString("USER_NAME"));
 		pUserSession.setClosed(result.getBoolean("CLOSED"));
 		pUserSession.setUserFirstName(result.getString("USER_FIRST_NAME"));

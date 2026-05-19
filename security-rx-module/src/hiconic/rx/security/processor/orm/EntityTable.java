@@ -25,6 +25,8 @@ import com.braintribe.model.generic.reflection.GenericModelType;
 import com.braintribe.model.generic.reflection.Property;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 
+// TODO is this needed?
+@SuppressWarnings("unused")
 public class EntityTable {
 	private final EntitySchema schema;
 	private final EntityType<?> entityType;
@@ -33,7 +35,6 @@ public class EntityTable {
 	
 	private final Map<String, GmColumn<?>> columns = new LinkedHashMap<>();
 
-	@SuppressWarnings("unchecked")
 	public EntityTable(EntitySchema schema, EntityType<?> entityType, CmdResolver cmdResolver) {
 		this.schema = schema;
 		this.entityType = entityType;

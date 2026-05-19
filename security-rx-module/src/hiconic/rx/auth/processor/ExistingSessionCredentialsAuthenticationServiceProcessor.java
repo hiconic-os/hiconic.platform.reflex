@@ -63,7 +63,7 @@ public class ExistingSessionCredentialsAuthenticationServiceProcessor
 		if (credentials.getReuseSession())
 			return Maybe.complete(buildAuthenticatedUserSessionFrom(userSession));
 		else {
-			Maybe<User> userMaybe = retrieveUser(UserNameIdentification.of(userSession.getUser().getId()));
+			Maybe<User> userMaybe = retrieveUser(UserNameIdentification.of(userSession.getUser().getName()));
 
 			if (userMaybe.isUnsatisfied()) {
 

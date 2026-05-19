@@ -61,5 +61,15 @@ limitations under the License.
             <artifactId>security-test-model</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
+        <dependency>
+            <groupId>com.braintribe.testing</groupId>
+            <artifactId>db-test-connections</artifactId>
+            <version>${V.com.braintribe.testing}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>jdbc-gm-support</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
     </dependencies>
 </project>

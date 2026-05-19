@@ -130,6 +130,9 @@ public abstract class AbstractUserSessionService implements UserSessionService {
 	}
 
 	private String encodeMap(Map<String, String> map) {
+		if (map == null)
+			return null;
+
 		StringBuilder builder = new StringBuilder();
 		for (Map.Entry<String, String> entry : map.entrySet()) {
 			String key = entry.getKey();
@@ -148,6 +151,9 @@ public abstract class AbstractUserSessionService implements UserSessionService {
 	}
 
 	private Map<String, String> decodeMap(String encoded) {
+		if (encoded == null)
+			return null;
+
 		Map<String, String> map = new LinkedHashMap<String, String>();
 		StringTokenizer tokenizer = new StringTokenizer(encoded, "&");
 
@@ -302,7 +308,7 @@ public abstract class AbstractUserSessionService implements UserSessionService {
 			userSession.setMaxIdleTime(TimeSpan.fromMillies(pUserSession.getMaxIdleTime()));
 		}
 		User user = User.T.create();
-		user.setId(pUserSession.getUserName());
+		user.setId(pUserSession.getUserId());
 		user.setName(pUserSession.getUserName());
 		user.setFirstName(pUserSession.getUserFirstName());
 		user.setLastName(pUserSession.getUserLastName());
