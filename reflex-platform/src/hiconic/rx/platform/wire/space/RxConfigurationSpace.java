@@ -83,8 +83,9 @@ public class RxConfigurationSpace implements RxConfigurationContract {
 		return bean;
 	}
 
+	@Override
 	@Managed
-	RxPropertyResolver propertyResolver() {
+	public RxPropertyResolver propertyResolver() {
 		RxPropertyResolver bean = new RxPropertyResolver();
 
 		Map<String, String> rawProperties = getOrTunnel(

@@ -36,8 +36,9 @@ import com.braintribe.ve.api.VirtualEnvironment;
 import com.braintribe.ve.impl.StandardEnvironment;
 
 import hiconic.rx.module.api.common.RxPlatform;
+import hiconic.rx.module.api.config.PropertyResolver;
 
-public class RxPropertyResolver {
+public class RxPropertyResolver implements PropertyResolver {
 	private Map<String, String> rawProperties = Collections.emptyMap();
 	private final Map<String, Maybe<String>> resolvedProperties = new ConcurrentHashMap<>();
 	private VirtualEnvironment virtualEnvironment = StandardEnvironment.INSTANCE;
@@ -52,6 +53,7 @@ public class RxPropertyResolver {
 		this.virtualEnvironment = virtualEnvironment;
 	}
 
+	@Override
 	public String resolve(String name) {
 		Maybe<String> maybe = resolveReasoned(name);
 		if (maybe.isUnsatisfiedBy(PropertyNotFound.T))
@@ -60,6 +62,7 @@ public class RxPropertyResolver {
 		return maybe.get();
 	}
 
+	@Override
 	public Maybe<String> resolveReasoned(String name) {
 		// DO NOT USE computeIfAbsent() as resolveRaw may do a recursive call back here!!!
 		Maybe<String> result = resolvedProperties.get(name);

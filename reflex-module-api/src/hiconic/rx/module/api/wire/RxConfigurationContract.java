@@ -18,6 +18,7 @@ import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.wire.api.space.WireSpace;
 
+import hiconic.rx.module.api.config.PropertyResolver;
 import hiconic.rx.module.api.service.ConfiguredModels;
 
 public interface RxConfigurationContract extends WireSpace {
@@ -31,5 +32,6 @@ public interface RxConfigurationContract extends WireSpace {
 	 * If an explicit configuration cannot be found a default initialized instance of the configType will be returned.
 	 */
 	<C extends GenericEntity> Maybe<C> readConfig(EntityType<C> configType);
-
+	
+	PropertyResolver propertyResolver();
 }
