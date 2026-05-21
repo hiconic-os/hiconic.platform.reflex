@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration xmlns="http://ch.qos.logback/xml/ns/logback"
+               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xsi:schemaLocation="http://ch.qos.logback/xml/ns/logback
+               http://ch.qos.logback/xml/ns/logback/logback.xsd">
+
+    <appender name="STDOUT_JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <target>System.out</target>
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp>
+                    <fieldName>date</fieldName>
+                </timestamp>
+                <timestamp>
+                    <fieldName>iso8601Utc</fieldName>
+                    <timeZone>UTC</timeZone>
+                </timestamp>
+                <logLevel>
+                    <fieldName>level</fieldName>
+                </logLevel>
+                <loggerName>
+                    <fieldName>loggerName</fieldName>
+                </loggerName>
+                <threadName>
+                    <fieldName>thread</fieldName>
+                </threadName>
+                <message>
+                    <fieldName>message</fieldName>
+                </message>
+                <mdc>
+                    <fieldName>mdc</fieldName>
+                </mdc>
+                <arguments/>
+                <stackTrace>
+                    <fieldName>throwable</fieldName>
+                </stackTrace>
+                <pattern>
+                    <pattern>
+                        {
+                            "source":"%class.%method",
+                            "sourceAndLogger":"%class.%method / %logger",
+                            "sourceClassName":"%class",
+                            "condensedThrowable":"%ex{short}",
+                            "shortLoggerName":"%logger{0}",
+                            "loggerNameShortPackages":"%logger{36}",
+                            "ndc":"%X{ndc}",
+                            "module":"security-rx-module-test"
+                        }
+                    </pattern>
+                </pattern>
+            </providers>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="STDOUT_JSON"/>
+    </root>
+
+    <logger name="hiconic.rx.security.test" level="DEBUG"/>
+
+</configuration>
