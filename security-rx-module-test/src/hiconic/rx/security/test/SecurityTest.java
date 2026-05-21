@@ -21,6 +21,8 @@ import org.junit.Test;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.security.reason.AuthenticationFailure;
 import com.braintribe.gm.model.security.reason.InvalidCredentials;
+import com.braintribe.logging.Logger;
+import com.braintribe.logging.ndc.mbean.NestedDiagnosticContext;
 import com.braintribe.model.processing.service.api.SessionIdAspect;
 import com.braintribe.model.securityservice.Logout;
 import com.braintribe.model.securityservice.OpenUserSessionResponse;
@@ -31,6 +33,20 @@ import hiconic.rx.security.model.test.RunSecured;
 import hiconic.rx.test.common.AbstractRxTest;
 
 public class SecurityTest extends AbstractRxTest {
+	private static final Logger logger = Logger.getLogger(SecurityTest.class);
+	
+	@Test
+	public void logTest() {
+		NestedDiagnosticContext.pushContext("TestContext");
+		NestedDiagnosticContext.put("Test", "Test-value");
+		try {
+			logger.info("Hello World", new RuntimeException("Test"));
+		}
+		finally {
+			NestedDiagnosticContext.popContext();
+		}
+		logger.info("Without Context");
+	}
 	
 	@Test
 	public void testAuthenticationValidCredentials() {
