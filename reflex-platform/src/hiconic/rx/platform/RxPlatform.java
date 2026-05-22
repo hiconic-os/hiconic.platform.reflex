@@ -18,6 +18,7 @@ import static com.braintribe.console.ConsoleOutputs.green;
 import static com.braintribe.console.ConsoleOutputs.magenta;
 import static com.braintribe.console.ConsoleOutputs.sequence;
 import static com.braintribe.console.ConsoleOutputs.text;
+import static java.util.Collections.EMPTY_LIST;
 
 import java.io.File;
 import java.lang.System.Logger;
@@ -33,6 +34,8 @@ import org.slf4j.bridge.SLF4JBridgeHandler;
 import com.braintribe.console.AbstractAnsiConsole;
 import com.braintribe.console.ConsoleConfiguration;
 import com.braintribe.console.ConsoleOutputs;
+import com.braintribe.gm.model.reason.ReasonException;
+import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
 import com.braintribe.wire.api.Wire;
 import com.braintribe.wire.api.context.WireContext;
 import com.braintribe.wire.impl.properties.PropertyLookups;
@@ -82,7 +85,7 @@ public class RxPlatform implements AutoCloseable {
 
 	public RxPlatform(String[] args, Function<String, String> systemPropertyLookup, Function<String, String> applicationPropertyLookup) {
 		this.args = args;
-
+		
 		systemProperties = PropertyLookups.create(SystemProperties.class, systemPropertyLookup);
 		applicationProperties = PropertyLookups.create(ApplicationProperties.class, applicationPropertyLookup);
 
@@ -124,9 +127,23 @@ public class RxPlatform implements AutoCloseable {
 			} catch (InterruptedException e) {
 				logger.log(Level.ERROR, "Unexpected interruption", e);
 			}
-		} catch (Exception e) {
+		}
+		catch (UnsatisfiedMaybeTunneling e) {
+			String msg = "Error while starting application:\n" + e.getMaybe().whyUnsatisfied().stringify();
+			logger.log(Level.ERROR, msg, e);
+			System.err.println(msg);
+		}
+		catch (ReasonException e) {
+			String msg = "Error while starting application:\n" + e.getReason().stringify();
+			logger.log(Level.ERROR, msg, e);
+			System.err.println(msg);
+		}
+		catch (Exception e) {
+			String msg = "Error while starting application";
 			// Handle errors during configuration
-			System.err.print("Error starting application: ");
+			logger.log(Level.ERROR, msg, e);
+
+			System.err.println(msg);
 			e.printStackTrace(System.err);
 		}
 	}

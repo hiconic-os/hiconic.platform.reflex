@@ -33,17 +33,26 @@ limitations under the License.
         <V.com.braintribe.servlet>[2.0,2.1)</V.com.braintribe.servlet>
         <V.com.braintribe.web.multipart>[2.0,2.1)</V.com.braintribe.web.multipart>
         <V.com.braintribe.xml>[2.0,2.1)</V.com.braintribe.xml>
-
         <V.com.github.ben-manes.caffeine>3.2.0</V.com.github.ben-manes.caffeine>
         <V.com.github.oshi>6.9.0</V.com.github.oshi>
         <V.com.vladsch.flexmark>0.64.8</V.com.vladsch.flexmark>
         <V.commons-io>2.20.0</V.commons-io>
         <V.commons-text>1.14.0</V.commons-text>
-        <V.io.undertow>2.3.19.Final</V.io.undertow>
+        <V.io.undertow>2.3.24.Final</V.io.undertow>
         <V.jakarta.servlet>6.0.0</V.jakarta.servlet>
         <V.net.lingala.zip4j>2.11.5</V.net.lingala.zip4j>
+        <V.org.jboss.threads>3.9.2</V.org.jboss.threads>
         <V.org.quartz-scheduler>2.3.2</V.org.quartz-scheduler>
     </properties>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.jboss.threads</groupId>
+                <artifactId>jboss-threads</artifactId>
+                <version>${V.org.jboss.threads}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
     <licenses>
         <license>
             <name>Apache License, Version 2.0</name>
