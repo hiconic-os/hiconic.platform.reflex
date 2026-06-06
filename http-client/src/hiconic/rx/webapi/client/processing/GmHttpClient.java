@@ -25,6 +25,7 @@ import java.net.URISyntaxException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -586,10 +587,11 @@ public class GmHttpClient implements HttpClient {
 	}
 
 	private Marshaller getMarshaller(String mimeType) {
-		return marshallerRegistry.getMarshaller(mimeType);
+		Objects.requireNonNull(mimeType, "RequestContext mimeType cannot be null.");
+		Marshaller marshaller = marshallerRegistry.getMarshaller(mimeType);
+		return Objects.requireNonNull(marshaller, "No marshaller found for mime type: " + mimeType);
 	}
 
-	@SuppressWarnings("deprecation")
 	private static BasicConfigurableMarshallerRegistry defaultMarshallerRegistry() {
 		BasicConfigurableMarshallerRegistry marshallerRegistry = new BasicConfigurableMarshallerRegistry();
 		marshallerRegistry.registerMarshaller("application/json", new JsonStreamMarshaller());
