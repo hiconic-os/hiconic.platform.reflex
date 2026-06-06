@@ -42,6 +42,7 @@ import com.braintribe.codec.marshaller.api.CharsetOption;
 import com.braintribe.codec.marshaller.api.EntityVisitorOption;
 import com.braintribe.codec.marshaller.api.GmDeserializationOptions;
 import com.braintribe.codec.marshaller.api.Marshaller;
+import com.braintribe.codec.marshaller.url.UrlEncodingMarshaller;
 import com.braintribe.exception.Exceptions;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reason;
