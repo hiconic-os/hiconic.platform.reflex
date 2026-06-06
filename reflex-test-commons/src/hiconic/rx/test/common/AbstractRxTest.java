@@ -37,8 +37,7 @@ public abstract class AbstractRxTest {
 	@Before
 	public void onBefore() {
 		try {
-			System.out.println("Loading RxPlatform");
-			platform = new RxPlatform(systemPropertyLookup(), applicationPropertyLookup());
+			platform = loadPlatform(AbstractRxTest.this.getClass().getSimpleName());
 			platformContract = platform.getContract();
 			evaluator = platform.getContract().serviceProcessing().evaluator();
 
@@ -46,6 +45,14 @@ public abstract class AbstractRxTest {
 			System.err.print(e.getMaybe().whyUnsatisfied().stringify());
 			throw e;
 		}
+	}
+
+	public static RxPlatform loadPlatform(String appName) {
+		return loadPlatform("res/app", appName);
+	}
+
+	public static RxPlatform loadPlatform(String appDir, String appName) {
+		return new RxPlatform(systemPropertyLookup(appDir), applicationPropertyLookup(appName));
 	}
 
 	@After
@@ -66,26 +73,26 @@ public abstract class AbstractRxTest {
 	// Internal
 	//
 
-	private Function<String, String> systemPropertyLookup() {
+	private static Function<String, String> systemPropertyLookup(String appDir) {
 		return RxProperties.overrideLookup( //
 				RxPlatform.defaultSystemPropertyLookup(), //
 				n -> {
 					switch (n) {
 						case SystemProperties.PROPERTY_APP_DIR:
-							return "res/app";
+							return appDir;
 						default:
 							return null;
 					}
 				});
 	}
 
-	private Function<String, String> applicationPropertyLookup() {
+	private static Function<String, String> applicationPropertyLookup(String appName) {
 		return RxProperties.overrideLookup( //
 				RxPlatform.defaultApplicationPropertyLookup(), //
 				n -> {
 					switch (n) {
 						case "applicationName":
-							return AbstractRxTest.this.getClass().getSimpleName();
+							return appName;
 						default:
 							return null;
 					}
