@@ -21,6 +21,7 @@ import com.braintribe.cfg.Required;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.config.ConfigurationError;
+import com.braintribe.logging.Logger;
 import com.braintribe.model.access.IncrementalAccess;
 import com.braintribe.model.generic.processing.IdGenerator;
 import com.braintribe.model.processing.core.expert.impl.ConfigurableGmExpertRegistry;
@@ -37,6 +38,8 @@ public class HibernateAccessExpert implements AccessExpert<HibernateAccess> {
 	private HibernateContract hibernateContract;
 	private DatabaseContract databaseContract;
 
+	private static final Logger log = Logger.getLogger(HibernateAccessExpert.class);
+
 	@Required
 	public void setHibernateContract(HibernateContract hibernateContract) {
 		this.hibernateContract = hibernateContract;
@@ -49,17 +52,18 @@ public class HibernateAccessExpert implements AccessExpert<HibernateAccess> {
 
 	@Override
 	public Maybe<IncrementalAccess> deploy(HibernateAccess access, ConfiguredModel dataModel) {
+		log.info("Deploying HibernateAccess [" + access.getAccessId() + "]" + " with database [" + access.getDatabaseName() + "] and data model ["
+				+ dataModel.name() + "]");
+
 		com.braintribe.model.access.hibernate.HibernateAccess incrementalAccess = new com.braintribe.model.access.hibernate.HibernateAccess();
 
 		String databaseName = access.getDatabaseName();
-
 		if (databaseName == null)
 			return Reasons.build(ConfigurationError.T) //
 					.text("HibernateAccess with id '" + access.getId() + "' is invalid. HibernateAccess.databaseName must not be null.") //
 					.toMaybe();
 
 		Maybe<DataSource> dataSourceMaybe = databaseContract.dataSource(databaseName);
-
 		if (dataSourceMaybe.isUnsatisfied())
 			return Reasons.build(ConfigurationError.T) //
 					.text("DataSource of HibernateAccess with id '" + access.getId() + "' is not resolvable") //
