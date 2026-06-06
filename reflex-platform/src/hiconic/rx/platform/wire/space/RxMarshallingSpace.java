@@ -19,6 +19,7 @@ import com.braintribe.codec.marshaller.common.BasicConfigurableMarshallerRegistr
 import com.braintribe.codec.marshaller.jse.JseMarshaller;
 import com.braintribe.codec.marshaller.json.JsonStreamMarshaller;
 import com.braintribe.codec.marshaller.stax.StaxMarshaller;
+import com.braintribe.codec.marshaller.url.UrlEncodingMarshaller;
 import com.braintribe.codec.marshaller.yaml.YamlMarshaller;
 import com.braintribe.wire.api.annotation.Managed;
 
@@ -37,6 +38,8 @@ public class RxMarshallingSpace implements RxMarshallingContract {
 		bean.registerMarshaller("gm/jse", jseMarshaller());
 		bean.registerMarshaller("gm/xml", xmlMarshaller());
 		bean.registerMarshaller("gm/bin", binMarshaller());
+		bean.registerMarshaller("application/x-www-form-urlencoded", urlEncodeingMarshaller());
+
 		return bean;
 	}
 
@@ -70,6 +73,12 @@ public class RxMarshallingSpace implements RxMarshallingContract {
 	@Managed
 	public Marshaller binMarshaller() {
 		Bin2Marshaller bean = new Bin2Marshaller();
+		return bean;
+	}
+
+	@Managed
+	public Marshaller urlEncodeingMarshaller() {
+		UrlEncodingMarshaller bean = new UrlEncodingMarshaller();
 		return bean;
 	}
 
