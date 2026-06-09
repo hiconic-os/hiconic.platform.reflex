@@ -286,11 +286,12 @@ public class ResourceRequestProcessor extends AbstractDispatchingAccessRequestPr
 	private Maybe<Void> uploadAndSetResourceSource(UploadResource request, Resource resource, AccessRequestContext<?> context) {
 		PersistenceGmSession session = context.getSession();
 
-		EntityType<? extends ResourceSource> sourceType = resolveSourceType(request.getSourceType());
-		if (sourceType == null)
-			return notFoundMaybe("No ResourceSource type found with signature: " + request.getSourceType());
-
+		String sourceTypeSignature = request.getSourceType();
 		String requestUseCase = request.getUseCase();
+
+		EntityType<? extends ResourceSource> sourceType = resolveSourceType(sourceTypeSignature);
+		if (sourceType == null)
+			return notFoundMaybe("No ResourceSource type found with signature: " + sourceTypeSignature);
 
 		List<ResourceEnricher> preEnrichers = resovePreEnrichers(session, sourceType, requestUseCase);
 		preEnrich(preEnrichers, resource, context);
@@ -299,6 +300,7 @@ public class ResourceRequestProcessor extends AbstractDispatchingAccessRequestPr
 		storePayload.setDomainId(context.getDomainId());
 		storePayload.setData(resource);
 		storePayload.setUseCase(requestUseCase);
+		storePayload.setSourceType(sourceTypeSignature);
 
 		Maybe<? extends StoreResourcePayloadResponse> responseMaybe = storePayload.eval(systemEvaluator).getReasoned();
 		if (responseMaybe.isUnsatisfied())
