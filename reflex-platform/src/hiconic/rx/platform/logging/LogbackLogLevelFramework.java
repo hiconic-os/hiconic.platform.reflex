@@ -29,7 +29,7 @@ public class LogbackLogLevelFramework implements LogLevelFramework {
 
 		for (Logger logger: loggerContext().getLoggerList()) {
 			if (logger.getLevel() != null) {
-				levels.put(logger.getName(), fromLogbackLevel(logger.getLevel()));
+				levels.put(fromLogbackLoggerName(logger.getName()), fromLogbackLevel(logger.getLevel()));
 			}
 		}
 
@@ -41,7 +41,7 @@ public class LogbackLogLevelFramework implements LogLevelFramework {
 		Set<String> loggerNames = new TreeSet<>(new StructuredPackageComparator());
 
 		for (Logger logger: loggerContext().getLoggerList()) {
-			loggerNames.add(logger.getName());
+			loggerNames.add(fromLogbackLoggerName(logger.getName()));
 		}
 
 		for (Package pkg: Package.getPackages()) {
@@ -58,7 +58,7 @@ public class LogbackLogLevelFramework implements LogLevelFramework {
 		}
 
 		for (Map.Entry<String, String> entry: levels.entrySet()) {
-			loggerContext().getLogger(entry.getKey()).setLevel(toLogbackLevel(entry.getValue()));
+			loggerContext().getLogger(toLogbackLoggerName(entry.getKey())).setLevel(toLogbackLevel(entry.getValue()));
 		}
 	}
 
@@ -69,12 +69,20 @@ public class LogbackLogLevelFramework implements LogLevelFramework {
 		}
 
 		for (String loggerName: loggerNames) {
-			if (Logger.ROOT_LOGGER_NAME.equals(loggerName)) {
+			if (Logger.ROOT_LOGGER_NAME.equals(toLogbackLoggerName(loggerName))) {
 				continue;
 			}
 
-			loggerContext().getLogger(loggerName).setLevel(null);
+			loggerContext().getLogger(toLogbackLoggerName(loggerName)).setLevel(null);
 		}
+	}
+
+	private static String toLogbackLoggerName(String loggerName) {
+		return loggerName == null || loggerName.isEmpty() ? Logger.ROOT_LOGGER_NAME : loggerName;
+	}
+
+	private static String fromLogbackLoggerName(String loggerName) {
+		return Logger.ROOT_LOGGER_NAME.equals(loggerName) ? "" : loggerName;
 	}
 
 	public static Level toLogbackLevel(String levelName) {
