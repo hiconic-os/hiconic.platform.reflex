@@ -21,10 +21,12 @@ import com.braintribe.model.processing.worker.api.Worker;
 import com.braintribe.model.processing.worker.api.WorkerManager;
 import com.braintribe.model.resource.source.ResourceSource;
 
+import hiconic.rx.module.api.auth.RoleAuthorization;
 import hiconic.rx.module.api.resource.ResourceStorageDeploymentExpert;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.resource.model.configuration.ResourceStorage;
+import hiconic.rx.topology.api.LiveInstances;
 
 /**
  * Configurator to override or extend the core platform APIs.
@@ -42,6 +44,10 @@ public interface RxPlatformConfigurator {
 	 * Configured manager is accessible via {@link RxPlatformContract#workerManager()}
 	 */
 	void setWorkerManager(WorkerManager workerManager);
+	
+	void setLiveInstances(LiveInstances liveInstances);
+	
+	void setRoleAuthorization(RoleAuthorization roleAuthorization);
 
 	/** Overrides the default  MimeTypeDetector */
 	void setMimeTypeDetector(MimeTypeDetector mimeTypeDetector);
@@ -54,5 +60,7 @@ public interface RxPlatformConfigurator {
 			EntityType<RS> storageType, //
 			EntityType<? extends ResourceSource> sourceType, //
 			ResourceStorageDeploymentExpert<RS> expert);
+
+	
 
 }

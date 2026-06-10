@@ -15,15 +15,19 @@ package hiconic.rx.platform.wire.contract;
 
 import java.io.File;
 
+import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 import com.braintribe.wire.api.space.WireSpace;
 
 import hiconic.rx.module.api.wire.RxContractSpaceResolverConfigurator;
 import hiconic.rx.platform.conf.ApplicationProperties;
+import hiconic.rx.platform.conf.RxPropertyResolver;
 
 public interface RxPlatformConfigContract extends WireSpace {
 	ApplicationProperties properties();
 	File appDir();
 	String launchScriptName();
 	String[] cliArguments();
+	ClasspathIndex classpathIndex();
+	RxPropertyResolver propertyResolver();
 	RxContractSpaceResolverConfigurator contractSpaceResolverConfigurator();
 }

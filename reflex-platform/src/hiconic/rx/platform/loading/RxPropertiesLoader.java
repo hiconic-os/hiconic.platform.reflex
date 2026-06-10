@@ -1,14 +1,19 @@
 package hiconic.rx.platform.loading;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.net.URL;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
 import com.braintribe.codec.marshaller.api.GmDeserializationOptions;
 import com.braintribe.codec.marshaller.api.Marshaller;
+import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.essential.ConfigurationError;
@@ -18,7 +23,26 @@ import com.braintribe.model.generic.reflection.EssentialTypes;
 import com.braintribe.model.generic.reflection.MapType;
 import com.braintribe.utils.FileTools;
 
+import hiconic.rx.platform.conf.LayeredConfigurationEntries;
+import hiconic.rx.platform.conf.LayeredConfigurationEntries.Entry;
+
 public class RxPropertiesLoader {
+
+	public static Maybe<Map<String, String>> loadLayered(File folder, String classpathConfPath, String baseName, Marshaller marshaller,
+			ClasspathIndex classpathIndex) {
+		Map<String, String> properties = new LinkedHashMap<>();
+
+		for (Entry entry : new LayeredConfigurationEntries(classpathIndex, classpathConfPath, folder, baseName, ".yaml").entries()) {
+			Maybe<Map<String, String>> maybe = entry.classpath() ? load(entry.url(), entry.source(), marshaller) : load(entry.file(), marshaller);
+
+			if (maybe.isUnsatisfied())
+				return maybe;
+
+			properties.putAll(maybe.get());
+		}
+
+		return Maybe.complete(properties);
+	}
 
 	public static Maybe<Map<String, String>> loadFromFolder(File folder, String fileRegexPattern, Marshaller marshaller) {
 		if (!folder.exists())
@@ -65,6 +89,28 @@ public class RxPropertiesLoader {
 		} catch (UncheckedIOException e) {
 			return Reasons.build(ConfigurationError.T) //
 					.text("Error while reading rx properties from: " + file.getAbsolutePath()) //
+					.cause(IoError.create(e.getMessage())) //
+					.toMaybe();
+		}
+	}
+
+	private static Maybe<Map<String, String>> load(URL url, String source, Marshaller marshaller) {
+		MapType stringToStringMapType = GMF.getTypeReflection().getMapType(EssentialTypes.TYPE_STRING, EssentialTypes.TYPE_STRING);
+		GmDeserializationOptions options = GmDeserializationOptions.deriveDefaults().setInferredRootType(stringToStringMapType).build();
+
+		try (InputStream in = url.openStream()) {
+			Maybe<Map<String, String>> maybe = marshaller.unmarshallReasoned(in, options).cast();
+
+			if (maybe.isUnsatisfied()) {
+				return Reasons.build(ConfigurationError.T) //
+						.text("Error while reading rx properties from: " + source) //
+						.cause(maybe.whyUnsatisfied()).toMaybe();
+			}
+
+			return maybe;
+		} catch (IOException e) {
+			return Reasons.build(ConfigurationError.T) //
+					.text("Error while reading rx properties from: " + source) //
 					.cause(IoError.create(e.getMessage())) //
 					.toMaybe();
 		}

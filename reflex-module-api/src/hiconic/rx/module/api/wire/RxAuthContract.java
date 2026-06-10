@@ -7,6 +7,8 @@ import com.braintribe.model.user.User;
 import com.braintribe.model.usersession.UserSession;
 import com.braintribe.wire.api.space.WireSpace;
 
+import hiconic.rx.module.api.auth.RoleAuthorization;
+
 public interface RxAuthContract extends WireSpace {
 
 	/** Direct access to the instance accessible via #systemUserSessionSupplier() */
@@ -24,4 +26,5 @@ public interface RxAuthContract extends WireSpace {
 	Supplier<AttributeContext> systemAttributeContextSupplier();
 	Supplier<AttributeContext> contextAttributeContextSupplier();
 
+	RoleAuthorization roleAuthorization();
 }

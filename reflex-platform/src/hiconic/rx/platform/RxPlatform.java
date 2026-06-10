@@ -23,19 +23,21 @@ import static java.util.Collections.EMPTY_LIST;
 import java.io.File;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
 
+import com.braintribe.codec.marshaller.yaml.YamlMarshaller;
 import com.braintribe.console.AbstractAnsiConsole;
 import com.braintribe.console.ConsoleConfiguration;
 import com.braintribe.console.ConsoleOutputs;
+import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 import com.braintribe.gm.model.reason.ReasonException;
 import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
+import com.braintribe.logging.level.LogLevelSetup;
 import com.braintribe.wire.api.Wire;
 import com.braintribe.wire.api.context.WireContext;
 import com.braintribe.wire.impl.properties.PropertyLookups;
@@ -45,8 +47,13 @@ import ch.qos.logback.classic.joran.JoranConfigurator;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.platform.conf.ApplicationProperties;
+import hiconic.rx.platform.conf.RxConfigurationConstants;
+import hiconic.rx.platform.conf.RxPropertyResolver;
 import hiconic.rx.platform.conf.SystemProperties;
+import hiconic.rx.platform.logging.LayeredLogLevelPersistence;
+import hiconic.rx.platform.logging.LogbackLogLevelFramework;
 import hiconic.rx.platform.loading.RxModuleLoader;
+import hiconic.rx.platform.loading.RxPropertiesLoader;
 import hiconic.rx.platform.wire.RxPlatformWireModule;
 import hiconic.rx.platform.wire.contract.ExtendedRxPlatformContract;
 
@@ -55,6 +62,8 @@ public class RxPlatform implements AutoCloseable {
 
 	private final SystemProperties systemProperties;
 	private final ApplicationProperties applicationProperties;
+	private final ClasspathIndex classpathIndex = new ClasspathIndex();
+	private final RxPropertyResolver propertyResolver;
 
 	private final String[] args;
 
@@ -64,8 +73,6 @@ public class RxPlatform implements AutoCloseable {
 
 	private boolean configureLogging = true;
 	
-	private final Set<java.util.logging.Logger> persistedJulLoggers = new LinkedHashSet<>();
-
 	public RxPlatform() {
 		this(new String[] {});
 		configureLogging = false;
@@ -88,6 +95,7 @@ public class RxPlatform implements AutoCloseable {
 		
 		systemProperties = PropertyLookups.create(SystemProperties.class, systemPropertyLookup);
 		applicationProperties = PropertyLookups.create(ApplicationProperties.class, applicationPropertyLookup);
+		propertyResolver = createPropertyResolver();
 
 		start();
 	}
@@ -151,6 +159,7 @@ public class RxPlatform implements AutoCloseable {
 	private void start() {
 		long startTime = System.currentTimeMillis();
 		setupLogging();
+		setupLogLevels();
 		setupConsoleOutput();
 
 		ConsoleOutputs.println(sequence( //
@@ -159,7 +168,7 @@ public class RxPlatform implements AutoCloseable {
 				text(" Application") //
 		));
 
-		wireContext = Wire.context(new RxPlatformWireModule(args, applicationProperties, systemProperties));
+		wireContext = Wire.context(new RxPlatformWireModule(args, applicationProperties, systemProperties, classpathIndex, propertyResolver));
 		platformContract = wireContext.contract(ExtendedRxPlatformContract.class);
 
 		long upTime = System.currentTimeMillis();
@@ -225,36 +234,30 @@ public class RxPlatform implements AutoCloseable {
 		SLF4JBridgeHandler.removeHandlersForRootLogger();
 		// Add SLF4JBridgeHandler to j.u.l's root logger
 		SLF4JBridgeHandler.install();
-		
-		syncLogbackLevelsToJUL();
+	}
+
+	private void setupLogLevels() {
+		File confDir = new File(systemProperties.appDir(), "conf");
+
+		LogLevelSetup setup = new LogLevelSetup();
+		setup.setConfDir(confDir);
+		setup.setLogLevelFramework(new LogbackLogLevelFramework());
+		setup.setPackagedLogLevelPersistence(new LayeredLogLevelPersistence(classpathIndex, RxConfigurationConstants.CLASSPATH_CONF_PATH, confDir));
+		setup.setPropertyLookup(propertyResolver::resolve);
+		LogLevelSetup.setInstance(setup);
+
+		setup.applyEffectiveLogLevels();
+	}
+
+	private RxPropertyResolver createPropertyResolver() {
+		RxPropertyResolver resolver = new RxPropertyResolver();
+		File confDir = new File(systemProperties.appDir(), "conf");
+		Map<String, String> rawProperties = UnsatisfiedMaybeTunneling.getOrTunnel(
+				RxPropertiesLoader.loadLayered(confDir, RxConfigurationConstants.CLASSPATH_CONF_PATH, "properties", new YamlMarshaller(), classpathIndex));
+		resolver.setRawProperties(rawProperties);
+		return resolver;
 	}
 	
-	private void syncLogbackLevelsToJUL() {
-        LoggerContext logbackContext = (LoggerContext) LoggerFactory.getILoggerFactory();
-
-        // Sync root/package/class-based Logback loggers to JUL
-        for (ch.qos.logback.classic.Logger logbackLogger : logbackContext.getLoggerList()) {
-    		var logger = java.util.logging.Logger.getLogger(logbackLogger.getName());
-    		persistedJulLoggers.add(logger);
-            setJULLoggerLevel(logger, logbackLogger.getEffectiveLevel());
-        }
-    }
-
-    private static void setJULLoggerLevel(java.util.logging.Logger julLogger, ch.qos.logback.classic.Level logbackLevel) {
-        java.util.logging.Level julLevel = convertLogbackToJUL(logbackLevel);
-        julLogger.setLevel(julLevel);
-    }
-
-    private static java.util.logging.Level convertLogbackToJUL(ch.qos.logback.classic.Level logbackLevel) {
-        if (logbackLevel == ch.qos.logback.classic.Level.ALL) return java.util.logging.Level.ALL;
-        if (logbackLevel == ch.qos.logback.classic.Level.TRACE) return java.util.logging.Level.FINEST;
-        if (logbackLevel == ch.qos.logback.classic.Level.DEBUG) return java.util.logging.Level.FINE;
-        if (logbackLevel == ch.qos.logback.classic.Level.INFO) return java.util.logging.Level.INFO;
-        if (logbackLevel == ch.qos.logback.classic.Level.WARN) return java.util.logging.Level.WARNING;
-        if (logbackLevel == ch.qos.logback.classic.Level.ERROR) return java.util.logging.Level.SEVERE;
-        return java.util.logging.Level.OFF;
-    }
-
 	private void eagerLoading() {
 		// GMF.getTypeReflection().getPackagedModels().forEach(m -> m.getMetaModel());
 	}

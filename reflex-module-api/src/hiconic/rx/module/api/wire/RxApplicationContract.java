@@ -18,6 +18,7 @@ import com.braintribe.wire.api.space.WireSpace;
 
 import hiconic.rx.module.api.log.RxLogManager;
 import hiconic.rx.module.api.state.RxApplicationStateManager;
+import hiconic.rx.topology.api.LiveInstances;
 
 public interface RxApplicationContract extends WireSpace {
 
@@ -36,5 +37,6 @@ public interface RxApplicationContract extends WireSpace {
 
 	/** Holds the applicationId and nodeId information (not sure why this was introduced). */
 	InstanceId instanceId();
-
+	
+	LiveInstances liveInstances();
 }

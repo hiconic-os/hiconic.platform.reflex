@@ -84,5 +84,10 @@ limitations under the License.
             <artifactId>platform-api</artifactId>
             <version>${V.com.braintribe.common}</version>
         </dependency>
+        <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>log-level-processing</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
     </dependencies>
 </project>

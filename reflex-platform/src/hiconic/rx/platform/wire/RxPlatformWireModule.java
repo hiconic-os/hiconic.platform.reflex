@@ -15,6 +15,7 @@ package hiconic.rx.platform.wire;
 
 import java.io.File;
 
+import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 import com.braintribe.wire.api.context.WireContextBuilder;
 import com.braintribe.wire.api.module.WireTerminalModule;
 
@@ -30,6 +31,7 @@ import hiconic.rx.module.api.wire.RxProcessLaunchContract;
 import hiconic.rx.module.api.wire.RxServiceProcessingContract;
 import hiconic.rx.module.api.wire.RxTransientDataContract;
 import hiconic.rx.platform.conf.ApplicationProperties;
+import hiconic.rx.platform.conf.RxPropertyResolver;
 import hiconic.rx.platform.conf.SystemProperties;
 import hiconic.rx.platform.loading.RxConfigurableContractSpaceResolver;
 import hiconic.rx.platform.wire.contract.ExtendedRxPlatformContract;
@@ -49,7 +51,8 @@ public class RxPlatformWireModule implements WireTerminalModule<RxPlatformContra
 	private RxPlatformConfigContract config;
 	private final RxConfigurableContractSpaceResolver configurableContractSpaceResolver = new RxConfigurableContractSpaceResolver();
 	
-	public RxPlatformWireModule(String[] cliArguments, ApplicationProperties applicationProperties, SystemProperties systemProperties) {
+	public RxPlatformWireModule(String[] cliArguments, ApplicationProperties applicationProperties, SystemProperties systemProperties, ClasspathIndex classpathIndex,
+			RxPropertyResolver propertyResolver) {
 		super();
 		
 		config = new RxPlatformConfigContract() {
@@ -72,6 +75,16 @@ public class RxPlatformWireModule implements WireTerminalModule<RxPlatformContra
 			@Override
 			public String[] cliArguments() {
 				return cliArguments;
+			}
+
+			@Override
+			public ClasspathIndex classpathIndex() {
+				return classpathIndex;
+			}
+
+			@Override
+			public RxPropertyResolver propertyResolver() {
+				return propertyResolver;
 			}
 			
 			@Override

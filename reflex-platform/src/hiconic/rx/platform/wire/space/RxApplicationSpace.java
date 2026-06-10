@@ -16,6 +16,8 @@ package hiconic.rx.platform.wire.space;
 import java.util.UUID;
 
 import com.braintribe.model.service.api.InstanceId;
+import com.braintribe.provider.Box;
+import com.braintribe.provider.Holder;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
@@ -23,9 +25,11 @@ import hiconic.rx.module.api.log.RxLogManager;
 import hiconic.rx.module.api.wire.RxApplicationContract;
 import hiconic.rx.platform.log.RxLogManagerImpl;
 import hiconic.rx.platform.model.configuration.ReflexAppConfiguration;
+import hiconic.rx.platform.processing.cluster.SingleInstanceLiveInstances;
 import hiconic.rx.platform.processing.lifez.DeadlockChecker;
 import hiconic.rx.platform.state.RxApplicationStateManagerImpl;
 import hiconic.rx.platform.wire.contract.RxPlatformConfigContract;
+import hiconic.rx.topology.api.LiveInstances;
 
 @Managed
 public class RxApplicationSpace implements RxApplicationContract {
@@ -97,6 +101,22 @@ public class RxApplicationSpace implements RxApplicationContract {
 		bean.setApplicationId(applicationId());
 		bean.setNodeId(nodeId());
 		return bean;
+	}
+	
+	@Managed
+	public Box<LiveInstances> liveInstancesBox() {
+		return Box.of(singleInstanceLiveInstances());
+	}
+	
+	private SingleInstanceLiveInstances singleInstanceLiveInstances() {
+		SingleInstanceLiveInstances bean = new SingleInstanceLiveInstances();
+		bean.setInstanceId(instanceId());
+		return bean;
+	}
+	
+	@Override
+	public LiveInstances liveInstances() {
+		return liveInstancesBox().value;
 	}
 
 	private ReflexAppConfiguration appConfiguration() {

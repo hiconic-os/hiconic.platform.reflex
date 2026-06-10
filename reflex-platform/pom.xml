@@ -119,5 +119,15 @@ limitations under the License.
             <artifactId>resources-support</artifactId>
             <version>${V.com.braintribe.gm}</version>
         </dependency>
+        <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>log-level-processing</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>security-reason-model</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
     </dependencies>
 </project>

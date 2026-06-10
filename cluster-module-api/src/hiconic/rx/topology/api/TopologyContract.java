@@ -15,6 +15,10 @@ package hiconic.rx.topology.api;
 
 import hiconic.rx.module.api.wire.RxExportContract;
 
+@Deprecated
+/**
+ * @deprecated already supported by {@link RxApplicationContract#liveInstances()}
+ */
 public interface TopologyContract extends RxExportContract {
 
 	LiveInstances liveInstances();

@@ -13,14 +13,10 @@
 // ============================================================================
 package hiconic.rx.platform.wire.space;
 
-import static com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling.getOrTunnel;
-
-import java.util.Map;
 import java.util.function.Supplier;
 
 import com.braintribe.common.attribute.AttributeContext;
 import com.braintribe.gm.config.yaml.ModeledYamlConfiguration;
-import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.reflection.EntityType;
@@ -28,11 +24,12 @@ import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.module.api.wire.RxConfigurationContract;
+import hiconic.rx.platform.conf.RxConfigurationConstants;
 import hiconic.rx.platform.conf.RxPropertyResolver;
-import hiconic.rx.platform.loading.RxPropertiesLoader;
 import hiconic.rx.platform.models.RxCmdResolverManager;
 import hiconic.rx.platform.models.RxConfiguredModels;
 import hiconic.rx.platform.models.RxModelConfigurations;
+import hiconic.rx.platform.wire.contract.RxPlatformConfigContract;
 
 @Managed
 public class RxConfigurationSpace implements RxConfigurationContract {
@@ -41,10 +38,10 @@ public class RxConfigurationSpace implements RxConfigurationContract {
 	private RxAuthSpace auth;
 
 	@Import
-	private RxMarshallingSpace marshalling;
+	private RxApplicationFilesSpace applicationFiles;
 
 	@Import
-	private RxApplicationFilesSpace applicationFiles;
+	private RxPlatformConfigContract platformConfig;
 
 	@Override
 	@Managed
@@ -77,8 +74,8 @@ public class RxConfigurationSpace implements RxConfigurationContract {
 	private ModeledYamlConfiguration modeledConfiguration() {
 		ModeledYamlConfiguration bean = new ModeledYamlConfiguration();
 		bean.setConfigFolder(applicationFiles.confPath().toFile());
-		bean.setClasspathConfPath("HICONIC-CONF/");
-		bean.setClasspathIndex(new ClasspathIndex());
+		bean.setClasspathConfPath(RxConfigurationConstants.CLASSPATH_CONF_PATH);
+		bean.setClasspathIndex(platformConfig.classpathIndex());
 		bean.setExternalReasonedPropertyLookup(propertyResolver()::resolveReasoned);
 		return bean;
 	}
@@ -86,12 +83,7 @@ public class RxConfigurationSpace implements RxConfigurationContract {
 	@Override
 	@Managed
 	public RxPropertyResolver propertyResolver() {
-		RxPropertyResolver bean = new RxPropertyResolver();
-
-		Map<String, String> rawProperties = getOrTunnel(
-				RxPropertiesLoader.loadFromFolder(applicationFiles.confPath().toFile(), "properties(\\..*)?.yaml", marshalling.yamlMarshaller()));
-		bean.setRawProperties(rawProperties);
-		return bean;
+		return platformConfig.propertyResolver();
 	}
 
 	private Supplier<AttributeContext> systemAttributeContextSupplier() {

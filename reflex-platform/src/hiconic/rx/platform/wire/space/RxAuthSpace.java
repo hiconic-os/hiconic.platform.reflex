@@ -14,15 +14,17 @@ import com.braintribe.model.user.Role;
 import com.braintribe.model.user.User;
 import com.braintribe.model.usersession.UserSession;
 import com.braintribe.model.usersession.UserSessionType;
+import com.braintribe.provider.Box;
 import com.braintribe.utils.collection.impl.AttributeContexts;
 import com.braintribe.wire.api.annotation.Managed;
 
+import hiconic.rx.module.api.auth.RoleAuthorization;
 import hiconic.rx.module.api.wire.RxAuthContract;
+import hiconic.rx.platform.processing.auth.DefaultRoleAuthorization;
 import hiconic.rx.platform.processing.auth.RxUserSessionSupplier;
 
 @Managed
 public class RxAuthSpace implements RxAuthContract {
-	
 	@Override
 	public Supplier<String> contextUserSessionIdSupplier() {
 		return contextUserSessionSupplier()::findSessionId;
@@ -59,6 +61,17 @@ public class RxAuthSpace implements RxAuthContract {
 	public Supplier<AttributeContext> contextAttributeContextSupplier() {
 		return AttributeContexts::peek;
 	}
+
+	@Managed
+	public Box<RoleAuthorization> roleAuthorizationBox() {
+		return Box.of(new DefaultRoleAuthorization());
+	}
+	
+	@Override
+	public RoleAuthorization roleAuthorization() {
+		return roleAuthorizationBox().value;
+	}
+
 
 	@Override
 	@Managed

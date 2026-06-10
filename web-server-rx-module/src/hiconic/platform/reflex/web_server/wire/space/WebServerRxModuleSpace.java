@@ -27,8 +27,12 @@ import java.util.function.Supplier;
 
 import org.xnio.Options;
 
+import com.braintribe.gm.logging.level.LogLevelApplicationResolver;
+import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
+import com.braintribe.logging.level.servlet.LogLevelServlet;
+import com.braintribe.model.service.api.InstanceId;
 import com.braintribe.provider.Box;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
@@ -40,6 +44,7 @@ import hiconic.platform.reflex.web_server.processing.ApplicationStateGateHandler
 import hiconic.platform.reflex.web_server.processing.DefaultRxServlet;
 import hiconic.platform.reflex.web_server.processing.InstanceEndpointConfigurator;
 import hiconic.platform.reflex.web_server.processing.ReflexAccessLogReceiver;
+import hiconic.platform.reflex.web_server.processing.RoleAuthorizationFilter;
 import hiconic.platform.reflex.web_server.processing.SslConfig;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
@@ -98,6 +103,7 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	@Override
 	public void onLoaded(WireContextConfiguration configuration) {
 		platform.application().logManager().setLogLevel("io.undertow.request.error-response", System.Logger.Level.INFO);
+		registerLogLevelServlet();
 		undertowServer().start();
 
 		WebServerConfiguration config = configuration();
@@ -119,6 +125,56 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 					) //
 			);
 		}
+	}
+
+	private void registerLogLevelServlet() {
+		addServlet("log-levels", "/log-levels", logLevelServlet());
+		addFilter(LogLevelFilters.logLevelAdmin, logLevelAdminFilter());
+		addFilterMapping(LogLevelFilters.logLevelAdmin, "/log-levels", DispatcherType.REQUEST);
+		addFilterMapping(LogLevelFilters.logLevelAdmin, "/log-levels/*", DispatcherType.REQUEST);
+	}
+
+	private enum LogLevelFilters implements FilterSymbol {
+		logLevelAdmin
+	}
+
+	@Managed
+	private LogLevelServlet logLevelServlet() {
+		LogLevelServlet bean = new LogLevelServlet();
+		bean.setEvaluator(platform.serviceProcessing().systemEvaluator());
+		bean.setLocalInstanceId(platform.application().instanceId());
+		bean.setApplicationResolver(logLevelApplicationResolver());
+		return bean;
+	}
+
+	@Managed
+	private RoleAuthorizationFilter logLevelAdminFilter() {
+		return new RoleAuthorizationFilter(platform.auth()::roleAuthorization);
+	}
+
+	@Managed
+	private LogLevelApplicationResolver logLevelApplicationResolver() {
+		return new LogLevelApplicationResolver() {
+			@Override
+			public Set<String> liveApplications() {
+				return platform.application().liveInstances().liveApplications();
+			}
+
+			@Override
+			public Maybe<InstanceId> resolveApplication(String applicationId) {
+				InstanceId localInstanceId = platform.application().instanceId();
+				if (applicationId == null || applicationId.equals(localInstanceId.getApplicationId())) {
+					return Maybe.complete(localInstanceId);
+				}
+
+				Set<String> instances = platform.application().liveInstances().liveInstances(InstanceId.of(null, applicationId));
+				if (instances == null || instances.isEmpty()) {
+					return Maybe.empty(InvalidArgument.create("No live instance found for application: " + applicationId));
+				}
+
+				return Maybe.complete(InstanceId.parse(instances.iterator().next()));
+			}
+		};
 	}
 
 	@Override

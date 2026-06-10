@@ -56,6 +56,7 @@ import hiconic.rx.security.api.UserService;
 import hiconic.rx.security.model.configuration.SecurityConfiguration;
 import hiconic.rx.security.processor.AuthenticationProcessor;
 import hiconic.rx.security.processor.AuthorizingServiceInterceptor;
+import hiconic.rx.security.processing.SecurityRoleAuthorization;
 import hiconic.rx.security.processor.SecurityServiceProcessor;
 import hiconic.rx.security.processor.SimpleSecurityServiceProcessor;
 import hiconic.rx.security.processor.SystemUserScopingWorkerAspect;
@@ -93,6 +94,12 @@ public class SecurityRxModuleSpace implements RxModuleContract, SecurityContract
 	public void configurePlatform(RxPlatformConfigurator configurator) {
 		// Uses symbols for system-user-scoping worker interceptor
 		configurator.workerAspectRegistry().register("system-user-scoping", systemUserScopingWorkerAspect());
+		configurator.setRoleAuthorization(roleAuthorization());
+	}
+
+	@Managed
+	private SecurityRoleAuthorization roleAuthorization() {
+		return new SecurityRoleAuthorization(adminRoles());
 	}
 
 	@Managed

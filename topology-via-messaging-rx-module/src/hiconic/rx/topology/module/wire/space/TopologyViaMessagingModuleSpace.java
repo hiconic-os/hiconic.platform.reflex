@@ -24,6 +24,7 @@ import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.messaging.api.MessagingContract;
 import hiconic.rx.messaging.api.MessagingDestinationsContract;
+import hiconic.rx.module.api.config.RxPlatformConfigurator;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.topology.api.TopologyContract;
@@ -45,6 +46,11 @@ public class TopologyViaMessagingModuleSpace implements RxModuleContract, Topolo
 	@SuppressWarnings("deprecation")
 	private MessagingDestinationsContract messagingDestinations;
 
+	@Override
+	public void configurePlatform(RxPlatformConfigurator configurator) {
+		configurator.setLiveInstances(liveInstances());
+	}
+	
 	@Override
 	public void onApplicationReady() {
 		logger.info(() -> "Starting RxHeartbeatManager signalling instance id: " + platform.application().instanceId());

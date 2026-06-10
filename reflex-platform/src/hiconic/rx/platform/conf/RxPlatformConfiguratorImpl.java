@@ -8,10 +8,12 @@ import com.braintribe.model.processing.worker.api.WorkerManager;
 import com.braintribe.model.resource.source.ResourceSource;
 import com.braintribe.provider.Box;
 
+import hiconic.rx.module.api.auth.RoleAuthorization;
 import hiconic.rx.module.api.config.RxPlatformConfigurator;
 import hiconic.rx.module.api.resource.ResourceStorageDeploymentExpert;
 import hiconic.rx.platform.resource.RxResourcesStorages;
 import hiconic.rx.resource.model.configuration.ResourceStorage;
+import hiconic.rx.topology.api.LiveInstances;
 
 /**
  * @author peter.gazdik
@@ -19,6 +21,8 @@ import hiconic.rx.resource.model.configuration.ResourceStorage;
 public class RxPlatformConfiguratorImpl implements RxPlatformConfigurator {
 
 	public Box<WorkerManager> workerManagerHolder;
+	public Box<LiveInstances> liveInstancesHolder;
+	public Box<RoleAuthorization> roleAuthorizationHolder;
 	public Box<MimeTypeDetector> mimeTypeDetectorHolder;
 	public ConfigurableMarshallerRegistry marshallerRegistry;
 	public ConfigurableWorkerAspectRegistry workerAspectRegistry;
@@ -27,6 +31,16 @@ public class RxPlatformConfiguratorImpl implements RxPlatformConfigurator {
 	@Override
 	public void setWorkerManager(WorkerManager workerManager) {
 		workerManagerHolder.value = workerManager;
+	}
+	
+	@Override
+	public void setLiveInstances(LiveInstances liveInstances) {
+		liveInstancesHolder.value = liveInstances;
+	}
+	
+	@Override
+	public void setRoleAuthorization(RoleAuthorization roleAuthorization) {
+		roleAuthorizationHolder.value = roleAuthorization;
 	}
 
 	@Override
