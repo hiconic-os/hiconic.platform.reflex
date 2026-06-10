@@ -8,6 +8,7 @@ import java.util.TreeSet;
 
 import org.slf4j.LoggerFactory;
 
+import com.braintribe.logging.level.LogLevelNames;
 import com.braintribe.logging.level.LogLevelFramework;
 import com.braintribe.logging.level.StructuredPackageComparator;
 
@@ -78,11 +79,11 @@ public class LogbackLogLevelFramework implements LogLevelFramework {
 	}
 
 	private static String toLogbackLoggerName(String loggerName) {
-		return loggerName == null || loggerName.isEmpty() ? Logger.ROOT_LOGGER_NAME : loggerName;
+		return LogLevelNames.ROOT.equals(loggerName) ? Logger.ROOT_LOGGER_NAME : loggerName;
 	}
 
 	private static String fromLogbackLoggerName(String loggerName) {
-		return Logger.ROOT_LOGGER_NAME.equals(loggerName) ? "" : loggerName;
+		return Logger.ROOT_LOGGER_NAME.equals(loggerName) ? LogLevelNames.ROOT : loggerName;
 	}
 
 	public static Level toLogbackLevel(String levelName) {
