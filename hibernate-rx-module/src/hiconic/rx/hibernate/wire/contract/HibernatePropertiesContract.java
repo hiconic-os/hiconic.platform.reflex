@@ -13,13 +13,9 @@
 // ============================================================================
 package hiconic.rx.hibernate.wire.contract;
 
-import java.io.File;
+import hiconic.rx.module.api.wire.RxPropertiesContract;
 
-import com.braintribe.wire.api.annotation.Name;
+public interface HibernatePropertiesContract extends RxPropertiesContract {
 
-import hiconic.rx.module.api.wire.SystemPropertiesContract;
-
-public interface HibernatePropertiesContract extends SystemPropertiesContract {
-	@Name("rx.hibernate.module.ormDebugOutputFolder")
-	File ormDebugOutputFolder();
+	Integer HC_HBM_MAPPING_VERSION();
 }

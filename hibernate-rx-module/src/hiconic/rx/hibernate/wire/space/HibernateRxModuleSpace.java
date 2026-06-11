@@ -29,6 +29,7 @@ import hiconic.rx.hibernate.processing.DialectAutoSense;
 import hiconic.rx.hibernate.processing.HibernatePersistences;
 import hiconic.rx.hibernate.service.api.HibernatePersistence;
 import hiconic.rx.hibernate.wire.contract.HibernatePropertiesContract;
+import hiconic.rx.hibernate.wire.contract.HibernateSystemPropertiesContract;
 import hiconic.rx.module.api.service.ConfiguredModel;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
@@ -40,8 +41,11 @@ public class HibernateRxModuleSpace implements RxModuleContract, HibernateContra
 	private RxPlatformContract platform;
 
 	@Import
-	private HibernatePropertiesContract hibernateProperties;
+	private HibernateSystemPropertiesContract hibernateSystemProperties;
 
+	@Import
+	private HibernatePropertiesContract hibernateProperties;
+	
 	@Import
 	private DatabaseContract database;
 
@@ -63,8 +67,9 @@ public class HibernateRxModuleSpace implements RxModuleContract, HibernateContra
 	@Managed
 	private HibernatePersistences persistences() {
 		HibernatePersistences bean = new HibernatePersistences();
-		bean.setDebugOrmOutputFolder(hibernateProperties.ormDebugOutputFolder());
+		bean.setDebugOrmOutputFolder(hibernateSystemProperties.ormDebugOutputFolder());
 		bean.setDialectAutoSense(dialectAutoSense());
+		bean.setDefaultMappingVersion(hibernateProperties.HC_HBM_MAPPING_VERSION());
 		return bean;
 	}
 

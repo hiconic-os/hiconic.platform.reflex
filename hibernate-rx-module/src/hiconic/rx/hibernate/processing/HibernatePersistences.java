@@ -46,6 +46,7 @@ public class HibernatePersistences implements DestructionAware {
 
 	private File debugOrmOutputFolder;
 	private DialectAutoSense dialectAutoSense;
+	private Integer defaultMappingVersion;
 
 	@Configurable
 	public void setDebugOrmOutputFolder(File debugOrmOutputFolder) {
@@ -55,6 +56,11 @@ public class HibernatePersistences implements DestructionAware {
 	@Configurable
 	public void setDialectAutoSense(DialectAutoSense dialectAutoSense) {
 		this.dialectAutoSense = dialectAutoSense;
+	}
+
+	@Configurable
+	public void setDefaultMappingVersion(Integer defaultMappingVersion) {
+		this.defaultMappingVersion = defaultMappingVersion;
 	}
 
 	public HibernatePersistence acquirePersistence(HibernatePersistenceConfiguration configuration, CmdResolver resolver, DataSource dataSource) {
@@ -96,6 +102,7 @@ public class HibernatePersistences implements DestructionAware {
 			var builder = new HibernateModelSessionFactoryBuilder(key);
 			builder.setOrmDebugOutputFolder(debugOrmOutputFolder);
 			builder.setDialectAutoSense(dialectAutoSense);
+			builder.setDefaultMappingVersion(defaultMappingVersion);
 			SessionFactory sessionFactory = builder.build();
 			return sessionFactory;
 		}

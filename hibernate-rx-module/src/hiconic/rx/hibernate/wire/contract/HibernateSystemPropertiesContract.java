@@ -11,16 +11,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.module.api.wire;
+package hiconic.rx.hibernate.wire.contract;
 
-import com.braintribe.wire.api.space.WireSpace;
+import java.io.File;
 
-/**
- * Marker interface indicating properties should be resolved from {@link System#getProperty(String) system properties}.
- * 
- * @see EnvironmentPropertiesContract
- * @see RxPropertiesContract
- */
-public interface SystemPropertiesContract extends WireSpace {
-	// empty
+import com.braintribe.wire.api.annotation.Name;
+
+import hiconic.rx.module.api.wire.SystemPropertiesContract;
+
+public interface HibernateSystemPropertiesContract extends SystemPropertiesContract {
+
+	@Name("rx.hibernate.module.ormDebugOutputFolder")
+	File ormDebugOutputFolder();
+
 }

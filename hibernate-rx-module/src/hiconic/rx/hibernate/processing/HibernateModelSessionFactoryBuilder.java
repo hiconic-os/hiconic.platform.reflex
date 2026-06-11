@@ -48,8 +48,10 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 
 	private final CmdResolver cmdResolver;
 	private final DataSource dataSource;
+	
 	private File ormDebugOutputFolder;
 	private DialectAutoSense dialectAutoSense;
+	private Integer defaultMappingVersion;
 
 	public HibernateModelSessionFactoryBuilder(SessionFactoryKey key) {
 		this.hpConfiguration = CommonTools.getValueOrSupplyDefault(key.configuration(), HibernatePersistenceConfiguration.T::create);
@@ -67,6 +69,11 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 	@Configurable
 	public void setOrmDebugOutputFolder(File ormDebugOutputFolder) {
 		this.ormDebugOutputFolder = ormDebugOutputFolder;
+	}
+
+	@Configurable
+	public void setDefaultMappingVersion(Integer defaultMappingVersion) {
+		this.defaultMappingVersion = defaultMappingVersion;
 	}
 
 	private ClassLoader itwOrModuleClassLoader() {
@@ -106,14 +113,14 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 		return configuration.buildSessionFactory();
 	}
 
-	private Integer mappingVersion() {
-		Integer result = hpConfiguration.getMappingVersion();
-		if (result == null && cmdResolver != null) {
+	private int mappingVersion() {
+		if (cmdResolver != null) {
 			MappingVersion mv = cmdResolver.getMetaData().meta(MappingVersion.T).exclusive();
 			if (mv != null)
-				result = mv.getVersion();
+				return mv.getVersion();
 		}
-		return result;
+		
+		return defaultMappingVersion != null ? defaultMappingVersion : MappingVersion.MAPPING_VERSION_3;
 	}
 
 	private boolean isMappingVersion1(Integer mappingVersion) {

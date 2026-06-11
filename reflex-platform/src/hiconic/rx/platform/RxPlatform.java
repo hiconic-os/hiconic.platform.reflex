@@ -18,7 +18,6 @@ import static com.braintribe.console.ConsoleOutputs.green;
 import static com.braintribe.console.ConsoleOutputs.magenta;
 import static com.braintribe.console.ConsoleOutputs.sequence;
 import static com.braintribe.console.ConsoleOutputs.text;
-import static java.util.Collections.EMPTY_LIST;
 
 import java.io.File;
 import java.lang.System.Logger;

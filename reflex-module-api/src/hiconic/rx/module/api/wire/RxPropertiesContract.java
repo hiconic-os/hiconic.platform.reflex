@@ -29,6 +29,8 @@ import com.braintribe.wire.impl.properties.PropertyLookups;
  * }
  * </pre>
  * 
+ * @see EnvironmentPropertiesContract
+ * @see SystemPropertiesContract
  * @see PropertyLookups
  */
 public interface RxPropertiesContract extends WireSpace {

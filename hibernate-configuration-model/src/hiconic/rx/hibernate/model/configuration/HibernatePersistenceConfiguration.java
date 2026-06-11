@@ -23,9 +23,6 @@ public interface HibernatePersistenceConfiguration extends GenericEntity {
 
 	EntityType<HibernatePersistenceConfiguration> T = EntityTypes.T(HibernatePersistenceConfiguration.class);
 
-	Integer getMappingVersion();
-	void setMappingVersion(Integer mappingVersion);
-
 	Map<String, String> getProperties();
 	void setProperties(Map<String, String> value);
 
