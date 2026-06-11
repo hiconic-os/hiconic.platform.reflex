@@ -64,6 +64,7 @@ public class DbRxModuleSpace implements RxModuleContract, DatabaseContract {
 	private HikariDataSources dataSources() {
 		HikariDataSources bean = new HikariDataSources();
 		bean.setDatabaseConfiguration(dbConfiguration());
+		bean.setTaskScheduler(platform.execution().taskScheduler());
 		return bean;
 	}
 

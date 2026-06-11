@@ -15,16 +15,25 @@
 // ============================================================================
 package hiconic.rx.db.processing;
 
+import java.net.InetAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.UnknownHostException;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
-import javax.sql.DataSource;
-
+import com.braintribe.cfg.Configurable;
+import com.braintribe.cfg.InitializationAware;
 import com.braintribe.cfg.Required;
+import com.braintribe.common.concurrent.TaskScheduler;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.essential.NotFound;
@@ -33,6 +42,7 @@ import com.braintribe.utils.lcd.CollectionTools;
 import com.braintribe.utils.lcd.Lazy;
 import com.codahale.metrics.MetricRegistry;
 import com.zaxxer.hikari.HikariDataSource;
+import com.zaxxer.hikari.HikariPoolMXBean;
 import com.zaxxer.hikari.metrics.MetricsTrackerFactory;
 import com.zaxxer.hikari.metrics.dropwizard.CodahaleMetricsTrackerFactory;
 
@@ -43,47 +53,64 @@ import hiconic.rx.db.model.configuration.JdbcTransactionIsolationLevel;
 /**
  * @author peter.gazdik
  */
-public class HikariDataSources {
+public class HikariDataSources implements InitializationAware {
 
 	private static final Logger log = Logger.getLogger(HikariDataSources.class);
 
-	private final ConcurrentHashMap<String, DataSource> createdDataSources = new ConcurrentHashMap<>();
+	private final ConcurrentHashMap<String, HikariDataSource> createdDataSources = new ConcurrentHashMap<>();
 
 	private final MetricRegistry metricRegistry = new MetricRegistry();
-	
+
+	private final Map<HikariDataSource, String> dataSourceIpMap = new HashMap<>();
+
 	private DatabaseConfiguration databaseConfiguration;
-	
+	private TaskScheduler taskScheduler;
+
+	private static final long MAX_EVICT_WAIT_TIME_MILLS = 60_000L; // 1 MINUTE
+	private static final int ZERO_CONNECTION_VALIDATION_COUNT = 10;
+
 	private final Lazy<Map<String, Database>> pools = new Lazy<>(this::indexPools);
-	
-	@Required
-	public void setDatabaseConfiguration(DatabaseConfiguration databaseConfiguration) {
-		this.databaseConfiguration = databaseConfiguration;
-	}
-	
+
 	private Map<String, Database> indexPools() {
 		Map<String, Database> pools = new LinkedHashMap<String, Database>();
-		for (Database pool: databaseConfiguration.getDatabases()) {
+		for (Database pool : databaseConfiguration.getDatabases()) {
 			pools.put(pool.getName(), pool);
 		}
 		return pools;
 	}
-	
+
+	@Required
+	public void setDatabaseConfiguration(DatabaseConfiguration databaseConfiguration) {
+		this.databaseConfiguration = databaseConfiguration;
+	}
+
+	@Configurable
+	public void setTaskScheduler(TaskScheduler taskScheduler) {
+		this.taskScheduler = taskScheduler;
+	}
+
+	@Override
+	public void postConstruct() {
+		if (taskScheduler != null)
+			taskScheduler.scheduleAtFixedRate("CheckHikariConnectionIpChange", this::checkForIpChange, 1L, 1L, TimeUnit.MINUTES).done();
+	}
+
 	public HikariDataSource findDataSource(String name) {
 		Database databaseConnectionPool = pools.get().get(name);
 		if (databaseConnectionPool == null)
 			return null;
-		
+
 		return dataSource(databaseConnectionPool);
 	}
-	
+
 	public Maybe<HikariDataSource> dataSource(String name) {
 		HikariDataSource ds = findDataSource(name);
-		if (ds == null)
+		if (ds != null)
+			return Maybe.complete(ds);
+		else
 			return Reasons.build(NotFound.T).text("DataSource with name " + name + " not configured").toMaybe();
-		
-		return Maybe.complete(ds);
 	}
-	
+
 	/**
 	 * @param connectionPool
 	 *            The {@link Database} providing the necessary configuration for creating a HikariCP {@link HikariDataSource}.
@@ -91,11 +118,10 @@ public class HikariDataSources {
 	 * @return A HikariCP {@link HikariDataSource} created based on the given {@link Database}
 	 */
 	public synchronized HikariDataSource dataSource(Database connectionPool) {
-
 		String key = connectionPool.getName();
 		Objects.requireNonNull(key, "The connection pool " + connectionPool.stringify() + " does not have a name.");
 
-		HikariDataSource existingDataSource = (HikariDataSource) createdDataSources.get(key);
+		HikariDataSource existingDataSource = createdDataSources.get(key);
 		if (existingDataSource != null) {
 			if (existingDataSource.isClosed()) {
 				createdDataSources.remove(key);
@@ -107,20 +133,19 @@ public class HikariDataSources {
 		String url = connectionPool.getUrl();
 
 		StringBuilder sb = new StringBuilder("HikariCP:'");
-		if (url != null) {
+		if (url != null)
 			sb.append(url);
-		}
+
 		sb.append('\'');
 		log.pushContext(sb.toString());
 
 		try {
-
 			HikariDataSource result = new HikariDataSource();
 
 			String driver = connectionPool.getDriver();
 			if (driver != null)
 				result.setDriverClassName(driver);
-			
+
 			result.setJdbcUrl(connectionPool.getUrl());
 			result.setUsername(connectionPool.getUser());
 			result.setPassword(connectionPool.getPassword());
@@ -135,6 +160,7 @@ public class HikariDataSources {
 
 		} catch (Exception e) {
 			throw new IllegalArgumentException("Invalid config: " + connectionPool, e);
+
 		} finally {
 			log.popContext();
 		}
@@ -262,6 +288,13 @@ public class HikariDataSources {
 				log.warn(() -> "Could not enable metrics for connection pool " + connectionPool, e);
 			}
 		}
+
+		if (Boolean.TRUE.equals(connectionPool.getEnableIpAddressChangeMonitoring())) {
+			// Not very clean, but effective. When we see a DataSource with this flag set to true, we will monitor it for IP address changes
+			// By default, HikariCP does not allow pool suspension, so we need to enable it here
+			result.setAllowPoolSuspension(true);
+		}
+
 	}
 
 	private static void configureInitStatements(Database connectionPool, HikariDataSource result) {
@@ -284,6 +317,93 @@ public class HikariDataSources {
 
 	public MetricRegistry metricRegistry() {
 		return metricRegistry;
+	}
+
+	private void checkForIpChange() {
+		List<HikariDataSource> availableDataSources = createdDataSourcesSnapshot();
+		if (availableDataSources.isEmpty())
+			return;
+
+		List<HikariDataSource> filteredDataSources = availableDataSources.stream().filter(ds -> ds.isAllowPoolSuspension()).toList();
+		for (HikariDataSource dataSource : filteredDataSources) {
+			try {
+				String ip = getIp(dataSource.getJdbcUrl());
+				if (ip == null)
+					continue;
+
+				String storedIp = dataSourceIpMap.get(dataSource);
+				if (storedIp == null) {
+					dataSourceIpMap.put(dataSource, ip);
+
+				} else if (!ip.equals(storedIp)) {
+					log.info("IP address changed from " + storedIp + " to " + ip);
+					evictConnections(dataSource);
+					dataSourceIpMap.put(dataSource, ip);
+				}
+
+			} catch (Exception e) {
+				log.error("Caught exception in IP address check", e);
+			}
+		}
+	}
+
+	private synchronized List<HikariDataSource> createdDataSourcesSnapshot() {
+		return new ArrayList<>(createdDataSources.values());
+	}
+
+	/**
+	 * soft eviction will add a new entry in the pool if the pool is not suspended, so suspend it connection count is transient so take 10 zero
+	 * samples to ensure full eviction 60 sec wait time if all this does not work
+	 *
+	 * @param dataSource
+	 *            The data source to evict connections from
+	 */
+	private void evictConnections(HikariDataSource dataSource) {
+		if (dataSource.isClosed()) {
+			return;
+		}
+		HikariPoolMXBean pool = dataSource.getHikariPoolMXBean();
+		if (pool != null) {
+			log.info("Active connection count is : " + pool.getActiveConnections() + ", idle connection count is " + pool.getIdleConnections()
+					+ " and total connection count is " + pool.getTotalConnections());
+			log.info("Suspending pool " + dataSource.toString());
+			pool.suspendPool();
+			try {
+				int zeroConnectionCount = 0;
+
+				Instant loopUntil = Instant.now().plusMillis(MAX_EVICT_WAIT_TIME_MILLS);
+				do {
+					pool.softEvictConnections();
+					if (pool.getTotalConnections() == 0) {
+						zeroConnectionCount++;
+						if (zeroConnectionCount >= ZERO_CONNECTION_VALIDATION_COUNT) {
+							log.info("Zero connection count encountered " + zeroConnectionCount + " times, so exiting loop");
+							break;
+						}
+					}
+
+					try {
+						Thread.sleep(100L);
+					} catch (InterruptedException e) {
+						log.info("Eviction wait interrupted");
+						Thread.currentThread().interrupt();
+						return;
+					}
+
+				} while (Instant.now().isBefore(loopUntil));
+
+			} finally {
+				log.info("Resuming pool " + dataSource.toString());
+				pool.resumePool();
+			}
+		}
+	}
+
+	private String getIp(String url) throws URISyntaxException, UnknownHostException {
+		URI aURL = new URI(url);
+		aURL = new URI(aURL.getSchemeSpecificPart());
+		InetAddress address = InetAddress.getByName(aURL.getHost());
+		return address.getHostAddress();
 	}
 
 }

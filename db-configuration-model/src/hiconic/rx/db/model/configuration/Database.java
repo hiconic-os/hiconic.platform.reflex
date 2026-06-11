@@ -88,6 +88,9 @@ public interface Database extends GenericEntity {
 	boolean getEnableMetrics();
 	void setEnableMetrics(boolean enableMetrics);
 
+	boolean getEnableIpAddressChangeMonitoring();
+	void setEnableIpAddressChangeMonitoring(boolean enableIpAddressChangeMonitoring);
+
 	@Initializer("60000")
 	Integer getValidationTimeout();
 	void setValidationTimeout(Integer validationTimeout);
