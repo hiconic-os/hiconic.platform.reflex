@@ -36,7 +36,6 @@ import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.module.api.wire.RxServiceProcessingContract;
 import hiconic.rx.security.web.api.AuthFilters;
 import hiconic.rx.security.web.api.WebSecurityContract;
-import hiconic.rx.topology.api.TopologyContract;
 import hiconic.rx.web.server.api.WebServerContract;
 import jakarta.servlet.DispatcherType;
 
@@ -51,7 +50,6 @@ public class WebappsSpace implements WireSpace {
 	@Import private RxServiceProcessingContract serviceProcessing;
 
 	@Import private AccessContract access;
-	@Import private TopologyContract topology;
 	@Import private WebServerContract webServer;
 	@Import private WebSecurityContract webSecurity;
 	// @formatter:on
@@ -116,7 +114,7 @@ public class WebappsSpace implements WireSpace {
 	private AboutRxServlet aboutServlet() {
 		AboutRxServlet bean = new AboutRxServlet();
 		bean.setRequestEvaluator(serviceProcessing.evaluator());
-		bean.setLiveInstances(topology.liveInstances());
+		bean.setLiveInstances(platform.application().liveInstances());
 		bean.setLocalInstanceId(platform.application().instanceId());
 		bean.setExecutor(platform.execution().executorService());
 
