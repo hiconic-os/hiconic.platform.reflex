@@ -27,12 +27,12 @@ limitations under the License.
         <V.com.braintribe.security>[2.0,2.1)</V.com.braintribe.security>
         <V.com.braintribe.velocity>[2.0,2.1)</V.com.braintribe.velocity>
         <V.com.braintribe.devrock.templates>[2.0,2.1)</V.com.braintribe.devrock.templates>
-        <V.tribefire.extension.hibernate>[3.0,3.1)</V.tribefire.extension.hibernate>
         <V.com.braintribe.codec>[2.0,2.1)</V.com.braintribe.codec>
         <V.com.braintribe.execution>[2.0,2.1)</V.com.braintribe.execution>
         <V.com.braintribe.servlet>[2.0,2.1)</V.com.braintribe.servlet>
         <V.com.braintribe.web.multipart>[2.0,2.1)</V.com.braintribe.web.multipart>
         <V.com.braintribe.xml>[2.0,2.1)</V.com.braintribe.xml>
+        <V.tribefire.extension.hibernate>[3.0,3.1)</V.tribefire.extension.hibernate>
         <V.com.github.ben-manes.caffeine>3.2.0</V.com.github.ben-manes.caffeine>
         <V.com.github.oshi>6.9.0</V.com.github.oshi>
         <V.com.vladsch.flexmark>0.64.8</V.com.vladsch.flexmark>
@@ -41,6 +41,7 @@ limitations under the License.
         <V.io.undertow>2.3.24.Final</V.io.undertow>
         <V.jakarta.servlet>6.0.0</V.jakarta.servlet>
         <V.net.lingala.zip4j>2.11.5</V.net.lingala.zip4j>
+        <V.org.apache.groovy>4.0.28</V.org.apache.groovy>
         <V.org.jboss.threads>3.9.2</V.org.jboss.threads>
         <V.org.quartz-scheduler>2.3.2</V.org.quartz-scheduler>
     </properties>
