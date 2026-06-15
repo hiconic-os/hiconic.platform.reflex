@@ -16,7 +16,7 @@ package hiconic.rx.scripting.api;
 import com.braintribe.model.generic.reflection.EntityType;
 
 import hiconic.rx.module.api.wire.RxExportContract;
-import hiconic.rx.script.source.Script;
+import tribefire.extension.scripting.model.deployment.Script;
 
 public interface ScriptingConfigurationContract extends RxExportContract {
 

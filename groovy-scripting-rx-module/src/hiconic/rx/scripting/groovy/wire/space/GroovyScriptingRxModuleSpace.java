@@ -19,9 +19,9 @@ import com.braintribe.wire.api.annotation.Managed;
 import hiconic.rx.module.api.config.RxPlatformConfigurator;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
-import hiconic.rx.script.source.groovy.GroovyScript;
 import hiconic.rx.scripting.api.ScriptingConfigurationContract;
 import hiconic.rx.scripting.groovy.processing.GroovyEngine;
+import tribefire.extension.scripting.deployment.model.GroovyScript;
 
 /**
  * Registers {@link GroovyEngine} as the engine for {@link GroovyScript}.

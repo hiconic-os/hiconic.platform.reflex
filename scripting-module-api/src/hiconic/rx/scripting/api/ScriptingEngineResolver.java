@@ -18,7 +18,7 @@ import java.util.Map;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.model.generic.reflection.EntityType;
 
-import hiconic.rx.script.source.Script;
+import tribefire.extension.scripting.model.deployment.Script;
 
 /**
  * Resolver of {@link ScriptingEngine}s for given {@link Script} types, with convenience methods to compile and evaluate a script.

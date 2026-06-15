@@ -17,9 +17,9 @@ import java.util.Map;
 
 import com.braintribe.gm.model.reason.Maybe;
 
-import hiconic.rx.script.reason.ScriptCompileError;
-import hiconic.rx.script.reason.ScriptRuntimeError;
-import hiconic.rx.script.source.Script;
+import tribefire.extension.scripting.model.ScriptCompileError;
+import tribefire.extension.scripting.model.ScriptRuntimeError;
+import tribefire.extension.scripting.model.deployment.Script;
 
 /**
  * Primarily a compiler turning given {@link Script} into an evaluable {@link CompiledScript}, with a convenience method to evaluate a script in one

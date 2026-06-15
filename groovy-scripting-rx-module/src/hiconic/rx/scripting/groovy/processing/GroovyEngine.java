@@ -32,11 +32,11 @@ import com.braintribe.gm.model.reason.essential.InternalError;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
 import com.braintribe.model.resource.Resource;
 
-import hiconic.rx.script.reason.ScriptCompileError;
-import hiconic.rx.script.reason.ScriptRuntimeError;
-import hiconic.rx.script.source.groovy.GroovyScript;
 import hiconic.rx.scripting.api.CompiledScript;
 import hiconic.rx.scripting.api.ScriptingEngine;
+import tribefire.extension.scripting.deployment.model.GroovyScript;
+import tribefire.extension.scripting.model.ScriptCompileError;
+import tribefire.extension.scripting.model.ScriptRuntimeError;
 
 /**
  * Groovy {@link ScriptingEngine} implementation.

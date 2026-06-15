@@ -16,14 +16,14 @@
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
         <dependency>
-            <groupId>hiconic.platform.reflex</groupId>
+            <groupId>tribefire.extension.scripting</groupId>
             <artifactId>script-model</artifactId>
-            <version>${V.hiconic.platform.reflex}</version>
+            <version>${V.tribefire.extension.scripting}</version>
         </dependency>
         <dependency>
-            <groupId>hiconic.platform.reflex</groupId>
+            <groupId>tribefire.extension.scripting</groupId>
             <artifactId>scripting-reason-model</artifactId>
-            <version>${V.hiconic.platform.reflex}</version>
+            <version>${V.tribefire.extension.scripting}</version>
         </dependency>
     </dependencies>
 </project>

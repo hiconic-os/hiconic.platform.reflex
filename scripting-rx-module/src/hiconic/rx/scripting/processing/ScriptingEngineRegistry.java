@@ -19,9 +19,9 @@ import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.processing.core.expert.api.MutableDenotationMap;
 import com.braintribe.model.processing.core.expert.impl.PolymorphicDenotationMap;
 
-import hiconic.rx.script.source.Script;
 import hiconic.rx.scripting.api.ScriptingEngine;
 import hiconic.rx.scripting.api.ScriptingEngineResolver;
+import tribefire.extension.scripting.model.deployment.Script;
 
 /**
  * @author peter.gazdik

@@ -20,11 +20,11 @@ import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
-import hiconic.rx.script.source.Script;
 import hiconic.rx.scripting.api.ScriptingConfigurationContract;
 import hiconic.rx.scripting.api.ScriptingContract;
 import hiconic.rx.scripting.api.ScriptingEngine;
 import hiconic.rx.scripting.processing.ScriptingEngineRegistry;
+import tribefire.extension.scripting.model.deployment.Script;
 
 /**
  * Support for {@link ScriptingContract} and {@link ScriptingConfigurationContract}.
