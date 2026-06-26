@@ -17,7 +17,6 @@ import java.util.UUID;
 
 import com.braintribe.model.service.api.InstanceId;
 import com.braintribe.provider.Box;
-import com.braintribe.provider.Holder;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
@@ -102,18 +101,18 @@ public class RxApplicationSpace implements RxApplicationContract {
 		bean.setNodeId(nodeId());
 		return bean;
 	}
-	
+
 	@Managed
 	public Box<LiveInstances> liveInstancesBox() {
 		return Box.of(singleInstanceLiveInstances());
 	}
-	
+
 	private SingleInstanceLiveInstances singleInstanceLiveInstances() {
 		SingleInstanceLiveInstances bean = new SingleInstanceLiveInstances();
 		bean.setInstanceId(instanceId());
 		return bean;
 	}
-	
+
 	@Override
 	public LiveInstances liveInstances() {
 		return liveInstancesBox().value;

@@ -126,6 +126,8 @@ public class RxPlatformSpace extends CoreServicesSpace implements ExtendedRxPlat
 		for (RxModuleContract moduleContract : moduleContracts) {
 			moduleContract.onApplicationReady();
 		}
+
+		execution.startDefaultWorkerManagerIfRelevant();
 	}
 
 	private RxServiceDomainConfigurations serviceDomainConfigurations() {

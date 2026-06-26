@@ -44,6 +44,15 @@ public class RxExecutionSpace implements RxExecutionContract {
 	@Import
 	private RxApplicationSpace application;
 
+	/**
+	 * Starts the default worker-manager if it is still in use (wasn't overridden from some module).
+	 */
+	public void startDefaultWorkerManagerIfRelevant() {
+		BasicRxWorkerManager defaultWorkerManager = defaultWorkerManager();
+		if (workerManagerHolder().value == defaultWorkerManager)
+			defaultWorkerManager.start();
+	}
+
 	@Override
 	@Managed
 	public ThreadRenamer threadRenamer() {

@@ -28,10 +28,13 @@ import hiconic.rx.platform.resource.RxResourcesStorages;
  * The reason to add this was registration of {@link ResourcePayloadProcessor}, which has a dependency on platform's internal registry -
  * {@link RxResourcesStorages} - but which we want to register in a standard way via
  * {@link RxModuleContract#registerFallbackProcessors(ProcessorRegistry)} rather than creating additional steps in the platform itself.
+ * 
+ * @see CoreRxPlatformModuleSpace#registerFallbackProcessors(ProcessorRegistry)
  */
 public interface ExtendedRxPlatformContract extends RxPlatformContract {
 
 	RxResourcesStorages resourceStorages();
+
 	void onApplicationShutdown();
 
 }
