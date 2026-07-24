@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<testsuite errors="0" failures="0" hostname="chaox" name="hiconic.rx.log.reflection.processing.LogReflectionProcessorClusterTest" skipped="0" tests="4" time="0.04" timestamp="2026-07-24T15:48:48">
+<testsuite errors="0" failures="0" hostname="803a6b1f226b" name="hiconic.rx.log.reflection.processing.LogReflectionProcessorClusterTest" skipped="0" tests="4" time="0.035" timestamp="2026-07-24T21:22:39">
   <properties />
-  <testcase classname="hiconic.rx.log.reflection.processing.LogReflectionProcessorClusterTest" name="multicastsLocalQueryAndMergesNodeResults" time="0.031" />
-  <testcase classname="hiconic.rx.log.reflection.processing.LogReflectionProcessorClusterTest" name="multicastsLocalRawBundlesAndCombinesTheirResources" time="0.003" />
-  <testcase classname="hiconic.rx.log.reflection.processing.LogReflectionProcessorClusterTest" name="multicastsAcrossApplicationsWhenApplicationIsWildcarded" time="0.0" />
+  <testcase classname="hiconic.rx.log.reflection.processing.LogReflectionProcessorClusterTest" name="multicastsLocalQueryAndMergesNodeResults" time="0.026" />
+  <testcase classname="hiconic.rx.log.reflection.processing.LogReflectionProcessorClusterTest" name="multicastsLocalRawBundlesAndCombinesTheirResources" time="0.004" />
+  <testcase classname="hiconic.rx.log.reflection.processing.LogReflectionProcessorClusterTest" name="multicastsAcrossApplicationsWhenApplicationIsWildcarded" time="0.001" />
   <testcase classname="hiconic.rx.log.reflection.processing.LogReflectionProcessorClusterTest" name="usesUnicastWithLocalPayloadForAnExactRemoteNode" time="0.002" />
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>

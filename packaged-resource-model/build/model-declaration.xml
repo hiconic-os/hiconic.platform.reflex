@@ -5,7 +5,7 @@
 
   <groupId>hiconic.platform.reflex</groupId>
   <artifactId>packaged-resource-model</artifactId>
-  <version>1.0.1-rc</version>
+  <version>1.0.1</version>
   <hash>d6505b36df1376c644fda41797815b38</hash>
 
   <dependencies>

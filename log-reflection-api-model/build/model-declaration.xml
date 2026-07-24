@@ -5,7 +5,7 @@
 
   <groupId>hiconic.platform.reflex</groupId>
   <artifactId>log-reflection-api-model</artifactId>
-  <version>1.0.1-rc</version>
+  <version>1.0.1</version>
   <hash>450e8076cd493a0d451ce6a1cb917338</hash>
 
   <dependencies>

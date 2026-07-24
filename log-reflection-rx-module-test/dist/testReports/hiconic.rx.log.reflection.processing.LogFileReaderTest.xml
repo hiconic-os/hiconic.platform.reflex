@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<testsuite errors="0" failures="0" hostname="chaox" name="hiconic.rx.log.reflection.processing.LogFileReaderTest" skipped="0" tests="6" time="0.018" timestamp="2026-07-24T15:48:48">
+<testsuite errors="0" failures="0" hostname="803a6b1f226b" name="hiconic.rx.log.reflection.processing.LogFileReaderTest" skipped="0" tests="6" time="0.656" timestamp="2026-07-24T21:22:38">
   <properties />
-  <testcase classname="hiconic.rx.log.reflection.processing.LogFileReaderTest" name="filtersParsedFilesByCaseInsensitiveLoggerSubstring" time="0.003" />
-  <testcase classname="hiconic.rx.log.reflection.processing.LogFileReaderTest" name="canonicalizesJsonAndRetainsCustomProperties" time="0.006" />
-  <testcase classname="hiconic.rx.log.reflection.processing.LogFileReaderTest" name="includesRotatedSegmentsInTheBoundedInitialHistory" time="0.001" />
-  <testcase classname="hiconic.rx.log.reflection.processing.LogFileReaderTest" name="exposesUnknownFormatAsRawLineRecords" time="0.0" />
+  <testcase classname="hiconic.rx.log.reflection.processing.LogFileReaderTest" name="filtersParsedFilesByCaseInsensitiveLoggerSubstring" time="0.473">
+    <system-out><![CDATA[2026-07-24 21:22:38.778 INFO    com.braintribe.model.generic.annotation.meta.api.CustomMdaHandlerLoader     '[MdaHandler CP Loader] Successfully registered MdaHandler for annotation com.braintribe.model.generic.annotation.meta.Temporal and meta-data com.braintribe.model.meta.data.prompt.Temporal. Line: com.braintribe.model.generic.annotation.meta.Temporal,com.braintribe.model.meta.data.prompt.Temporal,value,temporalType, URL: jar:file:/__w/hiconic.platform.reflex/hiconic.platform.reflex/repo/com/braintribe/gm/gm-core-api/2.0.131/gm-core-api-2.0.131.jar!/META-INF/gmf.mda' []
+]]></system-out>
+  </testcase>
+  <testcase classname="hiconic.rx.log.reflection.processing.LogFileReaderTest" name="canonicalizesJsonAndRetainsCustomProperties" time="0.097" />
+  <testcase classname="hiconic.rx.log.reflection.processing.LogFileReaderTest" name="includesRotatedSegmentsInTheBoundedInitialHistory" time="0.002" />
+  <testcase classname="hiconic.rx.log.reflection.processing.LogFileReaderTest" name="exposesUnknownFormatAsRawLineRecords" time="0.002" />
   <testcase classname="hiconic.rx.log.reflection.processing.LogFileReaderTest" name="parsesProventemPatternAndKeepsMultilineExceptionTogether" time="0.001" />
   <testcase classname="hiconic.rx.log.reflection.processing.LogFileReaderTest" name="continuesFromByteCursorAfterFileGrowth" time="0.002" />
   <system-out><![CDATA[]]></system-out>
