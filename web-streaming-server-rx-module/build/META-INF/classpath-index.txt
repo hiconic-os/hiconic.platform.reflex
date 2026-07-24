@@ -1,0 +1,1 @@
+META-INF/rx-module.properties
