@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<testsuite errors="0" failures="0" hostname="803a6b1f226b" name="hiconic.rx.log.reflection.processing.LogClusterSupportTest" skipped="0" tests="2" time="0.021" timestamp="2026-07-24T21:22:39">
-  <properties />
-  <testcase classname="hiconic.rx.log.reflection.processing.LogClusterSupportTest" name="ordersStreamInventoryStablyByOriginAndName" time="0.006" />
-  <testcase classname="hiconic.rx.log.reflection.processing.LogClusterSupportTest" name="mergesRecordsChronologicallyAndCarriesIndependentNodeCursors" time="0.014" />
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>
