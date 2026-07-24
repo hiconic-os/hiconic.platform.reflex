@@ -8,7 +8,7 @@ import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
 import com.braintribe.gm.model.reason.Maybe;
-import com.braintribe.model.resource.Resource;
+import com.braintribe.model.resource.Resources;
 
 import tribefire.extension.scripting.deployment.model.GroovyScript;
 import tribefire.extension.scripting.model.ScriptCompileError;
@@ -52,7 +52,7 @@ public class GroovyScriptingTest {
 		GroovyEngine engine = new GroovyEngine();
 
 		GroovyScript script = GroovyScript.T.create();
-		script.setSource(Resource.createTransient(code));
+		script.setSource(Resources.createTransient(code));
 
 		return engine.evaluate(script, bindings);
 	}
