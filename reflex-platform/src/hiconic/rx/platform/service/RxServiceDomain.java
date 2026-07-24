@@ -14,8 +14,11 @@
 package hiconic.rx.platform.service;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
 
@@ -32,17 +35,20 @@ import hiconic.rx.module.api.service.DelegatingModelConfiguration;
 import hiconic.rx.module.api.service.ModelConfiguration;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.service.ServiceDomainConfiguration;
+import hiconic.rx.module.api.util.DisplayNames;
 import hiconic.rx.platform.models.RxConfiguredModel;
 
 public class RxServiceDomain implements ServiceDomain, ServiceDomainConfiguration, DelegatingModelConfiguration {
 
 	private final String domainId;
+	private volatile String displayName;
 	private final ConfigurableServiceRequestEvaluator evaluator;
 
 	private final RxConfiguredModel modelConfiguration;
 	private final RxRequestDispatcher dispatcher;
 	
 	private final List<Supplier<? extends ServiceRequest>> defaultRequestSuppliers = Collections.synchronizedList(new ArrayList<>());
+	private final Set<String> allowedRoles = Collections.synchronizedSet(new HashSet<>());
 	
 	public RxServiceDomain(String domainId, RxConfiguredModel modelConfiguration, ExecutorService executorService,
 			Evaluator<ServiceRequest> contextEvaluator, ServiceProcessor<ServiceRequest, Object> fallbackProcessor) {
@@ -72,6 +78,34 @@ public class RxServiceDomain implements ServiceDomain, ServiceDomainConfiguratio
 	@Override
 	public String domainId() {
 		return domainId;
+	}
+
+	@Override
+	public String displayName() {
+		String result = displayName;
+		return result == null || result.isBlank() ? DisplayNames.fromTechnicalName(domainId) : result;
+	}
+
+	@Override
+	public void setDisplayName(String displayName) {
+		this.displayName = displayName;
+	}
+
+	@Override
+	public Set<String> allowedRoles() {
+		synchronized (allowedRoles) {
+			return Set.copyOf(allowedRoles);
+		}
+	}
+
+	@Override
+	public void allowRoles(Collection<String> roles) {
+		if (roles == null)
+			return;
+
+		for (String role : roles)
+			if (role != null && !role.isBlank())
+				allowedRoles.add(role);
 	}
 
 	@Override

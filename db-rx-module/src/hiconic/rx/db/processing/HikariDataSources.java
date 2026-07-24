@@ -34,6 +34,7 @@ import com.braintribe.cfg.Configurable;
 import com.braintribe.cfg.InitializationAware;
 import com.braintribe.cfg.Required;
 import com.braintribe.common.concurrent.TaskScheduler;
+import com.braintribe.common.concurrent.ScheduledTask;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.essential.NotFound;
@@ -65,6 +66,7 @@ public class HikariDataSources implements InitializationAware {
 
 	private DatabaseConfiguration databaseConfiguration;
 	private TaskScheduler taskScheduler;
+	private ScheduledTask ipChangeCheckTask;
 
 	private static final long MAX_EVICT_WAIT_TIME_MILLS = 60_000L; // 1 MINUTE
 	private static final int ZERO_CONNECTION_VALIDATION_COUNT = 10;
@@ -92,7 +94,19 @@ public class HikariDataSources implements InitializationAware {
 	@Override
 	public void postConstruct() {
 		if (taskScheduler != null)
-			taskScheduler.scheduleAtFixedRate("CheckHikariConnectionIpChange", this::checkForIpChange, 1L, 1L, TimeUnit.MINUTES).done();
+			ipChangeCheckTask = taskScheduler.scheduleAtFixedRate("CheckHikariConnectionIpChange", this::checkForIpChange, 1L, 1L,
+					TimeUnit.MINUTES).done();
+	}
+
+	public synchronized void close() {
+		if (ipChangeCheckTask != null) {
+			ipChangeCheckTask.cancel();
+			ipChangeCheckTask = null;
+		}
+
+		createdDataSources.values().forEach(HikariDataSource::close);
+		createdDataSources.clear();
+		dataSourceIpMap.clear();
 	}
 
 	public HikariDataSource findDataSource(String name) {

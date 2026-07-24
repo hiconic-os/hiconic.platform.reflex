@@ -13,11 +13,21 @@
 // ============================================================================
 package hiconic.rx.module.api.service;
 
+import java.util.Collection;
 import java.util.function.Supplier;
 
 import com.braintribe.model.service.api.ServiceRequest;
 
 public interface ServiceDomainConfiguration extends ModelConfiguration {
+
+	/** Sets the human-readable name used by reflective user interfaces. */
+	void setDisplayName(String displayName);
+
+	/**
+	 * Adds roles of which at least one is required for evaluating requests in this domain. This restriction is enforced before the domain's normal
+	 * request interception chain and therefore also applies to non-interceptable requests.
+	 */
+	void allowRoles(Collection<String> roles);
 
 	/**
 	 * Adds a {@link Supplier} for a {@link ServiceRequest} that will be used when a service domain is asked to give a default request via

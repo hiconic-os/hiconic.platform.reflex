@@ -1,0 +1,21 @@
+{
+  "name": "@dev.hiconic/platform.reflex_packaged-resource-model",
+  "version": "1.0.1",
+  "main": "dist/packaged-resource-model.js",
+  "types": "dist/packaged-resource-model.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hiconic-os/hiconic.platform.reflex.git.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@dev.hiconic/gm_resource-model": "2.0.x",
+    "@dev.hiconic/gm_gm-core-api": "2.0.x"
+  }
+}

@@ -40,6 +40,7 @@ public class RxServiceDomainConfigurations implements ServiceDomainConfiguration
 
 	// @formatter:off
 	@Override public RxServiceDomain main() { return byId(PlatformServiceDomains.main); }
+	@Override public RxServiceDomain internal() { return byId(PlatformServiceDomains.internal); }
 	@Override public RxServiceDomain system() { return byId(PlatformServiceDomains.system); }
 	// @formatter:on
 

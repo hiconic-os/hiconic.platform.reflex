@@ -13,8 +13,18 @@
 // ============================================================================
 package hiconic.rx.push.api;
 
+import com.braintribe.model.processing.service.api.ServiceProcessor;
+import com.braintribe.model.service.api.InternalPushRequest;
+import com.braintribe.model.service.api.result.PushResponse;
+
 import hiconic.rx.module.api.wire.RxExportContract;
 
 public interface PushContract extends RxExportContract {
 	PushChannelLifecyclePublisher channelLifecyclePublisher();
+
+	/** Adds a transport delegate receiving the node-local form of a push. */
+	void addHandler(ServiceProcessor<? super InternalPushRequest, PushResponse> handler);
+
+	void registerChannel(PushChannel channel);
+	void unregisterChannel(PushChannel channel);
 }

@@ -35,6 +35,11 @@ limitations under the License.
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
         <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>push-module-api</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
             <groupId>com.braintribe.gm</groupId>
             <artifactId>gm-core4-jvm</artifactId>
             <version>${V.com.braintribe.gm}</version>

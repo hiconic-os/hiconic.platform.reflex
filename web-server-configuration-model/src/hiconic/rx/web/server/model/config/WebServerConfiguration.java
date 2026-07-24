@@ -34,6 +34,8 @@ public interface WebServerConfiguration extends GenericEntity {
 	String sslKeyStore = "sslKeyStore";
 	String sslKeyStorePassword = "sslKeyStorePassword";
 	String defaultEndpointsBasePath = "defaultEndpointsBasePath";
+	String pushSseEndpointPath = "pushSseEndpointPath";
+	String pushWebSocketEndpointPath = "pushWebSocketEndpointPath";
 
 	@Initializer("'localhost'")
 	String getHostName();
@@ -77,6 +79,18 @@ public interface WebServerConfiguration extends GenericEntity {
 	@Pattern(".*[^\\/]$")
 	String getDefaultEndpointsBasePath();
 	void setDefaultEndpointsBasePath(String defaultEndpointsBasePath);
+
+	@Description("Path of the SSE transport endpoint for platform push, relative to defaultEndpointsBasePath. The value must not end with '/'.")
+	@Pattern(".*[^\\/]$")
+	@Initializer("'push/sse'")
+	String getPushSseEndpointPath();
+	void setPushSseEndpointPath(String pushSseEndpointPath);
+
+	@Description("Path of the WebSocket transport endpoint for platform push, relative to defaultEndpointsBasePath. The value must not end with '/'.")
+	@Pattern(".*[^\\/]$")
+	@Initializer("'push/ws'")
+	String getPushWebSocketEndpointPath();
+	void setPushWebSocketEndpointPath(String pushWebSocketEndpointPath);
 
 	@Description("Determines which of error message and stacktrace are exposed to the client in the server response:\n" + //
 			"full: message and stacktrace\n" + //

@@ -1,0 +1,30 @@
+{
+  "name": "@hiconic/log-reflection-webapp",
+  "version": "1.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b && vite build",
+    "dev": "vite --host 127.0.0.1",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@dev.hiconic/gm_gm-core-api": "2.0.x",
+    "@dev.hiconic/gm_logging-model": "2.0.x",
+    "@dev.hiconic/gm_resource-model": "2.0.x",
+    "@dev.hiconic/gm_security-service-api-model": "2.0.x",
+    "@dev.hiconic/gm_transient-resource-model": "2.0.x",
+    "@dev.hiconic/platform.reflex_log-reflection-api-model": "file:../log-reflection-api-model/dist/npm",
+    "@dev.hiconic/runtime": "3.0.168",
+    "@dev.hiconic/tf.js_hc-js-api": "3.0.15",
+    "solid-js": "1.9.4"
+  },
+  "devDependencies": {
+    "@dev.hiconic/runtime-dev": "3.0.168",
+    "@types/node": "22.13.10",
+    "typescript": "5.7.3",
+    "vite": "6.2.2",
+    "vite-plugin-solid": "2.11.6",
+    "vite-plugin-static-copy": "2.3.0"
+  }
+}

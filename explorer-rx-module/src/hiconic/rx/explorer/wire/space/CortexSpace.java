@@ -50,6 +50,10 @@ public class CortexSpace implements WireSpace {
 	@Import private AccessContract access;
 	// @formatter:on
 
+	public void configureCortexAccessModels() {
+		access.configureModels(cortexDenotation());
+	}
+
 	public void registerCortexAccess() {
 		access.deploy(cortexDenotation(), cortexAccess());
 	}

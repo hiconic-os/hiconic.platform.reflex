@@ -29,9 +29,21 @@ public interface Access extends GenericEntity {
 	String getAccessId();
 	void setAccessId(String accessId);
 
+	/** Optional human-readable name used by reflective user interfaces. */
+	String getDisplayName();
+	void setDisplayName(String displayName);
+
 	List<String> getDataModelNames();
 	void setDataModelNames(List<String> dataModelNames);
 	
 	List<String> getServiceModelNames();
 	void setServiceModelNames(List<String> serviceModelNames);
+
+	/**
+	 * Optional id of the default resource storage used by the resource API of this access.
+	 */
+	String getResourceStorageId();
+	void setResourceStorageId(String resourceStorageId);
+
+	/** Optional id of the access containing this access' workbench model and data. */
 }

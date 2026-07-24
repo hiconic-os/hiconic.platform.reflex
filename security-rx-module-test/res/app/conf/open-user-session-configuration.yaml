@@ -1,0 +1,9 @@
+entryPoints:
+- name: admin-login
+  allowedRoles:
+  - admin
+  inducedRoles:
+  - entry-point-user
+- name: customer-login
+  allowedRoles:
+  - customer

@@ -18,7 +18,11 @@ import java.util.function.Supplier;
 import com.braintribe.model.processing.aop.api.aspect.AccessAspect;
 
 public interface AccessInterceptorBuilder {
+	/** @deprecated Declare ordering independently via {@link AccessDataModelConfiguration#orderAspects(String...)}. */
+	@Deprecated
 	AccessInterceptorBuilder before(String identification);
+	/** @deprecated Declare ordering independently via {@link AccessDataModelConfiguration#orderAspects(String...)}. */
+	@Deprecated
 	AccessInterceptorBuilder after(String identification);
 	void bind(Supplier<AccessAspect> aspectSupplier);
 }

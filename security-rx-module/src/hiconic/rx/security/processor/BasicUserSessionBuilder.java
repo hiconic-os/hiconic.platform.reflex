@@ -13,6 +13,7 @@
 // ============================================================================
 package hiconic.rx.security.processor;
 
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -22,6 +23,7 @@ import java.util.Set;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.model.processing.securityservice.api.UserSessionService;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
+import com.braintribe.model.security.service.config.OpenUserSessionEntryPoint;
 import com.braintribe.model.securityservice.OpenUserSession;
 import com.braintribe.model.time.TimeSpan;
 import com.braintribe.model.user.Role;
@@ -46,9 +48,15 @@ public class BasicUserSessionBuilder implements UserSessionBuilder {
 	private String locale;
 	private String acquirationKey;
 	private boolean blocksAuthenticationAfterLogout;
+	private OpenUserSessionEntryPoint entryPoint;
 
 	public BasicUserSessionBuilder(UserSessionService userSessionService, TimeSpan maxIdleTime, TimeSpan maxAge) {
+		this(userSessionService, null, maxIdleTime, maxAge);
+	}
+
+	public BasicUserSessionBuilder(UserSessionService userSessionService, OpenUserSessionEntryPoint entryPoint, TimeSpan maxIdleTime, TimeSpan maxAge) {
 		this.userSessionService = userSessionService;
+		this.entryPoint = entryPoint;
 		this.maxIdleTime = maxIdleTime;
 		this.maxAge = maxAge;
 	}
@@ -138,10 +146,13 @@ public class BasicUserSessionBuilder implements UserSessionBuilder {
 			this.expiryDate = this.request.getExpiryDate();
 		}
 
+		Set<String> additionalRoles = entryPoint != null ? entryPoint.getInducedRoles() : Collections.emptySet();
+
 		//@formatter:off
 			return this.userSessionService
 						.createUserSession(
-								user, 
+								user,
+								additionalRoles,
 								this.type, 
 								this.maxIdleTime, 
 								this.maxAge, 

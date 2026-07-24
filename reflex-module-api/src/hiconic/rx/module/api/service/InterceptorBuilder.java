@@ -21,7 +21,11 @@ import com.braintribe.model.processing.service.api.ServiceInterceptorProcessor;
 import com.braintribe.model.service.api.ServiceRequest;
 
 public interface InterceptorBuilder {
+	/** @deprecated Declare ordering independently via {@link ModelConfiguration#orderInterceptors(String...)}. */
+	@Deprecated
 	InterceptorBuilder before(String identification);
+	/** @deprecated Declare ordering independently via {@link ModelConfiguration#orderInterceptors(String...)}. */
+	@Deprecated
 	InterceptorBuilder after(String identification);
 	
 	default InterceptorBuilder before(InterceptorSymbol identification) {

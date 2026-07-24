@@ -52,6 +52,8 @@ public interface HttpRequestContextBuilder extends HttpConstants {
 
 	HttpRequestContextBuilder payload(Object payload);
 
+	HttpRequestContextBuilder multipartFormData(HttpMultipartFormData multipartFormData);
+
 	HttpRequestContextBuilder payloadIfEmpty(Object payload);
 
 	HttpRequestContextBuilder payloadType(GenericModelType payloadType);

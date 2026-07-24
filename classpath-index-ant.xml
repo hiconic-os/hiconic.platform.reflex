@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project name="classpath-index">
+	<target name="generate-classpath-index">
+		<mkdir dir="src/META-INF"/>
+		<pathconvert property="classpath.index.entries" pathsep="${line.separator}">
+			<fileset dir="src">
+				<include name="**/*"/>
+				<exclude name="META-INF/classpath-index.txt"/>
+			</fileset>
+			<map from="${basedir}/src/" to=""/>
+		</pathconvert>
+		<echo file="src/META-INF/classpath-index.txt">${classpath.index.entries}${line.separator}</echo>
+	</target>
+</project>

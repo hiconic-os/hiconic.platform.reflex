@@ -2,6 +2,9 @@ package hiconic.rx.platform.processing.cluster;
 
 import com.braintribe.cfg.Required;
 import com.braintribe.gm.model.reason.Maybe;
+import com.braintribe.model.generic.eval.EvalContext;
+import com.braintribe.model.generic.eval.Evaluator;
+import com.braintribe.model.processing.service.api.ParentAttributeContextAspect;
 import com.braintribe.model.processing.service.api.ReasonedServiceProcessor;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
 import com.braintribe.model.processing.service.common.ServiceResults;
@@ -13,10 +16,16 @@ import com.braintribe.model.service.api.result.ServiceResult;
 
 public class SingleInstanceMulticastProcessor implements ReasonedServiceProcessor<MulticastRequest, MulticastResponse> {
 	private InstanceId instanceId;
+	private Evaluator<ServiceRequest> requestEvaluator;
 
 	@Required
 	public void setInstanceId(InstanceId instanceId) {
 		this.instanceId = instanceId;
+	}
+
+	@Required
+	public void setRequestEvaluator(Evaluator<ServiceRequest> requestEvaluator) {
+		this.requestEvaluator = requestEvaluator;
 	}
 	
 	@Override
@@ -33,7 +42,9 @@ public class SingleInstanceMulticastProcessor implements ReasonedServiceProcesso
 		
 		ServiceRequest actualRequest = request.getServiceRequest();
 		
-		Maybe<?> maybe = actualRequest.eval(context).getReasoned();
+		EvalContext<?> evalContext = actualRequest.eval(requestEvaluator);
+		evalContext.setAttribute(ParentAttributeContextAspect.class, context);
+		Maybe<?> maybe = evalContext.getReasoned();
 		
 		ServiceResult serviceResult = ServiceResults.fromMaybe(maybe);
 		

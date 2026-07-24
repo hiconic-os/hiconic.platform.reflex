@@ -13,6 +13,9 @@
 // ============================================================================
 package hiconic.rx.access.module.processing;
 
+import java.util.IdentityHashMap;
+import java.util.Map;
+
 import com.braintribe.cfg.Required;
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSessionFactory;
 
@@ -30,6 +33,8 @@ public class RxAccessModelConfigurations implements AccessModelConfigurations {
 	private ModelConfigurations modelConfigurations;
 	private PersistenceGmSessionFactory contextSessionFactory;
 	private PersistenceGmSessionFactory systemSessionFactory;
+	private final Map<ModelConfiguration, AccessDataModelConfiguration> dataModelConfigurations = new IdentityHashMap<>();
+	private final Map<ModelConfiguration, AccessServiceModelConfiguration> serviceModelConfigurations = new IdentityHashMap<>();
 
 	public void initModelConfigurations(ModelConfigurations modelConfigurations) {
 		this.modelConfigurations = modelConfigurations;
@@ -56,8 +61,8 @@ public class RxAccessModelConfigurations implements AccessModelConfigurations {
 	}
 
 	@Override
-	public AccessDataModelConfiguration dataModelConfiguration(ModelConfiguration modelConfiguration) {
-		return new RxAccessDataModelConfiguration(modelConfiguration);
+	public synchronized AccessDataModelConfiguration dataModelConfiguration(ModelConfiguration modelConfiguration) {
+		return dataModelConfigurations.computeIfAbsent(modelConfiguration, RxAccessDataModelConfiguration::new);
 	}
 
 	@Override
@@ -71,7 +76,8 @@ public class RxAccessModelConfigurations implements AccessModelConfigurations {
 	}
 	
 	@Override
-	public AccessServiceModelConfiguration serviceModelConfiguration(ModelConfiguration modelConfiguration) {
-		return new RxAccessServiceModelConfiguration(modelConfiguration, contextSessionFactory, systemSessionFactory);
+	public synchronized AccessServiceModelConfiguration serviceModelConfiguration(ModelConfiguration modelConfiguration) {
+		return serviceModelConfigurations.computeIfAbsent(modelConfiguration,
+				m -> new RxAccessServiceModelConfiguration(m, contextSessionFactory, systemSessionFactory));
 	}
 }

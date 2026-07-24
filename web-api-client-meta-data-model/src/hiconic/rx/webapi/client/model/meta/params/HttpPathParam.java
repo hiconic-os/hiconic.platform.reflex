@@ -24,6 +24,13 @@ import hiconic.rx.webapi.client.model.meta.HttpParamType;
 public interface HttpPathParam extends HttpParam {
 
 	final EntityType<HttpPathParam> T = EntityTypes.T(HttpPathParam.class);
+
+	/**
+	 * Removes the complete path segment containing this parameter when its value is {@code null}.
+	 * The placeholder must be the entire segment, for example {@code /orders/{orderId}}.
+	 */
+	boolean getOmitSegmentIfNull();
+	void setOmitSegmentIfNull(boolean omitSegmentIfNull);
 	
 	@Override
 	default HttpParamType paramType() {

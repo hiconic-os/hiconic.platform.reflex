@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -43,13 +44,18 @@ import com.braintribe.utils.lcd.StringTools;
 
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.service.ServiceDomains;
+import hiconic.rx.web.ddra.endpoints.api.WebApiMappingBuilder;
+import hiconic.rx.web.ddra.endpoints.api.WebApiMappingRegistry;
 import hiconic.rx.web.ddra.endpoints.api.v1.SingleDdraMapping;
 import hiconic.rx.web.ddra.endpoints.api.v1.SingleDdraMappingImpl;
 import hiconic.rx.web.ddra.endpoints.api.v1.WebApiMappingOracle;
+import hiconic.rx.webapi.endpoints.OutputPrettiness;
+import hiconic.rx.webapi.endpoints.TypeExplicitness;
 import hiconic.rx.webapi.model.meta.HideSerializedRequest;
 import hiconic.rx.webapi.model.meta.HttpRequestMethod;
 import hiconic.rx.webapi.model.meta.RequestEvaluateWithSession;
 import hiconic.rx.webapi.model.meta.RequestMethod;
+import hiconic.rx.webapi.model.meta.RequestMapping;
 import hiconic.rx.webapi.model.meta.RequestPath;
 import hiconic.rx.webapi.model.meta.RequestPathPrefix;
 import hiconic.rx.webapi.model.meta.RequestSection;
@@ -68,9 +74,10 @@ import hiconic.rx.webapi.model.meta.ResponseWithDownloadDialog;
  * Standard {@link WebApiMappingOracle} implementation, backed by {@link ServiceDomains} and meta data like {@link RequestPath} configured on the
  * {@link ServiceRequest}s.
  */
-public class StandardWebApiMappingOracle implements WebApiMappingOracle {
+public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiMappingRegistry {
 
 	private final Lazy<Map<PathAndMethod, SingleDdraMapping>> mappings = new Lazy<>(() -> new MappingIndexer().buildMappings());
+	private final Map<PathAndMethod, SingleDdraMapping> explicitMappings = new ConcurrentHashMap<>();
 
 	private final CloningContext cloningContext;
 
@@ -99,7 +106,9 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle {
 
 	@Override
 	public SingleDdraMapping get(String pathInfo, HttpRequestMethod method) {
-		return mappings.get().get(getKey(pathInfo, method));
+		PathAndMethod key = getKey(pathInfo, method);
+		SingleDdraMapping explicitMapping = explicitMappings.get(key);
+		return explicitMapping != null ? explicitMapping : mappings.get().get(key);
 	}
 
 	private PathAndMethod getKey(String pathInfo, HttpRequestMethod method) {
@@ -108,18 +117,80 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle {
 
 	@Override
 	public List<String> getMethods(String pathInfo) {
-		return mappings.get().keySet().stream() //
+		return java.util.stream.Stream.concat(explicitMappings.keySet().stream(), mappings.get().keySet().stream()) //
 				.filter(k -> k.path().equals(pathInfo)) //
 				.map(k -> k.method().name()) //
+				.distinct() //
 				.sorted() //
 				.collect(Collectors.toList());
 	}
 
 	@Override
 	public List<SingleDdraMapping> getAllForDomain(String serviceDomain) {
-		return mappings.get().values().stream() //
-				.filter(m -> m.getServiceDomain().equals(serviceDomain)) //
+		return java.util.stream.Stream.concat(explicitMappings.values().stream(), mappings.get().values().stream()) //
+				.filter(m -> java.util.Objects.equals(m.getServiceDomain(), serviceDomain)) //
 				.toList();
+	}
+
+	@Override
+	public WebApiMappingBuilder mapping(String path, HttpRequestMethod method, EntityType<? extends ServiceRequest> requestType) {
+		if (StringTools.isEmpty(path) || method == null || requestType == null)
+			throw new IllegalArgumentException("Path, method and requestType are required for an explicit Web API mapping.");
+		return new ExplicitMappingBuilder(normalizePath(path), method, requestType);
+	}
+
+	private String normalizePath(String path) {
+		String result = path.startsWith("/") ? path : "/" + path;
+		return result.length() > 1 && result.endsWith("/") ? result.substring(0, result.length() - 1) : result;
+	}
+
+	private class ExplicitMappingBuilder implements WebApiMappingBuilder {
+		private final SingleDdraMappingImpl mapping = new SingleDdraMappingImpl();
+		private boolean registered;
+
+		private ExplicitMappingBuilder(String path, HttpRequestMethod method, EntityType<? extends ServiceRequest> requestType) {
+			mapping.pathInfo = path;
+			mapping.method = method;
+			mapping.requestType = requestType;
+		}
+
+		@Override public WebApiMappingBuilder serviceDomain(String value) { return configure(() -> mapping.serviceDomain = value); }
+		@Override public WebApiMappingBuilder responseProjection(String value) { return configure(() -> mapping.defaultProjection = value); }
+		@Override public WebApiMappingBuilder responseMimeType(String value) { return configure(() -> mapping.defaultMimeType = value); }
+		@Override public WebApiMappingBuilder downloadResource(boolean value) { return configure(() -> mapping.defaultDownloadResource = value); }
+		@Override public WebApiMappingBuilder saveLocally(boolean value) { return configure(() -> mapping.defaultSaveLocally = value); }
+		@Override public WebApiMappingBuilder responseFilename(String value) { return configure(() -> mapping.defaultResponseFilename = value); }
+		@Override public WebApiMappingBuilder responseContentType(String value) { return configure(() -> mapping.defaultResponseContentType = value); }
+		@Override public WebApiMappingBuilder depth(String value) { return configure(() -> mapping.defaultDepth = value); }
+		@Override public WebApiMappingBuilder entityRecurrenceDepth(int value) { return configure(() -> mapping.defaultEntityRecurrenceDepth = value); }
+		@Override public WebApiMappingBuilder prettiness(OutputPrettiness value) { return configure(() -> mapping.defaultPrettiness = value); }
+		@Override public WebApiMappingBuilder typeExplicitness(TypeExplicitness value) { return configure(() -> mapping.defaultTypeExplicitness = value); }
+		@Override public WebApiMappingBuilder writeEmptyProperties(boolean value) { return configure(() -> mapping.defaultWriteEmptyProperties = value); }
+		@Override public WebApiMappingBuilder writeAbsenceInformation(boolean value) { return configure(() -> mapping.defaultWriteAbsenceInformation = value); }
+		@Override public WebApiMappingBuilder stabilizeOrder(boolean value) { return configure(() -> mapping.defaultStabilizeOrder = value); }
+		@Override public WebApiMappingBuilder useSessionEvaluation(boolean value) { return configure(() -> mapping.defaultUseSessionEvaluation = value); }
+		@Override public WebApiMappingBuilder preserveTransportPayload(boolean value) { return configure(() -> mapping.defaultPreserveTransportPayload = value); }
+		@Override public WebApiMappingBuilder decodingLenience(boolean value) { return configure(() -> mapping.defaultDecodingLenience = value); }
+		@Override public WebApiMappingBuilder tags(Set<String> value) { return configure(() -> mapping.tags = value == null ? emptySet() : Set.copyOf(value)); }
+
+		private WebApiMappingBuilder configure(Runnable configuration) {
+			if (registered)
+				throw new IllegalStateException("A registered Web API mapping cannot be changed: " + mapping.pathInfo);
+			configuration.run();
+			return this;
+		}
+
+		@Override
+		public void register() {
+			if (registered)
+				throw new IllegalStateException("Web API mapping builder was already registered: " + mapping.pathInfo);
+
+			PathAndMethod key = getKey(mapping.pathInfo, mapping.method);
+			SingleDdraMapping previous = explicitMappings.putIfAbsent(key, mapping);
+			if (previous != null)
+				throw new IllegalStateException("An explicit Web API mapping is already registered for " + mapping.method + " " + mapping.pathInfo);
+			registered = true;
+		}
 	}
 
 	// ###############################################
@@ -163,18 +234,17 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle {
 			for (EntityType<?> _requestType : requestTypes) {
 				requestType = _requestType;
 				requestMdResolver = cmdResolver.getMetaData().entityType(requestType);
-				mappingMds = resolveMappingMds();
+				for (MappingMds resolvedMapping : resolveMappingMds()) {
+					mappingMds = resolvedMapping;
+					if (!mappingMds.hasMappings())
+						continue;
 
-				if (!mappingMds.hasMappings())
-					continue;
-
-				pathInfo = pathInfo();
-
-				for (HttpRequestMethod method : mappingMds.methods()) {
-					PathAndMethod key = getKey(pathInfo, method);
-					SingleDdraMappingImpl singleMapping = createMappingFromMd(method);
-
-					result.put(key, singleMapping);
+					pathInfo = pathInfo();
+					for (HttpRequestMethod method : mappingMds.methods()) {
+						PathAndMethod key = getKey(pathInfo, method);
+						SingleDdraMappingImpl singleMapping = createMappingFromMd(method);
+						result.put(key, singleMapping);
+					}
 				}
 			}
 		}
@@ -193,18 +263,19 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle {
 			result.method = method;
 			result.requestType = (EntityType<? extends ServiceRequest>) requestType;
 
-			result.hideSerializedRequest = requestMdResolver.is(HideSerializedRequest.T);
-			result.announceAsMultipart = mdProp(ResponseAsMultipart.T, ResponseAsMultipart::getAnnounceAsMultipart);
-			result.defaultUseSessionEvaluation = requestMdResolver.is(RequestEvaluateWithSession.T);
-			result.defaultDownloadResource = requestMdResolver.is(ResponseAsResourcePayload.T);
-			result.defaultDepth = mdProp(ResponseDepth.T, ResponseDepth::getDepth);
-			result.defaultEntityRecurrenceDepth = mdProp(ResponseEntityRecurrenceDepth.T, ResponseEntityRecurrenceDepth::getDepth);
+			result.hideSerializedRequest = mappingMds.hideSerializedRequest(requestMdResolver.is(HideSerializedRequest.T));
+			result.announceAsMultipart = mappingMds.announceAsMultipart(mdProp(ResponseAsMultipart.T, ResponseAsMultipart::getAnnounceAsMultipart));
+			result.defaultUseSessionEvaluation = mappingMds.useSessionEvaluation(requestMdResolver.is(RequestEvaluateWithSession.T));
+			result.defaultDownloadResource = mappingMds.responseAsResourcePayload(requestMdResolver.is(ResponseAsResourcePayload.T));
+			result.defaultDepth = mappingMds.depth(mdProp(ResponseDepth.T, ResponseDepth::getDepth));
+			result.defaultEntityRecurrenceDepth = mappingMds.entityRecurrenceDepth(mdProp(ResponseEntityRecurrenceDepth.T, ResponseEntityRecurrenceDepth::getDepth));
 			result.defaultWriteEmptyProperties = requestMdResolver.is(ResponseIncludesEmptyProperties.T);
-			result.defaultMimeType = mdProp(ResponseMimeType.T, ResponseMimeType::getMimeType);
+			result.defaultMimeType = mappingMds.responseMimeType(mdProp(ResponseMimeType.T, ResponseMimeType::getMimeType));
 			result.defaultPreserveTransportPayload = requestMdResolver.is(ResponsePreservesTransportPayload.T);
-			result.defaultProjection = mdProp(ResponseProjection.T, ResponseProjection::getPath);
+			result.defaultDecodingLenience = mappingMds.decodingLenience(false);
+			result.defaultProjection = mappingMds.responseProjection(mdProp(ResponseProjection.T, ResponseProjection::getPath));
 			result.defaultTypeExplicitness = mdProp(ResponseTypeExplicitness.T, ResponseTypeExplicitness::getTypeExplicitness);
-			result.defaultSaveLocally =  requestMdResolver.is(ResponseWithDownloadDialog.T);
+			result.defaultSaveLocally = mappingMds.responseWithDownloadDialog(requestMdResolver.is(ResponseWithDownloadDialog.T));
 			result.tags = resolveTags();
 
 			result.transformRequest = mappingMds.transformRequest;
@@ -218,7 +289,11 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle {
 		}
 
 		private Set<EntityType<?>> allRequestTypes() {
-			return modelOracle.findEntityTypeOracle(ServiceRequest.T) //
+			var serviceRequestOracle = modelOracle.findEntityTypeOracle(ServiceRequest.T);
+			if (serviceRequestOracle == null)
+				return Set.of();
+
+			return serviceRequestOracle //
 					.getSubTypes() //
 					.transitive() //
 					.onlyInstantiable() //
@@ -236,7 +311,11 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle {
 			return result;
 		}
 
-		private MappingMds resolveMappingMds() {
+		private List<MappingMds> resolveMappingMds() {
+			List<RequestMapping> completeMappings = requestMdResolver.meta(RequestMapping.T).list();
+			if (!completeMappings.isEmpty())
+				return completeMappings.stream().map(MappingMds::new).toList();
+
 			MappingMds apiMappings = new MappingMds();
 
 			apiMappings.pathPrefix = requestMdResolver.meta(RequestPathPrefix.T).exclusive();
@@ -246,7 +325,7 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle {
 			ServiceRequest transformRequest = getTransformRequest();
 			apiMappings.transformRequest = transformRequest != null ? transformRequest.clone(cloningContext) : null;
 
-			return apiMappings;
+			return List.of(apiMappings);
 		}
 
 		private ServiceRequest getTransformRequest() {
@@ -269,6 +348,8 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle {
 		}
 
 		private Set<String> resolveTags() {
+			if (mappingMds.completeMapping != null)
+				return StringTools.isEmpty(mappingMds.completeMapping.getSection()) ? emptySet() : asSet(mappingMds.completeMapping.getSection());
 			RequestSection section = requestMdResolver.meta(RequestSection.T).exclusive();
 			String sectionName = section != null ? section.getName() : null;
 			return StringTools.isEmpty(sectionName) ? emptySet() : asSet(sectionName);
@@ -277,12 +358,20 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle {
 	}
 
 	static class MappingMds {
+		public RequestMapping completeMapping;
 		public RequestPathPrefix pathPrefix;
 		public RequestPath path;
 		public List<RequestMethod> methods;
 
 		// TODO support later? (DdraMapping.transformRequest)
 		public ServiceRequest transformRequest;
+
+		public MappingMds() {
+		}
+
+		public MappingMds(RequestMapping completeMapping) {
+			this.completeMapping = completeMapping;
+		}
 
 		/** Returns an empty string or a prefix that ends with '/' */
 		public String pathPrefix() {
@@ -301,10 +390,15 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle {
 
 		/** Returns path that doesn't start with '/' or null */
 		public String pathWithNoSlashesOrNull() {
+			if (completeMapping != null)
+				return withoutSurroundingSlashes(completeMapping.getPath());
 			if (path == null)
 				return null;
+			return withoutSurroundingSlashes(path.getPath());
+		}
 
-			String result = path.getPath();
+		private String withoutSurroundingSlashes(String value) {
+			String result = value;
 			if (StringTools.isEmpty(result))
 				return null;
 
@@ -321,6 +415,8 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle {
 		}
 
 		public List<HttpRequestMethod> methods() {
+			if (completeMapping != null)
+				return List.of(completeMapping.getMethod());
 			if (!isEmpty(methods))
 				return methods.stream().map(RequestMethod::getMethod).collect(Collectors.toList());
 			else
@@ -328,11 +424,24 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle {
 		}
 
 		public boolean hasMappings() {
-			return pathPrefix != null || //
+			return completeMapping != null || //
+					pathPrefix != null || //
 					path != null || //
 					!methods.isEmpty() //
 			;
 		}
+
+		boolean hideSerializedRequest(boolean fallback) { return completeMapping != null ? completeMapping.getHideSerializedRequest() : fallback; }
+		Boolean announceAsMultipart(Boolean fallback) { return completeMapping != null ? completeMapping.getAnnounceAsMultipart() : fallback; }
+		boolean useSessionEvaluation(boolean fallback) { return completeMapping != null ? completeMapping.getUseSessionEvaluation() : fallback; }
+		boolean responseAsResourcePayload(boolean fallback) { return completeMapping != null ? completeMapping.getResponseAsResourcePayload() : fallback; }
+		String depth(String fallback) { return completeMapping != null ? emptyToNull(completeMapping.getDepth()) : fallback; }
+		Integer entityRecurrenceDepth(Integer fallback) { return completeMapping != null ? completeMapping.getEntityRecurrenceDepth() : fallback; }
+		String responseMimeType(String fallback) { return completeMapping != null ? emptyToNull(completeMapping.getResponseMimeType()) : fallback; }
+		String responseProjection(String fallback) { return completeMapping != null ? emptyToNull(completeMapping.getResponseProjection()) : fallback; }
+		boolean responseWithDownloadDialog(boolean fallback) { return completeMapping != null ? completeMapping.getResponseWithDownloadDialog() : fallback; }
+		boolean decodingLenience(boolean fallback) { return completeMapping != null ? completeMapping.getDecodingLenience() : fallback; }
+		private String emptyToNull(String value) { return StringTools.isEmpty(value) ? null : value; }
 	}
 
 	private static record PathAndMethod(String path, HttpRequestMethod method) {

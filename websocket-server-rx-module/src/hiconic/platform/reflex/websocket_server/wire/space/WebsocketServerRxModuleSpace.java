@@ -13,37 +13,31 @@
 // ============================================================================
 package hiconic.platform.reflex.websocket_server.wire.space;
 
-import com.braintribe.model.service.api.PushRequest;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
-import hiconic.platform.reflex.websocket_server.processing.PushChannelLifecycleHub;
 import hiconic.platform.reflex.websocket_server.processing.WsServer;
-import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.push.api.PushContract;
 import hiconic.rx.web.server.api.WebServerContract;
 
 @Managed
-public class WebsocketServerRxModuleSpace implements RxModuleContract, PushContract {
+public class WebsocketServerRxModuleSpace implements RxModuleContract {
 
 	@Import
 	private RxPlatformContract platform;
 	
 	@Import
 	private WebServerContract webServer;
+
+	@Import
+	private PushContract push;
 	
 	@Override
 	public void onDeploy() {
-		webServer.addEndpoint("/ws", server());
-		webServer.addEndpoint("/websocket", server());
-	}
-	
-	@Override
-	public void configureMainServiceDomain(ServiceDomainConfiguration configuration) {
-		// TODO: use PushRequest, MulticastRequest and InternalPushRequest to enable PushRequest in distributed setups
-		configuration.bindRequest(PushRequest.T, this::server);
+		webServer.addEndpoint(webServer.pushWebSocketEndpointPath(), server());
+		push.addHandler(server());
 	}
 
 	@Managed
@@ -52,14 +46,7 @@ public class WebsocketServerRxModuleSpace implements RxModuleContract, PushContr
 		bean.setMarshallerRegistry(platform.marshalling().marshallers());
 		bean.setProcessingInstanceId(platform.application().instanceId());
 		bean.setEvaluator(platform.serviceProcessing().systemEvaluator());
-		bean.setPushChannelLifecycleHub(channelLifecyclePublisher());
-		return bean;
-	}
-	
-	@Managed
-	@Override
-	public PushChannelLifecycleHub channelLifecyclePublisher() {
-		PushChannelLifecycleHub bean = new PushChannelLifecycleHub();
+		bean.setPushContract(push);
 		return bean;
 	}
 }

@@ -15,6 +15,8 @@ import org.quartz.SchedulerException;
 import org.quartz.TriggerBuilder;
 
 import com.braintribe.logging.Logger;
+import com.braintribe.model.generic.GenericEntity;
+import com.braintribe.model.generic.value.PreliminaryEntityReference;
 import com.braintribe.model.processing.worker.api.Worker;
 import com.braintribe.model.processing.worker.api.WorkerContext;
 import com.braintribe.model.processing.worker.api.WorkerException;
@@ -63,22 +65,25 @@ public class CronSchedulingWorker implements Worker {
 	@Override
 	public void stop(WorkerContext workerContext) throws WorkerException {
 		if (trigger != null) {
+			JobKey key = trigger.getJobKey();
 			try {
-				JobKey key = trigger.getJobKey();
-				config.scheduler().unscheduleJob(trigger.getKey());
+				// The scheduler bean may be destroyed before the worker manager. In that case the
+				// schedule is already gone and only our local job bookkeeping remains.
+				if (!config.scheduler().isShutdown())
+					config.scheduler().unscheduleJob(trigger.getKey());
+			} catch (SchedulerException e) {
+				throw new WorkerException("Error while unscheduling job: " + deployment, e);
+			} finally {
 				JobImpl job = jobs.remove(key);
-				
+
 				if (job != null) {
 					logger.debug(
 							() -> "Interrupting and waiting for job scheduling with key " + key + ". Deployable is: " + deployment);
-					
+
 					job.interruptAndWaitForEnd();
 				} else {
 					logger.debug(() -> "Could not find a job with key " + key + ". Deployable is: " + deployment);
 				}
-				
-			} catch (SchedulerException e) {
-				throw new WorkerException("Error while unscheduling job: " + deployment);
 			}
 		}
 	}
@@ -86,6 +91,13 @@ public class CronSchedulingWorker implements Worker {
 	@Override
 	public boolean isSingleton() {
 		return deployment.singleton();
+	}
+
+	@Override
+	public GenericEntity getWorkerIdentification() {
+		PreliminaryEntityReference identification = PreliminaryEntityReference.T.create();
+		identification.setId(deployment.schedulingId());
+		return identification;
 	}
 	
 	private class JobImpl implements Job {

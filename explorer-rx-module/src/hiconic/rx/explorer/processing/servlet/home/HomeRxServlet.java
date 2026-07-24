@@ -6,12 +6,15 @@ import static hiconic.rx.explorer.wire.space.CortexSpace.CORTEX_ACCESS_ID;
 
 import java.io.IOException;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 import org.apache.velocity.VelocityContext;
@@ -38,6 +41,7 @@ import hiconic.rx.explorer.home.model.LinkGroup;
 import hiconic.rx.module.api.service.ConfiguredModel;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.service.ServiceDomains;
+import hiconic.rx.module.api.util.DisplayNames;
 import hiconic.rx.servlet.velocity.BasicTemplateBasedServlet;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -71,13 +75,14 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 	private Supplier<Packaging> packagingProvider = () -> null;
 
 	/* Privileges */
-	private Set<String> grantedRoles = Collections.singleton("tf-admin");
+	private Set<String> grantedRoles = Collections.emptySet();
 
 	/* Application Links */
 	private String explorerUrlWithTrailingSlash;
 
 	/* Relative Paths */
 	private String relativeLogPath = "logs";
+	private BooleanSupplier logApplicationAvailable = () -> false;
 	private String relativeAboutPath = "about";
 	private String relativeDeploymentSummaryPath = "deployment-summary";
 
@@ -127,6 +132,7 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 	public void setRelativeAboutPath(String aboutUrl) { this.relativeAboutPath = aboutUrl; }
 	public void setRelativeDeploymentSummaryPath(String deploymentSummaryUrl) { this.relativeDeploymentSummaryPath = deploymentSummaryUrl; }
 	public void setRelativeLogPath(String logUrl) { this.relativeLogPath = logUrl; }
+	public void setLogApplicationAvailable(BooleanSupplier logApplicationAvailable) { this.logApplicationAvailable = logApplicationAvailable; }
 	public void setRelativeSignInPath(String relativeSignInPath) { this.relativeSignInPath = relativeSignInPath; }
 	public void setOnlineCompanyImageUrl(String onlineCompanyImageUrl) { this.onlineCompanyImageUrl = onlineCompanyImageUrl; }
 	public void setCompanyUrl(String companyUrl) { this.onlineCompanyUrl = companyUrl; }
@@ -319,8 +325,9 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 				"./home?selectedTab=HEALTH&selectedTabPath=" + urlEncode(relativePlatformBaseChecksPath), "_self", null));
 		runtimeStatus.getNestedLinks()
 				.add(createLink("Checks", "./home?selectedTab=HEALTH&selectedTabPath=" + urlEncode(relativePlatformChecksPath), "_self", null));
-		runtimeStatus.getNestedLinks().add(
-				createLink("Log", "./home?selectedTab=LOGS&selectedTabPath=" + relativeLogPath, "_self", null, "./webpages/images/cortex/logs.png"));
+		if (logApplicationAvailable.getAsBoolean())
+			runtimeStatus.getNestedLinks().add(
+					createLink("Log", relativeLogPath, "_self", null, "./webpages/images/cortex/logs.png"));
 		runtimeStatus.getNestedLinks()
 				.add(createLink("Deployment Summary", "./home?selectedTab=DEPLOYMENT SUMMARY&selectedTabPath=" + relativeDeploymentSummaryPath,
 						"_self", null, "./webpages/images/cortex/deploy.png"));
@@ -478,7 +485,12 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 	}
 
 	private void fillDomainGroup(LinkGroup serviceDomainsGroup) {
-		for (ServiceDomain sd : serviceDomains.list()) {
+		List<ServiceDomain> sortedDomains = new ArrayList<>(serviceDomains.list());
+		sortedDomains.sort(Comparator
+				.comparing((ServiceDomain sd) -> effectiveDisplayName(sd.displayName(), sd.domainId()), String.CASE_INSENSITIVE_ORDER)
+				.thenComparing(ServiceDomain::domainId));
+
+		for (ServiceDomain sd : sortedDomains) {
 			String domainId = sd.domainId();
 
 			// accesses are in a separate group
@@ -488,7 +500,7 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 			LinkCollection links = LinkCollection.T.create();
 			links.setIconRef("./webpages/images/cortex/domains.png");
 
-			setDisplayName(domainId, links);
+			setDisplayName(sd.displayName(), domainId, links);
 			configureServiceDomainLink(links, domainId);
 
 			if (links.getHasErrors()) {
@@ -518,13 +530,21 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 	}
 
 	private void fillAccessGroup(LinkGroup accessesGroup) {
-		for (String accessId : accessDomains.domainIds()) {
+		List<String> sortedAccessIds = new ArrayList<>(accessDomains.domainIds());
+		sortedAccessIds.sort(Comparator
+				.comparing((String accessId) -> {
+					AccessDomain access = accessDomains.byId(accessId);
+					return effectiveDisplayName(access.access().getDisplayName(), accessId);
+				}, String.CASE_INSENSITIVE_ORDER)
+				.thenComparing(String::compareTo));
+
+		for (String accessId : sortedAccessIds) {
 			AccessDomain sd = accessDomains.byId(accessId);
 
 			LinkCollection links = LinkCollection.T.create();
 			links.setIconRef("./webpages/images/cortex/domains.png");
 
-			setDisplayName(sd.access().getAccessId(), links);
+			setDisplayName(sd.access().getDisplayName(), accessId, links);
 			addAccessLinks(sd, links);
 			configureAccessDomainLink(links, accessId);
 
@@ -728,9 +748,16 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 		}
 	}
 
-	private void setDisplayName(String technicalName, LinkCollection links) {
-		String name = technicalName;
-		links.setDisplayName(name);
+	private void setDisplayName(String explicitDisplayName, String technicalName, LinkCollection links) {
+		links.setDisplayName(effectiveDisplayName(explicitDisplayName, technicalName));
+		links.setTechnicalName(technicalName);
+		links.setToolTip(technicalName);
+	}
+
+	private String effectiveDisplayName(String explicitDisplayName, String technicalName) {
+		return explicitDisplayName == null || explicitDisplayName.isBlank() //
+				? DisplayNames.fromTechnicalName(technicalName) //
+				: explicitDisplayName;
 	}
 
 	// private List<String> getListOfWorkbenchAccessIds(PersistenceGmSession cortexSession) {

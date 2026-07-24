@@ -21,8 +21,8 @@ import com.braintribe.model.meta.data.EntityTypeMetaData;
 /**
  * Specifies how many levels of nested entities are included in the response.
  * <p>
- * The default is 3 (backwards compatibility), but the only reasonable default would be "reachable", meaning the web-api endpoint returns the result
- * as it was returned by the service processor (which knows what the correct result is).
+	 * The default is "reachable", meaning the web-api endpoint returns the result as it was returned by the service processor (which knows what the
+	 * correct result is).
  */
 public interface ResponseDepth extends EntityTypeMetaData {
 

@@ -38,6 +38,10 @@ public interface RxPlatformContract extends DeprecatedRxPlatformContract {
 
 	RxMarshallingContract marshalling();
 
+	RxPackagedResourcesContract packagedResources();
+
+	RxPackagedPublicResourcesContract packagedPublicResources();
+
 	RxProcessLaunchContract processLaunch();
 
 	RxServiceProcessingContract serviceProcessing();

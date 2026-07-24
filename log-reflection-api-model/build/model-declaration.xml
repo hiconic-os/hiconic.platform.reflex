@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<model-declaration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="model-declaration-1.0.xsd">
+
+  <name>hiconic.platform.reflex:log-reflection-api-model</name>
+
+  <groupId>hiconic.platform.reflex</groupId>
+  <artifactId>log-reflection-api-model</artifactId>
+  <version>1.0.1-rc</version>
+  <hash>450e8076cd493a0d451ce6a1cb917338</hash>
+
+  <dependencies>
+    <dependency>com.braintribe.gm:root-model</dependency>
+    <dependency>com.braintribe.gm:service-api-model</dependency>
+    <dependency>com.braintribe.gm:logging-model</dependency>
+    <dependency>com.braintribe.gm:transient-resource-model</dependency>
+  </dependencies>
+
+  <types>
+    <type>hiconic.rx.log.reflection.model.LogBundleFormat</type>
+    <type>hiconic.rx.log.reflection.model.LogCapability</type>
+    <type>hiconic.rx.log.reflection.model.LogFilter</type>
+    <type>hiconic.rx.log.reflection.model.LogFormat</type>
+    <type>hiconic.rx.log.reflection.model.LogOrigin</type>
+    <type>hiconic.rx.log.reflection.model.LogParsingQuality</type>
+    <type>hiconic.rx.log.reflection.model.LogPosition</type>
+    <type>hiconic.rx.log.reflection.model.LogPropertyFilter</type>
+    <type>hiconic.rx.log.reflection.model.LogRecord</type>
+    <type>hiconic.rx.log.reflection.model.LogSegmentDescriptor</type>
+    <type>hiconic.rx.log.reflection.model.LogSourceLocation</type>
+    <type>hiconic.rx.log.reflection.model.LogStreamDescriptor</type>
+    <type>hiconic.rx.log.reflection.model.LogStreamKind</type>
+    <type>hiconic.rx.log.reflection.model.LogTarget</type>
+    <type>hiconic.rx.log.reflection.model.api.CreateLocalLogBundle</type>
+    <type>hiconic.rx.log.reflection.model.api.CreateLogBundle</type>
+    <type>hiconic.rx.log.reflection.model.api.GetLogTopology</type>
+    <type>hiconic.rx.log.reflection.model.api.ListLocalLogStreams</type>
+    <type>hiconic.rx.log.reflection.model.api.ListLogStreams</type>
+    <type>hiconic.rx.log.reflection.model.api.LogRecordPage</type>
+    <type>hiconic.rx.log.reflection.model.api.LogReflectionRequest</type>
+    <type>hiconic.rx.log.reflection.model.api.LogStreams</type>
+    <type>hiconic.rx.log.reflection.model.api.LogTopology</type>
+    <type>hiconic.rx.log.reflection.model.api.QueryLocalLogRecords</type>
+    <type>hiconic.rx.log.reflection.model.api.QueryLogRecords</type>
+  </types>
+
+</model-declaration>

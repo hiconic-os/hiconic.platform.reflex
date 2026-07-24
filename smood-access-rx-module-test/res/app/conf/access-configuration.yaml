@@ -1,0 +1,6 @@
+accesses:
+  - !hiconic.rx.access.smood.model.configuration.SmoodAccess
+    accessId: main-access
+    displayName: In-Memory Test Access
+    dataModelNames:
+      - hiconic.platform.reflex:hibernate-test-model

@@ -20,6 +20,7 @@ import com.braintribe.model.resource.source.ResourceSource;
 import hiconic.rx.model.service.processing.md.StoreWith;
 import hiconic.rx.module.api.config.RxPlatformConfigurator;
 import hiconic.rx.module.api.resource.ResourceStorage;
+import hiconic.rx.module.api.resource.RxPackagedResourceResolver;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.service.ServiceDomains;
 import hiconic.rx.resource.model.api.DeleteResourcePayload;
@@ -33,6 +34,7 @@ import hiconic.rx.resource.model.api.ResourcePayloadRequest;
 import hiconic.rx.resource.model.api.ResourcePayloadResponse;
 import hiconic.rx.resource.model.api.StoreResourcePayload;
 import hiconic.rx.resource.model.api.StoreResourcePayloadResponse;
+import hiconic.rx.resource.model.packaged.PackagedResourceSource;
 
 /**
  * Processor for {@link ResourcePayloadRequest}s
@@ -46,6 +48,7 @@ public class ResourcePayloadProcessor extends AbstractDispatchingServiceProcesso
 
 	private ServiceDomains serviceDomains;
 	private RxResourcesStorages resourceStorages;
+	private ResourceStorage packagedResourceStorage;
 
 	@Required
 	public void setServiceDomains(ServiceDomains serviceDomains) {
@@ -55,6 +58,11 @@ public class ResourcePayloadProcessor extends AbstractDispatchingServiceProcesso
 	@Required
 	public void setResourceStorages(RxResourcesStorages resourceStorages) {
 		this.resourceStorages = resourceStorages;
+	}
+
+	@Required
+	public void setPackagedResourceResolvers(RxPackagedResourceResolver resources, RxPackagedResourceResolver publicResources) {
+		this.packagedResourceStorage = new PackagedResourceStorage(resources, publicResources);
 	}
 
 	@Override
@@ -96,6 +104,9 @@ public class ResourcePayloadProcessor extends AbstractDispatchingServiceProcesso
 
 	private Maybe<ResourceStorage> resolveStorageForExisting(ServiceRequestContext context, ExistingResourcePayloadRequest request) {
 		ResourceSource source = request.getResourceSource();
+		if (source instanceof PackagedResourceSource)
+			return Maybe.complete(packagedResourceStorage);
+
 		EntityType<? extends ResourceSource> sourceType = source.entityType();
 
 		return resolveStorageForSourceType(context, sourceType, source.getUseCase());

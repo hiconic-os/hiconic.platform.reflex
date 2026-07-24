@@ -19,6 +19,9 @@ public enum PlatformServiceDomains implements ServiceDomainSymbol {
 	 */
 	main,
 
+	/** Internal platform infrastructure, restricted to the platform's internal role. */
+	internal,
+
 	/**
 	 * Intended to contains common, domain independent requests.
 	 * <p>

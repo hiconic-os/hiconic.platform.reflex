@@ -15,9 +15,11 @@ package hiconic.rx.platform.models;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -51,6 +53,7 @@ import hiconic.rx.model.service.processing.md.ProcessWith;
 import hiconic.rx.module.api.service.InterceptorBuilder;
 import hiconic.rx.module.api.service.ModelConfiguration;
 import hiconic.rx.module.api.service.ModelSymbol;
+import hiconic.rx.module.api.service.ServiceProcessorRegistration;
 import hiconic.rx.platform.service.RxInterceptor;
 
 public class RxConfiguredModel extends AbstractRxConfiguredModel implements ModelConfiguration {
@@ -60,6 +63,7 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 	private final List<Consumer<ModelMetaDataEditor>> modelConfigurers = Collections.synchronizedList(new ArrayList<>());
 	private final Set<GmMetaModel> models = new LinkedHashSet<>();
 	private final List<InterceptorEntry> interceptors = Collections.synchronizedList(new ArrayList<>());
+	private volatile List<String> interceptorOrdering = List.of();
 
 	private boolean configuringModels = true;
 	
@@ -114,7 +118,7 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 
 	private void configureInterceptors(ModelMetaDataEditor editor) {
 		int prio = 0;
-		for (InterceptorEntry entry : interceptors) {
+		for (InterceptorEntry entry : orderedInterceptors()) {
 			final InterceptWith interceptWith;
 			ServiceInterceptorProcessor processor = entry.interceptorSupplier.get();
 			InterceptorKind kind = processor.getKind();
@@ -139,6 +143,32 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 
 			editor.onEntityType(entry.requestType).addMetaData(interceptWith);
 		}
+	}
+
+	private List<InterceptorEntry> orderedInterceptors() {
+		List<InterceptorEntry> entries;
+		synchronized (interceptors) {
+			entries = new ArrayList<>(interceptors);
+		}
+
+		Map<String, InterceptorEntry> byIdentification = new LinkedHashMap<>();
+		for (InterceptorEntry entry : entries) {
+			if (byIdentification.putIfAbsent(entry.identification, entry) != null)
+				throw new IllegalStateException("Duplicate service interceptor identification: '" + entry.identification + "'");
+		}
+
+		List<InterceptorEntry> result = new ArrayList<>(entries.size());
+		Set<String> explicitlyOrdered = new LinkedHashSet<>();
+		for (String identification : interceptorOrdering) {
+			InterceptorEntry entry = byIdentification.get(identification);
+			if (entry != null && explicitlyOrdered.add(identification))
+				result.add(entry);
+		}
+		for (InterceptorEntry entry : entries)
+			if (!explicitlyOrdered.contains(entry.identification))
+				result.add(entry);
+
+		return result;
 	}
 
 	private ListIterator<InterceptorEntry> requireInterceptorIterator(String identification, boolean before) {
@@ -224,6 +254,20 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 	}
 
 	@Override
+	public <R extends ServiceRequest> void bindRequest(EntityType<R> requestType, String serviceProcessorKey) {
+		bindRequest(requestType, () -> lazyRegisteredProcessor(serviceProcessorKey));
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private <R extends ServiceRequest> ServiceProcessor<? super R, ?> lazyRegisteredProcessor(String serviceProcessorKey) {
+		return (context, request) -> {
+			ServiceProcessorRegistration registration = configuredModels.serviceProcessorRegistry().require(serviceProcessorKey);
+			ServiceProcessor processor = registration.processorSupplier().get();
+			return processor.process(context, request);
+		};
+	}
+
+	@Override
 	public <R extends ServiceRequest> void bindRequestMapped( //
 			EntityType<R> requestType, Supplier<MappingServiceProcessor<? super R, ?>> serviceProcessorSupplier) {
 
@@ -289,6 +333,11 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 				}
 			}
 		};
+	}
+
+	@Override
+	public void orderInterceptors(String... identifications) {
+		interceptorOrdering = List.of(identifications.clone());
 	}
 
 	private static class InterceptorEntry {

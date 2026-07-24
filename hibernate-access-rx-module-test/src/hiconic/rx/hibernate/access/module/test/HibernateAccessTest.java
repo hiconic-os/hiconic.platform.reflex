@@ -14,15 +14,19 @@
 package hiconic.rx.hibernate.access.module.test;
 
 import java.io.File;
+import java.sql.SQLException;
 
 import org.assertj.core.api.Assertions;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSession;
+import com.braintribe.model.processing.query.fluent.EntityQueryBuilder;
 
 import hiconic.rx.access.module.api.AccessContract;
 import hiconic.rx.hibernate.model.test.Person;
+import hiconic.rx.hibernate.test.common.HibernateAccessTestDatabaseReset;
+import hiconic.rx.hibernate.test.common.HibernateAccessTestDatabaseReset.ResetReport;
 import hiconic.rx.test.common.AbstractRxTest;
 
 public class HibernateAccessTest extends AbstractRxTest {
@@ -54,6 +58,21 @@ public class HibernateAccessTest extends AbstractRxTest {
 		Assertions.assertThat(p).isNotNull();
 		Assertions.assertThat(p.getName()).isEqualTo(name);
 		Assertions.assertThat(p.getLastName()).isEqualTo(lastName);
+	}
+
+	@Test
+	public void resetDiscoversHibernateDatabaseAndPreservesSchema() throws SQLException {
+		PersistenceGmSession session = newSession();
+		Person person = session.create(Person.T);
+		person.setName("Transient");
+		person.setLastName("Fixture");
+		session.commit();
+
+		ResetReport report = HibernateAccessTestDatabaseReset.resetH2Databases(platform);
+
+		Assertions.assertThat(report.databases()).hasSize(1);
+		Assertions.assertThat(report.resetTableCount()).isPositive();
+		Assertions.assertThat(newSession().query().entities(EntityQueryBuilder.from(Person.T).done()).list()).isEmpty();
 	}
 	
 	private PersistenceGmSession newSession() {

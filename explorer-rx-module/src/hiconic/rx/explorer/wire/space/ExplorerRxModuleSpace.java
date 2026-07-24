@@ -15,15 +15,22 @@ package hiconic.rx.explorer.wire.space;
 
 import com.braintribe.model.bapi.AvailableAccessesRequest;
 import com.braintribe.model.bapi.CurrentUserInformationRequest;
+import com.braintribe.gm.model.persistence.reflection.api.GetModelAndWorkbenchEnvironment;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.access.module.api.AccessContract;
+import hiconic.rx.access.module.api.PersistenceServiceDomain;
+import hiconic.rx.explorer.model.configuration.ExplorerConfiguration;
 import hiconic.rx.explorer.processing.ExplorerServiceDomain;
+import hiconic.rx.explorer.processing.WorkbenchReflectionProcessor;
 import hiconic.rx.explorer.processing.bapi.AvailableAccessesProcessor;
 import hiconic.rx.explorer.processing.bapi.CurrentUserInformationProcessor;
 import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
+import hiconic.rx.webapi.model.meta.HttpRequestMethod;
+import hiconic.rx.webapi.model.meta.RequestMapping;
+import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.reflection.model.api.PlatformReflectionRequest;
@@ -48,14 +55,46 @@ public class ExplorerRxModuleSpace implements RxModuleContract {
 	// @formatter:on
 
 	@Override
+	public void configureModels(ModelConfigurations configurations) {
+		cortex.configureCortexAccessModels();
+	}
+
+	@Override
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
 		ServiceDomainConfiguration explorerSd = configurations.byId(ExplorerServiceDomain.explorer);
+		explorerSd.setDisplayName("Explorer");
 
 		explorerSd.bindRequest(AvailableAccessesRequest.T, this::availableAccessesProcessor);
 		explorerSd.bindRequest(CurrentUserInformationRequest.T, this::currentUserInformationProcessor);
 		explorerSd.bindRequest(PlatformReflectionRequest.T, platformReflection::platformReflectionProcessor);
 
+		ServiceDomainConfiguration persistenceSd = configurations.byId(PersistenceServiceDomain.persistence);
+		persistenceSd.bindRequest(GetModelAndWorkbenchEnvironment.T, this::workbenchReflectionProcessor);
+		persistenceSd.configureModel(editor -> editor.onEntityType(GetModelAndWorkbenchEnvironment.T)
+				.addMetaData(modelEnvironmentMapping()));
+
 		cortex.registerCortexAccess();
+	}
+
+	private RequestMapping modelEnvironmentMapping() {
+		RequestMapping mapping = RequestMapping.T.create();
+		// Preserve the generic endpoint URL used by the existing Explorer while
+		// supplying the recurrence needed for Folder -> Folder -> Icon graphs.
+		mapping.setPath(GetModelAndWorkbenchEnvironment.T.getTypeSignature());
+		mapping.setMethod(HttpRequestMethod.GET);
+		mapping.setResponseMimeType("application/json");
+		mapping.setDepth("reachable");
+		mapping.setEntityRecurrenceDepth(1);
+		return mapping;
+	}
+
+	@Managed
+	private WorkbenchReflectionProcessor workbenchReflectionProcessor() {
+		WorkbenchReflectionProcessor bean = new WorkbenchReflectionProcessor();
+		bean.setAccesses(access.accessDomains());
+		bean.setSessionFactory(access.systemSessionFactory());
+		bean.setConfiguration(platform.configuration().readConfig(ExplorerConfiguration.T).get());
+		return bean;
 	}
 
 	@Managed

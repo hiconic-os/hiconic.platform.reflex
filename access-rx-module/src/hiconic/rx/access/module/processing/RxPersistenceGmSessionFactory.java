@@ -62,16 +62,21 @@ public class RxPersistenceGmSessionFactory implements PersistenceGmSessionFactor
 
 	@Override
 	public PersistenceGmSession newSession(String accessId) throws GmSessionException {
+		return newSession(accessId, attributeContextSupplier.get());
+	}
+
+	public PersistenceGmSession newSession(String accessId, AttributeContext attributeContext) throws GmSessionException {
 		RxAccess access = accesses.getAccess(accessId);
 		IncrementalAccess incrementalAccess = access.incrementalAccess();
 		ConfiguredModel configuredModel = access.configuredDataModel();
-		AttributeContext attributeContext = attributeContextSupplier.get();
 		CmdResolver cmdResolver = configuredModel.cmdResolver(attributeContext);
 
 		BasicPersistenceGmSession session = new BasicPersistenceGmSession();
 		session.setAccessId(accessId);
-		session.setIncrementalAccess(incrementalAccess);
-		session.setEquivalentSessionFactory(() -> newSession(accessId));
+		session.setIncrementalAccess(new ContextualizedIncrementalAccess(incrementalAccess, attributeContext));
+		// Equivalent sessions are frequently created on worker threads. Preserve the originating
+		// context instead of consulting the thread-local supplier again and losing authorization.
+		session.setEquivalentSessionFactory(() -> newSession(accessId, attributeContext));
 		session.setModelAccessory(new RxModelAccessory(cmdResolver));
 		session.setResourcesAccessFactory(resourceAccessFactory);
 

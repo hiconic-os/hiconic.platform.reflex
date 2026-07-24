@@ -1,0 +1,4 @@
+<project name="log-reflection-web-rx-module" default="install"
+		xmlns:bt="antlib:com.braintribe.build.ant.tasks">
+	<bt:import artifact="com.braintribe.devrock.ant:library-ant-script#1.0"/>
+</project>

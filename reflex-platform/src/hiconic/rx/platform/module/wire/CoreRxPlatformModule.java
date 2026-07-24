@@ -14,10 +14,17 @@
 package hiconic.rx.platform.module.wire;
 
 import hiconic.rx.module.api.wire.RxModule;
+import hiconic.rx.module.api.wire.Exports;
 import hiconic.rx.platform.module.wire.space.CoreRxPlatformModuleSpace;
+import hiconic.rx.push.api.PushContract;
 
 public enum CoreRxPlatformModule implements RxModule<CoreRxPlatformModuleSpace> {
 
 	INSTANCE;
+
+	@Override
+	public void bindExports(Exports exports) {
+		exports.bind(PushContract.class, CoreRxPlatformModuleSpace.class);
+	}
 
 }

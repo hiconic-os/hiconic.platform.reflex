@@ -21,14 +21,20 @@ import java.util.List;
 import org.jboss.logging.Logger;
 
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
+import com.braintribe.model.meta.data.prompt.Embedded;
+import com.braintribe.model.meta.selector.UseCaseSelector;
 import com.braintribe.model.resource.api.MimeTypeRegistry;
 import com.braintribe.model.resource.utils.MimeTypeRegistryImpl;
+import com.braintribe.model.resourceapi.stream.GetResource;
 import com.braintribe.utils.StringTools;
 import com.braintribe.utils.stream.api.StreamPipes;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 import com.braintribe.wire.api.context.WireContext;
 
+import hiconic.rx.access.module.api.AccessModelSymbols;
+import hiconic.rx.module.api.service.ModelConfiguration;
+import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.service.PlatformServiceDomains;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.wire.RxModuleContract;
@@ -37,11 +43,13 @@ import hiconic.rx.module.api.wire.RxServiceProcessingContract;
 import hiconic.rx.security.web.api.AuthFilters;
 import hiconic.rx.security.web.api.WebSecurityContract;
 import hiconic.rx.web.ddra.endpoints.api.WebApiServerContract;
+import hiconic.rx.web.ddra.endpoints.api.WebApiMappingRegistry;
 import hiconic.rx.web.ddra.endpoints.api.v1.WebApiMappingOracle;
 import hiconic.rx.web.ddra.mapping.StandardWebApiMappingOracle;
 import hiconic.rx.web.ddra.servlet.ApiV1RestServletUtils;
 import hiconic.rx.web.ddra.servlet.DdraEndpointsExceptionHandler;
 import hiconic.rx.web.ddra.servlet.WebApiV1Server;
+import hiconic.rx.webapi.model.meta.HttpRequestMethod;
 import hiconic.rx.web.server.api.WebServerContract;
 import jakarta.servlet.DispatcherType;
 
@@ -65,6 +73,18 @@ public class WebApiServerRxModuleSpace implements RxModuleContract, WebApiServer
 
 	@Import
 	private WebServerContract webServer;
+
+	@Override
+	public void configureModels(ModelConfigurations configurations) {
+		ModelConfiguration resourceApiModel = configurations.bySymbol(AccessModelSymbols.configuredResourceApiModel);
+
+		Embedded embedded = Embedded.T.create();
+		UseCaseSelector ddra = UseCaseSelector.T.create();
+		ddra.setUseCase("ddra");
+		embedded.setSelector(ddra);
+
+		resourceApiModel.configureModel(editor -> editor.onEntityType(GetResource.T).addPropertyMetaData("resource", embedded));
+	}
 
 	@Override
 	public void onDeploy() {
@@ -96,12 +116,29 @@ public class WebApiServerRxModuleSpace implements RxModuleContract, WebApiServer
 	}
 
 	@Override
-	@Managed
 	public WebApiMappingOracle mappingOracle() {
+		return standardMappingOracle();
+	}
+
+	@Override
+	public WebApiMappingRegistry mappingRegistry() {
+		return standardMappingOracle();
+	}
+
+	@Managed
+	private StandardWebApiMappingOracle standardMappingOracle() {
 		StandardWebApiMappingOracle bean = new StandardWebApiMappingOracle();
 		bean.setServiceDomains(serviceProcessing.serviceDomains());
+		registerPlatformMappings(bean);
 
 		return bean;
+	}
+
+	private void registerPlatformMappings(WebApiMappingRegistry mappings) {
+		mappings.mapping("/v1/download", HttpRequestMethod.GET, GetResource.T) //
+				.responseProjection("resource") //
+				.downloadResource(true) //
+				.register();
 	}
 
 	@Override

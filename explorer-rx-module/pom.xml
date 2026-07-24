@@ -50,10 +50,25 @@
             <artifactId>access-rx-module</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>workbench-rx-module</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
         <!--Other-->
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>explorer-api-model</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>web-api-mapping-meta-data-model</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>explorer-web-resources</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
         <dependency>

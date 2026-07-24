@@ -24,6 +24,24 @@ public interface AccessDataModelConfiguration extends ModelConfiguration {
 
 	AccessInterceptorBuilder bindAspect(String identifier);
 
+	default AccessInterceptorBuilder bindAspect(AccessAspectSymbol identifier) {
+		return bindAspect(identifier.name());
+	}
+
+	/**
+	 * Declares the execution order independently from aspect registration. A later call replaces the previously declared order. Identifiers which
+	 * are not registered on this configured model are ignored; registered aspects not mentioned here retain their registration order behind the
+	 * explicitly ordered aspects.
+	 */
+	void orderAspects(String... identifiers);
+
+	default void orderAspects(AccessAspectSymbol... identifiers) {
+		String[] names = new String[identifiers.length];
+		for (int i = 0; i < identifiers.length; i++)
+			names[i] = identifiers[i].name();
+		orderAspects(names);
+	}
+
 	void bindResourcePreEnricher(EntityType<? extends ResourceSource> sourceType, Supplier<ResourceEnricher> enricherSupplier);
 
 }

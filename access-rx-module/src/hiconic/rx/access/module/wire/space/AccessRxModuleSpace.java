@@ -20,6 +20,7 @@ import static com.braintribe.wire.api.util.Maps.map;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.util.function.Supplier;
 
 import com.braintribe.common.attribute.AttributeContext;
 import com.braintribe.gm._AccessApiModel_;
@@ -31,9 +32,14 @@ import com.braintribe.model.access.IncrementalAccess;
 import com.braintribe.model.accessapi.PersistenceRequest;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.resource.source.ResourceSource;
+import com.braintribe.model.resourceapi.persistence.DeleteResource;
 import com.braintribe.model.resourceapi.persistence.ManageResource;
+import com.braintribe.model.resourceapi.persistence.UpdateResource;
+import com.braintribe.model.resourceapi.persistence.UploadResource;
 import com.braintribe.model.resourceapi.persistence.UploadResources;
 import com.braintribe.model.resourceapi.stream.DownloadResource;
+import com.braintribe.model.resourceapi.stream.GetResource;
+import com.braintribe.model.resourceapi.stream.StreamResource;
 import com.braintribe.utils.collection.impl.AttributeContexts;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
@@ -69,9 +75,13 @@ import hiconic.rx.module.api.wire.RxAuthContract;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.module.api.wire.RxTransientDataContract;
+import hiconic.rx.model.service.processing.md.StoreWith;
 
 @Managed
 public class AccessRxModuleSpace implements RxModuleContract, AccessContract, AccessExpertContract, AccessModelSymbols {
+	private Supplier<String> resourceStreamingUrlSupplier = () -> {
+		throw new IllegalStateException("No resource streaming URL was contributed. Add a resource streaming web module before requesting resource URLs.");
+	};
 
 	@Import
 	private RxPlatformContract platform;
@@ -89,6 +99,32 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		configurePersistenceProcessor(configurations);
 		configureResourceRequestProcessor(configurations);
 		configureResourceEnriching(configurations);
+		configureAccessModels();
+	}
+
+	private void configureAccessModels() {
+		AccessConfiguration accessConfiguration = getOrTunnel(platform.configuration().readConfig(AccessConfiguration.T));
+
+		for (Access access : accessConfiguration.getAccesses())
+			configureModels(access);
+	}
+
+	@Override
+	public void configureModels(Access access) {
+		String accessId = access.getAccessId();
+		AccessDataModelConfiguration dataModel = accessModelConfigurations().dataModelConfiguration(accessId);
+		dataModel.addModel(configuredResourceModel);
+		for (String dataModelName : access.getDataModelNames())
+			dataModel.addModelByName(dataModelName);
+
+		AccessServiceModelConfiguration serviceModel = accessModelConfigurations().serviceModelConfiguration(accessId);
+		serviceModel.addModel(configuredAccessApiModel);
+		serviceModel.addModel(configuredResourceApiModel);
+		String resourceStorageId = access.getResourceStorageId();
+		if (resourceStorageId != null && !resourceStorageId.isBlank())
+			serviceModel.configureModel(editor -> editor.onEntityType(ResourceSource.T).addMetaData(StoreWith.create(resourceStorageId)));
+		for (String serviceModelName : access.getServiceModelNames())
+			serviceModel.addModelByName(serviceModelName);
 	}
 
 	//
@@ -120,6 +156,14 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		mc.addModel(_ResourceStorageApiModel_.reflection);
 		mc.bindAccessRequest(DownloadResource.T, this::resourceRequestProcessor);
 		mc.bindAccessRequest(ManageResource.T, this::resourceRequestProcessor);
+		// Bind concrete requests as well. Configured-model request bindings are exact; binding
+		// only the abstract grouping types does not make the session-generated concrete resource
+		// requests dispatchable.
+		mc.bindAccessRequest(GetResource.T, this::resourceRequestProcessor);
+		mc.bindAccessRequest(StreamResource.T, this::resourceRequestProcessor);
+		mc.bindAccessRequest(UploadResource.T, this::resourceRequestProcessor);
+		mc.bindAccessRequest(UpdateResource.T, this::resourceRequestProcessor);
+		mc.bindAccessRequest(DeleteResource.T, this::resourceRequestProcessor);
 		mc.bindAccessRequest(UploadResources.T, this::resourceRequestProcessor);
 	}
 
@@ -179,6 +223,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
 		// TODO why is this here and not in explorer module?
 		ServiceDomainConfiguration persistenceSd = configurations.byId(PersistenceServiceDomain.persistence);
+		persistenceSd.setDisplayName("Persistence");
 
 		persistenceSd.addModel(_ModelEnvironmentApiModel_.reflection); // brings ModelEnvironmentRequests...
 		persistenceSd.bindRequest(PersistenceReflectionRequest.T, this::persistenceReflectionProcessor);
@@ -288,7 +333,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		var bean = new RxResourceUrlBuilderSupplier();
 
 		bean.setSessionIdProvider(auth.contextUserSessionIdSupplier());
-		bean.setBaseStreamingUrl(streamingUrl());
+		bean.setBaseStreamingUrlSupplier(this::streamingUrl);
 		bean.setResponseMimeType("application/json");
 
 		return bean;
@@ -299,7 +344,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		var bean = new RxResourceUrlBuilderSupplier();
 
 		bean.setSessionIdProvider(auth.userSessionIdSupplier(attributeContext));
-		bean.setBaseStreamingUrl(streamingUrl());
+		bean.setBaseStreamingUrlSupplier(this::streamingUrl);
 		bean.setResponseMimeType("application/json");
 
 		return bean;
@@ -310,16 +355,20 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		var bean = new RxResourceUrlBuilderSupplier();
 
 		bean.setSessionIdProvider(auth.systemUserSessionIdSupplier());
-		bean.setBaseStreamingUrl(streamingUrl());
+		bean.setBaseStreamingUrlSupplier(this::streamingUrl);
 		bean.setResponseMimeType("application/json");
 
 		return bean;
 	}
 
-	// TODO: needs to be handled by the web-api extension which needs to communicate its knowledge to this layer (HOW?)
+	@Override
+	public void setResourceStreamingUrlSupplier(Supplier<String> urlSupplier) {
+		resourceStreamingUrlSupplier = urlSupplier;
+	}
+
 	private URL streamingUrl() {
 		try {
-			return URI.create("http://localhost:8080/services/streaming").toURL();
+			return URI.create(resourceStreamingUrlSupplier.get()).toURL();
 		} catch (MalformedURLException e) {
 			throw new RuntimeException(e);
 		}

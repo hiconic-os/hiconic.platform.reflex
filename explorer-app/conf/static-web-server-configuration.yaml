@@ -1,0 +1,5 @@
+resourceMappings:
+  - path: tribefire-explorer
+    rootDir: ${reflex.app.dir}/web-app/tribefire-explorer
+    welcomeFiles:
+      - ClientEntryPointRx.html

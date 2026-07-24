@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuite errors="0" failures="0" hostname="chaox" name="hiconic.rx.log.reflection.processing.StructuredLiveLogCollectorTest" skipped="0" tests="3" time="0.014" timestamp="2026-07-24T15:48:48">
+  <properties />
+  <testcase classname="hiconic.rx.log.reflection.processing.StructuredLiveLogCollectorTest" name="cursorContinuesAndRingBufferIsBounded" time="0.007" />
+  <testcase classname="hiconic.rx.log.reflection.processing.StructuredLiveLogCollectorTest" name="capturesCanonicalRecordsAndFiltersThem" time="0.004" />
+  <testcase classname="hiconic.rx.log.reflection.processing.StructuredLiveLogCollectorTest" name="filtersLoggerByCaseInsensitiveSubstring" time="0.002" />
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

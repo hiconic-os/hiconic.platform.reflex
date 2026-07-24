@@ -25,14 +25,14 @@ import com.braintribe.model.resource.Resource;
 
 public class RxResourceUrlBuilderSupplier implements Function<Resource, RxResourceUrlBuilder> {
 
-	protected URL baseStreamingUrl;
+	protected Supplier<URL> baseStreamingUrlSupplier;
 	protected Supplier<String> sessionIdProvider;
 	protected String responseMimeType;
 
 	@Required
 	@Configurable
-	public void setBaseStreamingUrl(URL baseStreamingUrl) {
-		this.baseStreamingUrl = baseStreamingUrl;
+	public void setBaseStreamingUrlSupplier(Supplier<URL> baseStreamingUrlSupplier) {
+		this.baseStreamingUrlSupplier = baseStreamingUrlSupplier;
 	}
 
 	@Required
@@ -50,7 +50,7 @@ public class RxResourceUrlBuilderSupplier implements Function<Resource, RxResour
 	public RxResourceUrlBuilder apply(Resource resource) {
 
 		RxResourceUrlBuilder urlBuilder = new RxResourceUrlBuilder();
-		urlBuilder.setBaseStreamingUrl(baseStreamingUrl);
+		urlBuilder.setBaseStreamingUrl(baseStreamingUrlSupplier.get());
 		urlBuilder.setResponseMimeType(responseMimeType);
 		urlBuilder.setSessionId(sessionIdProvider.get());
 		urlBuilder.setResource(resource);

@@ -14,6 +14,7 @@
 package hiconic.rx.web.server.api;
 
 import java.util.function.Supplier;
+import java.util.Map;
 
 import dev.hiconic.servlet.api.remote.RemoteClientAddressResolver;
 import hiconic.rx.module.api.wire.RxExportContract;
@@ -31,6 +32,9 @@ public interface WebServerContract extends RxExportContract {
 
 	void addEndpoint(String path, Endpoint endpoint);
 
+	/** Configured WebSocket transport path for platform push, relative to the default endpoint base path. */
+	String pushWebSocketEndpointPath();
+
 	// TODO document!!!
 	void addServlet(String name, String path, HttpServlet servlet);
 	void addServlet(String basePath, String name, String path, HttpServlet servlet);
@@ -39,6 +43,27 @@ public interface WebServerContract extends RxExportContract {
 	Supplier<ServletContext> servletContextSupplier(String basePath);
 
 	void addStaticFileResource(String path, String rootDir, String... welcomeFiles);
+
+	/**
+	 * Exposes deployment-specific client configuration at
+	 * {@code <webAppPath>/runtime-config.json} in the root web context. Every configuration contains the canonical
+	 * {@code servicesUrl}; further platform knowledge should normally be obtained through modeled services.
+	 */
+	default void addWebAppRuntimeConfiguration(String webAppPath) {
+		addWebAppRuntimeConfiguration(webAppPath, Map::of);
+	}
+
+	/** Adds compatibility/application-specific values to the canonical runtime configuration. */
+	void addWebAppRuntimeConfiguration(String webAppPath, Supplier<? extends Map<String, ?>> properties);
+
+	/**
+	 * Returns whether a web application registered its runtime endpoint. This provides optional consumers, such as a landing page, with a
+	 * dependency-free capability check.
+	 */
+	boolean isWebAppRegistered(String webAppPath);
+
+	/** Maps a subtree of indexed packaged public resources below the default endpoint base path. */
+	void addPackagedPublicResources(String name, String path, String resourcePathPrefix);
 
 	/**
 	 * URL with which the server can be reached from the outside. It is called public as it can be the URL of the proxy that propagates the request to
@@ -72,6 +97,12 @@ public interface WebServerContract extends RxExportContract {
 
 	// TODO why is this here?
 	String callerInfoFilterName();
+
+	/**
+	 * Binds the optional implementation used by {@link WebServerFilters#authenticationContext}. Exactly one implementation may be bound.
+	 * Authentication and security models remain concerns of the contributing module; this is merely request-context enrichment.
+	 */
+	void bindAuthenticationContextDelegate(Filter delegate);
 
 	void addFilter(FilterSymbol name, Filter filter);
 	void addFilter(String basePath, FilterSymbol name, Filter filter);

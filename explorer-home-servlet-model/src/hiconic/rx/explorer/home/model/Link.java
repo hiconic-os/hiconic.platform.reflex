@@ -26,6 +26,10 @@ public interface Link extends GroupElement {
 	void setDisplayName(String displayName);
 	String getDisplayName();
 
+	/** Optional stable/technical identifier shown alongside a human-facing name. */
+	void setTechnicalName(String technicalName);
+	String getTechnicalName();
+
 	void setTarget(String target);
 	String getTarget();
 

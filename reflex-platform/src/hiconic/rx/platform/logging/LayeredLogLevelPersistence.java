@@ -8,10 +8,12 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.function.Function;
 
 import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 import com.braintribe.logging.Logger;
 import com.braintribe.logging.level.persistence.LogLevelPersistence;
+import com.braintribe.logging.level.persistence.LogLevelValueResolver;
 
 import hiconic.rx.platform.conf.LayeredConfigurationEntries;
 import hiconic.rx.platform.conf.LayeredConfigurationEntries.Entry;
@@ -20,9 +22,16 @@ public class LayeredLogLevelPersistence implements LogLevelPersistence {
 	private static final Logger log = Logger.getLogger(LayeredLogLevelPersistence.class);
 
 	private final LayeredConfigurationEntries entries;
+	private final Function<String, String> propertyLookup;
 
 	public LayeredLogLevelPersistence(ClasspathIndex classpathIndex, String classpathConfPath, File configFolder) {
+		this(classpathIndex, classpathConfPath, configFolder, null);
+	}
+
+	public LayeredLogLevelPersistence(ClasspathIndex classpathIndex, String classpathConfPath, File configFolder,
+			Function<String, String> propertyLookup) {
 		entries = new LayeredConfigurationEntries(classpathIndex, classpathConfPath, configFolder, "log-levels", ".properties");
+		this.propertyLookup = propertyLookup;
 	}
 
 	@Override
@@ -48,7 +57,7 @@ public class LayeredLogLevelPersistence implements LogLevelPersistence {
 			}
 
 			for (String name : properties.stringPropertyNames()) {
-				levels.put(name, properties.getProperty(name));
+				levels.put(name, LogLevelValueResolver.resolveValue(properties.getProperty(name), propertyLookup));
 			}
 		}
 

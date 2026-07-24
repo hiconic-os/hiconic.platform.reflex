@@ -48,11 +48,11 @@ public interface Database extends GenericEntity {
 	String getUrl();
 	void setUrl(String value);
 	
-	@Initializer("60000L")
+	@Initializer("30000L")
 	Long getConnectionTimeout();
 	void setConnectionTimeout(Long connectionTimeout);
 
-	@Initializer("3")
+	@Initializer("10")
 	Integer getMaxPoolSize();
 	void setMaxPoolSize(Integer maxPoolSize);
 
@@ -66,7 +66,7 @@ public interface Database extends GenericEntity {
 	Integer getMaxStatements();
 	void setMaxStatements(Integer maxStatements);
 
-	@Initializer("60000L")
+	@Initializer("600000L")
 	Long getIdleTimeout();
 	void setIdleTimeout(Long idleTimeout);
 
@@ -91,7 +91,7 @@ public interface Database extends GenericEntity {
 	boolean getEnableIpAddressChangeMonitoring();
 	void setEnableIpAddressChangeMonitoring(boolean enableIpAddressChangeMonitoring);
 
-	@Initializer("60000")
+	@Initializer("5000")
 	Integer getValidationTimeout();
 	void setValidationTimeout(Integer validationTimeout);
 

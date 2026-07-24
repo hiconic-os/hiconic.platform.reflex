@@ -5,3 +5,4 @@ hiconic.rx.webapi.model.annotation.RequestSection,hiconic.rx.webapi.model.meta.R
 hiconic.rx.webapi.model.annotation.ResponseProjection,hiconic.rx.webapi.model.meta.ResponseProjection,value,path
 hiconic.rx.webapi.model.annotation.ResponseAsResourcePayload,hiconic.rx.webapi.model.meta.ResponseAsResourcePayload
 hiconic.rx.webapi.model.annotation.ResponseWithDownloadDialog,hiconic.rx.webapi.model.meta.ResponseWithDownloadDialog
+hiconic.rx.webapi.model.annotation.RequestMapping,hiconic.rx.webapi.model.meta.RequestMapping,path,path,method,method,section,section,responseProjection,responseProjection,responseAsResourcePayload,responseAsResourcePayload,responseWithDownloadDialog,responseWithDownloadDialog,responseMimeType,responseMimeType,hideSerializedRequest,hideSerializedRequest,announceAsMultipart,announceAsMultipart,useSessionEvaluation,useSessionEvaluation,entityRecurrenceDepth,entityRecurrenceDepth,depth,depth,decodingLenience,decodingLenience

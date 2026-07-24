@@ -36,6 +36,8 @@ import hiconic.rx.module.api.wire.RxConfigurationContract;
 import hiconic.rx.module.api.wire.RxExecutionContract;
 import hiconic.rx.module.api.wire.RxMarshallingContract;
 import hiconic.rx.module.api.wire.RxModuleContract;
+import hiconic.rx.module.api.wire.RxPackagedResourcesContract;
+import hiconic.rx.module.api.wire.RxPackagedPublicResourcesContract;
 import hiconic.rx.module.api.wire.RxProcessLaunchContract;
 import hiconic.rx.module.api.wire.RxServiceProcessingContract;
 import hiconic.rx.module.api.wire.RxTransientDataContract;
@@ -57,6 +59,8 @@ public class RxPlatformSpace extends CoreServicesSpace implements ExtendedRxPlat
 	@Import private RxConfigurationSpace configuration;
 	@Import private RxExecutionSpace execution;
 	@Import private RxMarshallingSpace marshalling;
+	@Import private RxPackagedResourcesSpace packagedResources;
+	@Import private RxPackagedPublicResourcesSpace packagedPublicResources;
 	@Import private RxServiceProcessingSpace serviceProcessing;
 	@Import private RxTransientDataSpace transientData;
 
@@ -71,6 +75,8 @@ public class RxPlatformSpace extends CoreServicesSpace implements ExtendedRxPlat
 	@Override public RxConfigurationContract configuration() { return configuration; }
 	@Override public RxExecutionContract execution() { return execution; }
 	@Override public RxMarshallingContract marshalling() { return marshalling; }
+	@Override public RxPackagedResourcesContract packagedResources() { return packagedResources; }
+	@Override public RxPackagedPublicResourcesContract packagedPublicResources() { return packagedPublicResources; }
 	@Override public RxProcessLaunchContract processLaunch() { return this; }
 	@Override public RxServiceProcessingContract serviceProcessing() { return serviceProcessing; }
 	@Override public RxTransientDataContract transientData() { return transientData; }
@@ -95,6 +101,7 @@ public class RxPlatformSpace extends CoreServicesSpace implements ExtendedRxPlat
 
 		// run service domain configuration of all modules
 		var modelConfigurations = configuration.modelConfigurations();
+		configuration.configuredModels().setServiceProcessorRegistry(serviceProcessing.serviceProcessorRegistry());
 
 		for (RxModuleContract moduleContract : moduleContracts) {
 			moduleContract.configureMainPersistenceModel(modelConfigurations.mainPersistenceModel());
@@ -106,6 +113,7 @@ public class RxPlatformSpace extends CoreServicesSpace implements ExtendedRxPlat
 			moduleContract.configureServiceDomains(serviceDomainConfigurations);
 
 			moduleContract.registerCrossDomainInterceptors(serviceProcessing.rootServiceProcessor());
+			moduleContract.registerServiceProcessors(serviceProcessing.serviceProcessorRegistry());
 			moduleContract.registerFallbackProcessors(serviceProcessing.fallbackProcessor());
 
 			moduleContract.configurePlatform(platformConfigurator());

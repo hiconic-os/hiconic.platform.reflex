@@ -22,6 +22,7 @@ import static com.braintribe.utils.lcd.CollectionTools2.newConcurrentSet;
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 
@@ -41,15 +42,22 @@ import com.braintribe.wire.api.context.WireContextConfiguration;
 import dev.hiconic.servlet.api.remote.RemoteClientAddressResolver;
 import dev.hiconic.servlet.impl.remote.StandardRemoteClientAddressResolver;
 import hiconic.platform.reflex.web_server.processing.ApplicationStateGateHandler;
+import hiconic.platform.reflex.web_server.processing.DelegatingAuthenticationContextFilter;
 import hiconic.platform.reflex.web_server.processing.DefaultRxServlet;
 import hiconic.platform.reflex.web_server.processing.InstanceEndpointConfigurator;
+import hiconic.platform.reflex.web_server.processing.PackagedPublicResourceServlet;
 import hiconic.platform.reflex.web_server.processing.ReflexAccessLogReceiver;
 import hiconic.platform.reflex.web_server.processing.RoleAuthorizationFilter;
+import hiconic.platform.reflex.web_server.processing.RuntimeConfigurationHandler;
+import hiconic.platform.reflex.web_server.processing.SsePushServlet;
 import hiconic.platform.reflex.web_server.processing.SslConfig;
+import hiconic.platform.reflex.web_server.processing.WebAppRegistry;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
+import hiconic.rx.push.api.PushContract;
 import hiconic.rx.web.server.api.FilterSymbol;
 import hiconic.rx.web.server.api.WebServerContract;
+import hiconic.rx.web.server.api.WebServerFilters;
 import hiconic.rx.web.server.model.config.StaticFilesystemResourceMapping;
 import hiconic.rx.web.server.model.config.StaticWebServerConfiguration;
 import hiconic.rx.web.server.model.config.WebServerConfiguration;
@@ -89,6 +97,9 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	@Import
 	private FiltersSpace filters;
 
+	@Import
+	private PushContract push;
+
 	@Override
 	@Managed
 	public RemoteClientAddressResolver remoteAddressResolver() {
@@ -103,6 +114,8 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	@Override
 	public void onLoaded(WireContextConfiguration configuration) {
 		platform.application().logManager().setLogLevel("io.undertow.request.error-response", System.Logger.Level.INFO);
+		registerPushTransports();
+		registerPackagedPublicResources();
 		registerLogLevelServlet();
 		undertowServer().start();
 
@@ -127,8 +140,42 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 		}
 	}
 
+	private void registerPushTransports() {
+		SsePushServlet sse = ssePushServlet();
+		push.addHandler(sse);
+		addServlet("sse-push", pushSseEndpointPath(), sse);
+	}
+
+	private String pushSseEndpointPath() {
+		return URLUtils.normalizeSlashes(configuration().getPushSseEndpointPath());
+	}
+
+	@Managed
+	private SsePushServlet ssePushServlet() {
+		SsePushServlet bean = new SsePushServlet();
+		bean.setMarshallerRegistry(platform.marshalling().marshallers());
+		bean.setEvaluator(platform.serviceProcessing().systemEvaluator());
+		bean.setProcessingInstanceId(platform.application().instanceId());
+		bean.setPushContract(push);
+		return bean;
+	}
+
+	private void registerPackagedPublicResources() {
+		addServlet("/", "packaged-public-resources", "/res/*", packagedPublicResourceServlet());
+	}
+
+	@Managed
+	private PackagedPublicResourceServlet packagedPublicResourceServlet() {
+		PackagedPublicResourceServlet bean = new PackagedPublicResourceServlet();
+		bean.setResources(platform.packagedPublicResources());
+		return bean;
+	}
+
 	private void registerLogLevelServlet() {
 		addServlet("log-levels", "/log-levels", logLevelServlet());
+		addFilter(WebServerFilters.authenticationContext, authenticationContextFilter());
+		addFilterMapping(WebServerFilters.authenticationContext, "/log-levels", DispatcherType.REQUEST);
+		addFilterMapping(WebServerFilters.authenticationContext, "/log-levels/*", DispatcherType.REQUEST);
 		addFilter(LogLevelFilters.logLevelAdmin, logLevelAdminFilter());
 		addFilterMapping(LogLevelFilters.logLevelAdmin, "/log-levels", DispatcherType.REQUEST);
 		addFilterMapping(LogLevelFilters.logLevelAdmin, "/log-levels/*", DispatcherType.REQUEST);
@@ -150,6 +197,16 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	@Managed
 	private RoleAuthorizationFilter logLevelAdminFilter() {
 		return new RoleAuthorizationFilter(platform.auth()::roleAuthorization);
+	}
+
+	@Override
+	public void bindAuthenticationContextDelegate(Filter delegate) {
+		authenticationContextFilter().bindDelegate(delegate);
+	}
+
+	@Managed
+	private DelegatingAuthenticationContextFilter authenticationContextFilter() {
+		return new DelegatingAuthenticationContextFilter(() -> platform.auth().roleAuthorization().securityActive());
 	}
 
 	@Managed
@@ -185,6 +242,7 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	@Override
 	public void addServlet(String basePath, String name, String path, HttpServlet servlet) {
 		ServletInfo servletInfo = Servlets.servlet(name, servlet.getClass(), new ImmediateInstanceFactory<>(servlet));
+		servletInfo.setAsyncSupported(true);
 		servletInfo.addMapping(path);
 		deploymentInfo(normalizeBasePath(basePath)).addServlet(servletInfo);
 	}
@@ -207,6 +265,44 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 		addStaticFileResource(applicationHandler(), path, rootDir, welcomeFiles);
 	}
 
+	@Override
+	public void addWebAppRuntimeConfiguration(String webAppPath, Supplier<? extends Map<String, ?>> properties) {
+		String normalizedWebAppPath = normalizeWebAppPath(webAppPath);
+		webAppRegistry().register(normalizedWebAppPath);
+		String normalizedPath = URLUtils.normalizeSlashes("/" + normalizedWebAppPath + "/runtime-config.json");
+		applicationHandler().addExactPath(normalizedPath,
+				new RuntimeConfigurationHandler(() -> {
+					Map<String, Object> result = new java.util.LinkedHashMap<>();
+					result.put("servicesUrl", defaultEndpointUrl());
+					result.putAll(properties.get());
+					return result;
+				}));
+	}
+
+	@Override
+	public boolean isWebAppRegistered(String webAppPath) {
+		return webAppRegistry().isRegistered(normalizeWebAppPath(webAppPath));
+	}
+
+	@Managed
+	private WebAppRegistry webAppRegistry() {
+		return new WebAppRegistry();
+	}
+
+	private static String normalizeWebAppPath(String webAppPath) {
+		String normalized = URLUtils.normalizeSlashes("/" + webAppPath);
+		return normalized.substring(1).replaceFirst("/$", "");
+	}
+
+	@Override
+	public void addPackagedPublicResources(String name, String path, String resourcePathPrefix) {
+		PackagedPublicResourceServlet servlet = new PackagedPublicResourceServlet();
+		servlet.setResources(platform.packagedPublicResources());
+		servlet.setResourcePathPrefix(resourcePathPrefix);
+		String mapping = URLUtils.normalizeSlashes("/" + path + "/*");
+		addServlet(name, mapping, servlet);
+	}
+
 	private void addStaticFileResource(PathHandler pathHandler, String path, String rootDir, String... welcomeFiles) {
 		ResourceHandler resourceHandler = new ResourceHandler(new FileResourceManager(new File(rootDir), 100)) //
 				.setWelcomeFiles(welcomeFiles) //
@@ -223,6 +319,7 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	@Override
 	public void addFilter(String basePath, FilterSymbol name, Filter filter) {
 		FilterInfo filterInfo = Servlets.filter(name.name(), filter.getClass(), new ImmediateInstanceFactory<>(filter));
+		filterInfo.setAsyncSupported(true);
 		deploymentInfo(normalizeBasePath(basePath)).addFilter(filterInfo);
 	}
 
@@ -249,6 +346,11 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	@Override
 	public void addEndpoint(String path, Endpoint endpoint) {
 		addEndpoint(defaultEndpointsBasePath(), path, endpoint);
+	}
+
+	@Override
+	public String pushWebSocketEndpointPath() {
+		return URLUtils.normalizeSlashes(configuration().getPushWebSocketEndpointPath());
 	}
 
 	public void addEndpoint(String basePath, String path, Endpoint endpoint) {
@@ -496,6 +598,7 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 
 	private void registerFilter(DeploymentInfo deploymentInfo, String name, Filter filter, String pathMapping, DispatcherType dispatcherType) {
 		FilterInfo filterInfo = Servlets.filter(name, filter.getClass(), new ImmediateInstanceFactory<>(filter));
+		filterInfo.setAsyncSupported(true);
 		deploymentInfo.addFilter(filterInfo);
 		deploymentInfo.addFilterUrlMapping(name, pathMapping, dispatcherType);
 	}

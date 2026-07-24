@@ -96,7 +96,11 @@ public class RxAccessRequestContext<P extends AccessRequest> implements AccessRe
 	public PersistenceGmSession getSession() {
 		if (session == null) {
 			try {
-				session = requestSessionFactory.newSession(getAccessId());
+				// Use this request context explicitly. Service dispatch does not require the request
+				// context to be installed in a thread-local AttributeContexts stack.
+				session = requestSessionFactory instanceof RxPersistenceGmSessionFactory rxFactory
+						? rxFactory.newSession(getAccessId(), this)
+						: requestSessionFactory.newSession(getAccessId());
 				session.listeners().add(new ManipulationCollectingListener());
 			} catch (GmSessionException e) {
 				throw new GmSessionRuntimeException("error while providing a request session for the request: " + originalRequest, e);

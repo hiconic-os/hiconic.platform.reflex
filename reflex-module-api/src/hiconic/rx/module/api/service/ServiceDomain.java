@@ -13,6 +13,8 @@
 // ============================================================================
 package hiconic.rx.module.api.service;
 
+import java.util.Set;
+
 import com.braintribe.common.attribute.AttributeContext;
 import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
@@ -24,6 +26,12 @@ public interface ServiceDomain {
 
 	/** The id that identifies this {@link ServiceDomain} internally and externally (e.g. can become part of a URL path) */
 	String domainId();
+
+	/** Optional human-readable name used by reflective user interfaces. Defaults to {@link #domainId()}. */
+	String displayName();
+
+	/** Roles of which at least one is required for evaluating requests in this domain. An empty set means unrestricted. */
+	Set<String> allowedRoles();
 
 	/** The associated {@link ConfiguredModel}. */
 	ConfiguredModel configuredModel();

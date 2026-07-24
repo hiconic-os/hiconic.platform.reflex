@@ -222,6 +222,49 @@ public class RxResourcesBuilding {
 
 	}
 
+	public static class RxUrlResourcesBuilder extends AbstractResourcesBuilder {
+
+		private final URL url;
+
+		public RxUrlResourcesBuilder(URL url) {
+			this.url = url;
+		}
+
+		@Override
+		public URL asUrl() {
+			return url;
+		}
+
+		@Override
+		public Path asPath() {
+			try {
+				return uriToPath(url.toURI());
+			} catch (IOException e) {
+				throw new UncheckedIOException(e);
+			} catch (URISyntaxException e) {
+				throw new IllegalArgumentException("Malformed resource URL: " + url, e);
+			}
+		}
+
+		@Override
+		public File asFile() {
+			try {
+				return asPath().toFile();
+			} catch (RuntimeException e) {
+				throw new UnsupportedOperationException("Cannot represent resource URL as a File: " + url, e);
+			}
+		}
+
+		@Override
+		public InputStream asStream() {
+			try {
+				return url.openStream();
+			} catch (IOException e) {
+				throw new UncheckedIOException(e);
+			}
+		}
+	}
+
 	private static abstract class AbstractResourcesBuilder implements ResourceHandle {
 
 		@Override

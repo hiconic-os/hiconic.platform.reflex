@@ -23,6 +23,8 @@ import java.util.Map;
 import javax.sql.DataSource;
 
 import com.braintribe.model.processing.securityservice.api.UserSessionService;
+import com.braintribe.gm.model.reason.Reason;
+import com.braintribe.gm.model.reason.ReasonException;
 import com.braintribe.model.time.TimeSpan;
 import com.braintribe.model.time.TimeUnit;
 import com.braintribe.model.user.User;
@@ -36,6 +38,7 @@ import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.security.api.UserService;
 import hiconic.rx.security.model.configuration.SecurityConfiguration;
 import hiconic.rx.security.model.configuration.UserServiceConfiguration;
+import hiconic.rx.security.model.configuration.UserProvisioningConfiguration;
 import hiconic.rx.security.model.configuration.UsersConfiguration;
 import hiconic.rx.security.processor.DelegatingUserService;
 import hiconic.rx.security.processor.JdbcUserSessionService;
@@ -64,6 +67,23 @@ public class UserServicesSpace implements WireSpace {
 	@Managed
 	private UserServiceConfiguration userServiceConfiguration() {
 		return getOrTunnel(platform.configuration().readConfig(UserServiceConfiguration.T));
+	}
+
+	@Managed
+	private UserProvisioningConfiguration userProvisioningConfiguration() {
+		return getOrTunnel(platform.configuration().readConfig(UserProvisioningConfiguration.T));
+	}
+
+	public void provisionConfiguredUsers() {
+		UserService userService = userService();
+		if (UserServiceConfiguration.DEFAULT_USER_SERVICE_ID.equals(userService.userServiceId()))
+			return;
+
+		for (User user : userProvisioningConfiguration().getUsers()) {
+			Reason error = userService.ensureUser(user);
+			if (error != null)
+				throw new ReasonException(error);
+		}
 	}
 
 	public UserSessionService userSessionService() {

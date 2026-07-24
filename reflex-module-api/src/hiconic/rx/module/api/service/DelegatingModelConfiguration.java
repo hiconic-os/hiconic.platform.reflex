@@ -57,11 +57,21 @@ public interface DelegatingModelConfiguration extends ModelConfiguration {
 	default InterceptorBuilder bindInterceptor(String identification) {
 		return modelConfiguration().bindInterceptor(identification);
 	}
+
+	@Override
+	default void orderInterceptors(String... identifications) {
+		modelConfiguration().orderInterceptors(identifications);
+	}
 	
 	@Override
 	default <R extends ServiceRequest> void bindRequest(EntityType<R> requestType,
 			Supplier<ServiceProcessor<? super R, ?>> serviceProcessorSupplier) {
 		modelConfiguration().bindRequest(requestType, serviceProcessorSupplier);
+	}
+
+	@Override
+	default <R extends ServiceRequest> void bindRequest(EntityType<R> requestType, String serviceProcessorKey) {
+		modelConfiguration().bindRequest(requestType, serviceProcessorKey);
 	}
 	
 	@Override

@@ -40,6 +40,22 @@ limitations under the License.
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
         <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>push-module-api</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <!-- The existing transport module is loaded automatically; it contributes the WS delegate to the platform push service. -->
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>websocket-server-rx-module</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>security-service-api-model</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
+        <dependency>
             <groupId>org.jboss.threads</groupId>
             <artifactId>jboss-threads</artifactId>
             <version>${V.org.jboss.threads}</version>

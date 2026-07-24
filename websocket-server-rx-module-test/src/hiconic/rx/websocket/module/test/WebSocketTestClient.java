@@ -35,7 +35,7 @@ public class WebSocketTestClient implements MessageHandler.Whole<String>, AutoCl
 
 	public WebSocketTestClient(int port, Consumer<String> dataConsumer, HubPromise<Boolean> established) throws Exception {
 		this.dataConsumer = dataConsumer;
-		String serverUri = "ws://localhost:" + port + "/ws?clientId=test&accept=application/json&sendChannelId=true";
+		String serverUri = "ws://localhost:" + port + "/push/ws?clientId=test&accept=application/json&sendChannelId=true";
 		WebSocketContainer container = ContainerProvider.getWebSocketContainer();
 		ClientEndpointConfig config = ClientEndpointConfig.Builder.create().build();
 

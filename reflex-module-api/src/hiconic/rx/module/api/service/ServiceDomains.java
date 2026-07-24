@@ -35,6 +35,8 @@ public interface ServiceDomains {
 	// @formatter:off
 	/** @see PlatformServiceDomains#main */
 	default ServiceDomain main() { return byId(PlatformServiceDomains.main); }
+	/** @see PlatformServiceDomains#internal */
+	default ServiceDomain internal() { return byId(PlatformServiceDomains.internal); }
 	/** @see PlatformServiceDomains#system */
 	default ServiceDomain system() { return byId(PlatformServiceDomains.system); }
 	// @formatter:on

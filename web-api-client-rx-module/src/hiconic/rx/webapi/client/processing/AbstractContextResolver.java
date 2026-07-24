@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -44,6 +45,8 @@ import com.braintribe.utils.lcd.NullSafe;
 import hiconic.rx.webapi.client.api.HttpClient;
 import hiconic.rx.webapi.client.api.HttpConstants;
 import hiconic.rx.webapi.client.api.HttpParameter;
+import hiconic.rx.webapi.client.api.HttpMultipartPart;
+import hiconic.rx.webapi.client.api.HttpMultipartPartKind;
 import hiconic.rx.webapi.client.api.HttpRequestContext;
 import hiconic.rx.webapi.client.api.HttpRequestContextBuilder;
 import hiconic.rx.webapi.client.model.meta.HttpConsumes;
@@ -51,12 +54,17 @@ import hiconic.rx.webapi.client.model.meta.HttpDateFormatting;
 import hiconic.rx.webapi.client.model.meta.HttpDefaultFailureResponseType;
 import hiconic.rx.webapi.client.model.meta.HttpDefaultSuccessResponseType;
 import hiconic.rx.webapi.client.model.meta.HttpMethod;
+import hiconic.rx.webapi.client.model.meta.HttpMultipartFormData;
 import hiconic.rx.webapi.client.model.meta.HttpParam;
 import hiconic.rx.webapi.client.model.meta.HttpParamType;
 import hiconic.rx.webapi.client.model.meta.HttpPath;
 import hiconic.rx.webapi.client.model.meta.HttpProduces;
 import hiconic.rx.webapi.client.model.meta.HttpSuccessCodes;
 import hiconic.rx.webapi.client.model.meta.params.HttpBodyParam;
+import hiconic.rx.webapi.client.model.meta.params.HttpMultipartMarshalledPart;
+import hiconic.rx.webapi.client.model.meta.params.HttpMultipartResourcePart;
+import hiconic.rx.webapi.client.model.meta.params.HttpMultipartTextPart;
+import hiconic.rx.webapi.client.model.meta.params.HttpPathParam;
 import hiconic.rx.webapi.client.model.meta.params.HttpRequestIsBody;
 import hiconic.rx.webapi.client.model.meta.params.HttpResourceStreamBodyParam;
 
@@ -105,7 +113,7 @@ public abstract class AbstractContextResolver implements HttpContextResolver {
 		resolver.resolve(resolver::getHeaderParameters, contextBuilder::addHeaderParameters);
 		resolver.resolve(resolver::resolveRequestMethod, contextBuilder::requestMethod);
 		resolver.resolve(resolver::resolveRequestIsBody, md -> {
-			if (md != null) {
+			if (md != null && resolver.multipartFormData == null) {
 				contextBuilder.payload(serviceRequest);
 			}
 		});
@@ -119,6 +127,14 @@ public abstract class AbstractContextResolver implements HttpContextResolver {
 			contextBuilder.streamResourceContent(resolver.streamResourceContent);
 			contextBuilder.payloadIfEmpty(p);
 		});
+		if (resolver.multipartFormData != null) {
+			Object multipartPayload = resolver.resolveMultipartPayload();
+			if (multipartPayload == resolver.multipartRequestParameters || multipartPayload == resolver.bodyParameters)
+				contextBuilder.payloadType(bodyParametersType);
+			contextBuilder.payload(multipartPayload);
+			contextBuilder.multipartFormData(new hiconic.rx.webapi.client.api.HttpMultipartFormData(
+					resolver.multipartFormData.getRequestPartName(), resolver.multipartFormData.getRequestPartMimeType(), resolver.multipartParts));
+		}
 
 		HttpDateFormatting dateFormatting = resolver.resolveDateFormatting();
 		if (dateFormatting != null) {
@@ -198,7 +214,10 @@ public abstract class AbstractContextResolver implements HttpContextResolver {
 		protected EntityType<GenericEntity> requestType;
 		
 		protected Map<String, Object> pathParameters = new HashMap<>();
+		protected Set<String> nullPathSegmentsToOmit = new HashSet<>();
 		protected Map<String, Object> bodyParameters = new HashMap<>();
+		protected Map<String, Object> multipartRequestParameters = new HashMap<>();
+		protected List<HttpMultipartPart> multipartParts = new ArrayList<>();
 		
 		protected Map<EntityType<?>, PropertyTranslation> responsePropertyTranslations = new HashMap<>();
 		
@@ -206,6 +225,8 @@ public abstract class AbstractContextResolver implements HttpContextResolver {
 		protected List<HttpParameter> queryParameters = new ArrayList<>();
 		
 		protected boolean streamResourceContent = false;
+		protected HttpMultipartFormData multipartFormData;
+		protected HttpRequestIsBody requestIsBody;
 		
 		public RequestContextResolver(ServiceRequestContext serviceContext, ServiceRequest serviceRequest, ModelMdResolver modelResolver) {
 			this.serviceContext = serviceContext;
@@ -213,6 +234,8 @@ public abstract class AbstractContextResolver implements HttpContextResolver {
 			this.modelResolver = modelResolver;
 			this.requestType = this.serviceRequest.entityType();
 			this.entityResolver = this.modelResolver.entity(this.serviceRequest);
+			this.multipartFormData = this.entityResolver.meta(HttpMultipartFormData.T).exclusive();
+			this.requestIsBody = this.entityResolver.meta(HttpRequestIsBody.T).exclusive();
 		}
 		
 		public List<HttpParameter> getHeaderParameters() {
@@ -229,7 +252,7 @@ public abstract class AbstractContextResolver implements HttpContextResolver {
 		}
 
 		private String resolveTemplate(String pathTemplate) {
-			return StringTools.patternFormat(pathTemplate, this.pathParameters);
+			return PathTemplateResolver.resolve(pathTemplate, pathParameters, nullPathSegmentsToOmit);
 		}
 
 		private String resolveRequestMethod() {
@@ -237,7 +260,7 @@ public abstract class AbstractContextResolver implements HttpContextResolver {
 		}
 		
 		private Object resolveRequestIsBody() {
-			return resolveMd(HttpRequestIsBody.T, md -> {return md;});
+			return requestIsBody;
 		}
 		
 		private String resolveProduces() {
@@ -253,12 +276,26 @@ public abstract class AbstractContextResolver implements HttpContextResolver {
 		}
 
 		private Object resolvePayload() {
+			if (isFormUrlEncoded())
+				return bodyParameters.isEmpty() ? null : bodyParameters;
 			switch (bodyParameters.size()) {
 			case 0: return null;
 			case 1: return bodyParameters.values().iterator().next();
 			default: 
 				return this.bodyParameters;
 			}
+		}
+
+		private boolean isFormUrlEncoded() {
+			String consumes = resolveConsumes();
+			return consumes != null && "application/x-www-form-urlencoded".equalsIgnoreCase(consumes.split(";", 2)[0].trim());
+		}
+
+		private Object resolveMultipartPayload() {
+			if (requestIsBody != null)
+				return multipartRequestParameters;
+			Object payload = resolvePayload();
+			return payload != null ? payload : Collections.emptyMap();
 		}
 
 		private void resolveParameters() {
@@ -270,6 +307,20 @@ public abstract class AbstractContextResolver implements HttpContextResolver {
 		private void resolveParameter(Property p) {
 			PropertyMdResolver propertyResolver = this.entityResolver.property(p);
 			HttpParam restParam = propertyResolver.meta(HttpParam.T).exclusive();
+
+			if (restParam instanceof hiconic.rx.webapi.client.model.meta.params.HttpMultipartPart) {
+				if (multipartFormData == null)
+					throw new IllegalStateException("Property '" + p.getName() + "' uses multipart metadata but request type '"
+							+ requestType.getTypeSignature() + "' has no HttpMultipartFormData metadata.");
+				resolveMultipartPart(p, (hiconic.rx.webapi.client.model.meta.params.HttpMultipartPart) restParam);
+				return;
+			}
+
+			if (multipartFormData != null && requestIsBody != null) {
+				Object value = p.get(serviceRequest);
+				if (value != null)
+					multipartRequestParameters.put(resolveParameterName(p, restParam), value);
+			}
 			
 			if (restParam != null) {
 				switch (restParam.paramType()) {
@@ -291,7 +342,11 @@ public abstract class AbstractContextResolver implements HttpContextResolver {
 						}
 					break;
 				case PATH:
-					this.pathParameters.put(resolveParameterName(p, restParam), resolveParameterValue(p, restParam));
+					String parameterName = resolveParameterName(p, restParam);
+					if (p.get(serviceRequest) == null && ((HttpPathParam) restParam).getOmitSegmentIfNull())
+						nullPathSegmentsToOmit.add(parameterName);
+					else
+						this.pathParameters.put(parameterName, resolveParameterValue(p, restParam));
 					break;
 				case UNMAPPED:
 					// the property is configured to be unmapped, so we simply ignore it.
@@ -301,6 +356,76 @@ public abstract class AbstractContextResolver implements HttpContextResolver {
 				// We add all properties as path parameter if not done already with specific md configuration
 				this.pathParameters.put(resolveParameterName(p, null), resolveParameterValue(p, null));
 			}
+		}
+
+		private void resolveMultipartPart(Property property, hiconic.rx.webapi.client.model.meta.params.HttpMultipartPart metadata) {
+			if (metadata instanceof HttpMultipartResourcePart)
+				resolveMultipartResourceParts(property, (HttpMultipartResourcePart) metadata);
+			else if (metadata instanceof HttpMultipartTextPart)
+				resolveMultipartTextParts(property, (HttpMultipartTextPart) metadata);
+			else if (metadata instanceof HttpMultipartMarshalledPart)
+				resolveMultipartMarshalledPart(property, (HttpMultipartMarshalledPart) metadata);
+			else
+				throw new IllegalArgumentException("Unsupported multipart metadata type: " + metadata.entityType().getTypeSignature());
+		}
+
+		private void resolveMultipartResourceParts(Property property, HttpMultipartResourcePart metadata) {
+			Object value = property.get(serviceRequest);
+			if (value == null) return;
+			String partName = resolveParameterName(property, metadata);
+			if (value instanceof Resource) {
+				addMultipartResourcePart(partName, (Resource) value, metadata);
+			} else if (value instanceof Collection) {
+				for (Object element : (Collection<?>) value) {
+					if (!(element instanceof Resource))
+						throw new IllegalArgumentException("Multipart resource property '" + property.getName() + "' contains " + element);
+					addMultipartResourcePart(partName, (Resource) element, metadata);
+				}
+			} else {
+				throw new IllegalArgumentException("Multipart resource property '" + property.getName()
+						+ "' must be Resource, List<Resource> or Set<Resource>, but was " + value.getClass().getName());
+			}
+		}
+
+		private void addMultipartResourcePart(String partName, Resource resource, HttpMultipartResourcePart metadata) {
+			String fileName = !StringTools.isBlank(metadata.getFileName()) ? metadata.getFileName() : resource.getName();
+			String mimeType = !StringTools.isBlank(metadata.getMimeType()) ? metadata.getMimeType() : resource.getMimeType();
+			multipartParts.add(new HttpMultipartPart(partName, fileName, mimeType, resource, HttpMultipartPartKind.RESOURCE,
+					resolveMultipartHeaders(metadata)));
+		}
+
+		private void resolveMultipartTextParts(Property property, HttpMultipartTextPart metadata) {
+			Object value = property.get(serviceRequest);
+			if (value == null) {
+				if (!metadata.getIgnoreEmptyValue()) addMultipartPart(property, metadata, "", HttpMultipartPartKind.TEXT);
+				return;
+			}
+			List<String> values = encodeValues(value);
+			if (values.isEmpty() && !metadata.getIgnoreEmptyValue()) values = Collections.singletonList("");
+			for (String encodedValue : values) addMultipartPart(property, metadata, encodedValue, HttpMultipartPartKind.TEXT);
+		}
+
+		private void resolveMultipartMarshalledPart(Property property, HttpMultipartMarshalledPart metadata) {
+			Object value = property.get(serviceRequest);
+			if (value == null && metadata.getIgnoreEmptyValue()) return;
+			addMultipartPart(property, metadata, value, HttpMultipartPartKind.MARSHALLED);
+		}
+
+		private void addMultipartPart(Property property, hiconic.rx.webapi.client.model.meta.params.HttpMultipartPart metadata,
+				Object value, HttpMultipartPartKind kind) {
+			multipartParts.add(new HttpMultipartPart(resolveParameterName(property, metadata), metadata.getFileName(), metadata.getMimeType(), value,
+					kind, resolveMultipartHeaders(metadata)));
+		}
+
+		private Map<String, String> resolveMultipartHeaders(hiconic.rx.webapi.client.model.meta.params.HttpMultipartPart metadata) {
+			Map<String, String> headers = new LinkedHashMap<>();
+			if (metadata.getHeaders() == null) return headers;
+			for (String header : metadata.getHeaders()) {
+				int separator = header == null ? -1 : header.indexOf(':');
+				if (separator <= 0) throw new IllegalArgumentException("Invalid multipart header '" + header + "'. Expected 'Name: value'.");
+				headers.put(header.substring(0, separator).trim(), header.substring(separator + 1).trim());
+			}
+			return headers;
 		}
 
 		private void resolveParameter(Property p, HttpParam restParam, Consumer<HttpParameter> consumer) {
@@ -318,7 +443,7 @@ public abstract class AbstractContextResolver implements HttpContextResolver {
 			if (restParam != null) {
 				paramName = restParam.getParamName();
 			}
-			return (paramName != null) ? paramName : p.getName();
+			return !StringTools.isBlank(paramName) ? paramName : p.getName();
 		}
 		
 		private String resolveParameterValue(Property p, HttpParam restParam) {

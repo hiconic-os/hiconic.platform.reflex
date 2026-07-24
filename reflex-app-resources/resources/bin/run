@@ -25,4 +25,16 @@ else
     JAVA_EXECUTABLE="${JAVA_HOME}/bin/java"
 fi
 
-"$JAVA_EXECUTABLE" $REFLEX_OPTS -Dreflex.app.dir="$INST_DIR"  -Dreflex.launch.script=$LAUNCH_SCRIPT -Djava.net.useSystemProxies=true -jar "$LIB_PATH/launch.jar" "$@"
+PACKAGED_JVM_OPTIONS=()
+JVM_OPTIONS_FILE="$INST_DIR/conf/jvm.options"
+if [ -f "$JVM_OPTIONS_FILE" ]; then
+    while IFS= read -r option || [ -n "$option" ]; do
+        [[ -z "$option" || "$option" == \#* ]] && continue
+        PACKAGED_JVM_OPTIONS+=("$option")
+    done < "$JVM_OPTIONS_FILE"
+fi
+
+# REFLEX_OPTS remains an intentionally late, deployment-specific override/addition.
+read -r -a ENV_JVM_OPTIONS <<< "${REFLEX_OPTS:-}"
+
+"$JAVA_EXECUTABLE" "${PACKAGED_JVM_OPTIONS[@]}" "${ENV_JVM_OPTIONS[@]}" -Dreflex.app.dir="$INST_DIR" -Dreflex.launch.script="$LAUNCH_SCRIPT" -Djava.net.useSystemProxies=true -jar "$LIB_PATH/launch.jar" "$@"

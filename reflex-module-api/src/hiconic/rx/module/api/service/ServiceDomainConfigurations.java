@@ -35,6 +35,8 @@ public interface ServiceDomainConfigurations {
 
 	/** @see PlatformServiceDomains#main */
 	ServiceDomainConfiguration main();
+	/** @see PlatformServiceDomains#internal */
+	ServiceDomainConfiguration internal();
 	/** @see PlatformServiceDomains#system */
 	ServiceDomainConfiguration system();
 

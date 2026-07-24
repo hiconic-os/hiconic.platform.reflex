@@ -1,0 +1,4 @@
+Manifest-Version: 1.0
+Ant-Version: Apache Ant 1.10.15
+Created-By: 25+36-LTS (Eclipse Adoptium)
+

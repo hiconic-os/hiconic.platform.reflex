@@ -1,0 +1,25 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>hiconic.platform.reflex</groupId>
+		<artifactId>parent</artifactId>
+		<version>[1.0,1.1)</version>
+	</parent>
+	<artifactId>log-reflection-webapp</artifactId>
+	<version>1.0.1</version>
+	<packaging>pom</packaging>
+	<dependencies>
+		<!--
+			The webapp consumes the generated TypeScript model through a local file dependency.
+			Declaring the same relation in the Devrock graph makes clean CI builds generate the
+			NPM model before npm ci/typecheck runs for this artifact.
+		-->
+		<dependency>
+			<groupId>hiconic.platform.reflex</groupId>
+			<artifactId>log-reflection-api-model</artifactId>
+			<version>${V.hiconic.platform.reflex}</version>
+		</dependency>
+	</dependencies>
+</project>

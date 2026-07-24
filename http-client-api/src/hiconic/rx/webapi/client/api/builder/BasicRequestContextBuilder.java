@@ -33,6 +33,7 @@ import com.braintribe.model.generic.reflection.Property;
 
 import hiconic.rx.webapi.client.api.HttpClient;
 import hiconic.rx.webapi.client.api.HttpDateFormatting;
+import hiconic.rx.webapi.client.api.HttpMultipartFormData;
 import hiconic.rx.webapi.client.api.HttpParameter;
 import hiconic.rx.webapi.client.api.HttpRequestContext;
 import hiconic.rx.webapi.client.api.HttpRequestContextBuilder;
@@ -47,6 +48,7 @@ public class BasicRequestContextBuilder implements HttpRequestContextBuilder {
 	private String produces = DEFAULT_MIME_TYPE;
 
 	private Object payload;
+	private HttpMultipartFormData multipartFormData;
 	private GenericModelType payloadType;
 	private final Map<Integer, GenericModelType> responseTypesByCode = new HashMap<>();
 	private final Map<Integer, Boolean> useOrgStatusCode = new HashMap<>();
@@ -139,6 +141,12 @@ public class BasicRequestContextBuilder implements HttpRequestContextBuilder {
 	@Override
 	public HttpRequestContextBuilder payload(Object payload) {
 		this.payload = payload;
+		return this;
+	}
+
+	@Override
+	public HttpRequestContextBuilder multipartFormData(HttpMultipartFormData multipartFormData) {
+		this.multipartFormData = multipartFormData;
 		return this;
 	}
 
@@ -347,6 +355,11 @@ public class BasicRequestContextBuilder implements HttpRequestContextBuilder {
 			@Override
 			public Object payload() {
 				return payload;
+			}
+
+			@Override
+			public HttpMultipartFormData multipartFormData() {
+				return multipartFormData;
 			}
 
 			@Override

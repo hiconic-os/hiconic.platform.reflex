@@ -40,7 +40,6 @@ import hiconic.rx.access.module.api.AccessDomain;
 import hiconic.rx.access.module.api.AccessDomains;
 import hiconic.rx.access.module.api.AccessExpert;
 import hiconic.rx.access.module.api.AccessModelConfigurations;
-import hiconic.rx.access.module.api.AccessModelSymbols;
 import hiconic.rx.module.api.service.ConfiguredModel;
 import hiconic.rx.module.api.service.ConfiguredModels;
 import hiconic.rx.module.api.service.ServiceDomain;
@@ -139,17 +138,13 @@ public class RxAccesses implements AccessDomains {
 		String accessId = access.getAccessId();
 
 		NullSafe.nonNull(accessId, "Access.accessId");
-		
-		for (String dataModelName: access.getDataModelNames())
-			accessModelConfigurations.dataModelConfiguration(accessId).addModelByName(dataModelName);
 
-		// This creates a new ServiceDomain in the system
-		ServiceDomainConfiguration sdConfiguration = serviceDomainConfigurations.byId(accessId);
-
-		sdConfiguration.addModel(AccessModelSymbols.configuredAccessApiModel);
-
-		for (String serviceModelName: access.getServiceModelNames())
-			sdConfiguration.addModelByName(serviceModelName);
+		// This creates a new ServiceDomain in the system. An access and its service
+		// domain represent the same externally visible domain and must therefore share
+		// an explicitly configured display name.
+		ServiceDomainConfiguration serviceDomain = serviceDomainConfigurations.byId(accessId);
+		if (access.getDisplayName() != null && !access.getDisplayName().isBlank())
+			serviceDomain.setDisplayName(access.getDisplayName());
 
 		if (accesses.putIfAbsent(accessId, new Lazy<>(rxAccessSupplier)) != null)
 			throw new IllegalArgumentException("Duplicate deployment of an Access with id: " + accessId);

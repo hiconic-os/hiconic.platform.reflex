@@ -52,6 +52,7 @@ import com.braintribe.model.service.api.result.PushResponseMessage;
 import com.braintribe.model.usersession.UserSession;
 
 import hiconic.platform.reflex.websocket_server.processing.WsRegistry.WsRegistrationEntry;
+import hiconic.rx.push.api.PushContract;
 import jakarta.websocket.CloseReason;
 import jakarta.websocket.CloseReason.CloseCodes;
 import jakarta.websocket.Endpoint;
@@ -91,13 +92,13 @@ public class WsServer extends Endpoint
 	private WsRegistry sessionRegistry = new WsRegistry();
 	private InstanceId targetInstanceId;
 
-	private PushChannelLifecycleHub channelLifecyclePublisher;
+	private PushContract push;
 
 	// ############################## Setters ##############################
 
 	@Required
-	public void setPushChannelLifecycleHub(PushChannelLifecycleHub channelLifecyclePublisher) {
-		this.channelLifecyclePublisher = channelLifecyclePublisher;
+	public void setPushContract(PushContract push) {
+		this.push = push;
 	}
 	
 	@Configurable
@@ -184,7 +185,7 @@ public class WsServer extends Endpoint
 
 		session.addMessageHandler(this);
 		
-		channelLifecyclePublisher.notifyConnectionEstablished(entry);
+		push.registerChannel(entry);
 	}
 
 	/**
@@ -195,7 +196,8 @@ public class WsServer extends Endpoint
 	public void onClose(Session session, CloseReason closeReason) {
 		WsRegistrationEntry entry = sessionRegistry.remove(session);
 		close(session, closeReason);
-		channelLifecyclePublisher.notifyConnectionClosed(entry);
+		if (entry != null)
+			push.unregisterChannel(entry);
 
 		if (entry == null) {
 			logger.trace(() -> "An unregistered websocket session was closed.");

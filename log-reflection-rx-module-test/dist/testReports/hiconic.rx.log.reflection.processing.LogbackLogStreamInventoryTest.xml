@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuite errors="0" failures="0" hostname="chaox" name="hiconic.rx.log.reflection.processing.LogbackLogStreamInventoryTest" skipped="0" tests="4" time="0.544" timestamp="2026-07-24T15:48:48">
+  <properties />
+  <testcase classname="hiconic.rx.log.reflection.processing.LogbackLogStreamInventoryTest" name="createsAWebRpcReadyTransientZipResource" time="0.444">
+    <system-out><![CDATA[2026-07-24 17:48:48.380 INFO    com.braintribe.model.generic.annotation.meta.api.CustomMdaHandlerLoader     '[MdaHandler CP Loader] Successfully registered MdaHandler for annotation com.braintribe.model.generic.annotation.meta.Temporal and meta-data com.braintribe.model.meta.data.prompt.Temporal. Line: com.braintribe.model.generic.annotation.meta.Temporal,com.braintribe.model.meta.data.prompt.Temporal,value,temporalType, URL: jar:file:/home/tryptamic/opt/hiconic-sdk/env/pv-reflexation/artifacts/repo/com/braintribe/gm/gm-core-api/2.0.131/gm-core-api-2.0.131.jar!/META-INF/gmf.mda' []
+]]></system-out>
+  </testcase>
+  <testcase classname="hiconic.rx.log.reflection.processing.LogbackLogStreamInventoryTest" name="reflectsSegmentsFromTheAppenderRollingPolicy" time="0.019" />
+  <testcase classname="hiconic.rx.log.reflection.processing.LogbackLogStreamInventoryTest" name="reflectsPatternAppenderAndStructuredLiveStream" time="0.003" />
+  <testcase classname="hiconic.rx.log.reflection.processing.LogbackLogStreamInventoryTest" name="streamsFilteredCanonicalJsonlIntoTheBundle" time="0.022" />
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

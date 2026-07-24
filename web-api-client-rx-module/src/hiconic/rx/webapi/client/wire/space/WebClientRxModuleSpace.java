@@ -26,6 +26,7 @@ import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.module.api.service.ServiceDomain;
+import hiconic.rx.module.api.service.ServiceProcessorRegistry;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.module.api.wire.RxServiceProcessingContract;
@@ -34,7 +35,9 @@ import hiconic.rx.webapi.client.api.HttpClient;
 import hiconic.rx.webapi.client.api.WebApiClientContract;
 import hiconic.rx.webapi.client.model.configuration.HttpCredentials;
 import hiconic.rx.webapi.client.model.configuration.HttpUsernamePasswordCredentials;
-import hiconic.rx.webapi.client.processing.DynamicContextResolver;
+import hiconic.rx.webapi.client.model.configuration.WebApiRemoteProcessor;
+import hiconic.rx.webapi.client.model.configuration.WebApiRemoteProcessorConfiguration;
+import hiconic.rx.webapi.client.processing.FixedClientContextResolver;
 import hiconic.rx.webapi.client.processing.GmHttpClient;
 import hiconic.rx.webapi.client.processing.WebApiClientServiceProcessor;
 
@@ -60,7 +63,7 @@ public class WebClientRxModuleSpace implements RxModuleContract, WebApiClientCon
 	// ################################################
 
 	@Override
-	public HttpClient createGmHttpClient(hiconic.rx.webapi.client.model.configuration.GmHttpClient deployable) {
+	public HttpClient createHttpClient(WebApiRemoteProcessor deployable) {
 		GmHttpClient bean = new GmHttpClient();
 		bean.setBaseUrl(deployable.getBaseUrl());
 		bean.setMimeTypeRegistry(platform.transientData().mimeTypeRegistry());
@@ -95,7 +98,7 @@ public class WebClientRxModuleSpace implements RxModuleContract, WebApiClientCon
 		return bean;
 	}
 
-	private Credentials getCredentials(hiconic.rx.webapi.client.model.configuration.GmHttpClient deployable) {
+	private Credentials getCredentials(WebApiRemoteProcessor deployable) {
 		HttpCredentials credentials = deployable.getCredentials();
 
 		if (credentials != null) {
@@ -110,7 +113,7 @@ public class WebClientRxModuleSpace implements RxModuleContract, WebApiClientCon
 		return null;
 	}
 
-	private RequestConfig buildRequestConfig(hiconic.rx.webapi.client.model.configuration.GmHttpClient deployable) {
+	private RequestConfig buildRequestConfig(WebApiRemoteProcessor deployable) {
 		Builder configBuilder = RequestConfig.custom();
 
 		configBuilder.setAuthenticationEnabled(deployable.getAuthenticationEnabled());
@@ -148,20 +151,35 @@ public class WebClientRxModuleSpace implements RxModuleContract, WebApiClientCon
 	// ################################################
 
 	@Override
-	public ServiceProcessor<ServiceRequest, Object> createMdBasedWebApiClientProcessor(Set<String> mdUseCases) {
+	public ServiceProcessor<ServiceRequest, Object> createMdBasedWebApiClientProcessor(HttpClient client, Set<String> mdUseCases) {
 		WebApiClientServiceProcessor bean = new WebApiClientServiceProcessor();
-		bean.setHttpContextResolver(dynamicContextResolver(mdUseCases));
+		bean.setHttpContextResolver(fixedClientContextResolver(client, mdUseCases));
 		return bean;
 	}
 
-	private DynamicContextResolver dynamicContextResolver(Set<String> mdUseCases) {
-		DynamicContextResolver bean = new DynamicContextResolver();
+	private FixedClientContextResolver fixedClientContextResolver(HttpClient client, Set<String> mdUseCases) {
+		FixedClientContextResolver bean = new FixedClientContextResolver();
+		bean.setHttpClient(client);
 		bean.setDomainIdToCmdResolver(this::resolveDomainIdToCmd);
 
 		if (!CollectionTools2.isEmpty(mdUseCases))
 			bean.setResolverUseCases(mdUseCases);
 
 		return bean;
+	}
+
+	@Override
+	public void registerServiceProcessors(ServiceProcessorRegistry registry) {
+		WebApiRemoteProcessorConfiguration configuration = platform.configuration().readConfig(WebApiRemoteProcessorConfiguration.T).get();
+		for (WebApiRemoteProcessor processorConfiguration : configuration.getProcessors()) {
+			String name = processorConfiguration.getName();
+			if (name == null || name.isBlank())
+				throw new IllegalArgumentException("Configured WebApiRemoteProcessor requires a non-blank name.");
+
+			registry.register(name,
+					() -> createMdBasedWebApiClientProcessor(createHttpClient(processorConfiguration), processorConfiguration.getResolverUseCases()),
+					() -> processorConfiguration);
+		}
 	}
 
 	// ################################################

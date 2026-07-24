@@ -42,13 +42,13 @@ import com.braintribe.wire.api.context.WireContext;
 import com.braintribe.wire.impl.properties.PropertyLookups;
 
 import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.joran.JoranConfigurator;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.platform.conf.ApplicationProperties;
 import hiconic.rx.platform.conf.RxConfigurationConstants;
 import hiconic.rx.platform.conf.RxPropertyResolver;
 import hiconic.rx.platform.conf.SystemProperties;
+import hiconic.rx.platform.logging.LayeredLogbackConfiguration;
 import hiconic.rx.platform.logging.LayeredLogLevelPersistence;
 import hiconic.rx.platform.logging.LogbackLogLevelFramework;
 import hiconic.rx.platform.loading.RxModuleLoader;
@@ -212,21 +212,13 @@ public class RxPlatform implements AutoCloseable {
 		// Assume SLF4J is bound to logback in the current environment
 		LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
 
-		File logConfig = new File(systemProperties.appDir(), "conf/logback.xml");
+		File confDir = new File(systemProperties.appDir(), "conf");
 
-		if (logConfig.exists()) {
-			try {
-				JoranConfigurator configurator = new JoranConfigurator();
-				configurator.setContext(context);
-				// Clear any previous configuration
-				context.reset();
-				// Load new configuration
-				configurator.doConfigure(logConfig);
-			} catch (Exception e) {
-				// Handle errors during configuration
-				System.err.print("Error configuring Logback: ");
-				e.printStackTrace(System.err);
-			}
+		try {
+			new LayeredLogbackConfiguration(classpathIndex, RxConfigurationConstants.CLASSPATH_CONF_PATH, confDir).configure(context);
+		} catch (Exception e) {
+			System.err.print("Error configuring Logback: ");
+			e.printStackTrace(System.err);
 		}
 
 		// Remove existing handlers attached to the j.u.l root logger
@@ -241,7 +233,8 @@ public class RxPlatform implements AutoCloseable {
 		LogLevelSetup setup = new LogLevelSetup();
 		setup.setConfDir(confDir);
 		setup.setLogLevelFramework(new LogbackLogLevelFramework());
-		setup.setPackagedLogLevelPersistence(new LayeredLogLevelPersistence(classpathIndex, RxConfigurationConstants.CLASSPATH_CONF_PATH, confDir));
+		setup.setPackagedLogLevelPersistence(
+				new LayeredLogLevelPersistence(classpathIndex, RxConfigurationConstants.CLASSPATH_CONF_PATH, confDir, propertyResolver::resolve));
 		setup.setPropertyLookup(propertyResolver::resolve);
 		LogLevelSetup.setInstance(setup);
 

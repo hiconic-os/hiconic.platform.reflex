@@ -21,6 +21,7 @@ import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
 import com.braintribe.gm.model.reason.essential.UnsupportedOperation;
+import com.braintribe.gm.model.security.reason.Forbidden;
 import com.braintribe.logging.Logger;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.processing.service.api.ProceedContext;
@@ -28,8 +29,10 @@ import com.braintribe.model.processing.service.api.ReasonedServiceAroundProcesso
 import com.braintribe.model.processing.service.api.ReasonedServiceProcessor;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
 import com.braintribe.model.processing.service.api.aspect.DomainIdAspect;
+import com.braintribe.model.processing.service.common.context.UserSessionAspect;
 import com.braintribe.model.service.api.DomainRequest;
 import com.braintribe.model.service.api.ServiceRequest;
+import com.braintribe.model.usersession.UserSession;
 
 import hiconic.rx.model.service.processing.md.ProcessWith;
 import hiconic.rx.module.api.service.ServiceDomain;
@@ -56,8 +59,27 @@ public class RxServiceDomainDispatcher
 		String domainId = context.getDomainId();
 
 		ServiceDomain serviceDomain = serviceDomains.byId(domainId);
+		Maybe<? extends Object> authorizationFailure = authorizeDomain(context, serviceDomain);
+		if (authorizationFailure != null)
+			return authorizationFailure;
 
 		return serviceDomain.evaluator().eval(request).getReasoned();
+	}
+
+	private Maybe<? extends Object> authorizeDomain(ServiceRequestContext context, ServiceDomain serviceDomain) {
+		var allowedRoles = serviceDomain.allowedRoles();
+		if (allowedRoles.isEmpty())
+			return null;
+
+		UserSession userSession = context.findAttribute(UserSessionAspect.class).orElse(null);
+		if (userSession != null && userSession.getEffectiveRoles() != null)
+			for (String role : allowedRoles)
+				if (userSession.getEffectiveRoles().contains(role))
+					return null;
+
+		return Reasons.build(Forbidden.T) //
+				.text("Insufficient privileges to access service domain '" + serviceDomain.domainId() + "'.") //
+				.toMaybe();
 	}
 
 	// ###################################################

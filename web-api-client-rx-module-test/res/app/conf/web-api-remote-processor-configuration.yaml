@@ -1,0 +1,8 @@
+processors:
+- name: configured-test-client
+  baseUrl: http://localhost:1
+  resolverUseCases:
+  - test
+  credentials: !hiconic.rx.webapi.client.model.configuration.HttpUsernamePasswordCredentials
+    user: test-user
+    password: test-password

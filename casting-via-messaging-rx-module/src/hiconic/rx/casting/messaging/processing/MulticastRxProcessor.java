@@ -27,8 +27,11 @@ import com.braintribe.cfg.Configurable;
 import com.braintribe.cfg.DestructionAware;
 import com.braintribe.cfg.Required;
 import com.braintribe.logging.Logger;
+import com.braintribe.model.generic.eval.EvalContext;
+import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.messaging.Message;
 import com.braintribe.model.messaging.Topic;
+import com.braintribe.model.processing.service.api.ParentAttributeContextAspect;
 import com.braintribe.model.processing.service.api.ServiceProcessor;
 import com.braintribe.model.processing.service.api.ServiceProcessorException;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
@@ -77,6 +80,7 @@ public class MulticastRxProcessor implements ServiceProcessor<MulticastRequest, 
 	// private long defaultResponseTimeoutMs = parseLong(getProperty(ENVIRONMENT_MULTICAST_PROCESSING_TIMEOUT, "30000"));
 	// private long warningResponseTimeoutMs = parseLong(getProperty(ENVIRONMENT_MULTICAST_PROCESSING_WARNINGTHRESHOLD, "120000"));
 	private LiveInstances liveInstances;
+	private Evaluator<ServiceRequest> requestEvaluator;
 
 	private final Map<String, BlockingQueue<Message>> responsesMap = new ConcurrentHashMap<>();
 	private boolean localCallOptimizationEnabled = true;
@@ -139,6 +143,11 @@ public class MulticastRxProcessor implements ServiceProcessor<MulticastRequest, 
 	@Required
 	public void setLiveInstances(LiveInstances liveInstances) {
 		this.liveInstances = liveInstances;
+	}
+
+	@Required
+	public void setRequestEvaluator(Evaluator<ServiceRequest> requestEvaluator) {
+		this.requestEvaluator = requestEvaluator;
 	}
 
 	@Configurable
@@ -336,13 +345,15 @@ public class MulticastRxProcessor implements ServiceProcessor<MulticastRequest, 
 
 	private MulticastResponse processLocally(ServiceRequestContext requestContext, MulticastRequest request) {
 		ServiceRequest payloadRequest = request.getServiceRequest();
+		EvalContext<?> evalContext = payloadRequest.eval(requestEvaluator);
+		evalContext.setAttribute(ParentAttributeContextAspect.class, requestContext);
 		if (isAsync(request)) {
-			payloadRequest.eval(requestContext).getAttribute(null);
+			evalContext.getAttribute(null);
 			return null;
 		} else {
 			ServiceResult serviceResult = null;
 			try {
-				serviceResult = ServiceResults.envelope(payloadRequest.eval(requestContext).get());
+				serviceResult = ServiceResults.envelope(evalContext.get());
 			} catch (Exception e) {
 				serviceResult = FailureCodec.INSTANCE.encode(e);
 			}

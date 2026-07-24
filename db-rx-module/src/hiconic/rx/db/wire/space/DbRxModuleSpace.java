@@ -21,6 +21,7 @@ import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
+import com.braintribe.wire.api.scope.InstanceConfiguration;
 import com.zaxxer.hikari.HikariDataSource;
 
 import hiconic.rx.db.model.configuration.Database;
@@ -65,6 +66,7 @@ public class DbRxModuleSpace implements RxModuleContract, DatabaseContract {
 		HikariDataSources bean = new HikariDataSources();
 		bean.setDatabaseConfiguration(dbConfiguration());
 		bean.setTaskScheduler(platform.execution().taskScheduler());
+		InstanceConfiguration.currentInstance().onDestroy(bean::close);
 		return bean;
 	}
 

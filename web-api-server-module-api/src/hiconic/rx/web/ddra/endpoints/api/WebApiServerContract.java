@@ -11,6 +11,9 @@ public interface WebApiServerContract extends RxExportContract {
 	/** @see WebApiMappingOracle */
 	WebApiMappingOracle mappingOracle();
 
+	/** Explicit mappings, including mappings whose target domain is selected by the request itself. */
+	WebApiMappingRegistry mappingRegistry();
+
 	/**
 	 * The path to the web-api servlet, without leading or trailing slash.
 	 * <p>

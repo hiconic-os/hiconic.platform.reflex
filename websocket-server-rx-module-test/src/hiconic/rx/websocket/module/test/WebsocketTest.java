@@ -21,7 +21,10 @@ import java.util.concurrent.TimeUnit;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
+import com.braintribe.gm.model.reason.Maybe;
+import com.braintribe.gm.model.security.reason.Forbidden;
 import com.braintribe.model.service.api.PushRequest;
+import com.braintribe.model.service.api.result.PushResponse;
 import com.braintribe.processing.async.impl.HubPromise;
 
 import hiconic.rx.demo.model.api.ReverseText;
@@ -79,7 +82,10 @@ public class WebsocketTest extends AbstractRxTest {
 			push.setClientIdPattern("test");
 			push.setServiceRequest(reverseText);
 
-			evaluator.eval(push).get();
+			Maybe<? extends PushResponse> externalResult = push.eval(evaluator).getReasoned();
+			Assertions.assertThat(externalResult.isUnsatisfiedBy(Forbidden.T)).isTrue();
+
+			push.eval(platformContract.serviceProcessing().systemEvaluator()).get();
 		}
 
 		if (!closeLatch.await(5, TimeUnit.SECONDS))

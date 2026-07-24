@@ -31,6 +31,10 @@ public interface HttpRequestContext {
 	String requestMethod();
 
 	Object payload();
+
+	default HttpMultipartFormData multipartFormData() {
+		return null;
+	}
 	GenericModelType payloadType();
 	GmSerializationOptions payloadMarshallingOptions();
 	boolean streamResourceContent();

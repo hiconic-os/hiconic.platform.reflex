@@ -30,6 +30,7 @@ public class CronSchedulingRxModuleSpace implements RxModuleContract, CronSchedu
 		bean.setScheduler(scheduler());
 		bean.setSystemAttributeContextSupplier(platform.systemAttributeContextSupplier());
 		bean.setSystemEvaluator(platform.systemEvaluator());
+		bean.setWorkerManager(platform.execution().workerManager());
 		return bean;
 	}
 	

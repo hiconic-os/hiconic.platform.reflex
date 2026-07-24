@@ -28,6 +28,7 @@ public interface SecurityConfiguration extends GenericEntity {
 	String getUserSessionDb();
 	void setUserSessionDb(String userSessionDb);
 
+	@Initializer("{'admin'}")
 	Set<String> getAdminRoles();
 	void setAdminRoles(Set<String> adminRoles);
 

@@ -13,6 +13,8 @@
 // ============================================================================
 package hiconic.rx.access.module.api;
 
+import java.util.function.Supplier;
+
 import com.braintribe.common.attribute.AttributeContext;
 import com.braintribe.model.access.IncrementalAccess;
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSessionFactory;
@@ -21,6 +23,9 @@ import hiconic.rx.access.model.configuration.Access;
 import hiconic.rx.module.api.wire.RxExportContract;
 
 public interface AccessContract extends RxExportContract {
+
+	/** Configures the data and service models for an access during the model configuration phase. */
+	void configureModels(Access accessDenotation);
 
 	void deploy(Access accessDenotation);
 	void deploy(Access accessDenotation, IncrementalAccess access);
@@ -32,6 +37,12 @@ public interface AccessContract extends RxExportContract {
 	PersistenceGmSessionFactory systemSessionFactory();
 
 	PersistenceGmSessionFactory sessionFactory(AttributeContext attributeContext);
+
+	/**
+	 * Supplies the externally reachable resource streaming URL. Kept as a supplier because the
+	 * web server configuration is contributed by another module and may be resolved later.
+	 */
+	void setResourceStreamingUrlSupplier(Supplier<String> urlSupplier);
 
 	AccessDomains accessDomains();
 }

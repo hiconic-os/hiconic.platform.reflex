@@ -228,7 +228,16 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 
 		// get the entity type for the pathInfo or mapping
 		if (mapping != null) {
-			context.setServiceDomain(mapping.getServiceDomain());
+			String mappedDomain = mapping.getServiceDomain();
+			if (mappedDomain != null) {
+				context.setServiceDomain(mappedDomain);
+			} else {
+				String requestedDomain = context.getRequest().getParameter("domainId");
+				if (!StringTools.isEmpty(requestedDomain)) {
+					context.setServiceDomain(requestedDomain);
+					checkServiceDomain(context);
+				}
+			}
 
 		} else {
 			Collection<String> allowedHttpMethodsForMapping = mappingOralce.getMethods(getPathInfo(context));

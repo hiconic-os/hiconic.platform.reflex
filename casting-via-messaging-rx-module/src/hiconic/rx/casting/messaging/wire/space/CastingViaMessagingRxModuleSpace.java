@@ -50,9 +50,9 @@ public class CastingViaMessagingRxModuleSpace implements RxModuleContract {
 
 	@Override
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
-		ServiceDomainConfiguration systemSd = configurations.system();
+		ServiceDomainConfiguration internalSd = configurations.internal();
 
-		systemSd.bindRequest(MulticastRequest.T, this::multicastProcessor);
+		internalSd.bindRequest(MulticastRequest.T, this::multicastProcessor);
 	}
 
 	@Managed
@@ -63,6 +63,7 @@ public class CastingViaMessagingRxModuleSpace implements RxModuleContract {
 		bean.setResponseTopicName(messagingDestinations.multicastResponseTopicName());
 		bean.setSenderId(platform.application().instanceId());
 		bean.setLiveInstances(topology.liveInstances());
+		bean.setRequestEvaluator(platform.serviceProcessing().evaluator());
 
 		return bean;
 	}

@@ -50,8 +50,18 @@ limitations under the License.
             <version>${V.com.braintribe.gm}</version>
         </dependency>
         <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>resource-api-model</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
+        <dependency>
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>reflex-module-api</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>access-module-api</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
         <dependency>

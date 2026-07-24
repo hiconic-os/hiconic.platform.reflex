@@ -41,6 +41,11 @@ limitations under the License.
         </dependency>
         <dependency>
             <groupId>com.braintribe.gm</groupId>
+            <artifactId>security-service-configuration-model</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.braintribe.gm</groupId>
             <artifactId>persistence-user-session-model</artifactId>
             <version>${V.com.braintribe.gm}</version>
         </dependency>

@@ -26,6 +26,7 @@ import com.braintribe.model.processing.securityservice.commons.scope.StandardUse
 import com.braintribe.model.processing.service.api.InterceptorRegistry;
 import com.braintribe.model.processing.service.api.ReasonedServiceProcessor;
 import com.braintribe.model.processing.service.common.context.UserSessionStack;
+import com.braintribe.model.security.service.config.OpenUserSessionConfiguration;
 import com.braintribe.model.securityservice.AuthenticateCredentials;
 import com.braintribe.model.securityservice.AuthenticateCredentialsResponse;
 import com.braintribe.model.securityservice.SecurityRequest;
@@ -77,8 +78,14 @@ public class SecurityRxModuleSpace implements RxModuleContract, SecurityContract
 	private UserServicesSpace userServices;
 
 	@Override
+	public void onApplicationReady() {
+		userServices.provisionConfiguredUsers();
+	}
+
+	@Override
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
 		ServiceDomainConfiguration configuration = configurations.byId(SecurityServiceDomain.security);
+		configuration.setDisplayName("Security");
 		configuration.bindRequest(SecurityRequest.T, this::securityProcessor);
 		configuration.bindRequest(SimplifiedOpenUserSession.T, this::simpleSecurityProcessor);
 		configuration.bindRequest(AuthenticateCredentials.T, this::authenticationProcessor);
@@ -149,6 +156,8 @@ public class SecurityRxModuleSpace implements RxModuleContract, SecurityContract
 		bean.setEvaluator(serviceProcessing.evaluator());
 		bean.setUserService(userServices.userService());
 		bean.setUserSessionService(userServices.userSessionService());
+		bean.setOpenUserSessionConfiguration(platform.configuration().readConfig(OpenUserSessionConfiguration.T).get());
+		bean.setInternalRole(internalRole());
 		return bean;
 	}
 

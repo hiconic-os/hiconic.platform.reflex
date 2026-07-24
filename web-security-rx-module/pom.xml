@@ -79,5 +79,10 @@
             <artifactId>security-configuration-model</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>security-module-api</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
     </dependencies>
 </project>

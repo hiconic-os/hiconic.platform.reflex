@@ -13,8 +13,8 @@
 // ============================================================================
 package hiconic.platform.reflex.web_server.processing;
 
-import java.io.File;
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.security.KeyStore;
 
 import javax.net.ssl.KeyManagerFactory;
@@ -33,8 +33,6 @@ public record SslConfig(int port, SSLContext sslContext) {
 		if (certPath == null)
 			return null;
 		
-		File certificateFile = new File(certPath);
-		
 		String password = config.getSslKeyStorePassword();
 		if (password == null)
 			return null;
@@ -44,7 +42,7 @@ public record SslConfig(int port, SSLContext sslContext) {
 		try {
 			// Load the keystore
 			KeyStore keyStore = KeyStore.getInstance("PKCS12");
-			try (var keystoreStream = new FileInputStream(certificateFile)) {
+			try (var keystoreStream = openKeyStore(certPath)) {
 			    keyStore.load(keystoreStream, password.toCharArray());
 			}
 
@@ -60,5 +58,21 @@ public record SslConfig(int port, SSLContext sslContext) {
 		}
         
         return new SslConfig(port, sslContext);
+	}
+
+	private static InputStream openKeyStore(String path) throws Exception {
+		if (!path.startsWith("classpath:"))
+			return new FileInputStream(path);
+
+		String resourcePath = path.substring("classpath:".length());
+		while (resourcePath.startsWith("/"))
+			resourcePath = resourcePath.substring(1);
+
+		ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+		InputStream stream = classLoader.getResourceAsStream(resourcePath);
+		if (stream == null)
+			throw new IllegalArgumentException("SSL key store classpath resource not found: " + resourcePath);
+
+		return stream;
 	}
 }

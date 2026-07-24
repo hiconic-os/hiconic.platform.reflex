@@ -41,7 +41,9 @@ import com.braintribe.model.usersession.UserSessionType;
 public class JdbcUserSessionService extends AbstractUserSessionService {
 
 	DataSource dataSource;
-	
+	private final Object tableInitializationMonitor = new Object();
+	private volatile boolean tableInitialized;
+
 	private String tableName = "HC_USER_SESSION";
 	
 	protected String getCreatePersistenceUserSessionStmt() {
@@ -87,30 +89,32 @@ public class JdbcUserSessionService extends AbstractUserSessionService {
 	}
 
 	protected Connection openJdbcConnection() throws SecurityServiceException {
+		ensureTable();
 
-		final Connection connection; 
-		
 		try {
-			connection = dataSource.getConnection();
+			return dataSource.getConnection();
 		} catch (Exception e) {
 			throw Exceptions.unchecked(e, "Failed to obtain the JDBC connection from the provider");
 		}
-		
-		try {
-			GmDb gmDb = GmDb.newDb(dataSource).done();
-			UserSessionJdbcTableDefinition td = new UserSessionJdbcTableDefinition(gmDb, tableName);
-			td.gmTable.ensure();
-		}
-		catch (Exception e) {
+	}
+
+	private void ensureTable() {
+		if (tableInitialized)
+			return;
+
+		synchronized (tableInitializationMonitor) {
+			if (tableInitialized)
+				return;
+
 			try {
-				connection.close();
-			} catch (SQLException e1) {
-				log.error("error while closing connection", e);
+				GmDb gmDb = GmDb.newDb(dataSource).done();
+				UserSessionJdbcTableDefinition td = new UserSessionJdbcTableDefinition(gmDb, tableName);
+				td.gmTable.ensure();
+				tableInitialized = true;
+			} catch (Exception e) {
+				throw Exceptions.unchecked(e, "Failed to ensure " + tableName + " table");
 			}
-			throw Exceptions.unchecked(e, "Failed to ensure " + tableName + " table");
 		}
-		
-		return connection;
 	}
 
 	@Override

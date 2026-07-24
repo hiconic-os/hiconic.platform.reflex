@@ -16,6 +16,7 @@
 package hiconic.rx.webapi.client.processing;
 
 import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -43,6 +44,7 @@ import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.methods.RequestBuilder;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.ByteArrayEntity;
+import org.apache.http.entity.AbstractHttpEntity;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.message.BasicLineFormatter;
@@ -97,11 +99,17 @@ import com.braintribe.utils.collection.impl.AttributeContexts;
 import com.braintribe.utils.lcd.StopWatch;
 import com.braintribe.utils.stream.api.StreamPipe;
 import com.braintribe.utils.stream.api.StreamPipeFactory;
+import com.braintribe.web.multipart.api.FormDataWriter;
+import com.braintribe.web.multipart.api.MutablePartHeader;
+import com.braintribe.web.multipart.api.PartWriter;
+import com.braintribe.web.multipart.impl.Multiparts;
 
 import hiconic.rx.webapi.client.api.HttpClient;
 import hiconic.rx.webapi.client.api.HttpClientException;
 import hiconic.rx.webapi.client.api.HttpConstants;
 import hiconic.rx.webapi.client.api.HttpDateFormatting;
+import hiconic.rx.webapi.client.api.HttpMultipartFormData;
+import hiconic.rx.webapi.client.api.HttpMultipartPart;
 import hiconic.rx.webapi.client.api.HttpRequestContext;
 import hiconic.rx.webapi.client.api.HttpResponse;
 import hiconic.rx.webapi.client.api.HttpResponseBuilder;
@@ -447,12 +455,15 @@ public class GmHttpClient implements HttpClient {
 		}
 
 		Object payload = context.payload();
-		if (payload != null) {
-
-			// TODO: Support multiple payload objects with MultiPart
+		HttpMultipartFormData multipartFormData = context.multipartFormData();
+		if (payload != null || multipartFormData != null) {
 
 			final HttpEntity body;
-			if (payload instanceof Resource && context.streamResourceContent()) {
+			if (multipartFormData != null) {
+				String boundary = Multiparts.generateBoundary();
+				body = new MultipartFormDataHttpEntity(context, multipartFormData, boundary);
+				requestBuilder.setHeader(HttpConstants.HTTP_HEADER_CONTENTTYPE, "multipart/form-data; boundary=" + boundary);
+			} else if (payload instanceof Resource && context.streamResourceContent()) {
 
 				Resource resource = (Resource) payload;
 				body = new ResourceHttpEntity(resource, evaluator);
@@ -484,14 +495,102 @@ public class GmHttpClient implements HttpClient {
 		return requestBuilder;
 	}
 
+	private class MultipartFormDataHttpEntity extends AbstractHttpEntity {
+		private final HttpRequestContext context;
+		private final HttpMultipartFormData formData;
+		private final String boundary;
+
+		private MultipartFormDataHttpEntity(HttpRequestContext context, HttpMultipartFormData formData, String boundary) {
+			this.context = context;
+			this.formData = formData;
+			this.boundary = boundary;
+		}
+
+		@Override public boolean isRepeatable() { return true; }
+		@Override public long getContentLength() { return -1; }
+		@Override public boolean isStreaming() { return true; }
+
+		@Override
+		public InputStream getContent() throws IOException {
+			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			writeTo(out);
+			return new ByteArrayInputStream(out.toByteArray());
+		}
+
+		@Override
+		public void writeTo(OutputStream outstream) throws IOException {
+			try (FormDataWriter writer = Multiparts.formDataWriter(outstream, boundary)) {
+				writeRequestPart(writer);
+				for (HttpMultipartPart part : formData.getParts())
+					writePart(writer, part);
+			} catch (IOException e) {
+				throw e;
+			} catch (Exception e) {
+				throw new IOException("Error while writing multipart form-data request", e);
+			}
+		}
+
+		private void writeRequestPart(FormDataWriter writer) throws Exception {
+			if (StringTools.isBlank(formData.getRequestPartName()))
+				return;
+			MutablePartHeader header = Multiparts.newPartHeader().setName(formData.getRequestPartName())
+					.setContentType(formData.getRequestPartMimeType());
+			PartWriter partWriter = writer.openPart(header);
+			try (OutputStream out = partWriter.outputStream()) {
+				getMarshaller(formData.getRequestPartMimeType()).marshall(out, context.payload(),
+						getMarshallingOptions(context, context.payload()));
+			}
+		}
+
+		private void writePart(FormDataWriter writer, HttpMultipartPart part) throws Exception {
+			MutablePartHeader header = Multiparts.newPartHeader().setName(part.getName());
+			part.getHeaders().forEach(header::setHeader);
+			if (!StringTools.isBlank(part.getFileName()))
+				header.setFileName(part.getFileName());
+			String mimeType = resolvePartMimeType(part);
+			header.setContentType(mimeType);
+
+			PartWriter partWriter = writer.openPart(header);
+			try (OutputStream out = partWriter.outputStream()) {
+				switch (part.getKind()) {
+				case RESOURCE:
+					if (!(part.getContent() instanceof Resource))
+						throw new IllegalArgumentException("RESOURCE multipart content must be a Resource, but was " + typeName(part.getContent()));
+					new ResourceHttpEntity((Resource) part.getContent(), evaluator).writeTo(out);
+					break;
+				case TEXT:
+					out.write(String.valueOf(part.getContent() == null ? "" : part.getContent()).getBytes(StandardCharsets.UTF_8));
+					break;
+				case MARSHALLED:
+					getMarshaller(mimeType).marshall(out, part.getContent(), getMarshallingOptions(context, part.getContent(), null));
+					break;
+				default:
+					throw new IllegalArgumentException("Unsupported multipart part kind: " + part.getKind());
+				}
+			}
+		}
+
+		private String resolvePartMimeType(HttpMultipartPart part) {
+			if (!StringTools.isBlank(part.getMimeType())) return part.getMimeType();
+			return switch (part.getKind()) {
+				case RESOURCE -> "application/octet-stream";
+				case TEXT -> "text/plain; charset=UTF-8";
+				case MARSHALLED -> "application/json";
+			};
+		}
+
+		private String typeName(Object value) { return value == null ? "null" : value.getClass().getName(); }
+	}
+
 	private GmSerializationOptions getMarshallingOptions(HttpRequestContext context, Object payload) {
+		return getMarshallingOptions(context, payload, context.payloadType());
+	}
+
+	private GmSerializationOptions getMarshallingOptions(HttpRequestContext context, Object payload, GenericModelType configuredRootType) {
 		GmSerializationOptions marshallingOptions = context.payloadMarshallingOptions();
 
 		if (marshallingOptions == null) {
-			GenericModelType rootType = context.payloadType();
-			if (rootType == null) {
-				baseType.getActualType(payload);
-			}
+			GenericModelType rootType = configuredRootType != null ? configuredRootType : payload == null ? baseType : baseType.getActualType(payload);
 
 			HttpDateFormatting dateFormatting = context.dateFormatting();
 			if (requestLogging != null && logger.isLevelEnabled(requestLogging)) {
@@ -525,7 +624,7 @@ public class GmHttpClient implements HttpClient {
 		try {
 			URIBuilder uriBuilder = new URIBuilder(requestUri);
 
-			context.queryParameters().forEach(p -> uriBuilder.setParameter(p.getName(), p.getValue()));
+			context.queryParameters().forEach(p -> uriBuilder.addParameter(p.getName(), p.getValue()));
 
 			return uriBuilder.build();
 		} catch (URISyntaxException e) {
@@ -636,7 +735,7 @@ public class GmHttpClient implements HttpClient {
 
 				sb.append("'\n requestPayloadAsString: '");
 				HttpEntity entity = requestBuilder.getEntity();
-				if (entity != null && !(entity instanceof ResourceHttpEntity)) {
+				if (entity != null && !(entity instanceof ResourceHttpEntity) && !(entity instanceof MultipartFormDataHttpEntity)) {
 					try {
 						String body = EntityUtils.toString(entity);
 						sb.append(body);

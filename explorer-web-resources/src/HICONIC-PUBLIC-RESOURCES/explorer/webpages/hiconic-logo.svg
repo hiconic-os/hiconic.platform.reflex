@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 160" role="img" aria-labelledby="title description">
+  <title id="title">Hiconic</title>
+  <desc id="description">Hiconic platform logo</desc>
+  <g fill="none" stroke="#138db2" stroke-linecap="square">
+    <circle cx="80" cy="80" r="62" stroke-width="5" stroke-dasharray="2 8"/>
+    <path d="M48 43v74M112 43v74M48 80h64" stroke-width="18"/>
+    <path d="M39 52v74M103 52v74M39 89h64" stroke-width="2" opacity=".7"/>
+  </g>
+  <text x="166" y="101" fill="#17232c" font-family="Arial, Helvetica, sans-serif" font-size="58" font-weight="600" letter-spacing="7">HICONIC</text>
+</svg>

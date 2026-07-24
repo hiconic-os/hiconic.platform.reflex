@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<model-declaration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="model-declaration-1.0.xsd">
+
+  <name>hiconic.platform.reflex:packaged-resource-model</name>
+
+  <groupId>hiconic.platform.reflex</groupId>
+  <artifactId>packaged-resource-model</artifactId>
+  <version>1.0.1-rc</version>
+  <hash>d6505b36df1376c644fda41797815b38</hash>
+
+  <dependencies>
+    <dependency>com.braintribe.gm:resource-model</dependency>
+  </dependencies>
+
+  <types>
+    <type>hiconic.rx.resource.model.packaged.PackagedResourceNamespace</type>
+    <type>hiconic.rx.resource.model.packaged.PackagedResourceSource</type>
+  </types>
+
+</model-declaration>

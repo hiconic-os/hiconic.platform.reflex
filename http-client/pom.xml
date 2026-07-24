@@ -56,5 +56,10 @@
             <artifactId>commons-io</artifactId>
             <version>${V.commons-io}</version>
         </dependency>
+        <dependency>
+            <groupId>com.braintribe.web.multipart</groupId>
+            <artifactId>multipart-api</artifactId>
+            <version>${V.com.braintribe.web.multipart}</version>
+        </dependency>
     </dependencies>
 </project>

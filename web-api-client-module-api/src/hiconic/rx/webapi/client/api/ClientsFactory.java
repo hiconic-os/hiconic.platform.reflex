@@ -5,18 +5,18 @@ import java.util.Set;
 import com.braintribe.model.processing.service.api.ServiceProcessor;
 import com.braintribe.model.service.api.ServiceRequest;
 
-import hiconic.rx.webapi.client.model.configuration.GmHttpClient;
+import hiconic.rx.webapi.client.model.configuration.WebApiRemoteProcessor;
 
 /**
  * @author peter.gazdik
  */
 public interface ClientsFactory {
 
-	HttpClient createGmHttpClient(GmHttpClient configuration);
+	HttpClient createHttpClient(WebApiRemoteProcessor configuration);
 
 	/**
-	 * Registers a ServiceProcessor which delegates a request via an {@link HttpClient}, configured via HttpPr
+	 * Creates a {@link ServiceProcessor} which delegates requests via the given {@link HttpClient}.
 	 */
-	ServiceProcessor<ServiceRequest, Object> createMdBasedWebApiClientProcessor(Set<String> mdUseCases);
+	ServiceProcessor<ServiceRequest, Object> createMdBasedWebApiClientProcessor(HttpClient client, Set<String> mdUseCases);
 
 }

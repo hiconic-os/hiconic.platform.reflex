@@ -14,7 +14,10 @@
 package hiconic.rx.security.processor;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import com.braintribe.cfg.Configurable;
@@ -24,6 +27,8 @@ import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.essential.InternalError;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
+import com.braintribe.gm.model.reason.essential.NotFound;
+import com.braintribe.gm.model.security.reason.Forbidden;
 import com.braintribe.gm.model.security.reason.InvalidCredentials;
 import com.braintribe.gm.model.security.reason.InvalidSession;
 import com.braintribe.gm.model.security.reason.SessionExpired;
@@ -32,10 +37,14 @@ import com.braintribe.logging.Logger;
 import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.processing.securityservice.api.DeletedSessionInfo;
 import com.braintribe.model.processing.securityservice.api.UserSessionService;
+import com.braintribe.model.processing.securityservice.api.attributes.OpenUserSessionEntryPointAttribute;
+import com.braintribe.model.processing.securityservice.impl.Roles;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
 import com.braintribe.model.processing.service.common.context.UserSessionAspect;
 import com.braintribe.model.processing.service.impl.AbstractDispatchingServiceProcessor;
 import com.braintribe.model.processing.service.impl.DispatchConfiguration;
+import com.braintribe.model.security.service.config.OpenUserSessionConfiguration;
+import com.braintribe.model.security.service.config.OpenUserSessionEntryPoint;
 import com.braintribe.model.securityservice.AuthenticateCredentials;
 import com.braintribe.model.securityservice.AuthenticateCredentialsResponse;
 import com.braintribe.model.securityservice.AuthenticatedUser;
@@ -75,6 +84,9 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 	private boolean enableUserStatistics;
 	private TimeSpan sessionMaxIdleTime;
 	private TimeSpan sessionMaxAge;
+	private String internalRole = "internal";
+	private OpenUserSessionConfiguration openUserSessionConfiguration = OpenUserSessionConfiguration.T.create();
+	private Lazy<Map<String, OpenUserSessionEntryPoint>> entryPointsByName = new Lazy<>(this::indexEntryPointsByName);
 	private final CredentialsHasher credentialsHasher = new CredentialsHasher();
 	
 	@Required
@@ -93,6 +105,17 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 	@Configurable
 	public void setUserService(UserService userService) {
 		this.userService = userService;
+	}
+
+	@Configurable
+	public void setOpenUserSessionConfiguration(OpenUserSessionConfiguration openUserSessionConfiguration) {
+		this.openUserSessionConfiguration = openUserSessionConfiguration;
+		this.entryPointsByName = new Lazy<>(this::indexEntryPointsByName);
+	}
+
+	@Configurable
+	public void setInternalRole(String internalRole) {
+		this.internalRole = internalRole;
 	}
 
 	@Configurable
@@ -141,6 +164,13 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 		dispatching.register(LogoutSession.T, (c, r) -> logoutSession(r));
 	}
 
+	private Map<String, OpenUserSessionEntryPoint> indexEntryPointsByName() {
+		Map<String, OpenUserSessionEntryPoint> index = new HashMap<>();
+		for (OpenUserSessionEntryPoint entryPoint : openUserSessionConfiguration.getEntryPoints())
+			index.put(entryPoint.getName(), entryPoint);
+		return index;
+	}
+
 	private boolean logoutSession(LogoutSession request) {
 		return logout(request.getSessionId());
 	}
@@ -163,15 +193,12 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 	}
 
 	private Maybe<OpenUserSessionResponse> openUserSession(ServiceRequestContext requestContext, OpenUserSession openUserSession) {
-		Maybe<UserSession> maybe = openOrAquireUserSession(requestContext, openUserSession);
-		return maybe.map(this::createResponseFrom);
-	}
+		Maybe<ValidationResult> validationResultMaybe = validate(requestContext, openUserSession);
+		if (validationResultMaybe.isUnsatisfied())
+			return validationResultMaybe.propagateReason();
 
-	private Maybe<UserSession> openOrAquireUserSession(ServiceRequestContext requestContext, OpenUserSession openUserSession) {
+		ValidationResult validationResult = validationResultMaybe.get();
 		Credentials credentials = openUserSession.getCredentials();
-
-		if (credentials == null)
-			return Reasons.build(InvalidArgument.T).text("OpenUserSession.credentials must not be null").toMaybe();
 
 		String acquirationKey = null;
 
@@ -184,14 +211,19 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 			Maybe<UserSession> acquiredUserSessionMaybe = acquireUserSession(requestContext, acquirationKey);
 
 			if (acquiredUserSessionMaybe.isSatisfied()) {
-				return acquiredUserSessionMaybe;
+				UserSession userSession = acquiredUserSessionMaybe.get();
+				Reason authorizationFailure = checkAuthorization(validationResult.entryPoint(), userSession.getEffectiveRoles());
+				if (authorizationFailure != null)
+					return authorizationFailure.asMaybe();
+
+				return Maybe.complete(createResponseFrom(userSession, true));
 			}
 
 			// TODO: rethink the responsibility for UserSession transcription and therefore the responsibility of acquiration
 			// blocking
 			if (acquiredUserSessionMaybe.isUnsatisfiedBy(InvalidCredentials.T)) {
 				// In this case the credentials are blocked via the acquiration mechanism and a reauthentication is not possible
-				return acquiredUserSessionMaybe.propagateReason();
+				return acquiredUserSessionMaybe.whyUnsatisfied().asMaybe();
 
 			} else if (!acquiredUserSessionMaybe.isUnsatisfiedBy(SessionNotFound.T)) {
 				log.debug("Error while finding session via acquiration key: " + acquiredUserSessionMaybe.whyUnsatisfied().stringify());
@@ -205,9 +237,86 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 		Maybe<? extends AuthenticateCredentialsResponse> maybe = authenticateCredentials.eval(evaluator).getReasoned();
 
 		if (maybe.isUnsatisfied())
-			return maybe.propagateReason();
+			return Maybe.empty(maybe.whyUnsatisfied());
 
-		return buildUserSession(requestContext, openUserSession, maybe.get(), acquirationKey);
+		AuthenticateCredentialsResponse authenticatedCredentialsResponse = maybe.get();
+		if (authenticatedCredentialsResponse instanceof AuthenticatedUserSession authenticatedUserSession) {
+			UserSession userSession = authenticatedUserSession.getUserSession();
+			Reason authorizationFailure = checkAuthorization(validationResult.entryPoint(), userSession.getEffectiveRoles());
+			if (authorizationFailure != null)
+				return authorizationFailure.asMaybe();
+
+			return Maybe.complete(createResponseFrom(userSession, true));
+		}
+
+		Reason authorizationFailure = checkAuthorization(validationResult.entryPoint(),
+				Roles.authenticatedCredentialsEffectiveRoles(authenticatedCredentialsResponse));
+		if (authorizationFailure != null)
+			return authorizationFailure.asMaybe();
+
+		return buildUserSession(requestContext, openUserSession, validationResult.entryPoint(), authenticatedCredentialsResponse, acquirationKey) //
+				.map(userSession -> createResponseFrom(userSession, false));
+	}
+
+	private record ValidationResult(OpenUserSessionEntryPoint entryPoint) {
+	}
+
+	private class RequestValidationContext {
+		private final Lazy<UserSession> userSession;
+
+		RequestValidationContext(ServiceRequestContext requestContext) {
+			userSession = new Lazy<>(() -> requestContext.findOrNull(UserSessionAspect.class));
+		}
+
+		boolean isInternalRequest() {
+			UserSession session = userSession.get();
+			return session != null && session.getEffectiveRoles().contains(internalRole);
+		}
+	}
+
+	private Maybe<ValidationResult> validate(ServiceRequestContext requestContext, OpenUserSession request) {
+		if (request.getCredentials() == null)
+			return Reasons.build(InvalidArgument.T).text("OpenUserSession.credentials must not be null").toMaybe();
+
+		RequestValidationContext validationContext = new RequestValidationContext(requestContext);
+		if (request.getSkipAuthorization() && !validationContext.isInternalRequest()) {
+			Forbidden cause = Reasons.build(Forbidden.T).text("Insufficient rights to skip authorization").toReason();
+			return Reasons.build(InvalidArgument.T).text("Invalid property value for skipAuthorization").cause(cause).toMaybe();
+		}
+
+		String entryPointName = request.getEntryPoint();
+		OpenUserSessionEntryPoint entryPoint;
+		if (entryPointName != null) {
+			if (!validationContext.isInternalRequest()) {
+				Forbidden cause = Reasons.build(Forbidden.T).text("Insufficient rights to specify an entry point").toReason();
+				return Reasons.build(InvalidArgument.T).text("Invalid property value for entryPoint").cause(cause).toMaybe();
+			}
+
+			entryPoint = entryPointsByName.get().get(entryPointName);
+			if (entryPoint == null) {
+				NotFound cause = Reasons.build(NotFound.T).text("Unknown entry point [" + entryPointName + "]").toReason();
+				return Reasons.build(InvalidArgument.T).text("Invalid property value for entryPoint").cause(cause).toMaybe();
+			}
+		} else {
+			entryPoint = requestContext.findOrNull(OpenUserSessionEntryPointAttribute.class);
+		}
+
+		return Maybe.complete(new ValidationResult(entryPoint));
+	}
+
+	private Reason checkAuthorization(OpenUserSessionEntryPoint entryPoint, Set<String> effectiveRoles) {
+		if (entryPoint == null || checkAuthorization(effectiveRoles, entryPoint.getAllowedRoles(), entryPoint.getForbiddenRoles()))
+			return null;
+
+		return Reasons.build(Forbidden.T).text("Insufficient rights to open a UserSession this way").toReason();
+	}
+
+	public static boolean checkAuthorization(Set<String> effectiveRoles, Set<String> allowedRoles, Set<String> forbiddenRoles) {
+		if (!forbiddenRoles.isEmpty() && effectiveRoles.stream().anyMatch(forbiddenRoles::contains))
+			return false;
+		if (!allowedRoles.isEmpty())
+			return effectiveRoles.stream().anyMatch(allowedRoles::contains);
+		return true;
 	}
 
 	private Maybe<UserSession> acquireUserSession(ServiceRequestContext requestContext, String acquirationKey) {
@@ -216,13 +325,14 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 				.ifSatisfied(this::touchUserSession);
 	}
 
-	private OpenUserSessionResponse createResponseFrom(UserSession userSession) {
+	private OpenUserSessionResponse createResponseFrom(UserSession userSession, boolean reused) {
 		OpenUserSessionResponse response = OpenUserSessionResponse.T.create();
 		response.setUserSession(userSession);
+		response.setReused(reused);
 		return response;
 	}
 
-	private Maybe<UserSession> buildUserSession(ServiceRequestContext context, OpenUserSession openUserSession,
+	private Maybe<UserSession> buildUserSession(ServiceRequestContext context, OpenUserSession openUserSession, OpenUserSessionEntryPoint entryPoint,
 			AuthenticateCredentialsResponse authenticatedCredentialsResponse, String acquirationKey) {
 
 		if (authenticatedCredentialsResponse instanceof AuthenticatedUser authenticatedUser) {
@@ -243,7 +353,7 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 			// TODO: should the expiry date influenced from the outside via OpenUserSession.expiryDate or should this only be
 			// controlled by Credentials/Authentication
 			//@formatter:off
-			Maybe<UserSession> userSessionMaybe = new BasicUserSessionBuilder(userSessionService, sessionMaxIdleTime, sessionMaxAge)
+			Maybe<UserSession> userSessionMaybe = new BasicUserSessionBuilder(userSessionService, entryPoint, sessionMaxIdleTime, sessionMaxAge)
 				.requestContext(context)
 				.request(openUserSession)
 				.acquirationKey(acquirationKey)
@@ -263,10 +373,6 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 			collectStatisticsUponLogin(userSessionMaybe.get());
 
 			return userSessionMaybe;
-
-		} else if (authenticatedCredentialsResponse instanceof AuthenticatedUserSession) {
-			AuthenticatedUserSession authenticatedUserSession = (AuthenticatedUserSession) authenticatedCredentialsResponse;
-			return Maybe.complete(authenticatedUserSession.getUserSession());
 
 		} else {
 			return Reasons.build(InternalError.T)

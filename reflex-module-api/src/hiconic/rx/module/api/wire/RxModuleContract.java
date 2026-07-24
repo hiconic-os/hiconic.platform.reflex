@@ -25,6 +25,7 @@ import hiconic.rx.module.api.service.ModelConfiguration;
 import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
+import hiconic.rx.module.api.service.ServiceProcessorRegistry;
 
 /**
  * Main contract which every Reflex module must implement and which adds configuration and features to the application.
@@ -46,6 +47,7 @@ import hiconic.rx.module.api.service.ServiceDomainConfigurations;
  * <li>{@link #configureMainServiceDomain(ServiceDomainConfiguration)}
  * <li>{@link #configureServiceDomains(ServiceDomainConfigurations)}
  * <li>{@link #registerCrossDomainInterceptors(InterceptorRegistry)}
+ * <li>{@link #registerServiceProcessors(ServiceProcessorRegistry)}
  * <li>{@link #registerFallbackProcessors(ProcessorRegistry)}
  * <li>{@link #configurePlatform(RxPlatformConfigurator)}
  * </ol>
@@ -104,6 +106,11 @@ public interface RxModuleContract extends WireSpace {
 	 * Registers interceptors that will run for each service domain
 	 */
 	default void registerCrossDomainInterceptors(InterceptorRegistry interceptorRegistry) {
+		// implement if needed
+	}
+
+	/** Registers named processor components without instantiating them eagerly. */
+	default void registerServiceProcessors(ServiceProcessorRegistry serviceProcessorRegistry) {
 		// implement if needed
 	}
 

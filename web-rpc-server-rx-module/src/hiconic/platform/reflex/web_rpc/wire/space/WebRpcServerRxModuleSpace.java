@@ -21,6 +21,8 @@ import dev.hiconic.servlet.webrpc.server.GmWebRpcServer;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.web.server.api.WebServerContract;
+import hiconic.rx.web.server.api.WebServerFilters;
+import jakarta.servlet.DispatcherType;
 
 /**
  * This module's javadoc is yet to be written.
@@ -37,6 +39,7 @@ public class WebRpcServerRxModuleSpace implements RxModuleContract {
 	@Override
 	public void onDeploy() {
 		webServer.addServlet("web-rpc", "/rpc/*", webRpcServer());
+		webServer.addFilterMapping(WebServerFilters.authenticationContext, "/rpc/*", DispatcherType.REQUEST);
 	}
 
 	@Managed

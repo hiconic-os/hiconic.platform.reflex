@@ -65,6 +65,11 @@ limitations under the License.
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
         <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>service-processing-metadata-model</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
             <groupId>com.braintribe.gm</groupId>
             <artifactId>aop-access</artifactId>
             <version>${V.com.braintribe.gm}</version>

@@ -15,9 +15,12 @@ package hiconic.rx.access.module.processing;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.ListIterator;
+import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.function.Supplier;
 
 import com.braintribe.model.generic.reflection.EntityType;
@@ -37,6 +40,7 @@ public class RxAccessDataModelConfiguration implements AccessDataModelConfigurat
 
 	private final ModelConfiguration modelConfiguration;
 	private final List<AccessInterceptorEntry> interceptors = Collections.synchronizedList(new ArrayList<>());
+	private volatile List<String> aspectOrdering = List.of();
 
 	public RxAccessDataModelConfiguration(ModelConfiguration modelConfiguration) {
 		this.modelConfiguration = modelConfiguration;
@@ -79,10 +83,13 @@ public class RxAccessDataModelConfiguration implements AccessDataModelConfigurat
 
 			private void register(AccessInterceptorEntry interceptorEntry) {
 				synchronized (interceptors) {
-					if (insertIdentification != null) {
-						requireInterceptorIterator(insertIdentification, before).add(interceptorEntry);
-					} else {
+					if (insertIdentification == null) {
 						interceptors.add(interceptorEntry);
+					} else {
+						int targetIndex = indexOfInterceptor(insertIdentification);
+						if (targetIndex < 0)
+							throw new NoSuchElementException("No access aspect found with identification: '" + insertIdentification + "'");
+						interceptors.add(before ? targetIndex : targetIndex + 1, interceptorEntry);
 					}
 
 					if (interceptors.size() == 1)
@@ -92,32 +99,16 @@ public class RxAccessDataModelConfiguration implements AccessDataModelConfigurat
 		};
 	}
 
-	private ListIterator<AccessInterceptorEntry> requireInterceptorIterator(String identification, boolean before) {
-		ListIterator<AccessInterceptorEntry> iterator = find(identification, before);
-
-		if (!iterator.hasNext())
-			throw new NoSuchElementException("No processor found with identification: '" + identification + "'");
-
-		return iterator;
-	}
-
-	private ListIterator<AccessInterceptorEntry> find(String identification, boolean before) {
-		ListIterator<AccessInterceptorEntry> it = interceptors.listIterator();
-		while (it.hasNext()) {
-			AccessInterceptorEntry entry = it.next();
-			if (entry.identification().equals(identification)) {
-				if (before)
-					it.previous();
-				break;
-			}
-		}
-
-		return it;
+	private int indexOfInterceptor(String identification) {
+		for (int i = 0; i < interceptors.size(); i++)
+			if (interceptors.get(i).identification().equals(identification))
+				return i;
+		return -1;
 	}
 
 	private void configureInterceptors(ModelMetaDataEditor editor) {
 		int prio = 0;
-		for (AccessInterceptorEntry entry : interceptors) {
+		for (AccessInterceptorEntry entry : orderedInterceptors()) {
 			final InterceptAccessWith interceptWith = InterceptAccessWith.T.create();
 
 			interceptWith.setAssociate(entry.interceptorSupplier.get());
@@ -125,6 +116,37 @@ public class RxAccessDataModelConfiguration implements AccessDataModelConfigurat
 
 			editor.addModelMetaData(interceptWith);
 		}
+	}
+
+	private List<AccessInterceptorEntry> orderedInterceptors() {
+		List<AccessInterceptorEntry> entries;
+		synchronized (interceptors) {
+			entries = new ArrayList<>(interceptors);
+		}
+
+		Map<String, AccessInterceptorEntry> byIdentification = new LinkedHashMap<>();
+		for (AccessInterceptorEntry entry : entries) {
+			if (byIdentification.putIfAbsent(entry.identification(), entry) != null)
+				throw new IllegalStateException("Duplicate access aspect identification: '" + entry.identification() + "'");
+		}
+
+		List<AccessInterceptorEntry> result = new ArrayList<>(entries.size());
+		Set<String> explicitlyOrdered = new LinkedHashSet<>();
+		for (String identification : aspectOrdering) {
+			AccessInterceptorEntry entry = byIdentification.get(identification);
+			if (entry != null && explicitlyOrdered.add(identification))
+				result.add(entry);
+		}
+		for (AccessInterceptorEntry entry : entries)
+			if (!explicitlyOrdered.contains(entry.identification()))
+				result.add(entry);
+
+		return result;
+	}
+
+	@Override
+	public void orderAspects(String... identifiers) {
+		aspectOrdering = List.of(identifiers.clone());
 	}
 
 	private static record AccessInterceptorEntry(String identification, Supplier<AccessAspect> interceptorSupplier) {

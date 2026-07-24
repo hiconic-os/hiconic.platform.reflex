@@ -1,0 +1,7 @@
+HICONIC-RESOURCES/test/hello.txt
+HICONIC-PUBLIC-RESOURCES/assets/hello.txt
+HICONIC-PUBLIC-RESOURCES/assets/nested/second.txt
+HICONIC-CONF/logback.xml
+HICONIC-CONF/logback.module-10.xml
+HICONIC-CONF/log-levels.properties
+HICONIC-CONF/log-levels.module-10.properties

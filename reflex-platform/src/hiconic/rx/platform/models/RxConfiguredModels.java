@@ -34,6 +34,7 @@ import hiconic.rx.module.api.service.ConfiguredModel;
 import hiconic.rx.module.api.service.ConfiguredModels;
 import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.service.ModelSymbol;
+import hiconic.rx.module.api.service.ServiceProcessorRegistry;
 
 public class RxConfiguredModels implements ConfiguredModels {
 
@@ -42,6 +43,7 @@ public class RxConfiguredModels implements ConfiguredModels {
 	private final Lazy<Map<GmMetaModel, List<AbstractRxConfiguredModel>>> dependersByModel = new Lazy<>(this::indexDependers);
 	private Supplier<AttributeContext> systemAttributeContextSupplier;
 	private RxCmdResolverManager cmdResolverManager;
+	private ServiceProcessorRegistry serviceProcessorRegistry;
 	
 	@Required
 	public void setSystemAttributeContextSupplier(Supplier<AttributeContext> systemAttributeContextSupplier) {
@@ -51,6 +53,15 @@ public class RxConfiguredModels implements ConfiguredModels {
 	@Required
 	public void setCmdResolverManager(RxCmdResolverManager cmdResolverManager) {
 		this.cmdResolverManager = cmdResolverManager;
+	}
+
+	@Required
+	public void setServiceProcessorRegistry(ServiceProcessorRegistry serviceProcessorRegistry) {
+		this.serviceProcessorRegistry = serviceProcessorRegistry;
+	}
+
+	public ServiceProcessorRegistry serviceProcessorRegistry() {
+		return serviceProcessorRegistry;
 	}
 
 	@Override

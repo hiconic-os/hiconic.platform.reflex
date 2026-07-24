@@ -36,5 +36,10 @@
             <version>${V.hiconic.platform.reflex}</version>
             <?tag asset ?>
         </dependency>
+        <dependency>
+            <groupId>tribefire.extension.web-api</groupId>
+            <artifactId>web-api-client-meta-data-annotations</artifactId>
+            <version>[1.0,1.1)</version>
+        </dependency>
     </dependencies>
 </project>

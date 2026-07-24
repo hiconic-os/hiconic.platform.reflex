@@ -39,6 +39,11 @@ limitations under the License.
         </dependency>
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>hibernate-access-test-commons</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
             <artifactId>hibernate-test-model</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>

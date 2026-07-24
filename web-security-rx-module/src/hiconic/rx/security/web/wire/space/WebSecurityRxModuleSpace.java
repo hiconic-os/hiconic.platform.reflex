@@ -7,6 +7,8 @@ import com.braintribe.wire.api.annotation.Managed;
 import hiconic.rx.module.api.wire.RxConfigurationContract;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
+import hiconic.rx.module.api.service.ServiceDomainConfigurations;
+import hiconic.rx.security.api.SecurityServiceDomain;
 import hiconic.rx.security.model.configuration.SecurityConfiguration;
 import hiconic.rx.security.web.api.AuthFilters;
 import hiconic.rx.security.web.api.CookieHandler;
@@ -22,8 +24,10 @@ import hiconic.rx.security.web.processing.servlet.AuthRxFilter;
 import hiconic.rx.security.web.processing.servlet.AuthRxServlet;
 import hiconic.rx.security.web.processing.servlet.LoginRxServlet;
 import hiconic.rx.security.web.processing.servlet.LogoutRxServlet;
+import hiconic.rx.security.web.processing.WebAuthorizationServiceProcessor;
 import hiconic.rx.web.server.api.WebServerContract;
 import jakarta.servlet.DispatcherType;
+import com.braintribe.model.securityservice.web.WebAuthorizationRequest;
 
 /**
  * This module's javadoc is yet to be written.
@@ -43,10 +47,17 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 	}
 
 	@Override
+	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
+		configurations.byId(SecurityServiceDomain.security)
+				.bindRequest(WebAuthorizationRequest.T, this::webAuthorizationServiceProcessor);
+	}
+
+	@Override
 	public void onDeploy() {
 		webServer.addFilter(AuthFilters.strictAuthFilter, authFilterStrict());
 		webServer.addFilter(AuthFilters.lenientAuthFilter, authFilterLenient());
 		webServer.addFilter(AuthFilters.strictAdminAuthFilter, authFilterAdminStrict());
+		webServer.bindAuthenticationContextDelegate(authFilterLenient());
 
 		if (configurationManager().loginServletEnabled()) {
 			webServer.addServlet("login-servlet", "login", loginServlet());
@@ -86,6 +97,11 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 		bean.setEntryPointProvider(http.openUserSessionConfigurationProvider()::findEntryPointName);
 
 		return bean;
+	}
+
+	@Managed
+	private WebAuthorizationServiceProcessor webAuthorizationServiceProcessor() {
+		return new WebAuthorizationServiceProcessor(http.cookieHandler());
 	}
 
 	// Auth filters

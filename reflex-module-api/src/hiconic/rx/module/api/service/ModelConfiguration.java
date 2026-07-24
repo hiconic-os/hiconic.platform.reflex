@@ -50,6 +50,13 @@ public interface ModelConfiguration extends ModelSymbol {
 
 	<R extends ServiceRequest> void bindRequest(EntityType<R> requestType, Supplier<ServiceProcessor<? super R, ?>> serviceProcessorSupplier);
 
+	/** Binds the request to a lazily resolved, platform-registered processor component. */
+	<R extends ServiceRequest> void bindRequest(EntityType<R> requestType, String serviceProcessorKey);
+
+	default <R extends ServiceRequest> void bindRequestBySymbol(EntityType<R> requestType, ServiceProcessorSymbol serviceProcessorSymbol) {
+		bindRequest(requestType, serviceProcessorSymbol.name());
+	}
+
 	/**
 	 * Binds {@link MappingServiceProcessor}s, i.e. {@link ServiceProcessor}s where dispatching is configured by annotating methods with
 	 * {@link Service}.
@@ -58,6 +65,20 @@ public interface ModelConfiguration extends ModelSymbol {
 			Supplier<MappingServiceProcessor<? super R, ?>> serviceProcessorSupplier);
 
 	InterceptorBuilder bindInterceptor(String identification);
+
+	/**
+	 * Declares the execution order independently from interceptor registration. A later call replaces the previously declared order. Identifiers
+	 * which are not registered on this configured model are ignored; registered interceptors not mentioned here retain their registration order
+	 * behind the explicitly ordered interceptors.
+	 */
+	void orderInterceptors(String... identifications);
+
+	default void orderInterceptors(InterceptorSymbol... identifications) {
+		String[] names = new String[identifications.length];
+		for (int i = 0; i < identifications.length; i++)
+			names[i] = identifications[i].name();
+		orderInterceptors(names);
+	}
 	
 	default InterceptorBuilder bindInterceptor(InterceptorSymbol identification) {
 		return bindInterceptor(identification.name());
