@@ -37,4 +37,9 @@ fi
 # REFLEX_OPTS remains an intentionally late, deployment-specific override/addition.
 read -r -a ENV_JVM_OPTIONS <<< "${REFLEX_OPTS:-}"
 
-"$JAVA_EXECUTABLE" "${PACKAGED_JVM_OPTIONS[@]}" "${ENV_JVM_OPTIONS[@]}" -Dreflex.app.dir="$INST_DIR" -Dreflex.launch.script="$LAUNCH_SCRIPT" -Dreflex.classpath.resources.dir="$INST_DIR/classpath-resources" -Djava.net.useSystemProxies=true -jar "$LIB_PATH/launch.jar" "$@"
+CLASSPATH_RESOURCES_OPTIONS=()
+if [ -d "$INST_DIR/classpath-resources" ]; then
+    CLASSPATH_RESOURCES_OPTIONS+=("-Dreflex.classpath.resources.dir=$INST_DIR/classpath-resources")
+fi
+
+"$JAVA_EXECUTABLE" "${PACKAGED_JVM_OPTIONS[@]}" "${ENV_JVM_OPTIONS[@]}" "${CLASSPATH_RESOURCES_OPTIONS[@]}" -Dreflex.app.dir="$INST_DIR" -Dreflex.launch.script="$LAUNCH_SCRIPT" -Djava.net.useSystemProxies=true -jar "$LIB_PATH/launch.jar" "$@"
