@@ -54,7 +54,6 @@ public class ProcessesExpert {
 			mcR.setServiceRequest(getProcesses);
 			mcR.setAddressee(i);
 			mcR.setTimeout((long) Numbers.MILLISECONDS_PER_MINUTE * 2);
-			mcR.setSessionId(userSessionId);
 			EvalContext<? extends MulticastResponse> eval = mcR.eval(requestEvaluator);
 			MulticastResponse multicastResponse = eval.get();
 

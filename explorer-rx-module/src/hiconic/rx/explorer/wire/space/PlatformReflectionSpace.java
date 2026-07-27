@@ -49,6 +49,7 @@ public class PlatformReflectionSpace implements WireSpace {
 		bean.setApplicationId(platform.application().applicationId());
 		bean.setInstanceId(platform.application().instanceId());
 		bean.setAllowedRoles(security.adminAndInternalRoles());
+		bean.setSystemEvaluator(platform.serviceProcessing().systemEvaluator());
 		bean.setSystemInformationProvider(systemInformationProvider());
 		bean.setRxAppInfoProvider(rxAppInfoProvider());
 		bean.setCommandExecution(systemTools.commandExecution());
@@ -59,6 +60,7 @@ public class PlatformReflectionSpace implements WireSpace {
 		// TODO make zip password configurable
 		bean.setZipPassword(null);
 		bean.setConfFolder(platformResources.confPath().toFile());
+		bean.setClasspathResourcesFolder(platformResources.rootPath().resolve("classpath-resources").toFile());
 		return bean;
 	}
 

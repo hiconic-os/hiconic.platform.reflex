@@ -61,7 +61,7 @@ public class RxPlatform implements AutoCloseable {
 
 	private final SystemProperties systemProperties;
 	private final ApplicationProperties applicationProperties;
-	private final ClasspathIndex classpathIndex = new ClasspathIndex();
+	private final ClasspathIndex classpathIndex;
 	private final RxPropertyResolver propertyResolver;
 
 	private final String[] args;
@@ -94,9 +94,17 @@ public class RxPlatform implements AutoCloseable {
 		
 		systemProperties = PropertyLookups.create(SystemProperties.class, systemPropertyLookup);
 		applicationProperties = PropertyLookups.create(ApplicationProperties.class, applicationPropertyLookup);
+		classpathIndex = createClasspathIndex();
 		propertyResolver = createPropertyResolver();
 
 		start();
+	}
+
+	private ClasspathIndex createClasspathIndex() {
+		String resourcesDir = systemProperties.classpathResourcesDir();
+		return resourcesDir == null || resourcesDir.isBlank()
+				? new ClasspathIndex()
+				: new ClasspathIndex(new File(resourcesDir).toPath());
 	}
 
 	public static Function<String, String> defaultSystemPropertyLookup() {

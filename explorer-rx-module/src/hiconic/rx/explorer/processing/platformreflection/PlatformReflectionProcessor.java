@@ -50,6 +50,7 @@ import com.braintribe.gm.model.security.reason.SecurityReason;
 import com.braintribe.logging.Logger;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.eval.EvalContext;
+import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.processing.bootstrapping.TribefireRuntime;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
 import com.braintribe.model.processing.service.common.FailureCodec;
@@ -57,6 +58,7 @@ import com.braintribe.model.processing.service.common.context.UserSessionAspect;
 import com.braintribe.model.processing.service.impl.AbstractDispatchingServiceProcessor;
 import com.braintribe.model.processing.service.impl.DispatchConfiguration;
 import com.braintribe.model.resource.Resource;
+import com.braintribe.model.service.api.ExecuteAuthorized;
 import com.braintribe.model.service.api.InstanceId;
 import com.braintribe.model.service.api.MulticastRequest;
 import com.braintribe.model.service.api.ServiceRequest;
@@ -66,6 +68,7 @@ import com.braintribe.model.service.api.result.ResponseEnvelope;
 import com.braintribe.model.service.api.result.ServiceResult;
 import com.braintribe.model.service.api.result.StillProcessing;
 import com.braintribe.model.usersession.UserSession;
+import com.braintribe.model.usersession.UserSessionType;
 import com.braintribe.processing.async.api.AsyncCallback;
 import com.braintribe.provider.Box;
 import com.braintribe.utils.CollectionTools;
@@ -148,6 +151,7 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 	private static volatile Object hotspotMBean;
 
 	private Set<String> allowedRoles = Collections.emptySet();
+	private Evaluator<ServiceRequest> systemEvaluator;
 
 	private SystemInformationProvider systemInformationProvider;
 	private Supplier<RxAppInfo> rxAppInfoProvider;
@@ -165,6 +169,7 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 	private String zipPassword = "operating";
 
 	private File confFolder = null;
+	private File classpathResourcesFolder;
 	private File dataFolder;
 
 	private StreamPipeFactory streamPipeFactory;
@@ -431,6 +436,11 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 	@Required
 	public void setAllowedRoles(Set<String> allowedRoles) {
 		this.allowedRoles = allowedRoles;
+	}
+
+	@Required
+	public void setSystemEvaluator(Evaluator<ServiceRequest> systemEvaluator) {
+		this.systemEvaluator = systemEvaluator;
 	}
 
 	private Healthz collectHealthz(ServiceRequestContext context) {
@@ -846,30 +856,13 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 		try {
 			ConfigurationFolder hd = ConfigurationFolder.T.create();
 
-			if (confFolder != null) {
+			if (confFolder != null || classpathResourcesFolder != null) {
 
 				String filename = "conf-" + now(fileDateTimeFormatter) + ".zip";
 
-				List<File> list = FileTools.listFilesRecursively(confFolder);
-
-				String basePath = confFolder.getAbsolutePath();
-				logger.debug(() -> "Base configuration folder pathInfo: " + basePath);
-				int basePathLength = basePath.length();
-				if (!basePath.endsWith("/") && !basePath.endsWith("\\")) {
-					basePathLength++;
-				}
-				if (logger.isDebugEnabled())
-					logger.debug("Base configuration folder pathInfo length (with ending '/'): " + basePathLength);
 				Map<String, File> map = new LinkedHashMap<>();
-				for (File f : list) {
-					String fullPath = f.getAbsolutePath();
-					logger.debug(() -> "Evaluating full pathInfo: " + fullPath);
-					if (fullPath.length() > basePathLength) {
-						String relPath = fullPath.substring(basePathLength);
-						logger.debug(() -> "Including relative pathInfo: " + fullPath);
-						map.put(relPath, f);
-					}
-				}
+				addFolderFiles(map, confFolder, "");
+				addFolderFiles(map, classpathResourcesFolder, "classpath-resources/");
 
 				if (!map.isEmpty()) {
 					Resource callResource = Resource
@@ -889,6 +882,25 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 			throw Exceptions.unchecked(e, "Could not collect the files in the configuration folder: " + confFolder);
 		} finally {
 			logger.debug("Done with processing a GetConfigurationFolder request.");
+		}
+	}
+
+	private void addFolderFiles(Map<String, File> target, File folder, String entryPrefix) {
+		if (folder == null || !folder.isDirectory())
+			return;
+
+		String basePath = folder.getAbsolutePath();
+		logger.debug(() -> "Collecting diagnostic files from: " + basePath);
+		int basePathLength = basePath.length();
+		if (!basePath.endsWith("/") && !basePath.endsWith("\\"))
+			basePathLength++;
+
+		for (File file : FileTools.listFilesRecursively(folder)) {
+			String fullPath = file.getAbsolutePath();
+			if (file.isFile() && fullPath.length() > basePathLength) {
+				String relativePath = fullPath.substring(basePathLength).replace(File.separatorChar, '/');
+				target.put(entryPrefix + relativePath, file);
+			}
 		}
 	}
 
@@ -1264,16 +1276,30 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 		});
 	}
 
+	private ServiceRequest delegatedRequest(ServiceRequest request, ServiceRequestContext context) {
+		UserSession userSession = context.findAspect(UserSessionAspect.class);
+		if (userSession == null || userSession.getType() == UserSessionType.internal)
+			return request;
+
+		String sessionId = context.getRequestorSessionId();
+		if (sessionId == null)
+			sessionId = userSession.getSessionId();
+
+		ExecuteAuthorized delegated = ExecuteAuthorized.T.create();
+		delegated.setSessionId(sessionId);
+		delegated.setServiceRequest(request);
+		return delegated;
+	}
+
 	private <T extends GenericEntity> void multicastRequestAsync(ServiceRequest request, ServiceRequestContext context,
 			final AsyncCallback<T> callback) {
 
 		MulticastRequest mcR = MulticastRequest.T.create();
-		mcR.setSessionId(context.getRequestorSessionId());
-		mcR.setServiceRequest(request);
+		mcR.setServiceRequest(delegatedRequest(request, context));
 		mcR.setAddressee(this.instanceId);
 		// mcR.setTimeout((long) Numbers.MILLISECONDS_PER_MINUTE);
 		mcR.setTimeout((long) Numbers.MILLISECONDS_PER_SECOND * 20);
-		EvalContext<? extends MulticastResponse> eval = mcR.eval(context);
+		EvalContext<? extends MulticastResponse> eval = mcR.eval(systemEvaluator);
 		logger.trace(() -> "Sending " + request + " as an asynchronous multicast request.");
 
 		eval.get(new AsyncCallback<MulticastResponse>() {
@@ -1336,12 +1362,11 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 	private <T extends GenericEntity> T unicastRequestSync(ServiceRequest request, ServiceRequestContext context) {
 
 		MulticastRequest mcR = MulticastRequest.T.create();
-		mcR.setSessionId(context.getRequestorSessionId());
-		mcR.setServiceRequest(request);
+		mcR.setServiceRequest(delegatedRequest(request, context));
 		mcR.setAddressee(this.instanceId);
 		// mcR.setTimeout((long) Numbers.MILLISECONDS_PER_MINUTE);
 		mcR.setTimeout((long) Numbers.MILLISECONDS_PER_SECOND * 60);
-		EvalContext<? extends MulticastResponse> eval = mcR.eval(context);
+		EvalContext<? extends MulticastResponse> eval = mcR.eval(systemEvaluator);
 		logger.trace(() -> "Sending " + request + " as a synchronous multicast request.");
 
 		MulticastResponse multicastResponse = eval.get();
@@ -1381,10 +1406,9 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 			Long waitTimeoutInMs) {
 
 		MulticastRequest mcR = MulticastRequest.T.create();
-		mcR.setSessionId(context.getRequestorSessionId());
-		mcR.setServiceRequest(request);
+		mcR.setServiceRequest(delegatedRequest(request, context));
 		mcR.setTimeout(waitTimeoutInMs);
-		EvalContext<? extends MulticastResponse> eval = mcR.eval(context);
+		EvalContext<? extends MulticastResponse> eval = mcR.eval(systemEvaluator);
 		logger.trace(() -> "Sending " + request + " as a synchronous multicast request.");
 
 		Map<InstanceId, T> responseMap = new ConcurrentHashMap<>();
@@ -1518,6 +1542,10 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 	@Configurable
 	public void setConfFolder(File confFolder) {
 		this.confFolder = confFolder;
+	}
+	@Configurable
+	public void setClasspathResourcesFolder(File classpathResourcesFolder) {
+		this.classpathResourcesFolder = classpathResourcesFolder;
 	}
 	@Configurable
 	public void setDatabaseFolder(File databaseFolder) {

@@ -66,7 +66,6 @@ public class HotThreadsExpert {
 			mcR.setServiceRequest(getHotThreads);
 			mcR.setAddressee(i);
 			mcR.setTimeout((long) Numbers.MILLISECONDS_PER_MINUTE);
-			mcR.setSessionId(userSessionId);
 			EvalContext<? extends MulticastResponse> eval = mcR.eval(requestEvaluator);
 			MulticastResponse multicastResponse = eval.get();
 

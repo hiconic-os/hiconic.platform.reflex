@@ -81,14 +81,18 @@ public class CastingViaMessagingRxModuleSpace implements RxModuleContract {
 	@Managed
 	private GmMqRpcServer server() {
 		GmMqRpcServer bean = new GmMqRpcServer();
-		bean.setRequestEvaluator(platform.serviceProcessing().evaluator());
+		// The casting destination is an internal peer-to-peer transport. Requests
+		// without an ExecuteAuthorized wrapper therefore run as system requests;
+		// wrapped requests can still deliberately switch to their validated user
+		// session in ExecuteAuthorizedServiceProcessor.
+		bean.setRequestEvaluator(platform.serviceProcessing().systemEvaluator());
 		bean.setMessagingSessionProvider(messaging.sessionProvider());
 		bean.setRequestDestinationName(messagingDestinations.multicastRequestTopicName());
 		bean.setRequestDestinationType(Topic.T);
 		bean.setConsumerId(platform.application().instanceId());
 		bean.setExecutor(platform.execution().executorService());
 		bean.setThreadRenamer(platform.execution().threadRenamer());
-		bean.setTrusted(false);
+		bean.setTrusted(true);
 		bean.setKeepAliveInterval(10000L);
 		bean.setEndpointExposure(EndpointExposureAspect.MULTICAST);
 		return bean;

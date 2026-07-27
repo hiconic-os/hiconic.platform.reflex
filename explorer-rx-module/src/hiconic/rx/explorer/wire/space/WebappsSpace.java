@@ -162,7 +162,12 @@ public class WebappsSpace implements WireSpace {
 	@Managed
 	private AboutRxServlet aboutServlet() {
 		AboutRxServlet bean = new AboutRxServlet();
-		bean.setRequestEvaluator(serviceProcessing.evaluator());
+		/*
+		 * The HTTP boundary is protected by strictAdminAuthFilter. Requests created by the
+		 * About page itself target the deliberately system-only internal service domain and
+		 * therefore have to continue with the trusted system evaluator.
+		 */
+		bean.setRequestEvaluator(serviceProcessing.systemEvaluator());
 		bean.setLiveInstances(platform.application().liveInstances());
 		bean.setLocalInstanceId(platform.application().instanceId());
 		bean.setExecutor(platform.execution().executorService());
@@ -182,7 +187,7 @@ public class WebappsSpace implements WireSpace {
 	@Managed
 	private DiagnosticMultinode aboutDiagnosticMultinode() {
 		DiagnosticMultinode bean = new DiagnosticMultinode();
-		bean.setRequestEvaluator(serviceProcessing.evaluator());
+		bean.setRequestEvaluator(serviceProcessing.systemEvaluator());
 		return bean;
 	}
 	@Managed

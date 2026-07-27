@@ -66,7 +66,6 @@ public class Threaddump {
 				mcR.setServiceRequest(gtd);
 				mcR.setAddressee(i);
 				mcR.setTimeout((long) Numbers.MILLISECONDS_PER_MINUTE * 5);
-				mcR.setSessionId(userSessionId);
 				EvalContext<? extends MulticastResponse> eval = mcR.eval(requestEvaluator);
 				MulticastResponse multicastResponse = eval.get();
 

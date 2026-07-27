@@ -21,6 +21,7 @@ import com.braintribe.wire.api.annotation.Name;
 public interface SystemProperties {
 	static String PROPERTY_APP_DIR = "reflex.app.dir";
 	static String PROPERTY_LAUNCH_SCRIPT = "reflex.launch.script"; 
+	static String PROPERTY_CLASSPATH_RESOURCES_DIR = "reflex.classpath.resources.dir";
 	
 	@Name(PROPERTY_APP_DIR)
 	@Default(".")
@@ -29,4 +30,8 @@ public interface SystemProperties {
 	@Name(PROPERTY_LAUNCH_SCRIPT)
 	@Default("launch-script")
 	String launchScript();
+
+	@Name(PROPERTY_CLASSPATH_RESOURCES_DIR)
+	@Default("")
+	String classpathResourcesDir();
 }

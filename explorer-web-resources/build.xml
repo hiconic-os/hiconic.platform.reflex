@@ -2,5 +2,5 @@
 <project xmlns:bt="antlib:com.braintribe.build.ant.tasks" basedir="." default="install">
 	<import file="../classpath-index-ant.xml"/>
 	<bt:import artifact="com.braintribe.devrock.ant:library-ant-script#1.0" useCase="DEVROCK"/>
-	<target name="compile" depends="generate-classpath-index,library-ant-script.compile"/>
+	<target name="compile" depends="generate-pure-classpath-index,library-ant-script.compile,mark-pure-classpath-resource"/>
 </project>

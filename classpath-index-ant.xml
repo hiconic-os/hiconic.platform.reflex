@@ -2,13 +2,41 @@
 <project name="classpath-index">
 	<target name="generate-classpath-index">
 		<mkdir dir="src/META-INF"/>
+		<delete file="src/META-INF/classpath-resource-only" quiet="true"/>
+		<delete file="build/META-INF/classpath-resource-only" quiet="true"/>
 		<pathconvert property="classpath.index.entries" pathsep="${line.separator}">
 			<fileset dir="src">
 				<include name="**/*"/>
+				<exclude name="**/*.java"/>
 				<exclude name="META-INF/classpath-index.txt"/>
+				<exclude name="META-INF/classpath-resource-only"/>
 			</fileset>
 			<map from="${basedir}/src/" to=""/>
 		</pathconvert>
 		<echo file="src/META-INF/classpath-index.txt">${classpath.index.entries}${line.separator}</echo>
+	</target>
+
+	<target name="generate-pure-classpath-index" depends="generate-classpath-index">
+		<resourcecount property="pure.classpath.forbidden.count">
+			<fileset dir="src">
+				<include name="**/*.java"/>
+				<include name="**/*.class"/>
+				<include name="**/*.jar"/>
+				<include name="**/*.so"/>
+				<include name="**/*.dll"/>
+				<include name="**/*.dylib"/>
+				<include name="META-INF/services/**"/>
+			</fileset>
+		</resourcecount>
+		<fail message="A pure classpath resource artifact contains executable or nested runtime content.">
+			<condition>
+				<not><equals arg1="${pure.classpath.forbidden.count}" arg2="0"/></not>
+			</condition>
+		</fail>
+	</target>
+
+	<target name="mark-pure-classpath-resource" depends="generate-pure-classpath-index">
+		<mkdir dir="build/META-INF"/>
+		<echo file="build/META-INF/classpath-resource-only">formatVersion=1${line.separator}</echo>
 	</target>
 </project>
