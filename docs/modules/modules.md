@@ -1,5 +1,8 @@
 # Reflex Modules
 
+See also [External tools](./external-tools.md) for modeled, backend-neutral
+command execution with local and Docker Compose backends.
+
 A _Reflex_ module has to declare a number of things to be recognized and loadable by the _Reflex_ platform:
 
 * Artifact [Dependencies](#artifact-dependencies)
@@ -131,4 +134,3 @@ public class GreetProcessor implements ServiceProcessor<Greet, String> {
     }
 }
 ```
-
