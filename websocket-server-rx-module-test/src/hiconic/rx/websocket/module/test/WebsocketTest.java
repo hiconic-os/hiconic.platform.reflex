@@ -50,6 +50,7 @@ public class WebsocketTest extends AbstractRxTest {
 
 		List<String> data = new ArrayList<>();
 		CountDownLatch readyLatch = new CountDownLatch(1);
+		CountDownLatch messageLatch = new CountDownLatch(2);
 		CountDownLatch closeLatch = new CountDownLatch(1);
 
 		class Listener implements PushChannelLifecycleListener {
@@ -68,6 +69,7 @@ public class WebsocketTest extends AbstractRxTest {
 		try (var wsClient = new WebSocketTestClient(getPort(), d -> {
 			data.add(d);
 			readyLatch.countDown();
+			messageLatch.countDown();
 		}, promise);) {
 
 			Assertions.assertThat(promise.get()).as("failed connection").isTrue();
@@ -86,6 +88,9 @@ public class WebsocketTest extends AbstractRxTest {
 			Assertions.assertThat(externalResult.isUnsatisfiedBy(Forbidden.T)).isTrue();
 
 			push.eval(platformContract.serviceProcessing().systemEvaluator()).get();
+
+			if (!messageLatch.await(5, TimeUnit.SECONDS))
+				Assertions.fail("Timed out waiting for the pushed service request!");
 		}
 
 		if (!closeLatch.await(5, TimeUnit.SECONDS))
