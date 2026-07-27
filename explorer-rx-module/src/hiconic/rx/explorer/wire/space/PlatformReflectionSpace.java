@@ -61,6 +61,7 @@ public class PlatformReflectionSpace implements WireSpace {
 		bean.setZipPassword(null);
 		bean.setConfFolder(platformResources.confPath().toFile());
 		bean.setClasspathResourcesFolder(platformResources.rootPath().resolve("classpath-resources").toFile());
+		bean.setPackagedConfFolder(platformResources.rootPath().resolve("packaged-conf").toFile());
 		return bean;
 	}
 

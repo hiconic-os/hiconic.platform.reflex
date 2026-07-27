@@ -22,6 +22,10 @@ import static com.braintribe.console.ConsoleOutputs.text;
 import java.io.File;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -102,9 +106,17 @@ public class RxPlatform implements AutoCloseable {
 
 	private ClasspathIndex createClasspathIndex() {
 		String resourcesDir = systemProperties.classpathResourcesDir();
-		return resourcesDir == null || resourcesDir.isBlank()
-				? new ClasspathIndex()
-				: new ClasspathIndex(new File(resourcesDir).toPath());
+		if (resourcesDir == null || resourcesDir.isBlank())
+			return new ClasspathIndex();
+
+		List<ClasspathIndex.FilesystemSource> sources = new ArrayList<>();
+		sources.add(ClasspathIndex.filesystemSource(new File(resourcesDir).toPath(), ""));
+
+		Path packagedConfDir = systemProperties.appDir().toPath().resolve("packaged-conf");
+		if (Files.isDirectory(packagedConfDir))
+			sources.add(ClasspathIndex.filesystemSource(packagedConfDir, RxConfigurationConstants.CLASSPATH_CONF_PATH));
+
+		return new ClasspathIndex(sources);
 	}
 
 	public static Function<String, String> defaultSystemPropertyLookup() {

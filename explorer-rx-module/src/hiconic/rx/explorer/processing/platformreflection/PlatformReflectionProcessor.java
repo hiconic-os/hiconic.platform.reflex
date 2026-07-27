@@ -170,6 +170,7 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 
 	private File confFolder = null;
 	private File classpathResourcesFolder;
+	private File packagedConfFolder;
 	private File dataFolder;
 
 	private StreamPipeFactory streamPipeFactory;
@@ -856,13 +857,14 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 		try {
 			ConfigurationFolder hd = ConfigurationFolder.T.create();
 
-			if (confFolder != null || classpathResourcesFolder != null) {
+			if (confFolder != null || classpathResourcesFolder != null || packagedConfFolder != null) {
 
 				String filename = "conf-" + now(fileDateTimeFormatter) + ".zip";
 
 				Map<String, File> map = new LinkedHashMap<>();
 				addFolderFiles(map, confFolder, "");
 				addFolderFiles(map, classpathResourcesFolder, "classpath-resources/");
+				addFolderFiles(map, packagedConfFolder, "packaged-conf/");
 
 				if (!map.isEmpty()) {
 					Resource callResource = Resource
@@ -1546,6 +1548,10 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 	@Configurable
 	public void setClasspathResourcesFolder(File classpathResourcesFolder) {
 		this.classpathResourcesFolder = classpathResourcesFolder;
+	}
+	@Configurable
+	public void setPackagedConfFolder(File packagedConfFolder) {
+		this.packagedConfFolder = packagedConfFolder;
 	}
 	@Configurable
 	public void setDatabaseFolder(File databaseFolder) {
