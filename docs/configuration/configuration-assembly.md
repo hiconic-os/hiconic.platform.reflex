@@ -75,6 +75,23 @@ Import names are exact rather than pattern based. Import declarations from
 multiple configuration artifacts are merged. Incompatible declarations for
 the same name fail assembly.
 
+The declaration is artifact metadata, not runtime configuration. A
+configuration artifact packages it at the stable location
+`META-INF/configuration-imports.yaml`; a terminal application may contribute
+the same metadata. This is deliberately outside `HICONIC-CONF`, so the modeled
+configuration loader never mistakes the declaration for another configuration
+layer. The declaration must nevertheless travel with the artifact: keeping it
+only in a source repository or build configuration would make transitive
+terminal assembly incomplete.
+
+The small declaration model belongs to a central GM
+`configuration-assembly-model` artifact. It must not belong to an Ant task:
+the application-classpath assembler, artifact validators, runtime diagnostics
+and future tooling all need the same semantics without depending on the build
+system. The terminal assembler aggregates the artifact declarations into its
+assembly report. Runtime code consumes that report rather than rediscovering
+and reinterpreting the individual declarations.
+
 Semantics:
 
 - Internal properties must be fully resolvable from packaged properties and
@@ -258,4 +275,3 @@ coverage become progressively stricter.
    explicit compatibility switch.
 8. Enable it for one RX application and compare runtime semantics before
    making it the default.
-
