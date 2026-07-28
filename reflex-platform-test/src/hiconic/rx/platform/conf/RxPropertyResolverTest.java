@@ -78,6 +78,24 @@ public class RxPropertyResolverTest {
 		assertThat(resolver.resolve("key")).isEqualTo("sysValue");
 	}
 
+	@Test
+	public void testManagedModeDoesNotFallBackToHostProperties() {
+		systemProps.put("SYSTEM_VALUE", "hidden");
+		envVars.put("ENV_VALUE", "hidden");
+		resolver.setManagedPropertiesOnly(true);
+
+		assertThat(resolver.resolve("SYSTEM_VALUE")).isNull();
+		assertThat(resolver.resolve("ENV_VALUE")).isNull();
+	}
+
+	@Test
+	public void testManagedModeResolvesMaterializedImportsLikeNormalProperties() {
+		rawProperties.put("IMPORTED_VALUE", "managed");
+		resolver.setManagedPropertiesOnly(true);
+
+		assertThat(resolver.resolve("IMPORTED_VALUE")).isEqualTo("managed");
+	}
+
 	// ENV_PREFIX
 
 	@Test

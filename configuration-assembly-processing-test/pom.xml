@@ -1,0 +1,22 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>hiconic.platform.reflex</groupId>
+		<artifactId>parent</artifactId>
+		<version>[1.0,1.1)</version>
+	</parent>
+	<artifactId>configuration-assembly-processing-test</artifactId>
+	<version>1.0.1</version>
+	<dependencies>
+		<dependency>
+			<groupId>com.braintribe.testing</groupId>
+			<artifactId>unit-test-deps</artifactId>
+			<version>${V.com.braintribe.testing}</version>
+		</dependency>
+		<dependency>
+			<groupId>hiconic.platform.reflex</groupId>
+			<artifactId>configuration-assembly-processing</artifactId>
+			<version>${V.hiconic.platform.reflex}</version>
+		</dependency>
+	</dependencies>
+</project>

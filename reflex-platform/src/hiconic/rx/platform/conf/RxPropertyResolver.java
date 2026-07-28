@@ -42,6 +42,7 @@ public class RxPropertyResolver implements PropertyResolver {
 	private Map<String, String> rawProperties = Collections.emptyMap();
 	private final Map<String, Maybe<String>> resolvedProperties = new ConcurrentHashMap<>();
 	private VirtualEnvironment virtualEnvironment = StandardEnvironment.INSTANCE;
+	private boolean managedPropertiesOnly;
 
 	@Configurable
 	public void setRawProperties(Map<String, String> rawProperties) {
@@ -51,6 +52,14 @@ public class RxPropertyResolver implements PropertyResolver {
 	@Configurable
 	public void setVirtualEnvironment(VirtualEnvironment virtualEnvironment) {
 		this.virtualEnvironment = virtualEnvironment;
+	}
+
+	/**
+	 * Disables all implicit system-property and environment fallbacks. Imported values must already be materialized in {@link #rawProperties}.
+	 */
+	@Configurable
+	public void setManagedPropertiesOnly(boolean managedPropertiesOnly) {
+		this.managedPropertiesOnly = managedPropertiesOnly;
 	}
 
 	@Override
@@ -111,15 +120,18 @@ public class RxPropertyResolver implements PropertyResolver {
 	}
 
 	private String findRawValue(String name) {
+		String value = rawProperties.get(name);
+		if (value != null)
+			return value;
+
+		if (managedPropertiesOnly)
+			return null;
+
 		if (name.startsWith(PropertyResolutions.ENV_PREFIX)) {
 			String envName = name.substring(PropertyResolutions.ENV_PREFIX.length());
 
 			return virtualEnvironment.getEnv(envName);
 		}
-
-		String value = rawProperties.get(name);
-		if (value != null)
-			return value;
 
 		value = virtualEnvironment.getProperty(name);
 		if (value != null)
@@ -147,57 +159,40 @@ public class RxPropertyResolver implements PropertyResolver {
 		}
 
 		private Maybe<String> resolvePlaceholderReasoned(String placeholder) {
-			if (placeholder.contains("(") && placeholder.endsWith(")")) {
-				int idx1 = placeholder.indexOf("(");
-				int idx2 = placeholder.lastIndexOf(")");
-				if (idx1 > 0 && idx2 > idx1) {
-					String method = placeholder.substring(0, idx1);
-					String rawParam = placeholder.substring(idx1 + 1, idx2);
-
-					String param;
-					if (rawParam.startsWith("${") && rawParam.endsWith("}")) {
-						// To support param being another variable "${decrypt(${SECRET_PARAM})} 
-						String nestedProperty = rawParam.substring(2, rawParam.length() - 1);
-						var paramMaybe = resolveReasoned(nestedProperty);
-						if (paramMaybe.isUnsatisfied())
-							return Reasons.build(UnresolvedProperty.T) //
-									.text("Could not resolve parameter [" + rawParam + "] for method [" + method + "]") //
-									.cause(paramMaybe.whyUnsatisfied()) //
-									.toMaybe();
-						
-						param = paramMaybe.get();
-
-					} else {
-						param = rawParam;
-					}
-
-					switch (method) {
-						case "decrypt": {
-							if ((param.startsWith("'") && param.endsWith("'")) || (param.startsWith("\"") && param.endsWith("\"")))
-								param = param.substring(1, param.length() - 1);
-
-							Maybe<String> maybeSecret = resolveReasoned(RxPlatform.PROPERTY_DECRYPT_SECRET);
-							if (maybeSecret.isUnsatisfied())
-								return Reasons.build(ConfigurationError.T).text("Could not resolve decryption secret") //
-										.cause(maybeSecret.whyUnsatisfied()).toMaybe();
-
-							try {
-								String secret = maybeSecret.get();
-								String decryptedValue = Cryptor.decrypt(secret, null, null, null, param);
-								return Maybe.complete(decryptedValue);
-
-							} catch (Exception e) {
-								return Reasons.build(ConfigurationError.T).text("Wrong decryption secret").toMaybe();
-							}
-						}
-
-						default:
-							return Reasons.build(UnsupportedOperation.T).text("Unsupported operation: " + method).toMaybe();
-					}
-				}
-			}
+			var functionCall = RxPropertyExpression.functionCall(placeholder);
+			if (functionCall.isPresent())
+				return resolveFunction(functionCall.get());
 
 			return resolveReasoned(placeholder);
+		}
+
+		private Maybe<String> resolveFunction(RxPropertyExpression.FunctionCall function) {
+			Maybe<String> paramMaybe = function.nestedProperty()
+					.map(RxPropertyResolver.this::resolveReasoned)
+					.orElseGet(() -> Maybe.complete(function.unquotedParameter()));
+			if (paramMaybe.isUnsatisfied())
+				return Reasons.build(UnresolvedProperty.T)
+						.text("Could not resolve parameter [" + function.rawParameter() + "] for method [" + function.name() + "]")
+						.cause(paramMaybe.whyUnsatisfied())
+						.toMaybe();
+
+			return switch (function.name()) {
+				case "decrypt" -> decrypt(paramMaybe.get());
+				default -> Reasons.build(UnsupportedOperation.T).text("Unsupported operation: " + function.name()).toMaybe();
+			};
+		}
+
+		private Maybe<String> decrypt(String encryptedValue) {
+			Maybe<String> maybeSecret = resolveReasoned(RxPlatform.PROPERTY_DECRYPT_SECRET);
+			if (maybeSecret.isUnsatisfied())
+				return Reasons.build(ConfigurationError.T).text("Could not resolve decryption secret")
+						.cause(maybeSecret.whyUnsatisfied()).toMaybe();
+
+			try {
+				return Maybe.complete(Cryptor.decrypt(maybeSecret.get(), null, null, null, encryptedValue));
+			} catch (Exception e) {
+				return Reasons.build(ConfigurationError.T).text("Wrong decryption secret").toMaybe();
+			}
 		}
 	}
 }

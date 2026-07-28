@@ -41,6 +41,7 @@ import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 import com.braintribe.gm.model.reason.ReasonException;
 import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
 import com.braintribe.logging.level.LogLevelSetup;
+import com.braintribe.ve.impl.StandardEnvironment;
 import com.braintribe.wire.api.Wire;
 import com.braintribe.wire.api.context.WireContext;
 import com.braintribe.wire.impl.properties.PropertyLookups;
@@ -49,9 +50,11 @@ import ch.qos.logback.classic.LoggerContext;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.platform.conf.ApplicationProperties;
+import hiconic.rx.platform.conf.ConfigurationPropertyImports;
 import hiconic.rx.platform.conf.RxConfigurationConstants;
 import hiconic.rx.platform.conf.RxPropertyResolver;
 import hiconic.rx.platform.conf.SystemProperties;
+import hiconic.rx.platform.configuration.ConfigurationImportDeclarations;
 import hiconic.rx.platform.logging.LayeredLogbackConfiguration;
 import hiconic.rx.platform.logging.LayeredLogLevelPersistence;
 import hiconic.rx.platform.logging.LogbackLogLevelFramework;
@@ -266,6 +269,15 @@ public class RxPlatform implements AutoCloseable {
 		File confDir = new File(systemProperties.appDir(), "conf");
 		Map<String, String> rawProperties = UnsatisfiedMaybeTunneling.getOrTunnel(
 				RxPropertiesLoader.loadLayered(confDir, RxConfigurationConstants.CLASSPATH_CONF_PATH, "properties", new YamlMarshaller(), classpathIndex));
+
+		ConfigurationImportDeclarations imports = UnsatisfiedMaybeTunneling.getOrTunnel(
+				ConfigurationImportDeclarations.read(classpathIndex));
+		if (imports.declaredConfiguration()) {
+			rawProperties = UnsatisfiedMaybeTunneling.getOrTunnel(
+					ConfigurationPropertyImports.bind(rawProperties, imports, StandardEnvironment.INSTANCE));
+			resolver.setManagedPropertiesOnly(true);
+		}
+
 		resolver.setRawProperties(rawProperties);
 		return resolver;
 	}

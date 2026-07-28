@@ -61,6 +61,12 @@ limitations under the License.
         </dependency>
         <dependency>
             <groupId>com.braintribe.gm</groupId>
+            <artifactId>configuration-assembly-model</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+            <?tag asset?>
+        </dependency>
+        <dependency>
+            <groupId>com.braintribe.gm</groupId>
             <artifactId>json-marshaller</artifactId>
             <version>${V.com.braintribe.gm}</version>
         </dependency>

@@ -60,12 +60,12 @@ Imports are declared in the separately modeled
 
 ```yaml
 imports:
-  DB_DEFAULT_HOST:
+  - name: DB_DEFAULT_HOST
     required: true
     confidential: false
     description: PostgreSQL host supplied by the deployment
 
-  DB_DEFAULT_PASSWORD:
+  - name: DB_DEFAULT_PASSWORD
     required: true
     confidential: true
     description: PostgreSQL password supplied by the deployment
@@ -89,8 +89,10 @@ The small declaration model belongs to a central GM
 the application-classpath assembler, artifact validators, runtime diagnostics
 and future tooling all need the same semantics without depending on the build
 system. The terminal assembler aggregates the artifact declarations into its
-assembly report. Runtime code consumes that report rather than rediscovering
-and reinterpreting the individual declarations.
+assembly report. During the backward-compatible rollout, runtime and build-time
+assembly use the same declaration reader over the indexed artifact resources.
+Once the effective view is authoritative, runtime may consume its aggregated
+report without changing import semantics.
 
 Semantics:
 
@@ -106,8 +108,44 @@ Semantics:
 - Defaults remain property definitions in `properties.yaml`; they are not
   duplicated in the import declaration.
 
-Platform-provided variables such as `reflex.app.dir` form a standard import
-set. Source-location variables such as `config.file` and `config.dir` require
+### Managed runtime binding
+
+An environment variable is not itself a configuration layer. In the managed
+regime, deployment values enter configuration through one explicit binding
+step:
+
+```text
+declared import
+  -> system property / environment lookup
+  -> managed raw-property map
+  -> normal property and modeled-configuration resolution
+```
+
+Only exact declared import names are looked up. A packaged or filesystem
+property of the same name takes precedence and can therefore satisfy a
+required import for local or test setups without consulting the host.
+System properties take precedence over environment variables when both supply
+the same declared import.
+
+Missing `required` imports fail application startup before module wiring.
+Missing optional imports remain absent. After binding, the runtime property
+resolver has no implicit system-property, environment-variable or
+`env.`-prefixed fallback: processors and configuration consumers observe only
+the managed property graph.
+
+For migration safety this strict mode is activated by the presence of at least
+one `META-INF/configuration-imports.yaml`. Existing applications without an
+import descriptor retain the legacy fallback behavior. An intentionally empty
+descriptor is therefore also a deliberate opt-in to managed properties.
+Direct users of `RxPropertyResolver` retain legacy behavior unless they
+explicitly enable its managed-only mode. The older
+`EnvironmentPropertiesContract` is not changed implicitly by this rollout; its
+eventual migration is a separately auditable step.
+
+Platform-provided variables such as `reflex.app.dir` form a separate standard
+input set. They remain symbolic but are reported as platform variables rather
+than deployment imports; an operator must not be told to supply them.
+Source-location variables such as `config.file` and `config.dir` require
 special handling because moving a configuration into the effective view must
 not silently change their meaning.
 
@@ -121,7 +159,7 @@ Modeled YAML already provides the required foundation:
 - the YAML marshaller can write these descriptors back as ordinary
   `${...}` expressions when `PlaceholderSupport` is enabled.
 
-The assembler must use a partial symbolic property evaluator rather than the
+The assembler uses a partial symbolic property evaluator rather than the
 strict runtime resolver. For example:
 
 ```yaml
@@ -130,16 +168,22 @@ DB_DEFAULT_NAME: "proventem"
 DB_DEFAULT_URL: "jdbc:postgresql://${DB_DEFAULT_HOST}:${DB_DEFAULT_PORT}/${DB_DEFAULT_NAME}"
 ```
 
-may become an expression equivalent to:
+is validated against the external leaf `DB_DEFAULT_HOST`, although the first
+writer deliberately preserves the named property boundary:
 
 ```yaml
-DB_DEFAULT_URL: "jdbc:postgresql://${DB_DEFAULT_HOST}:5432/proventem"
+endpoint: "${DB_DEFAULT_URL}"
 ```
 
-when `DB_DEFAULT_HOST` is an import.
+This retains the author’s named configuration abstraction while proving that
+its only external dependency is the declared import. Partial inlining to an
+equivalent expression such as
+`jdbc:postgresql://${DB_DEFAULT_HOST}:5432/proventem` is a possible later
+normalization, not a prerequisite for closure validation.
 
 The written result is parsed again and compared semantically with the
-assembled entity. This round trip is part of validation.
+assembled entity. It is then serialized again and must produce byte-identical
+canonical YAML. This round trip is part of validation.
 
 ## Configuration assembler SPI
 
@@ -184,9 +228,32 @@ The main class initializes application model reflection, the indexed resource
 view and the assembler registry. It does not start the web server or normal
 application lifecycle.
 
-This avoids mixing the build-tool classpath with the application classpath.
-The RX application Ant script only has to launch a forked Java process after
-dependencies and indexed resources have been materialized.
+The reusable implementation is carried by the regular
+`configuration-assembly-processing` dependency. Configuration aggregators
+propagate it naturally through setups to application terminals. This is
+intentional:
+
+- Maven `test` would misclassify configuration assembly as testing;
+- Maven `provided` is flat and would have to be repeated on every aggregator
+  and terminal;
+- neither scope expresses the required union of the application's runtime
+  graph and build-time processing;
+- the marginal runtime footprint is small because model reflection, modeled
+  configuration and YAML processing are already present;
+- the same processing is useful for runtime diagnostics and future
+  configuration reflection.
+
+The launcher remains a narrow `main(String[])` adapter with filesystem
+arguments. It introduces no modeled command API and contains no artifact
+resolution. This avoids mixing the build-tool classpath with the application
+classpath: the RX application Ant script only launches a forked Java process
+after dependencies and indexed resources have been materialized.
+
+The core implementation and launcher now exist and are tested independently
+of the application Ant script. Activating the launcher in application assembly
+is a separate rollout step: the runtime shadow/index representation must first
+ensure that an effective entry replaces, rather than supplements, its raw
+fragments.
 
 Configuration type discovery initially maps the canonical kebab-case filename
 to application entity short names:
@@ -261,6 +328,26 @@ The feature is additive:
 
 This permits incremental rollout per application while the assemblers and
 coverage become progressively stricter.
+
+## Implementation status
+
+The first hardened increment provides:
+
+- merged and conflict-checked import declarations;
+- closed local property evaluation and tracing of symbolic aliases to their
+  true external leaves;
+- discovery and typed merge of modeled configuration across classpath and
+  filesystem layers;
+- explicit use-case identity and ambiguity detection;
+- undeclared-import and property-cycle failures;
+- explicit separation of deployment imports and platform-supplied variables;
+- canonical effective YAML and assembly-report output;
+- placeholder-preserving parse/serialize stability checks;
+- a thin application-classpath command-line launcher.
+
+Residual materialization with full artifact provenance, runtime shadow-index
+activation, further configuration-family assemblers and Ant integration remain
+deliberately outside this increment.
 
 ## Proposed implementation sequence
 
