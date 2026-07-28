@@ -512,7 +512,7 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 
 	@Managed
 	private Box<SslConfig> sslConfigBox() {
-		return Box.of(SslConfig.buildFromConfig(configuration()));
+		return Box.of(SslConfig.buildFromConfig(configuration(), platform.configuration()));
 	}
 
 	@Managed

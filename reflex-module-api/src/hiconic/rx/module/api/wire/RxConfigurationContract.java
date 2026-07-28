@@ -16,6 +16,7 @@ package hiconic.rx.module.api.wire;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.reflection.EntityType;
+import com.braintribe.model.resource.api.ResourceHandle;
 import com.braintribe.wire.api.space.WireSpace;
 
 import hiconic.rx.module.api.config.PropertyResolver;
@@ -32,6 +33,14 @@ public interface RxConfigurationContract extends WireSpace {
 	 * If an explicit configuration cannot be found a default initialized instance of the configType will be returned.
 	 */
 	<C extends GenericEntity> Maybe<C> readConfig(EntityType<C> configType);
+
+	/**
+	 * Resolves an indexed classpath resource by its canonical path.
+	 * <p>
+	 * In an assembled application this transparently resolves against the filesystem mirror, while IDE launches continue to resolve against the
+	 * real classpath.
+	 */
+	ResourceHandle indexedClasspathResource(String path);
 	
 	PropertyResolver propertyResolver();
 }

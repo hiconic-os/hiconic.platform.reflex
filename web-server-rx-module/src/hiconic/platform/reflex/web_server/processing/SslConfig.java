@@ -20,11 +20,12 @@ import java.security.KeyStore;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 
+import hiconic.rx.module.api.wire.RxConfigurationContract;
 import hiconic.rx.web.server.model.config.WebServerConfiguration;
 
 public record SslConfig(int port, SSLContext sslContext) {
 
-	public static SslConfig buildFromConfig(WebServerConfiguration config) {
+	public static SslConfig buildFromConfig(WebServerConfiguration config, RxConfigurationContract configuration) {
 		Integer port = config.getSslPort();
 		if (port == null)
 			return null;
@@ -42,7 +43,7 @@ public record SslConfig(int port, SSLContext sslContext) {
 		try {
 			// Load the keystore
 			KeyStore keyStore = KeyStore.getInstance("PKCS12");
-			try (var keystoreStream = openKeyStore(certPath)) {
+			try (var keystoreStream = openKeyStore(certPath, configuration)) {
 			    keyStore.load(keystoreStream, password.toCharArray());
 			}
 
@@ -60,7 +61,7 @@ public record SslConfig(int port, SSLContext sslContext) {
         return new SslConfig(port, sslContext);
 	}
 
-	private static InputStream openKeyStore(String path) throws Exception {
+	private static InputStream openKeyStore(String path, RxConfigurationContract configuration) throws Exception {
 		if (!path.startsWith("classpath:"))
 			return new FileInputStream(path);
 
@@ -68,11 +69,6 @@ public record SslConfig(int port, SSLContext sslContext) {
 		while (resourcePath.startsWith("/"))
 			resourcePath = resourcePath.substring(1);
 
-		ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-		InputStream stream = classLoader.getResourceAsStream(resourcePath);
-		if (stream == null)
-			throw new IllegalArgumentException("SSL key store classpath resource not found: " + resourcePath);
-
-		return stream;
+		return configuration.indexedClasspathResource(resourcePath).asStream();
 	}
 }
