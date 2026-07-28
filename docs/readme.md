@@ -24,3 +24,5 @@ _Hiconic_ _Reflex_ (aka RX) aims to be a platform for __modeled micro-services__
 * [Understand the Structure](./platform-components/platform-components.md) - overview of _Reflex_ applications components
 
 * [Demos](./demo/demo.md) - try _Reflex_ by downloading and running simple demo applications and looking at their sources
+
+* [Reproducible Configuration Assembly](./configuration/configuration-assembly.md) - design for validating and closing packaged application configuration
