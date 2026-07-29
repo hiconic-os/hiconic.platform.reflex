@@ -34,6 +34,7 @@ public interface WebServerConfiguration extends GenericEntity {
 	String sslKeyStore = "sslKeyStore";
 	String sslKeyStorePassword = "sslKeyStorePassword";
 	String defaultEndpointsBasePath = "defaultEndpointsBasePath";
+	String exposeHealthEndpointsAtDefaultEndpointsBasePath = "exposeHealthEndpointsAtDefaultEndpointsBasePath";
 	String pushSseEndpointPath = "pushSseEndpointPath";
 	String pushWebSocketEndpointPath = "pushWebSocketEndpointPath";
 
@@ -79,6 +80,13 @@ public interface WebServerConfiguration extends GenericEntity {
 	@Pattern(".*[^\\/]$")
 	String getDefaultEndpointsBasePath();
 	void setDefaultEndpointsBasePath(String defaultEndpointsBasePath);
+
+	@Description("If true, the canonical /livez and /readyz endpoints are additionally exposed below defaultEndpointsBasePath. "
+			+ "The aliases are handled by the application-state gate before endpoint/servlet dispatch and therefore retain the canonical "
+			+ "bootstrap and readiness semantics.")
+	@Initializer("false")
+	boolean getExposeHealthEndpointsAtDefaultEndpointsBasePath();
+	void setExposeHealthEndpointsAtDefaultEndpointsBasePath(boolean exposeHealthEndpointsAtDefaultEndpointsBasePath);
 
 	@Description("Path of the SSE transport endpoint for platform push, relative to defaultEndpointsBasePath. The value must not end with '/'.")
 	@Pattern(".*[^\\/]$")

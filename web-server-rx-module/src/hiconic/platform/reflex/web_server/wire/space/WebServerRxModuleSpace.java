@@ -478,7 +478,11 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 
 	@Managed
 	private ApplicationStateGateHandler applicationStateGateHandler() {
-		ApplicationStateGateHandler bean = new ApplicationStateGateHandler(platform.application().stateManager());
+		WebServerConfiguration configuration = configuration();
+		String healthEndpointAliasBasePath = configuration.getExposeHealthEndpointsAtDefaultEndpointsBasePath()
+				? defaultEndpointsBasePath()
+				: null;
+		ApplicationStateGateHandler bean = new ApplicationStateGateHandler(platform.application().stateManager(), healthEndpointAliasBasePath);
 		return bean;
 	}
 
