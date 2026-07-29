@@ -506,6 +506,14 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 		if (maxThreads != null)
 			builder.setWorkerOption(Options.WORKER_TASK_MAX_THREADS, maxThreads);
 
+		Integer maxConnections = configuration.getMaxConnections();
+		if (maxConnections != null) {
+			// XNIO uses a high/low watermark pair to suspend and resume accepts.
+			// Equal values model a strict maximum without an arbitrary hysteresis band.
+			builder.setWorkerOption(Options.CONNECTION_HIGH_WATER, maxConnections);
+			builder.setWorkerOption(Options.CONNECTION_LOW_WATER, maxConnections);
+		}
+
 		SslConfig sslConfig = sslConfigBox().value;
 		if (sslConfig != null)
 			builder.addHttpsListener(sslConfig.port(), "0.0.0.0", sslConfig.sslContext());

@@ -31,6 +31,7 @@ public interface WebServerConfiguration extends GenericEntity {
 	String maxTreads = "maxThreads";
 	String coreTreads = "coreThreads";
 	String ioTreads = "ioThreads";
+	String maxConnections = "maxConnections";
 	String sslKeyStore = "sslKeyStore";
 	String sslKeyStorePassword = "sslKeyStorePassword";
 	String defaultEndpointsBasePath = "defaultEndpointsBasePath";
@@ -58,14 +59,23 @@ public interface WebServerConfiguration extends GenericEntity {
 	String getSslKeyStorePassword();
 	void setSslKeyStorePassword(String sslKeyStorePassword);
 
+	@Description("Number of XNIO I/O threads. These threads accept connections and perform non-blocking socket I/O; "
+			+ "blocking application work is dispatched to the worker task pool.")
 	Integer getIoThreads();
 	void setIoThreads(Integer ioThreads);
 
+	@Description("Maximum number of threads in Undertow's worker task pool for blocking application work.")
 	Integer getMaxThreads();
 	void setMaxThreads(Integer maxThreads);
 
+	@Description("Core number of threads retained in Undertow's worker task pool for blocking application work.")
 	Integer getCoreThreads();
 	void setCoreThreads(Integer coreThreads);
+
+	@Description("Maximum number of concurrently accepted connections. Once reached, Undertow suspends accepts until "
+			+ "the active connection count falls below the limit.")
+	Integer getMaxConnections();
+	void setMaxConnections(Integer maxConnections);
 
 	CorsConfiguration getCorsConfiguration();
 	void setCorsConfiguration(CorsConfiguration corsConfiguration);
