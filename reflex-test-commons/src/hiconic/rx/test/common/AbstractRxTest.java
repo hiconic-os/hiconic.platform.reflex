@@ -13,6 +13,7 @@
 // ============================================================================
 package hiconic.rx.test.common;
 
+import java.util.Map;
 import java.util.function.Function;
 
 import org.junit.After;
@@ -37,7 +38,8 @@ public abstract class AbstractRxTest {
 	@Before
 	public void onBefore() {
 		try {
-			platform = loadPlatform(AbstractRxTest.this.getClass().getSimpleName());
+			platform = new RxPlatform(new String[] {}, systemPropertyLookup("res/app"),
+					applicationPropertyLookup(AbstractRxTest.this.getClass().getSimpleName()), managedPropertyOverrides());
 			platformContract = platform.getContract();
 			evaluator = platform.getContract().serviceProcessing().evaluator();
 
@@ -67,6 +69,10 @@ public abstract class AbstractRxTest {
 
 	protected <C extends RxExportContract> C resolveExportContract(Class<C> contractClass) {
 		return platform.getWireContext().contract(contractClass);
+	}
+
+	protected Map<String, String> managedPropertyOverrides() {
+		return Map.of();
 	}
 
 	//

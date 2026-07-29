@@ -25,6 +25,7 @@ import java.lang.System.Logger.Level;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -70,6 +71,7 @@ public class RxPlatform implements AutoCloseable {
 	private final ApplicationProperties applicationProperties;
 	private final ClasspathIndex classpathIndex;
 	private final RxPropertyResolver propertyResolver;
+	private final Map<String, String> managedPropertyOverrides;
 
 	private final String[] args;
 
@@ -88,16 +90,28 @@ public class RxPlatform implements AutoCloseable {
 		this(//
 				args, //
 				defaultSystemPropertyLookup(), //
-				defaultApplicationPropertyLookup() //
+				defaultApplicationPropertyLookup(), //
+				Map.of() //
 		);
 	}
 
 	public RxPlatform(Function<String, String> systemPropertyLookup, Function<String, String> applicationPropertyLookup) {
-		this(new String[] {}, systemPropertyLookup, applicationPropertyLookup);
+		this(new String[] {}, systemPropertyLookup, applicationPropertyLookup, Map.of());
 	}
 
 	public RxPlatform(String[] args, Function<String, String> systemPropertyLookup, Function<String, String> applicationPropertyLookup) {
+		this(args, systemPropertyLookup, applicationPropertyLookup, Map.of());
+	}
+
+	/**
+	 * Starts a platform with explicit values added to the managed configuration property graph.
+	 * <p>
+	 * This is primarily useful to embedders and test harnesses. It does not restore the legacy implicit environment fallback.
+	 */
+	public RxPlatform(String[] args, Function<String, String> systemPropertyLookup, Function<String, String> applicationPropertyLookup,
+			Map<String, String> managedPropertyOverrides) {
 		this.args = args;
+		this.managedPropertyOverrides = Map.copyOf(managedPropertyOverrides);
 		
 		systemProperties = PropertyLookups.create(SystemProperties.class, systemPropertyLookup);
 		applicationProperties = PropertyLookups.create(ApplicationProperties.class, applicationPropertyLookup);
@@ -279,6 +293,9 @@ public class RxPlatform implements AutoCloseable {
 		File confDir = new File(systemProperties.appDir(), "conf");
 		Map<String, String> rawProperties = UnsatisfiedMaybeTunneling.getOrTunnel(
 				RxPropertiesLoader.loadLayered(confDir, RxConfigurationConstants.CLASSPATH_CONF_PATH, "properties", new YamlMarshaller(), classpathIndex));
+		rawProperties = new LinkedHashMap<>(rawProperties);
+		rawProperties.putIfAbsent(SystemProperties.PROPERTY_APP_DIR, systemProperties.appDir().getPath());
+		rawProperties.putAll(managedPropertyOverrides);
 
 		ConfigurationImportDeclarations imports = UnsatisfiedMaybeTunneling.getOrTunnel(
 				ConfigurationImportDeclarations.read(classpathIndex));
