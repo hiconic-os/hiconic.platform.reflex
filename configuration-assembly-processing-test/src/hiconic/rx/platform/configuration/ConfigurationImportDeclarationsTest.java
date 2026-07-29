@@ -183,22 +183,21 @@ public class ConfigurationImportDeclarationsTest {
 		assertThat(assembly.report().getAssembledConfigurations())
 				.containsExactly(SampleConfiguration.T.getTypeSignature());
 
-		Path output = temporaryFolder.newFolder("packaged-conf").toPath();
-		Path rawProjection = output.resolve("sample-artifact/sample-configuration.yaml");
-		Files.createDirectories(rawProjection.getParent());
-		Files.writeString(rawProjection, "raw: retained\n");
-		Path staleEffective = output.resolve("effective/stale-configuration.yaml");
+		Path output = temporaryFolder.newFolder("effective-conf").toPath();
+		Path staleEffective = output.resolve("compiled/stale-configuration.yaml");
 		Files.createDirectories(staleEffective.getParent());
 		Files.writeString(staleEffective, "stale: true\n");
+		Path protocol = output.getParent().resolve("configuration-compilation.yaml");
 
-		var writeMaybe = ConfigurationAssemblyWriter.write(assembly, output);
+		var writeMaybe = ConfigurationAssemblyWriter.write(assembly, new ClasspathIndex(root), output, protocol);
 		assertThat(writeMaybe.isSatisfied()).isTrue();
-		String effectiveYaml = Files.readString(output.resolve("effective/sample-configuration.yaml"));
+		String effectiveYaml = Files.readString(output.resolve("compiled/sample-configuration.yaml"));
 		assertThat(effectiveYaml).contains("label: \"filesystem\"");
 		assertThat(effectiveYaml).contains("${DB_DEFAULT_URL}");
 		assertThat(staleEffective).doesNotExist();
-		assertThat(rawProjection).exists();
-		assertThat(output.resolve(ConfigurationAssemblyWriter.REPORT_FILE)).exists();
+		assertThat(output.resolve("base/unknown-configuration.yaml")).hasContent("value: retained");
+		assertThat(output.resolve("compiled/properties.yaml")).content().contains("DB_DEFAULT_URL");
+		assertThat(protocol).exists();
 	}
 
 	@Test

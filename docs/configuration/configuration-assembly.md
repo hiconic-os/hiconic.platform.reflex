@@ -2,17 +2,18 @@
 
 ## Motivation
 
-An RX application currently discovers and merges configuration from indexed
-classpath resources, the packaged filesystem mirror and the deployment
-`conf/` directory. This preserves composability, but a terminal application
-build does not yet prove that its packaged configuration is complete.
+An RX application discovers and merges configuration from indexed classpath
+resources and the deployment `conf/` directory. This preserves composability,
+but a terminal application build does not inherently prove that its packaged
+configuration is complete.
 Undeclared placeholders, incompatible fragments or missing sibling
 configuration can consequently remain undetected until the application starts
 or a particular configuration is first used.
 
 The terminal application build should therefore produce and validate an
-explicit static configuration closure. This closure is not a replacement for
-the source resources. It is a reproducible, inspectable view derived from them.
+explicit static configuration closure. This closure is a reproducible,
+inspectable runtime view derived from a separately retained, lossless copy of
+the source resources.
 
 The design has four goals:
 
@@ -24,31 +25,53 @@ The design has four goals:
 
 ## Configuration views
 
-An assembled application exposes three distinct views:
+An assembled application exposes three distinct views and one protocol:
 
 ```text
 application/
-  classpath-resources/     # immutable source/provenance mirror
-  packaged-conf/
-    effective/             # canonical static closure
-    residual/              # configuration assets without an assembler
-    assembly-report.yaml   # origins, imports, coverage and diagnostics
-  conf/                    # deployment overlays
+  packaged-resources/              # complete indexed-resource mirror
+    <artifact-slot>/
+      HICONIC-CONF/...
+      HICONIC-RESOURCES/...
+      ...
+    index.properties               # runtime inventory
+    index.json                     # provenance, digest and disposition
+
+  effective-conf/                  # consumable static configuration closure
+    compiled/
+      <configuration-key>.yaml
+      properties.yaml
+    <artifact-slot>/
+      <unconsumed-config-resource>
+
+  configuration-compilation.yaml   # compilation protocol
+  conf/                            # deployment overlays
 ```
 
-`classpath-resources/` remains suitable for diagnostics and contains the
-unmodified indexed resources grouped by artifact. Successfully assembled
-source entries must, however, be shadowed in the runtime index so that the raw
-fragments and their effective result are not merged twice.
+`packaged-resources/` contains every indexed resource byte-for-byte at its
+canonical classpath-relative path, grouped by artifact. It is both the
+source/provenance view and the filesystem replacement which makes safe eviction
+of explicitly marked pure-resource JARs possible. Unstructured indexed
+resources such as icons and templates remain here and are served directly.
 
-`packaged-conf/effective/` contains one canonical result per configuration key
+`effective-conf/compiled/` contains one canonical result per configuration key
 where the corresponding assembler supports such a representation. A
 configuration key consists at least of configuration kind, modeled type and
 use case.
 
-Assets which cannot yet be assembled stay available below `residual/` with
-their artifact association. They are reported explicitly and retain their
-existing runtime behavior.
+Configuration assets which cannot yet be assembled stay byte-identical in a
+direct artifact slot below `effective-conf/`. The technical `HICONIC-CONF`
+segment is omitted physically and restored logically by the reader. The
+compilation protocol reports these residuals.
+
+At runtime, the existence of `effective-conf/` changes only configuration
+selection: raw `HICONIC-CONF/` entries in `packaged-resources/` are suppressed
+and replaced by the compiled and residual effective slots. All other packaged
+resources remain active. Thus YAML/properties/log configuration may exist in
+both the lossless and effective views without being consumed twice.
+
+`conf/` remains a later, mutable deployment overlay. It is intentionally not
+folded into the packaged static closure.
 
 ## Explicit deployment imports
 
@@ -249,11 +272,10 @@ resolution. This avoids mixing the build-tool classpath with the application
 classpath: the RX application Ant script only launches a forked Java process
 after dependencies and indexed resources have been materialized.
 
-The core implementation and launcher now exist and are tested independently
-of the application Ant script. Activating the launcher in application assembly
-is a separate rollout step: the runtime shadow/index representation must first
-ensure that an effective entry replaces, rather than supplements, its raw
-fragments.
+The core implementation and launcher are invoked by the RX application Ant
+script when the processing dependency is present. The runtime reader combines
+the general packaged-resource source with the direct effective configuration
+slots, replacing rather than supplementing raw configuration fragments.
 
 Configuration type discovery initially maps the canonical kebab-case filename
 to application entity short names:
@@ -267,10 +289,10 @@ and completely explicit without being a prerequisite for the first version.
 
 ## Static and runtime-effective configuration
 
-The first implementation deliberately closes static configuration only:
+The implementation deliberately closes static configuration only:
 
 ```text
-classpath fragments + packaged properties -> effective static configuration
+packaged classpath fragments + packaged properties -> effective static configuration
 ```
 
 Code-registered configuration contributions continue to be applied by the
@@ -331,7 +353,7 @@ coverage become progressively stricter.
 
 ## Implementation status
 
-The first hardened increment provides:
+The hardened increment provides:
 
 - merged and conflict-checked import declarations;
 - closed local property evaluation and tracing of symbolic aliases to their
@@ -341,24 +363,20 @@ The first hardened increment provides:
 - explicit use-case identity and ambiguity detection;
 - undeclared-import and property-cycle failures;
 - explicit separation of deployment imports and platform-supplied variables;
-- canonical effective YAML and assembly-report output;
+- canonical effective YAML and a separate compilation protocol;
 - placeholder-preserving parse/serialize stability checks;
-- a thin application-classpath command-line launcher.
+- residual configuration materialization with artifact provenance;
+- a thin application-classpath command-line launcher;
+- a complete indexed-resource filesystem mirror with a deterministic central
+  runtime index;
+- runtime replacement of raw packaged configuration by `effective-conf`,
+  without affecting unstructured packaged resources.
 
-Residual materialization with full artifact provenance, runtime shadow-index
-activation, further configuration-family assemblers and Ant integration remain
-deliberately outside this increment.
+The RX application Ant script activates that launcher when an application
+carries `configuration-assembly-processing`. Applications without the
+dependency retain the previous assembly behavior. Applications launched from
+an older `classpath-resources`/`packaged-conf` layout remain supported during
+the transition.
 
-## Proposed implementation sequence
-
-1. Model `ConfigurationImports` and the assembly report.
-2. Implement the symbolic property graph and round-trip tests.
-3. Extract modeled YAML discovery, sorting and merging into a reusable
-   assembler.
-4. Test artifact-level validation with synthetic configuration artifacts.
-5. Test terminal closure with multiple artifacts, use cases and imports.
-6. Add residual handling and runtime shadowing.
-7. Invoke the assembly main from the RX application Ant script behind an
-   explicit compatibility switch.
-8. Enable it for one RX application and compare runtime semantics before
-   making it the default.
+Further configuration-family compilers, richer protocol details and
+artifact-level validation remain incremental follow-up work.

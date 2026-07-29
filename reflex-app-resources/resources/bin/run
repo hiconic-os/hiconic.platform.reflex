@@ -37,9 +37,11 @@ fi
 # REFLEX_OPTS remains an intentionally late, deployment-specific override/addition.
 read -r -a ENV_JVM_OPTIONS <<< "${REFLEX_OPTS:-}"
 
-CLASSPATH_RESOURCES_OPTIONS=()
-if [ -d "$INST_DIR/classpath-resources" ]; then
-    CLASSPATH_RESOURCES_OPTIONS+=("-Dreflex.classpath.resources.dir=$INST_DIR/classpath-resources")
+PACKAGED_RESOURCES_OPTIONS=()
+if [ -d "$INST_DIR/packaged-resources" ]; then
+    PACKAGED_RESOURCES_OPTIONS+=("-Dreflex.packaged.resources.dir=$INST_DIR/packaged-resources")
+elif [ -d "$INST_DIR/classpath-resources" ]; then
+    PACKAGED_RESOURCES_OPTIONS+=("-Dreflex.classpath.resources.dir=$INST_DIR/classpath-resources")
 fi
 
-"$JAVA_EXECUTABLE" "${PACKAGED_JVM_OPTIONS[@]}" "${ENV_JVM_OPTIONS[@]}" "${CLASSPATH_RESOURCES_OPTIONS[@]}" -Dreflex.app.dir="$INST_DIR" -Dreflex.launch.script="$LAUNCH_SCRIPT" -Djava.net.useSystemProxies=true -jar "$LIB_PATH/launch.jar" "$@"
+"$JAVA_EXECUTABLE" "${PACKAGED_JVM_OPTIONS[@]}" "${ENV_JVM_OPTIONS[@]}" "${PACKAGED_RESOURCES_OPTIONS[@]}" -Dreflex.app.dir="$INST_DIR" -Dreflex.launch.script="$LAUNCH_SCRIPT" -Djava.net.useSystemProxies=true -jar "$LIB_PATH/launch.jar" "$@"

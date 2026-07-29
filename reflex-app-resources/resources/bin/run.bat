@@ -31,11 +31,13 @@ if exist "%JVM_OPTIONS_FILE%" (
     for /f "usebackq eol=# delims=" %%O in ("%JVM_OPTIONS_FILE%") do set "PACKAGED_JVM_OPTIONS=!PACKAGED_JVM_OPTIONS! %%O"
 )
 
-set "CLASSPATH_RESOURCES_OPTION="
-if exist "%~dp0\..\classpath-resources\" (
-    set "CLASSPATH_RESOURCES_OPTION=-Dreflex.classpath.resources.dir=%~dp0\..\classpath-resources"
+set "PACKAGED_RESOURCES_OPTION="
+if exist "%~dp0\..\packaged-resources\" (
+    set "PACKAGED_RESOURCES_OPTION=-Dreflex.packaged.resources.dir=%~dp0\..\packaged-resources"
+) else if exist "%~dp0\..\classpath-resources\" (
+    set "PACKAGED_RESOURCES_OPTION=-Dreflex.classpath.resources.dir=%~dp0\..\classpath-resources"
 )
 
-%JAVA_EXECUTABLE% %PACKAGED_JVM_OPTIONS% %REFLEX_OPTS% %CLASSPATH_RESOURCES_OPTION% -Dreflex.app.dir="%~dp0\.." -Dreflex.launch.script=%LAUNCH_SCRIPT% -Djava.net.useSystemProxies=true -jar "%LIB_PATH%\launch.jar" %*
+%JAVA_EXECUTABLE% %PACKAGED_JVM_OPTIONS% %REFLEX_OPTS% %PACKAGED_RESOURCES_OPTION% -Dreflex.app.dir="%~dp0\.." -Dreflex.launch.script=%LAUNCH_SCRIPT% -Djava.net.useSystemProxies=true -jar "%LIB_PATH%\launch.jar" %*
 
 endlocal

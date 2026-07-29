@@ -169,8 +169,9 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 	private String zipPassword = "operating";
 
 	private File confFolder = null;
-	private File classpathResourcesFolder;
-	private File packagedConfFolder;
+	private File packagedResourcesFolder;
+	private File effectiveConfFolder;
+	private File configurationCompilationFile;
 	private File dataFolder;
 
 	private StreamPipeFactory streamPipeFactory;
@@ -857,14 +858,17 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 		try {
 			ConfigurationFolder hd = ConfigurationFolder.T.create();
 
-			if (confFolder != null || classpathResourcesFolder != null || packagedConfFolder != null) {
+			if (confFolder != null || packagedResourcesFolder != null || effectiveConfFolder != null
+					|| configurationCompilationFile != null) {
 
 				String filename = "conf-" + now(fileDateTimeFormatter) + ".zip";
 
 				Map<String, File> map = new LinkedHashMap<>();
 				addFolderFiles(map, confFolder, "");
-				addFolderFiles(map, classpathResourcesFolder, "classpath-resources/");
-				addFolderFiles(map, packagedConfFolder, "packaged-conf/");
+				addFolderFiles(map, packagedResourcesFolder, "packaged-resources/");
+				addFolderFiles(map, effectiveConfFolder, "effective-conf/");
+				if (configurationCompilationFile != null && configurationCompilationFile.isFile())
+					map.put("configuration-compilation.yaml", configurationCompilationFile);
 
 				if (!map.isEmpty()) {
 					Resource callResource = Resource
@@ -1546,12 +1550,16 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 		this.confFolder = confFolder;
 	}
 	@Configurable
-	public void setClasspathResourcesFolder(File classpathResourcesFolder) {
-		this.classpathResourcesFolder = classpathResourcesFolder;
+	public void setPackagedResourcesFolder(File packagedResourcesFolder) {
+		this.packagedResourcesFolder = packagedResourcesFolder;
 	}
 	@Configurable
-	public void setPackagedConfFolder(File packagedConfFolder) {
-		this.packagedConfFolder = packagedConfFolder;
+	public void setEffectiveConfFolder(File effectiveConfFolder) {
+		this.effectiveConfFolder = effectiveConfFolder;
+	}
+	@Configurable
+	public void setConfigurationCompilationFile(File configurationCompilationFile) {
+		this.configurationCompilationFile = configurationCompilationFile;
 	}
 	@Configurable
 	public void setDatabaseFolder(File databaseFolder) {

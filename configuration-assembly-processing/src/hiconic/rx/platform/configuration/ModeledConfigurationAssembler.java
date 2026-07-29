@@ -132,7 +132,7 @@ public final class ModeledConfigurationAssembler {
 					+ String.join(", ", report.getUndeclaredVariables())));
 
 		ConfigurationAssembly assembly = new ConfigurationAssembly(configurations, symbolicProperties.rawProperties(),
-				symbolicProperties.resolvedProperties(), report);
+				symbolicProperties.resolvedProperties(), discovery.consumedResources(), report);
 		if (errors.hasReason())
 			return Maybe.incomplete(assembly, errors.get());
 
@@ -163,6 +163,7 @@ public final class ModeledConfigurationAssembler {
 		}
 
 		Set<ConfigurationKey> keys = new LinkedHashSet<>();
+		Set<String> consumed = new LinkedHashSet<>();
 		List<String> residual = new ArrayList<>();
 		for (String resourceName : resourceNames.stream().sorted().toList()) {
 			if (!resourceName.endsWith(".yaml"))
@@ -171,8 +172,10 @@ public final class ModeledConfigurationAssembler {
 			ParsedName parsed = parse(resourceName, errors);
 			if (parsed == null)
 				continue;
-			if (INFRASTRUCTURE_YAML.contains(parsed.baseName()))
+			if (INFRASTRUCTURE_YAML.contains(parsed.baseName())) {
+				consumed.add(resourceName);
 				continue;
+			}
 
 			List<EntityType<?>> matches = typesByBaseName.get(parsed.baseName());
 			if (matches == null || matches.isEmpty()) {
@@ -187,9 +190,10 @@ public final class ModeledConfigurationAssembler {
 			}
 
 			keys.add(new ConfigurationKey(matches.get(0), parsed.useCase(), parsed.baseName()));
+			consumed.add(resourceName);
 		}
 
-		return new Discovery(keys.stream().sorted().toList(), residual.stream().sorted().toList());
+		return new Discovery(keys.stream().sorted().toList(), Set.copyOf(consumed), residual.stream().sorted().toList());
 	}
 
 	private static ParsedName parse(String resourceName,
@@ -240,6 +244,6 @@ public final class ModeledConfigurationAssembler {
 	private record ParsedName(String baseName, String useCase) {
 	}
 
-	private record Discovery(List<ConfigurationKey> keys, List<String> residualResources) {
+	private record Discovery(List<ConfigurationKey> keys, Set<String> consumedResources, List<String> residualResources) {
 	}
 }

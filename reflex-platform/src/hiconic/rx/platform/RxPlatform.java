@@ -108,16 +108,26 @@ public class RxPlatform implements AutoCloseable {
 	}
 
 	private ClasspathIndex createClasspathIndex() {
-		String resourcesDir = systemProperties.classpathResourcesDir();
+		String resourcesDir = systemProperties.packagedResourcesDir();
+		if (resourcesDir == null || resourcesDir.isBlank())
+			resourcesDir = systemProperties.classpathResourcesDir();
 		if (resourcesDir == null || resourcesDir.isBlank())
 			return new ClasspathIndex();
 
 		List<ClasspathIndex.FilesystemSource> sources = new ArrayList<>();
-		sources.add(ClasspathIndex.filesystemSource(new File(resourcesDir).toPath(), ""));
+		Path effectiveConfDir = systemProperties.appDir().toPath().resolve("effective-conf");
+		if (Files.isDirectory(effectiveConfDir)) {
+			sources.add(ClasspathIndex.filesystemSource(new File(resourcesDir).toPath(), "",
+					List.of(RxConfigurationConstants.CLASSPATH_CONF_PATH)));
+			sources.add(ClasspathIndex.filesystemSlots(effectiveConfDir, RxConfigurationConstants.CLASSPATH_CONF_PATH));
+		} else {
+			sources.add(ClasspathIndex.filesystemSource(new File(resourcesDir).toPath(), ""));
 
-		Path packagedConfDir = systemProperties.appDir().toPath().resolve("packaged-conf");
-		if (Files.isDirectory(packagedConfDir))
-			sources.add(ClasspathIndex.filesystemSource(packagedConfDir, RxConfigurationConstants.CLASSPATH_CONF_PATH));
+			// Compatibility with the first filesystem projection generation.
+			Path packagedConfDir = systemProperties.appDir().toPath().resolve("packaged-conf");
+			if (Files.isDirectory(packagedConfDir))
+				sources.add(ClasspathIndex.filesystemSource(packagedConfDir, RxConfigurationConstants.CLASSPATH_CONF_PATH));
+		}
 
 		return new ClasspathIndex(sources);
 	}

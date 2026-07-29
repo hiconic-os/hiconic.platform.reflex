@@ -17,6 +17,7 @@ package hiconic.rx.platform.configuration;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.braintribe.gm.config.assembly.model.ConfigurationAssemblyReport;
 import com.braintribe.model.generic.GenericEntity;
@@ -31,12 +32,14 @@ public record ConfigurationAssembly(
 		Map<ConfigurationKey, GenericEntity> configurations,
 		Map<String, String> rawProperties,
 		Map<String, String> resolvedProperties,
+		Set<String> consumedResources,
 		ConfigurationAssemblyReport report) {
 
 	public ConfigurationAssembly {
 		configurations = Map.copyOf(configurations);
 		rawProperties = Map.copyOf(rawProperties);
 		resolvedProperties = Map.copyOf(resolvedProperties);
+		consumedResources = Set.copyOf(consumedResources);
 	}
 
 	public List<ConfigurationKey> keys() {

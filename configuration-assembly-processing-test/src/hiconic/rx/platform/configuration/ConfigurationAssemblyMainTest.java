@@ -32,14 +32,19 @@ public class ConfigurationAssemblyMainTest {
 	@Test
 	public void assemblesAnEmptyApplicationUsingOnlyFilesystemInputs() throws Exception {
 		Path application = temporaryFolder.newFolder("application").toPath();
-		Files.createDirectories(application.resolve("classpath-resources"));
+		Path packagedResources = application.resolve("packaged-resources");
+		Files.createDirectories(packagedResources);
+		Files.writeString(packagedResources.resolve("index.properties"), """
+				formatVersion=1
+				artifact.count=0
+				""");
 		Files.createDirectories(application.resolve("conf"));
 
 		int status = ConfigurationAssemblyMain.run(new String[] { "--application-dir", application.toString() });
 
 		assertThat(status).isZero();
-		assertThat(application.resolve("packaged-conf/effective")).isDirectory();
-		assertThat(application.resolve("packaged-conf/assembly-report.yaml")).isRegularFile();
+		assertThat(application.resolve("effective-conf/compiled")).isDirectory();
+		assertThat(application.resolve("configuration-compilation.yaml")).isRegularFile();
 	}
 
 	@Test

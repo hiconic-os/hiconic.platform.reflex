@@ -41,10 +41,15 @@ public final class ConfigurationAssemblyMain {
 		try {
 			Map<String, String> options = parse(args);
 			Path applicationDirectory = requiredPath(options, "--application-dir");
-			Path resourcesDirectory = optionPath(options, "--classpath-resources",
-					applicationDirectory.resolve("classpath-resources"));
-			Path outputDirectory = optionPath(options, "--output-dir", applicationDirectory.resolve("packaged-conf"));
-			Path confDirectory = optionPath(options, "--conf-dir", applicationDirectory.resolve("conf"));
+			Path defaultResources = Files.isDirectory(applicationDirectory.resolve("packaged-resources"))
+					? applicationDirectory.resolve("packaged-resources")
+					: applicationDirectory.resolve("classpath-resources");
+			Path resourcesDirectory = aliasedOptionPath(options, "--packaged-resources", "--classpath-resources", defaultResources);
+			Path outputDirectory = optionPath(options, "--output-dir", applicationDirectory.resolve("effective-conf"));
+			Path protocolFile = optionPath(options, "--protocol-file",
+					applicationDirectory.resolve(ConfigurationAssemblyWriter.PROTOCOL_FILE));
+			// Deployment conf remains a later override layer and is deliberately not folded into the packaged baseline.
+			Path confDirectory = optionPath(options, "--conf-dir", applicationDirectory.resolve(".configuration-assembly-empty-conf"));
 			if (!options.isEmpty())
 				throw new IllegalArgumentException("Unknown configuration assembly option(s): " + String.join(", ", options.keySet()));
 
@@ -59,21 +64,21 @@ public final class ConfigurationAssemblyMain {
 				return 1;
 			}
 
-			Maybe<Void> writeMaybe = ConfigurationAssemblyWriter.write(assemblyMaybe.get(), outputDirectory);
+			Maybe<Void> writeMaybe = ConfigurationAssemblyWriter.write(assemblyMaybe.get(), index, outputDirectory, protocolFile);
 			if (writeMaybe.isUnsatisfied()) {
 				System.err.println(writeMaybe.whyUnsatisfied().stringify());
 				return 1;
 			}
 
 			ConfigurationAssembly assembly = assemblyMaybe.get();
-			System.out.println("Assembled " + assembly.configurations().size() + " modeled configuration(s) into " + outputDirectory);
+			System.out.println("Compiled " + assembly.configurations().size() + " modeled configuration(s) into " + outputDirectory);
 			if (!assembly.report().getResidualResources().isEmpty())
 				System.out.println("Retained " + assembly.report().getResidualResources().size() + " residual configuration resource(s)");
 			return 0;
 		} catch (IllegalArgumentException e) {
 			System.err.println(e.getMessage());
 			System.err.println("Usage: ConfigurationAssemblyMain --application-dir <path> "
-					+ "[--classpath-resources <path>] [--conf-dir <path>] [--output-dir <path>]");
+					+ "[--packaged-resources <path>] [--conf-dir <path>] [--output-dir <path>] [--protocol-file <path>]");
 			return 2;
 		}
 	}
@@ -105,5 +110,16 @@ public final class ConfigurationAssemblyMain {
 		if (value == null || value.isBlank())
 			return defaultValue.toAbsolutePath().normalize();
 		return Path.of(value).toAbsolutePath().normalize();
+	}
+
+	private static Path aliasedOptionPath(Map<String, String> options, String name, String legacyName, Path defaultValue) {
+		String value = options.remove(name);
+		String legacyValue = options.remove(legacyName);
+		if (value != null && legacyValue != null)
+			throw new IllegalArgumentException("Options " + name + " and " + legacyName + " are mutually exclusive");
+		String selected = value != null ? value : legacyValue;
+		if (selected == null || selected.isBlank())
+			return defaultValue.toAbsolutePath().normalize();
+		return Path.of(selected).toAbsolutePath().normalize();
 	}
 }
