@@ -18,7 +18,7 @@ limitations under the License.
 		<version>[1.0,1.1)</version>
 	</parent>
 	<artifactId>reflex-app-resources</artifactId>
-	<version>1.0.17</version>
+	<version>1.0.18</version>
 	<packaging>zip</packaging>
 	<properties>
 	</properties>
