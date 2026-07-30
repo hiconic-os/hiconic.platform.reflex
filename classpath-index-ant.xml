@@ -4,7 +4,7 @@
 		<mkdir dir="src/META-INF"/>
 		<delete file="src/META-INF/classpath-resource-only" quiet="true"/>
 		<delete file="build/META-INF/classpath-resource-only" quiet="true"/>
-		<pathconvert property="classpath.index.entries" pathsep="${line.separator}">
+		<pathconvert property="classpath.index.entries" pathsep="${line.separator}" targetos="unix">
 			<fileset dir="src">
 				<include name="**/*"/>
 				<exclude name="**/*.java"/>
