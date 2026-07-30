@@ -19,16 +19,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/**
- * Annotation for {@link hiconic.rx.webapi.model.meta.RequestPathPrefix}. The prefix applies to both fine-grained
- * request paths and complete {@link RequestMapping} declarations.
- */
+/** Annotation for {@link hiconic.rx.webapi.model.meta.RequestDecodingLenience}. */
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ ElementType.TYPE })
+@Target(ElementType.TYPE)
 @Documented
-public @interface RequestPathPrefix {
+public @interface RequestDecodingLenience {
 	String globalId() default "";
-
-	/** The value may (but must not) start/end with '/'. */
-	String value();
+	boolean value() default true;
 }

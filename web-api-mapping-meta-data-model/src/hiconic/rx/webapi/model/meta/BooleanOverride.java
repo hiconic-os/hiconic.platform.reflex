@@ -11,24 +11,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.webapi.model.annotation;
+package hiconic.rx.webapi.model.meta;
 
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import com.braintribe.model.generic.base.EnumBase;
+import com.braintribe.model.generic.reflection.EnumType;
+import com.braintribe.model.generic.reflection.EnumTypes;
 
-/**
- * Annotation for {@link hiconic.rx.webapi.model.meta.RequestPathPrefix}. The prefix applies to both fine-grained
- * request paths and complete {@link RequestMapping} declarations.
- */
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ ElementType.TYPE })
-@Documented
-public @interface RequestPathPrefix {
-	String globalId() default "";
+/** A null-safe tri-state used by complete mappings to override an inherited boolean default. */
+public enum BooleanOverride implements EnumBase<BooleanOverride> {
+	INHERIT,
+	ENABLED,
+	DISABLED;
 
-	/** The value may (but must not) start/end with '/'. */
-	String value();
+	public static final EnumType<BooleanOverride> T = EnumTypes.T(BooleanOverride.class);
+
+	@Override
+	public EnumType<BooleanOverride> type() {
+		return T;
+	}
 }

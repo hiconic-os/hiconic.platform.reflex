@@ -51,8 +51,10 @@ import hiconic.rx.web.ddra.endpoints.api.v1.SingleDdraMappingImpl;
 import hiconic.rx.web.ddra.endpoints.api.v1.WebApiMappingOracle;
 import hiconic.rx.webapi.endpoints.OutputPrettiness;
 import hiconic.rx.webapi.endpoints.TypeExplicitness;
+import hiconic.rx.webapi.model.meta.BooleanOverride;
 import hiconic.rx.webapi.model.meta.HideSerializedRequest;
 import hiconic.rx.webapi.model.meta.HttpRequestMethod;
+import hiconic.rx.webapi.model.meta.RequestDecodingLenience;
 import hiconic.rx.webapi.model.meta.RequestEvaluateWithSession;
 import hiconic.rx.webapi.model.meta.RequestMethod;
 import hiconic.rx.webapi.model.meta.RequestMapping;
@@ -200,6 +202,7 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 	private class MappingIndexer {
 
 		private final Map<PathAndMethod, SingleDdraMapping> result = newMap();
+		private final Map<PathAndMethod, String> mappingOrigins = newMap();
 
 		private ServiceDomain serviceDomain;
 		private CmdResolver cmdResolver;
@@ -243,10 +246,18 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 					for (HttpRequestMethod method : mappingMds.methods()) {
 						PathAndMethod key = getKey(pathInfo, method);
 						SingleDdraMappingImpl singleMapping = createMappingFromMd(method);
-						result.put(key, singleMapping);
+						SingleDdraMapping previous = result.putIfAbsent(key, singleMapping);
+						if (previous != null)
+							throw duplicateMappingException(key, mappingOrigins.get(key), mappingMds.origin());
+						mappingOrigins.put(key, mappingMds.origin());
 					}
 				}
 			}
+		}
+
+		private IllegalStateException duplicateMappingException(PathAndMethod key, String previousOrigin, String duplicateOrigin) {
+			return new IllegalStateException("Ambiguous Web API mapping for " + key.method() + " " + key.path() + " in service domain '"
+					+ serviceDomain.domainId() + "': both " + previousOrigin + " and " + duplicateOrigin + " declare this binding.");
 		}
 
 		// Should we even allow such characters like ':' or '/' in a service domain?
@@ -272,7 +283,7 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 			result.defaultWriteEmptyProperties = requestMdResolver.is(ResponseIncludesEmptyProperties.T);
 			result.defaultMimeType = mappingMds.responseMimeType(mdProp(ResponseMimeType.T, ResponseMimeType::getMimeType));
 			result.defaultPreserveTransportPayload = requestMdResolver.is(ResponsePreservesTransportPayload.T);
-			result.defaultDecodingLenience = mappingMds.decodingLenience(false);
+			result.defaultDecodingLenience = mappingMds.decodingLenience(requestMdResolver.is(RequestDecodingLenience.T));
 			result.defaultProjection = mappingMds.responseProjection(mdProp(ResponseProjection.T, ResponseProjection::getPath));
 			result.defaultTypeExplicitness = mdProp(ResponseTypeExplicitness.T, ResponseTypeExplicitness::getTypeExplicitness);
 			result.defaultSaveLocally = mappingMds.responseWithDownloadDialog(requestMdResolver.is(ResponseWithDownloadDialog.T));
@@ -312,20 +323,35 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 		}
 
 		private List<MappingMds> resolveMappingMds() {
+			RequestPathPrefix commonPathPrefix = requestMdResolver.meta(RequestPathPrefix.T).exclusive();
 			List<RequestMapping> completeMappings = requestMdResolver.meta(RequestMapping.T).list();
-			if (!completeMappings.isEmpty())
-				return completeMappings.stream().map(MappingMds::new).toList();
 
-			MappingMds apiMappings = new MappingMds();
+			List<MappingMds> result = new java.util.ArrayList<>(completeMappings.size() + 1);
+			for (int i = 0; i < completeMappings.size(); i++)
+				result.add(new MappingMds(completeMappings.get(i), commonPathPrefix, mappingOrigin("complete RequestMapping #" + (i + 1))));
 
-			apiMappings.pathPrefix = requestMdResolver.meta(RequestPathPrefix.T).exclusive();
-			apiMappings.path = requestMdResolver.meta(RequestPath.T).exclusive();
-			apiMappings.methods = requestMdResolver.meta(RequestMethod.T).list();
+			MappingMds fineGrainedMapping = new MappingMds();
+			fineGrainedMapping.origin = mappingOrigin("fine-grained mapping");
+			fineGrainedMapping.pathPrefix = commonPathPrefix;
+			fineGrainedMapping.path = requestMdResolver.meta(RequestPath.T).exclusive();
+			fineGrainedMapping.methods = requestMdResolver.meta(RequestMethod.T).list();
 
 			ServiceRequest transformRequest = getTransformRequest();
-			apiMappings.transformRequest = transformRequest != null ? transformRequest.clone(cloningContext) : null;
+			fineGrainedMapping.transformRequest = transformRequest != null ? transformRequest.clone(cloningContext) : null;
 
-			return List.of(apiMappings);
+			boolean hasExplicitFineGrainedBinding = fineGrainedMapping.path != null || !isEmpty(fineGrainedMapping.methods);
+
+			// Preserve the historic convention where a prefix by itself exposes the request under its (possibly
+			// qualified) type name. In the presence of complete mappings, however, the prefix is only a common
+			// modifier and must not accidentally create an additional binding.
+			if (completeMappings.isEmpty() || hasExplicitFineGrainedBinding)
+				result.add(fineGrainedMapping);
+
+			return result;
+		}
+
+		private String mappingOrigin(String kind) {
+			return kind + " on " + requestType.getTypeSignature();
 		}
 
 		private ServiceRequest getTransformRequest() {
@@ -348,10 +374,10 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 		}
 
 		private Set<String> resolveTags() {
-			if (mappingMds.completeMapping != null)
-				return StringTools.isEmpty(mappingMds.completeMapping.getSection()) ? emptySet() : asSet(mappingMds.completeMapping.getSection());
 			RequestSection section = requestMdResolver.meta(RequestSection.T).exclusive();
 			String sectionName = section != null ? section.getName() : null;
+			if (mappingMds.completeMapping != null && !StringTools.isEmpty(mappingMds.completeMapping.getSection()))
+				sectionName = mappingMds.completeMapping.getSection();
 			return StringTools.isEmpty(sectionName) ? emptySet() : asSet(sectionName);
 		}
 
@@ -362,6 +388,7 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 		public RequestPathPrefix pathPrefix;
 		public RequestPath path;
 		public List<RequestMethod> methods;
+		public String origin;
 
 		// TODO support later? (DdraMapping.transformRequest)
 		public ServiceRequest transformRequest;
@@ -369,8 +396,14 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 		public MappingMds() {
 		}
 
-		public MappingMds(RequestMapping completeMapping) {
+		public MappingMds(RequestMapping completeMapping, RequestPathPrefix pathPrefix, String origin) {
 			this.completeMapping = completeMapping;
+			this.pathPrefix = pathPrefix;
+			this.origin = origin;
+		}
+
+		public String origin() {
+			return origin;
 		}
 
 		/** Returns an empty string or a prefix that ends with '/' */
@@ -431,17 +464,46 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 			;
 		}
 
-		boolean hideSerializedRequest(boolean fallback) { return completeMapping != null ? completeMapping.getHideSerializedRequest() : fallback; }
-		Boolean announceAsMultipart(Boolean fallback) { return completeMapping != null ? completeMapping.getAnnounceAsMultipart() : fallback; }
-		boolean useSessionEvaluation(boolean fallback) { return completeMapping != null ? completeMapping.getUseSessionEvaluation() : fallback; }
-		boolean responseAsResourcePayload(boolean fallback) { return completeMapping != null ? completeMapping.getResponseAsResourcePayload() : fallback; }
-		String depth(String fallback) { return completeMapping != null ? emptyToNull(completeMapping.getDepth()) : fallback; }
-		Integer entityRecurrenceDepth(Integer fallback) { return completeMapping != null ? completeMapping.getEntityRecurrenceDepth() : fallback; }
-		String responseMimeType(String fallback) { return completeMapping != null ? emptyToNull(completeMapping.getResponseMimeType()) : fallback; }
+		boolean hideSerializedRequest(boolean fallback) { return override(completeMapping == null ? null : completeMapping.getHideSerializedRequest(), fallback); }
+		Boolean announceAsMultipart(Boolean fallback) { return override(completeMapping == null ? null : completeMapping.getAnnounceAsMultipart(), fallback); }
+		boolean useSessionEvaluation(boolean fallback) { return override(completeMapping == null ? null : completeMapping.getUseSessionEvaluation(), fallback); }
+		boolean responseAsResourcePayload(boolean fallback) {
+			return override(completeMapping == null ? null : completeMapping.getResponseAsResourcePayload(), fallback);
+		}
+		String depth(String fallback) { return completeMapping != null ? emptyToFallback(completeMapping.getDepth(), fallback) : fallback; }
+		Integer entityRecurrenceDepth(Integer fallback) {
+			return completeMapping != null && completeMapping.getEntityRecurrenceDepth() != null ? completeMapping.getEntityRecurrenceDepth() : fallback;
+		}
+		String responseMimeType(String fallback) {
+			return completeMapping != null ? emptyToFallback(completeMapping.getResponseMimeType(), fallback) : fallback;
+		}
 		String responseProjection(String fallback) { return completeMapping != null ? emptyToNull(completeMapping.getResponseProjection()) : fallback; }
-		boolean responseWithDownloadDialog(boolean fallback) { return completeMapping != null ? completeMapping.getResponseWithDownloadDialog() : fallback; }
-		boolean decodingLenience(boolean fallback) { return completeMapping != null ? completeMapping.getDecodingLenience() : fallback; }
+		boolean responseWithDownloadDialog(boolean fallback) {
+			return override(completeMapping == null ? null : completeMapping.getResponseWithDownloadDialog(), fallback);
+		}
+		boolean decodingLenience(boolean fallback) {
+			return override(completeMapping == null ? null : completeMapping.getDecodingLenience(), fallback);
+		}
+		private boolean override(BooleanOverride override, boolean fallback) {
+			if (override == null)
+				return fallback;
+			return switch (override) {
+				case INHERIT -> fallback;
+				case ENABLED -> true;
+				case DISABLED -> false;
+			};
+		}
+		private Boolean override(BooleanOverride override, Boolean fallback) {
+			if (override == null)
+				return fallback;
+			return switch (override) {
+				case INHERIT -> fallback;
+				case ENABLED -> true;
+				case DISABLED -> false;
+			};
+		}
 		private String emptyToNull(String value) { return StringTools.isEmpty(value) ? null : value; }
+		private String emptyToFallback(String value, String fallback) { return StringTools.isEmpty(value) ? fallback : value; }
 	}
 
 	private static record PathAndMethod(String path, HttpRequestMethod method) {

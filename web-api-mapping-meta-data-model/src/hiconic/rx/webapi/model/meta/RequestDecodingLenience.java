@@ -13,27 +13,13 @@
 // ============================================================================
 package hiconic.rx.webapi.model.meta;
 
-import com.braintribe.model.generic.annotation.meta.Mandatory;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 import com.braintribe.model.meta.data.EntityTypeMetaData;
+import com.braintribe.model.meta.data.ExplicitPredicate;
 
-/**
- * Common prefix applied before paths declared by {@link RequestPath} and {@link RequestMapping}.
- * It modifies every binding of the request type and does not create an additional binding when at least one
- * {@link RequestMapping} is present.
- * 
- * @see RequestPath
- * @see RequestMapping
- * 
- * @author peter.gazdik
- */
-public interface RequestPathPrefix extends EntityTypeMetaData {
+/** Controls whether unknown input properties are tolerated while decoding the request. */
+public interface RequestDecodingLenience extends EntityTypeMetaData, ExplicitPredicate {
 
-	EntityType<RequestPathPrefix> T = EntityTypes.T(RequestPathPrefix.class);
-
-	/** The value may (but must not) start/end with '/'. */
-	@Mandatory
-	String getPrefix();
-	void setPrefix(String prefix);
+	EntityType<RequestDecodingLenience> T = EntityTypes.T(RequestDecodingLenience.class);
 }
