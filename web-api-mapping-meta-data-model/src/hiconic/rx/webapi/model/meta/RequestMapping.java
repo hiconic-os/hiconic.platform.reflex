@@ -35,13 +35,11 @@ public interface RequestMapping extends EntityTypeMetaData {
 	String getResponseProjection();
 	void setResponseProjection(String responseProjection);
 
-	/** {@link BooleanOverride#INHERIT} means inherit {@link ResponseAsResourcePayload}. */
-	@Initializer("enum(hiconic.rx.webapi.model.meta.BooleanOverride,INHERIT)")
+	/** {@code null} or {@link BooleanOverride#INHERIT} means inherit {@link ResponseAsResourcePayload}. */
 	BooleanOverride getResponseAsResourcePayload();
 	void setResponseAsResourcePayload(BooleanOverride responseAsResourcePayload);
 
-	/** {@link BooleanOverride#INHERIT} means inherit {@link ResponseWithDownloadDialog}. */
-	@Initializer("enum(hiconic.rx.webapi.model.meta.BooleanOverride,INHERIT)")
+	/** {@code null} or {@link BooleanOverride#INHERIT} means inherit {@link ResponseWithDownloadDialog}. */
 	BooleanOverride getResponseWithDownloadDialog();
 	void setResponseWithDownloadDialog(BooleanOverride responseWithDownloadDialog);
 
@@ -49,18 +47,15 @@ public interface RequestMapping extends EntityTypeMetaData {
 	String getResponseMimeType();
 	void setResponseMimeType(String responseMimeType);
 
-	/** {@link BooleanOverride#INHERIT} means inherit {@link HideSerializedRequest}. */
-	@Initializer("enum(hiconic.rx.webapi.model.meta.BooleanOverride,INHERIT)")
+	/** {@code null} or {@link BooleanOverride#INHERIT} means inherit {@link HideSerializedRequest}. */
 	BooleanOverride getHideSerializedRequest();
 	void setHideSerializedRequest(BooleanOverride hideSerializedRequest);
 
-	/** {@link BooleanOverride#INHERIT} means inherit {@link ResponseAsMultipart}. */
-	@Initializer("enum(hiconic.rx.webapi.model.meta.BooleanOverride,INHERIT)")
+	/** {@code null} or {@link BooleanOverride#INHERIT} means inherit {@link ResponseAsMultipart}. */
 	BooleanOverride getAnnounceAsMultipart();
 	void setAnnounceAsMultipart(BooleanOverride announceAsMultipart);
 
-	/** {@link BooleanOverride#INHERIT} means inherit {@link RequestEvaluateWithSession}. */
-	@Initializer("enum(hiconic.rx.webapi.model.meta.BooleanOverride,INHERIT)")
+	/** {@code null} or {@link BooleanOverride#INHERIT} means inherit {@link RequestEvaluateWithSession}. */
 	BooleanOverride getUseSessionEvaluation();
 	void setUseSessionEvaluation(BooleanOverride useSessionEvaluation);
 
@@ -72,8 +67,7 @@ public interface RequestMapping extends EntityTypeMetaData {
 	String getDepth();
 	void setDepth(String depth);
 
-	/** {@link BooleanOverride#INHERIT} means inherit {@link RequestDecodingLenience}. */
-	@Initializer("enum(hiconic.rx.webapi.model.meta.BooleanOverride,INHERIT)")
+	/** {@code null} or {@link BooleanOverride#INHERIT} means inherit {@link RequestDecodingLenience}. */
 	BooleanOverride getDecodingLenience();
 	void setDecodingLenience(BooleanOverride decodingLenience);
 }
