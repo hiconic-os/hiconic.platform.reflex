@@ -19,7 +19,11 @@ import static com.braintribe.utils.lcd.CollectionTools2.newMap;
 import static com.braintribe.utils.lcd.CollectionTools2.newSet;
 import static java.util.Collections.emptySet;
 
+import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -37,6 +41,7 @@ import com.braintribe.model.generic.reflection.StandardCloningContext;
 import com.braintribe.model.meta.data.MetaData;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.meta.cmd.builders.EntityMdResolver;
+import com.braintribe.model.processing.meta.cmd.extended.EntityMdDescriptor;
 import com.braintribe.model.processing.meta.oracle.ModelOracle;
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.utils.lcd.Lazy;
@@ -323,16 +328,16 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 		}
 
 		private List<MappingMds> resolveMappingMds() {
-			RequestPathPrefix commonPathPrefix = requestMdResolver.meta(RequestPathPrefix.T).exclusive();
+			List<RequestPathPrefix> commonPathPrefixes = resolvePathPrefixes();
 			List<RequestMapping> completeMappings = requestMdResolver.meta(RequestMapping.T).list();
 
 			List<MappingMds> result = new java.util.ArrayList<>(completeMappings.size() + 1);
 			for (int i = 0; i < completeMappings.size(); i++)
-				result.add(new MappingMds(completeMappings.get(i), commonPathPrefix, mappingOrigin("complete RequestMapping #" + (i + 1))));
+				result.add(new MappingMds(completeMappings.get(i), commonPathPrefixes, mappingOrigin("complete RequestMapping #" + (i + 1))));
 
 			MappingMds fineGrainedMapping = new MappingMds();
 			fineGrainedMapping.origin = mappingOrigin("fine-grained mapping");
-			fineGrainedMapping.pathPrefix = commonPathPrefix;
+			fineGrainedMapping.pathPrefixes = commonPathPrefixes;
 			fineGrainedMapping.path = requestMdResolver.meta(RequestPath.T).exclusive();
 			fineGrainedMapping.methods = requestMdResolver.meta(RequestMethod.T).list();
 
@@ -346,6 +351,50 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 			// modifier and must not accidentally create an additional binding.
 			if (completeMappings.isEmpty() || hasExplicitFineGrainedBinding)
 				result.add(fineGrainedMapping);
+
+			return result;
+		}
+
+		/**
+		 * Prefix metadata composes across the request hierarchy. This is important for models which express an outer API
+		 * namespace and an orthogonal section as separate supertypes, e.g. {@code v1/excerpt}. CMD returns inherited
+		 * metadata subtype-first; sorting by inheritance depth puts enclosing prefixes before more specific ones while
+		 * preserving declaration order for prefixes at the same depth.
+		 */
+		private List<RequestPathPrefix> resolvePathPrefixes() {
+			Map<String, Integer> inheritanceDepths = inheritanceDepths();
+
+			return requestMdResolver.meta(RequestPathPrefix.T).listExtended().stream() //
+					.sorted(Comparator.comparingInt((EntityMdDescriptor md) -> pathPrefixDepth(md, inheritanceDepths)).reversed()) //
+					.map(md -> (RequestPathPrefix) md.getResolvedValue()) //
+					.toList();
+		}
+
+		private int pathPrefixDepth(EntityMdDescriptor md, Map<String, Integer> inheritanceDepths) {
+			if (md.getOwnerTypeInfo() == null)
+				return Integer.MAX_VALUE; // A configured default is the outermost prefix.
+
+			String ownerTypeSignature = md.getOwnerTypeInfo().addressedType().getTypeSignature();
+			return inheritanceDepths.getOrDefault(ownerTypeSignature, 0);
+		}
+
+		private Map<String, Integer> inheritanceDepths() {
+			Map<String, Integer> result = new HashMap<>();
+			Deque<TypeAtDepth> pending = new ArrayDeque<>();
+			pending.add(new TypeAtDepth(requestType, 0));
+
+			while (!pending.isEmpty()) {
+				TypeAtDepth current = pending.removeFirst();
+				String signature = current.type().getTypeSignature();
+				Integer previousDepth = result.putIfAbsent(signature, current.depth());
+				if (previousDepth != null && previousDepth <= current.depth())
+					continue;
+				if (previousDepth != null)
+					result.put(signature, current.depth());
+
+				for (EntityType<?> superType : current.type().getSuperTypes())
+					pending.addLast(new TypeAtDepth(superType, current.depth() + 1));
+			}
 
 			return result;
 		}
@@ -385,7 +434,7 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 
 	static class MappingMds {
 		public RequestMapping completeMapping;
-		public RequestPathPrefix pathPrefix;
+		public List<RequestPathPrefix> pathPrefixes = List.of();
 		public RequestPath path;
 		public List<RequestMethod> methods;
 		public String origin;
@@ -396,9 +445,9 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 		public MappingMds() {
 		}
 
-		public MappingMds(RequestMapping completeMapping, RequestPathPrefix pathPrefix, String origin) {
+		public MappingMds(RequestMapping completeMapping, List<RequestPathPrefix> pathPrefixes, String origin) {
 			this.completeMapping = completeMapping;
-			this.pathPrefix = pathPrefix;
+			this.pathPrefixes = pathPrefixes;
 			this.origin = origin;
 		}
 
@@ -408,17 +457,12 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 
 		/** Returns an empty string or a prefix that ends with '/' */
 		public String pathPrefix() {
-			if (pathPrefix == null)
-				return "";
-
-			String prefix = pathPrefix.getPrefix();
-			if (StringTools.isEmpty(prefix))
-				return "";
-
-			if (prefix.startsWith("/"))
-				prefix = prefix.substring(1);
-
-			return prefix.endsWith("/") ? prefix : prefix + "/";
+			String result = pathPrefixes.stream() //
+					.map(RequestPathPrefix::getPrefix) //
+					.map(this::withoutSurroundingSlashes) //
+					.filter(java.util.Objects::nonNull) //
+					.collect(Collectors.joining("/"));
+			return result.isEmpty() ? "" : result + "/";
 		}
 
 		/** Returns path that doesn't start with '/' or null */
@@ -458,7 +502,7 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 
 		public boolean hasMappings() {
 			return completeMapping != null || //
-					pathPrefix != null || //
+					!pathPrefixes.isEmpty() || //
 					path != null || //
 					!methods.isEmpty() //
 			;
@@ -507,6 +551,9 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 	}
 
 	private static record PathAndMethod(String path, HttpRequestMethod method) {
+	}
+
+	private static record TypeAtDepth(EntityType<?> type, int depth) {
 	}
 
 }

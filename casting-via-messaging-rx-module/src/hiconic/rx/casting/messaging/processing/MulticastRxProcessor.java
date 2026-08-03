@@ -36,6 +36,7 @@ import com.braintribe.model.processing.service.api.ServiceProcessor;
 import com.braintribe.model.processing.service.api.ServiceProcessorException;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
 import com.braintribe.model.processing.service.api.SessionIdAspect;
+import com.braintribe.model.processing.service.common.context.UserSessionAspect;
 import com.braintribe.model.processing.service.common.FailureCodec;
 import com.braintribe.model.processing.service.common.ServiceResults;
 import com.braintribe.model.service.api.ExecuteAuthorized;
@@ -46,6 +47,8 @@ import com.braintribe.model.service.api.result.Failure;
 import com.braintribe.model.service.api.result.MulticastResponse;
 import com.braintribe.model.service.api.result.ServiceResult;
 import com.braintribe.model.service.api.result.ServiceResultType;
+import com.braintribe.model.usersession.UserSession;
+import com.braintribe.model.usersession.UserSessionType;
 import com.braintribe.transport.messaging.api.MessageConsumer;
 import com.braintribe.transport.messaging.api.MessageListener;
 import com.braintribe.transport.messaging.api.MessageProducer;
@@ -416,7 +419,7 @@ public class MulticastRxProcessor implements ServiceProcessor<MulticastRequest, 
 		}
 
 		String sessionId = request.getSessionId();
-		if (sessionId != null) {
+		if (requiresAuthorizedWrapper(requestContext, sessionId)) {
 			ExecuteAuthorized ea = ExecuteAuthorized.T.create();
 			ea.setServiceRequest(serviceRequest);
 			ea.setSessionId(sessionId);
@@ -431,6 +434,16 @@ public class MulticastRxProcessor implements ServiceProcessor<MulticastRequest, 
 
 		return requestMessage;
 
+	}
+
+	private boolean requiresAuthorizedWrapper(ServiceRequestContext requestContext, String requestSessionId) {
+		if (requestSessionId == null)
+			return false;
+
+		UserSession contextSession = requestContext.findAttribute(UserSessionAspect.class).orElse(null);
+		return contextSession == null //
+				|| contextSession.getType() != UserSessionType.internal //
+				|| !requestSessionId.equals(contextSession.getSessionId());
 	}
 
 	@Override

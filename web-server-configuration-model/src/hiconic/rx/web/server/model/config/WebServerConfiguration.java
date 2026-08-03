@@ -36,6 +36,8 @@ public interface WebServerConfiguration extends GenericEntity {
 	String sslKeyStorePassword = "sslKeyStorePassword";
 	String defaultEndpointsBasePath = "defaultEndpointsBasePath";
 	String exposeHealthEndpointsAtDefaultEndpointsBasePath = "exposeHealthEndpointsAtDefaultEndpointsBasePath";
+	String accessLogEnabled = "accessLogEnabled";
+	String accessLogFormat = "accessLogFormat";
 	String pushSseEndpointPath = "pushSseEndpointPath";
 	String pushWebSocketEndpointPath = "pushWebSocketEndpointPath";
 
@@ -97,6 +99,18 @@ public interface WebServerConfiguration extends GenericEntity {
 	@Initializer("false")
 	boolean getExposeHealthEndpointsAtDefaultEndpointsBasePath();
 	void setExposeHealthEndpointsAtDefaultEndpointsBasePath(boolean exposeHealthEndpointsAtDefaultEndpointsBasePath);
+
+	@Description("If true, completed HTTP exchanges are written through the regular logging system using the "
+			+ "hiconic.platform.reflex.web_server.processing.ReflexAccessLogReceiver logger. This makes access logs "
+			+ "available to the configured appenders and log reflection without introducing a separate log lifecycle.")
+	@Initializer("false")
+	boolean getAccessLogEnabled();
+	void setAccessLogEnabled(boolean accessLogEnabled);
+
+	@Description("Undertow access-log pattern used when accessLogEnabled is true.")
+	@Initializer("'%h %l %u \"%r\" %s %b %Dms'")
+	String getAccessLogFormat();
+	void setAccessLogFormat(String accessLogFormat);
 
 	@Description("Path of the SSE transport endpoint for platform push, relative to defaultEndpointsBasePath. The value must not end with '/'.")
 	@Pattern(".*[^\\/]$")

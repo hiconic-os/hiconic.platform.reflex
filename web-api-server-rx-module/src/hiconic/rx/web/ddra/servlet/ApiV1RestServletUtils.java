@@ -65,6 +65,7 @@ import hiconic.rx.webapi.common.TypeTraversalResult;
 import hiconic.rx.webapi.endpoints.api.v1.ApiV1DdraEndpoint;
 
 public class ApiV1RestServletUtils {
+	private String defaultResponseDepth = "reachable";
 	private final static Logger logger = Logger.getLogger(ApiV1RestServletUtils.class);
 
 	private MimeTypeRegistry mimeTypeRegistry = null;
@@ -252,16 +253,18 @@ public class ApiV1RestServletUtils {
 	}
 
 	public ApiV1DdraEndpoint createDefaultEndpoint(SingleDdraMapping mapping) {
-		if (mapping == null)
-			return ApiV1DdraEndpoint.T.create();
+		if (mapping == null) {
+			ApiV1DdraEndpoint endpoint = ApiV1DdraEndpoint.T.create();
+			endpoint.setDepth(defaultResponseDepth);
+			return endpoint;
+		}
 
 		ApiV1DdraEndpoint endpoint = mapping.getEndpointPrototype();
 
 		if (endpoint == null)
 			endpoint = ApiV1DdraEndpoint.T.create();
 
-		if (mapping.getDefaultDepth() != null)
-			endpoint.setDepth(mapping.getDefaultDepth());
+		endpoint.setDepth(mapping.getDefaultDepth() != null ? mapping.getDefaultDepth() : defaultResponseDepth);
 		if (mapping.getDefaultResponseContentType() != null)
 			endpoint.setResponseContentType(mapping.getDefaultResponseContentType());
 		if (mapping.getDefaultSaveLocally() != null)
@@ -286,6 +289,10 @@ public class ApiV1RestServletUtils {
 			endpoint.setUseSessionEvaluation(mapping.getDefaultUseSessionEvaluation());
 
 		return endpoint;
+	}
+
+	public void setDefaultResponseDepth(String defaultResponseDepth) {
+		this.defaultResponseDepth = defaultResponseDepth;
 	}
 
 	public void writeOutTransientSources(ApiV1EndpointContext context, FormDataWriter formDataWriter) throws IOException {

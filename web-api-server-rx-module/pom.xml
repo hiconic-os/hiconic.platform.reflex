@@ -81,6 +81,11 @@ limitations under the License.
         </dependency>
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>web-api-server-configuration-model</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
             <artifactId>http-request-entity-decoder</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>

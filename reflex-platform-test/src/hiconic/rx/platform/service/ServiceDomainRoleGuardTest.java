@@ -24,11 +24,23 @@ import com.braintribe.model.service.api.MulticastRequest;
 import com.braintribe.model.service.api.result.MulticastResponse;
 
 import hiconic.rx.resource.model.api.GetResourcePayload;
+import hiconic.rx.model.service.processing.md.ProcessWith;
 import hiconic.rx.module.api.service.PlatformServiceDomains;
 import hiconic.rx.platform.test.PlatformTestDomains;
+import hiconic.rx.platform.test.wire.space.PlatformRxTestModuleSpace;
 import hiconic.rx.test.common.AbstractRxTest;
 
 public class ServiceDomainRoleGuardTest extends AbstractRxTest {
+
+	@Test
+	public void serviceDomainAliasResolvesWithoutCreatingAnotherDomain() {
+		var serviceDomains = platformContract.serviceProcessing().serviceDomains();
+		var canonicalDomain = serviceDomains.byId(PlatformTestDomains.resources);
+
+		Assertions.assertThat(serviceDomains.byId(PlatformRxTestModuleSpace.resourcesAlias)).isSameAs(canonicalDomain);
+		Assertions.assertThat(canonicalDomain.aliases()).containsExactly(PlatformRxTestModuleSpace.resourcesAlias);
+		Assertions.assertThat(serviceDomains.list()).filteredOn(domain -> domain.domainId().equals(PlatformRxTestModuleSpace.resourcesAlias)).isEmpty();
+	}
 
 	@Test
 	public void internalDomainRejectsExternalContextAndAcceptsSystemContext() {
@@ -44,6 +56,11 @@ public class ServiceDomainRoleGuardTest extends AbstractRxTest {
 				.eval(platformContract.serviceProcessing().systemEvaluator())
 				.getReasoned();
 		Assertions.assertThat(internalResult.isSatisfied()).isTrue();
+
+		ProcessWith effectiveBinding = platformContract.serviceProcessing().serviceDomains().internal().systemCmdResolver()
+				.getMetaData().entityType(MulticastRequest.T).meta(ProcessWith.T).exclusive();
+		Assertions.assertThat(effectiveBinding).isNotNull();
+		Assertions.assertThat(effectiveBinding.getConflictPriority()).isEqualTo(0d);
 	}
 
 	private MulticastRequest multicastRequest() {

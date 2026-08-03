@@ -1,6 +1,7 @@
 package hiconic.rx.security.processor;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.braintribe.gm.model.reason.Reason;
@@ -67,6 +68,16 @@ public class DelegatingUserService implements UserService {
 	@Override
 	public Reason ensureUser(User user) {
 		return delegate().ensureUser(user);
+	}
+
+	@Override
+	public Reason reconcileUsers(List<User> users, String provisioningGroup, String reconciliationRevision) {
+		return delegate().reconcileUsers(users, provisioningGroup, reconciliationRevision);
+	}
+
+	@Override
+	public Reason reconcileUsers(List<User> users, String provisioningGroup, String reconciliationRevision, boolean deleteVanishedUsers) {
+		return delegate().reconcileUsers(users, provisioningGroup, reconciliationRevision, deleteVanishedUsers);
 	}
 
 	private UserService delegate() {

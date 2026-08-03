@@ -14,4 +14,9 @@ public interface AccessUserServiceConfiguration extends GenericEntity {
 	String getAuthAccessId();
 	void setAuthAccessId(String authAccessId);
 
+	/** Database used for cluster-safe provisioning revision state. */
+	@Initializer("'auth'")
+	String getProvisioningStateDatabaseId();
+	void setProvisioningStateDatabaseId(String provisioningStateDatabaseId);
+
 }

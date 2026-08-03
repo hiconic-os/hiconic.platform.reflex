@@ -17,7 +17,7 @@ public interface WebApiServerContract extends RxExportContract {
 	/**
 	 * The path to the web-api servlet, without leading or trailing slash.
 	 * <p>
-	 * Default: <em>api</em>
+	 * The path is relative to the web server's default endpoints base path. Default: <em>api</em>.
 	 */
 	String servletPath();
 }

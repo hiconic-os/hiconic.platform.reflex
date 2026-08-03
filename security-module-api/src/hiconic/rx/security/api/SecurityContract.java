@@ -26,6 +26,10 @@ public interface SecurityContract extends RxExportContract {
 
 	UserService userService();
 
+	PasswordHashing passwordHashing();
+
+	UserSessionInvalidation userSessionInvalidation();
+
 	UserSessionScoping userSessionScoping();
 
 	Set<String> adminRoles();

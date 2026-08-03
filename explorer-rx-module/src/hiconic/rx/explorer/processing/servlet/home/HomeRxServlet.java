@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import org.apache.velocity.VelocityContext;
 
@@ -501,6 +502,7 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 			links.setIconRef("./webpages/images/cortex/domains.png");
 
 			setDisplayName(sd.displayName(), domainId, links);
+			addAliasesToDomainDescription(sd, links);
 			configureServiceDomainLink(links, domainId);
 
 			if (links.getHasErrors()) {
@@ -511,6 +513,15 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 				serviceDomainsGroup.getLinks().add(links);
 			}
 		}
+	}
+
+	private void addAliasesToDomainDescription(ServiceDomain domain, LinkCollection links) {
+		if (domain.aliases().isEmpty())
+			return;
+
+		String aliases = domain.aliases().stream().sorted().collect(Collectors.joining(", "));
+		links.setTechnicalName(domain.domainId() + " · aliases: " + aliases);
+		links.setToolTip("Domain: " + domain.domainId() + "\nAliases: " + aliases);
 	}
 
 	// #################################################

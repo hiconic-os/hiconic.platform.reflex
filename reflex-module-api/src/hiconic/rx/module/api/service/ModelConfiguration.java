@@ -50,6 +50,15 @@ public interface ModelConfiguration extends ModelSymbol {
 
 	<R extends ServiceRequest> void bindRequest(EntityType<R> requestType, Supplier<ServiceProcessor<? super R, ?>> serviceProcessorSupplier);
 
+	/**
+	 * Binds a processor with an explicit metadata conflict priority. A lower-priority platform fallback can therefore
+	 * be superseded unambiguously by a regular module binding.
+	 */
+	default <R extends ServiceRequest> void bindRequest(EntityType<R> requestType,
+			Supplier<ServiceProcessor<? super R, ?>> serviceProcessorSupplier, double conflictPriority) {
+		bindRequest(requestType, serviceProcessorSupplier);
+	}
+
 	/** Binds the request to a lazily resolved, platform-registered processor component. */
 	<R extends ServiceRequest> void bindRequest(EntityType<R> requestType, String serviceProcessorKey);
 

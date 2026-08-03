@@ -19,7 +19,8 @@ import com.braintribe.model.generic.reflection.EntityTypes;
 import com.braintribe.model.meta.data.EntityTypeMetaData;
 
 /**
- * Common prefix applied before paths declared by {@link RequestPath} and {@link RequestMapping}.
+ * Composable prefix applied before paths declared by {@link RequestPath} and {@link RequestMapping}. Multiple
+ * inherited prefixes are concatenated from the outermost supertype to the most specific one.
  * It modifies every binding of the request type and does not create an additional binding when at least one
  * {@link RequestMapping} is present.
  * 

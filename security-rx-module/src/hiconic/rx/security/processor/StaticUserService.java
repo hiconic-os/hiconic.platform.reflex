@@ -27,11 +27,18 @@ import com.braintribe.model.securityservice.credentials.identification.UserIdent
 import com.braintribe.model.user.User;
 
 import hiconic.rx.security.api.UserService;
+import hiconic.rx.security.api.PasswordHashing;
 import hiconic.rx.security.model.configuration.UserServiceConfiguration;
 
 public class StaticUserService implements UserService {
 
 	private final Map<String, User> users = new HashMap<>();
+	private PasswordHashing passwordHashing;
+
+	@Required
+	public void setPasswordHashing(PasswordHashing passwordHashing) {
+		this.passwordHashing = passwordHashing;
+	}
 
 	@Override
 	public String userServiceId() {
@@ -40,8 +47,11 @@ public class StaticUserService implements UserService {
 
 	@Required
 	public void setUsers(List<User> users) {
-		for (User user : users)
+		for (User user : users) {
+			if (user.getPassword() != null)
+				user.setPassword(passwordHashing.hash(user.getPassword()));
 			this.users.put(user.getName(), user);
+		}
 	}
 
 	@Override
@@ -62,7 +72,7 @@ public class StaticUserService implements UserService {
 	public User retrieveUser(UserIdentification userIdentification, String password) throws UserNotFoundException {
 		User user = retrieveUser(userIdentification);
 
-		if (password.equals(user.getPassword()))
+		if (passwordHashing.matches(password, user.getPassword()))
 			return user;
 
 		throw new UserNotFoundException();

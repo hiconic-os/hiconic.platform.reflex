@@ -30,6 +30,9 @@ public interface ServiceDomain {
 	/** Optional human-readable name used by reflective user interfaces. Defaults to {@link #domainId()}. */
 	String displayName();
 
+	/** Alternative ids accepted when resolving this domain. */
+	Set<String> aliases();
+
 	/** Roles of which at least one is required for evaluating requests in this domain. An empty set means unrestricted. */
 	Set<String> allowedRoles();
 

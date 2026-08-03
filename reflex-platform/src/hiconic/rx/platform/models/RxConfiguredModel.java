@@ -249,8 +249,18 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 	
 	@Override
 	public <R extends ServiceRequest> void bindRequest(EntityType<R> requestType, Supplier<ServiceProcessor<? super R, ?>> serviceProcessorSupplier) {
+		bindRequest(requestType, serviceProcessorSupplier, 0d);
+	}
+
+	@Override
+	public <R extends ServiceRequest> void bindRequest(EntityType<R> requestType,
+			Supplier<ServiceProcessor<? super R, ?>> serviceProcessorSupplier, double conflictPriority) {
 		addModelIfNotNull(requestType.getModel());
-		configureModel(editor -> editor.onEntityType(requestType).addMetaData(ProcessWith.create(serviceProcessorSupplier.get())));
+		configureModel(editor -> {
+			ProcessWith processWith = ProcessWith.create(serviceProcessorSupplier.get());
+			processWith.setConflictPriority(conflictPriority);
+			editor.onEntityType(requestType).addMetaData(processWith);
+		});
 	}
 
 	@Override

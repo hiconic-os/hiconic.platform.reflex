@@ -65,6 +65,8 @@ import io.undertow.Handlers;
 import io.undertow.Undertow;
 import io.undertow.Undertow.Builder;
 import io.undertow.Undertow.ListenerInfo;
+import io.undertow.UndertowOptions;
+import io.undertow.server.HttpHandler;
 import io.undertow.server.handlers.PathHandler;
 import io.undertow.server.handlers.accesslog.AccessLogHandler;
 import io.undertow.server.handlers.resource.FileResourceManager;
@@ -492,7 +494,10 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 
 		Builder builder = Undertow.builder() //
 				.addHttpListener(configuration.getPort(), "0.0.0.0") //
-				.setHandler(accessLogHandler());
+				.setHandler(rootHandler());
+
+		if (configuration.getAccessLogEnabled())
+			builder.setServerOption(UndertowOptions.RECORD_REQUEST_START_TIME, true);
 
 		Integer ioThreads = configuration.getIoThreads();
 		if (ioThreads != null)
@@ -522,6 +527,10 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 		return bean;
 	}
 
+	private HttpHandler rootHandler() {
+		return configuration().getAccessLogEnabled() ? accessLogHandler() : applicationStateGateHandler();
+	}
+
 	@Managed
 	private Box<SslConfig> sslConfigBox() {
 		return Box.of(SslConfig.buildFromConfig(configuration(), platform.configuration()));
@@ -529,8 +538,8 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 
 	@Managed
 	private AccessLogHandler accessLogHandler() {
-		String logFormat = "%h %l %u \"%r\" %s %b %Dms";
-		AccessLogHandler bean = new AccessLogHandler(applicationStateGateHandler(), logReceiver(), logFormat, Undertow.class.getClassLoader());
+		AccessLogHandler bean = new AccessLogHandler(applicationStateGateHandler(), logReceiver(), configuration().getAccessLogFormat(),
+				Undertow.class.getClassLoader());
 		return bean;
 	}
 

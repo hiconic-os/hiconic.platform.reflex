@@ -50,10 +50,7 @@ public class ApplicationStateGateHandler implements HttpHandler {
 	
 	private void handleStandardRequest(HttpServerExchange exchange) throws Exception {
 		exchange.startBlocking(); 
-		exchange.dispatch(x -> {
-			System.out.println(x.getIoThread().getName());
-			standardHandler.get().handleRequest(x);
-		});
+		exchange.dispatch(x -> standardHandler.get().handleRequest(x));
 	}
 	
 	public void setStandardHandler(HttpHandler standardHandler) {

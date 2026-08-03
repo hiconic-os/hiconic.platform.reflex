@@ -41,6 +41,7 @@ import hiconic.rx.platform.models.RxConfiguredModel;
 public class RxServiceDomain implements ServiceDomain, ServiceDomainConfiguration, DelegatingModelConfiguration {
 
 	private final String domainId;
+	private final RxServiceDomains serviceDomains;
 	private volatile String displayName;
 	private final ConfigurableServiceRequestEvaluator evaluator;
 
@@ -50,9 +51,10 @@ public class RxServiceDomain implements ServiceDomain, ServiceDomainConfiguratio
 	private final List<Supplier<? extends ServiceRequest>> defaultRequestSuppliers = Collections.synchronizedList(new ArrayList<>());
 	private final Set<String> allowedRoles = Collections.synchronizedSet(new HashSet<>());
 	
-	public RxServiceDomain(String domainId, RxConfiguredModel modelConfiguration, ExecutorService executorService,
+	public RxServiceDomain(String domainId, RxServiceDomains serviceDomains, RxConfiguredModel modelConfiguration, ExecutorService executorService,
 			Evaluator<ServiceRequest> contextEvaluator, ServiceProcessor<ServiceRequest, Object> fallbackProcessor) {
 		this.domainId = domainId;
+		this.serviceDomains = serviceDomains;
 		this.modelConfiguration = modelConfiguration;
 		
 		dispatcher = new RxRequestDispatcher();
@@ -84,6 +86,16 @@ public class RxServiceDomain implements ServiceDomain, ServiceDomainConfiguratio
 	public String displayName() {
 		String result = displayName;
 		return result == null || result.isBlank() ? DisplayNames.fromTechnicalName(domainId) : result;
+	}
+
+	@Override
+	public Set<String> aliases() {
+		return serviceDomains.aliasesOf(this);
+	}
+
+	@Override
+	public void addAlias(String alias) {
+		serviceDomains.registerAlias(alias, this);
 	}
 
 	@Override

@@ -15,8 +15,10 @@
 // ============================================================================
 package hiconic.rx.cli.processing;
 
-public interface OutputChannels {
-	String STDOUT = "stdout";
-	String STDERR = "stderr";
-	String NONE = "none";
+/**
+ * @deprecated Use {@link hiconic.rx.module.api.output.OutputChannels}. This
+ *             forwarding type preserves the existing CLI API.
+ */
+@Deprecated
+public interface OutputChannels extends hiconic.rx.module.api.output.OutputChannels {
 }

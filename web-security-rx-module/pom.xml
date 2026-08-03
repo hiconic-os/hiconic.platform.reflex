@@ -66,6 +66,11 @@
         </dependency>
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>web-api-mapping-meta-data-model</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
             <artifactId>web-security-module-api</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>

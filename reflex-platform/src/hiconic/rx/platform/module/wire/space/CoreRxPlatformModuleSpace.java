@@ -21,11 +21,13 @@ import com.braintribe.gm.model.logging.level.api.LogLevelRequest;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.model.processing.service.api.ProcessorRegistry;
 import com.braintribe.model.processing.service.api.ServiceProcessor;
+import com.braintribe.model.processing.securityservice.commons.service.ExecuteAuthorizedServiceProcessor;
 import com.braintribe.model.processing.service.common.CompositeServiceProcessor;
 import com.braintribe.model.processing.service.common.UnicastProcessor;
 import com.braintribe.model.resource.source.FileSystemSource;
 import com.braintribe.model.service.api.AuthorizedRequest;
 import com.braintribe.model.service.api.CompositeRequest;
+import com.braintribe.model.service.api.ExecuteAuthorized;
 import com.braintribe.model.service.api.InternalPushRequest;
 import com.braintribe.model.service.api.MulticastRequest;
 import com.braintribe.model.service.api.PushRequest;
@@ -78,7 +80,8 @@ public class CoreRxPlatformModuleSpace implements RxModuleContract, PushContract
 	}
 
 	private void configureInternalDomainDefaulting(ModelConfiguration internalDefaultingModelConfiguration) {
-		internalDefaultingModelConfiguration.bindRequest(MulticastRequest.T, this::defaultMulticastProcessor);
+		internalDefaultingModelConfiguration.bindRequest(MulticastRequest.T, this::defaultMulticastProcessor, -1d);
+		internalDefaultingModelConfiguration.bindRequest(ExecuteAuthorized.T, () -> ExecuteAuthorizedServiceProcessor.INSTANCE, -1d);
 	}
 
 	@Override
@@ -98,6 +101,7 @@ public class CoreRxPlatformModuleSpace implements RxModuleContract, PushContract
 		internalSd.setDisplayName("Internal");
 		internalSd.allowRoles(Set.of("internal"));
 		internalSd.bindRequest(UnicastRequest.T, this::unicastProcessor);
+		internalSd.bindRequest(ExecuteAuthorized.T, () -> ExecuteAuthorizedServiceProcessor.INSTANCE);
 		internalSd.bindRequest(PushRequest.T, this::pushProcessor);
 		internalSd.bindRequest(InternalPushRequest.T, this::pushProcessor);
 		internalSd.addModel(internalDomainDefaultingApiModelSymbol);

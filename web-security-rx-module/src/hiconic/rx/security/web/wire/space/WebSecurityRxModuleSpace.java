@@ -1,19 +1,23 @@
 package hiconic.rx.security.web.wire.space;
 
+import com.braintribe.model.securityservice.web.GetWebAuthorization;
+import com.braintribe.model.securityservice.web.UserPassWebAuthenticate;
+import com.braintribe.model.securityservice.web.WebAuthorizationRequest;
 import com.braintribe.utils.StringTools;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
+import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 import hiconic.rx.module.api.wire.RxConfigurationContract;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
-import hiconic.rx.security.api.SecurityServiceDomain;
 import hiconic.rx.security.model.configuration.SecurityConfiguration;
 import hiconic.rx.security.web.api.AuthFilters;
 import hiconic.rx.security.web.api.CookieHandler;
 import hiconic.rx.security.web.api.WebSecurityConfigurationContract;
 import hiconic.rx.security.web.api.WebSecurityContract;
+import hiconic.rx.security.web.api.WebSecurityServiceDomains;
 import hiconic.rx.security.web.model.configuration.WebSecurityConfiguration;
 import hiconic.rx.security.web.processing.credentials.extractor.BasicAuthCredentialsProvider;
 import hiconic.rx.security.web.processing.credentials.extractor.ExistingSessionFromCookieProvider;
@@ -25,9 +29,10 @@ import hiconic.rx.security.web.processing.servlet.AuthRxServlet;
 import hiconic.rx.security.web.processing.servlet.LoginRxServlet;
 import hiconic.rx.security.web.processing.servlet.LogoutRxServlet;
 import hiconic.rx.security.web.processing.WebAuthorizationServiceProcessor;
+import hiconic.rx.webapi.model.meta.HttpRequestMethod;
+import hiconic.rx.webapi.model.meta.RequestMapping;
 import hiconic.rx.web.server.api.WebServerContract;
 import jakarta.servlet.DispatcherType;
-import com.braintribe.model.securityservice.web.WebAuthorizationRequest;
 
 /**
  * This module's javadoc is yet to be written.
@@ -48,8 +53,16 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 
 	@Override
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
-		configurations.byId(SecurityServiceDomain.security)
-				.bindRequest(WebAuthorizationRequest.T, this::webAuthorizationServiceProcessor);
+		ServiceDomainConfiguration webAuth = configurations.byId(WebSecurityServiceDomains.webAuth);
+		webAuth.setDisplayName("Web authentication");
+		webAuth.bindRequest(WebAuthorizationRequest.T, this::webAuthorizationServiceProcessor);
+		webAuth.configureModel(editor -> {
+			editor.onEntityType(UserPassWebAuthenticate.T)
+					.addMetaData(webAuthMapping("user-pass-authenticate", HttpRequestMethod.POST));
+			editor.onEntityType(GetWebAuthorization.T)
+					.addMetaData(webAuthMapping("authorization", HttpRequestMethod.GET))
+					.addMetaData(webAuthMapping("authorization", HttpRequestMethod.POST));
+		});
 	}
 
 	@Override
@@ -67,6 +80,14 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 		webServer.addServlet("logout-servlet", "logout", logoutServlet());
 		// TODO explain why lenient filter?
 		webServer.addFilterMapping(AuthFilters.lenientAuthFilter, "/logout/*", DispatcherType.REQUEST);
+	}
+
+	private RequestMapping webAuthMapping(String path, HttpRequestMethod method) {
+		RequestMapping mapping = RequestMapping.T.create();
+		mapping.setPath(path);
+		mapping.setMethod(method);
+		mapping.setResponseMimeType("application/json");
+		return mapping;
 	}
 
 	@Managed

@@ -38,8 +38,11 @@ import hiconic.rx.log.reflection.model.LogStreamKind;
 
 /** Reflects the active Logback appenders without changing their configuration. */
 public class LogbackLogStreamInventory {
+	public static final String PROCESS_PROTOCOL_STREAM_ID = "process:protocol";
+
 	private InstanceId instanceId;
 	private LoggerContext loggerContext;
+	private Path processProtocolPath;
 
 	@Configurable
 	@Required
@@ -52,10 +55,17 @@ public class LogbackLogStreamInventory {
 		this.loggerContext = loggerContext;
 	}
 
+	@Configurable
+	public void setProcessProtocolPath(Path processProtocolPath) {
+		this.processProtocolPath = processProtocolPath;
+	}
+
 	public List<LogStreamDescriptor> streams() {
 		LoggerContext context = loggerContext != null ? loggerContext : (LoggerContext) LoggerFactory.getILoggerFactory();
 		List<LogStreamDescriptor> result = new ArrayList<>();
 		result.add(structuredLiveDescriptor());
+		if (processProtocolPath != null)
+			result.add(processProtocolDescriptor());
 
 		Map<Appender<ILoggingEvent>, Boolean> seen = new IdentityHashMap<>();
 		for (Logger logger : context.getLoggerList()) {
@@ -70,6 +80,12 @@ public class LogbackLogStreamInventory {
 	}
 
 	public LogbackFileStream fileStream(String streamId) {
+		if (PROCESS_PROTOCOL_STREAM_ID.equals(streamId) && processProtocolPath != null) {
+			Path active = processProtocolPath.toAbsolutePath().normalize();
+			LogStreamDescriptor descriptor = processProtocolDescriptor();
+			return new LogbackFileStream(active, List.of(active), descriptor, CompiledLogPattern.raw(instanceId, streamId));
+		}
+
 		LoggerContext context = loggerContext != null ? loggerContext : (LoggerContext) LoggerFactory.getILoggerFactory();
 		Map<Appender<ILoggingEvent>, Boolean> seen = new IdentityHashMap<>();
 		for (Logger logger : context.getLoggerList()) {
@@ -94,6 +110,20 @@ public class LogbackLogStreamInventory {
 			}
 		}
 		throw new IllegalArgumentException("Unknown file log stream: " + streamId);
+	}
+
+	private LogStreamDescriptor processProtocolDescriptor() {
+		Path active = processProtocolPath.toAbsolutePath().normalize();
+		LogStreamDescriptor descriptor = LogStreamDescriptor.T.create();
+		descriptor.setStreamId(PROCESS_PROTOCOL_STREAM_ID);
+		descriptor.setDisplayName("Process protocol");
+		descriptor.setOrigin(LogReflectionModelTools.origin(instanceId));
+		descriptor.setKind(LogStreamKind.FILE);
+		descriptor.setFormat(LogFormat.RAW);
+		descriptor.setParsingQuality(LogParsingQuality.RAW_ONLY);
+		descriptor.setCapabilities(EnumSet.of(LogCapability.FULLTEXT));
+		descriptor.setSegments(List.of(segment(active.toString())));
+		return descriptor;
 	}
 
 	private LogStreamDescriptor structuredLiveDescriptor() {

@@ -19,6 +19,7 @@ import static java.util.Collections.emptyList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
@@ -49,6 +50,7 @@ public class RxServiceDomains implements ServiceDomains {
 	private RxModelConfigurations modelConfigurations;
 
 	private final Map<String, RxServiceDomain> domains = new ConcurrentHashMap<>();
+	private final Map<String, RxServiceDomain> aliases = new ConcurrentHashMap<>();
 	private final Lazy<Map<GmMetaModel, List<ServiceDomain>>> domainsByModel = new Lazy<>(this::indexGmModelToDomains);
 	private final Lazy<Map<EntityType<?>, List<ServiceDomain>>> domainsByReqType = new Lazy<>(this::indexReqTypeToDomains);
 
@@ -79,7 +81,8 @@ public class RxServiceDomains implements ServiceDomains {
 
 	@Override
 	public RxServiceDomain byId(String domainId) {
-		return domains.get(domainId);
+		RxServiceDomain domain = domains.get(domainId);
+		return domain != null ? domain : aliases.get(domainId);
 	}
 
 	@Override
@@ -138,14 +141,43 @@ public class RxServiceDomains implements ServiceDomains {
 		return index;
 	}
 
-	public RxServiceDomain acquire(String domainId) {
+	public synchronized RxServiceDomain acquire(String domainId) {
+		RxServiceDomain aliasedDomain = aliases.get(domainId);
+		if (aliasedDomain != null)
+			throw new IllegalStateException("Cannot configure service domain '" + domainId + "' because this id is already an alias of domain '"
+					+ aliasedDomain.domainId() + "'.");
+
 		return domains.computeIfAbsent(domainId, this::createServiceDomain);
 	}
 
 	private RxServiceDomain createServiceDomain(String domainId) {
 		RxConfiguredModel configuredModel = modelConfigurations.byName(ServiceDomains.serviceDomainModelName(domainId));
 
-		return new RxServiceDomain(domainId, configuredModel, executorService, contextEvaluator, fallbackProcessor);
+		return new RxServiceDomain(domainId, this, configuredModel, executorService, contextEvaluator, fallbackProcessor);
+	}
+
+	public synchronized void registerAlias(String alias, RxServiceDomain domain) {
+		if (alias == null || alias.isBlank())
+			throw new IllegalArgumentException("Service domain alias must not be blank.");
+		if (alias.equals(domain.domainId()))
+			throw new IllegalArgumentException("Service domain '" + domain.domainId() + "' cannot alias itself.");
+
+		RxServiceDomain canonicalDomain = domains.get(alias);
+		if (canonicalDomain != null)
+			throw new IllegalStateException("Cannot register service domain alias '" + alias + "' for domain '" + domain.domainId()
+					+ "' because a canonical domain with that id already exists.");
+
+		RxServiceDomain previous = aliases.putIfAbsent(alias, domain);
+		if (previous != null && previous != domain)
+			throw new IllegalStateException("Cannot register service domain alias '" + alias + "' for domain '" + domain.domainId()
+					+ "' because it already resolves to domain '" + previous.domainId() + "'.");
+	}
+
+	public Set<String> aliasesOf(RxServiceDomain domain) {
+		return aliases.entrySet().stream() //
+				.filter(entry -> entry.getValue() == domain) //
+				.map(Map.Entry::getKey) //
+				.collect(Collectors.toUnmodifiableSet());
 	}
 
 	@Override

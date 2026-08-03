@@ -28,7 +28,9 @@ import com.braintribe.model.time.TimeSpan;
 import com.braintribe.model.user.User;
 import com.braintribe.model.usersession.UserSessionType;
 
-public class StandardUserSessionService extends AbstractUserSessionService {
+import hiconic.rx.security.api.UserSessionInvalidation;
+
+public class StandardUserSessionService extends AbstractUserSessionService implements UserSessionInvalidation {
 	private static final Logger logger = System.getLogger(StandardUserSessionService.class.getName());
 
 	private Map<String, PersistenceUserSession> userSessionsById = new ConcurrentHashMap<>();
@@ -54,7 +56,22 @@ public class StandardUserSessionService extends AbstractUserSessionService {
 
 	@Override
 	protected void deletePersistenceUserSession(String sessionId) {
-		userSessionsById.remove(sessionId);
+		PersistenceUserSession removed = userSessionsById.remove(sessionId);
+		if (removed != null && removed.getAcquirationKey() != null)
+			userSessionsByAcquirationKey.remove(removed.getAcquirationKey(), removed);
+	}
+
+	@Override
+	public int invalidateUserSessions(String userName) {
+		int invalidated = 0;
+		for (PersistenceUserSession session : userSessionsById.values()) {
+			if (userName.equals(session.getUserName()) && userSessionsById.remove(session.getId(), session)) {
+				if (session.getAcquirationKey() != null)
+					userSessionsByAcquirationKey.remove(session.getAcquirationKey(), session);
+				invalidated++;
+			}
+		}
+		return invalidated;
 	}
 
 	@Override

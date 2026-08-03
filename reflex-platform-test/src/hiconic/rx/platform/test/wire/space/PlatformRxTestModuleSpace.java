@@ -2,6 +2,8 @@
 package hiconic.rx.platform.test.wire.space;
 
 import com.braintribe.gm._BasicResourceModel_;
+import com.braintribe.model.service.api.MulticastRequest;
+import com.braintribe.model.service.api.result.MulticastResponse;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
@@ -15,6 +17,7 @@ import hiconic.rx.platform.test.wire.contract.PlatformTestContract;
 
 @Managed
 public class PlatformRxTestModuleSpace implements RxModuleContract, PlatformTestContract {
+	public static final String resourcesAlias = "legacy-resources";
 
 	@Import
 	private RxPlatformContract platform;
@@ -22,8 +25,12 @@ public class PlatformRxTestModuleSpace implements RxModuleContract, PlatformTest
 	@Override
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
 		ServiceDomainConfiguration sd = configurations.byId(PlatformTestDomains.resources);
+		sd.addAlias(resourcesAlias);
 		sd.addModel(_ResourceStorageApiModel_.reflection);
 		sd.addModel(_BasicResourceModel_.reflection);
+
+		// A module-provided multicast processor must unambiguously override the platform's single-instance fallback.
+		configurations.internal().bindRequest(MulticastRequest.T, () -> (context, request) -> MulticastResponse.T.create());
 	}
 
 }

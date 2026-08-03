@@ -38,7 +38,9 @@ import com.braintribe.model.time.TimeSpan;
 import com.braintribe.model.user.User;
 import com.braintribe.model.usersession.UserSessionType;
 
-public class JdbcUserSessionService extends AbstractUserSessionService {
+import hiconic.rx.security.api.UserSessionInvalidation;
+
+public class JdbcUserSessionService extends AbstractUserSessionService implements UserSessionInvalidation {
 
 	DataSource dataSource;
 	private final Object tableInitializationMonitor = new Object();
@@ -72,6 +74,10 @@ public class JdbcUserSessionService extends AbstractUserSessionService {
 	
 	protected String getDeletePersistenceUserSessionStmt() {
 		return "DELETE FROM " + tableName + " WHERE ID = ?";
+	}
+
+	protected String getDeletePersistenceUserSessionsByUserNameStmt() {
+		return "DELETE FROM " + tableName + " WHERE USER_NAME = ?";
 	}
 	
 	protected String getClosePersistenceUserSessionStmt() {
@@ -281,6 +287,16 @@ public class JdbcUserSessionService extends AbstractUserSessionService {
 			}
 		} catch (Exception e) {
 			throw Exceptions.unchecked(e, "Failed to delete user session '" + sessionId + "'");
+		}
+	}
+
+	@Override
+	public int invalidateUserSessions(String userName) {
+		try (Connection conn = openJdbcConnection(); PreparedStatement stmt = conn.prepareStatement(getDeletePersistenceUserSessionsByUserNameStmt())) {
+			stmt.setString(1, userName);
+			return stmt.executeUpdate();
+		} catch (Exception e) {
+			throw Exceptions.unchecked(e, "Failed to invalidate user sessions for user '" + userName + "'");
 		}
 	}
 

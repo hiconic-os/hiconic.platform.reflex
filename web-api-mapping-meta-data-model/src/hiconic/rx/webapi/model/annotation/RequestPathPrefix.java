@@ -21,7 +21,7 @@ import java.lang.annotation.Target;
 
 /**
  * Annotation for {@link hiconic.rx.webapi.model.meta.RequestPathPrefix}. The prefix applies to both fine-grained
- * request paths and complete {@link RequestMapping} declarations.
+ * request paths and complete {@link RequestMapping} declarations; inherited prefixes compose hierarchically.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.TYPE })

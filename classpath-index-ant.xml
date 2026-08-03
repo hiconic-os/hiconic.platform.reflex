@@ -16,6 +16,22 @@
 		<echo file="src/META-INF/classpath-index.txt">${classpath.index.entries}${line.separator}</echo>
 	</target>
 
+	<!-- Eclipse consumes project resources from its output directory. Writing there avoids changing/refreshing src and recursively triggering this builder. -->
+	<target name="generate-eclipse-classpath-index">
+		<property name="eclipse.output.dir" value="classes"/>
+		<mkdir dir="${eclipse.output.dir}/META-INF"/>
+		<pathconvert property="classpath.index.entries" pathsep="${line.separator}" targetos="unix">
+			<fileset dir="src">
+				<include name="**/*"/>
+				<exclude name="**/*.java"/>
+				<exclude name="META-INF/classpath-index.txt"/>
+				<exclude name="META-INF/classpath-resource-only"/>
+			</fileset>
+			<map from="${basedir}/src/" to=""/>
+		</pathconvert>
+		<echo file="${eclipse.output.dir}/META-INF/classpath-index.txt">${classpath.index.entries}${line.separator}</echo>
+	</target>
+
 	<target name="generate-pure-classpath-index" depends="generate-classpath-index">
 		<resourcecount property="pure.classpath.forbidden.count">
 			<fileset dir="src">

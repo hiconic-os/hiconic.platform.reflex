@@ -54,6 +54,9 @@ public class UserServicesSpace implements WireSpace {
 	@Import
 	private DatabaseContract database;
 
+	@Import
+	private CredentialProcessorsSpace credentialProcessors;
+
 	@Managed
 	private SecurityConfiguration configuration() {
 		return getOrTunnel(platform.configuration().readConfig(SecurityConfiguration.T));
@@ -79,11 +82,11 @@ public class UserServicesSpace implements WireSpace {
 		if (UserServiceConfiguration.DEFAULT_USER_SERVICE_ID.equals(userService.userServiceId()))
 			return;
 
-		for (User user : userProvisioningConfiguration().getUsers()) {
-			Reason error = userService.ensureUser(user);
-			if (error != null)
-				throw new ReasonException(error);
-		}
+		UserProvisioningConfiguration configuration = userProvisioningConfiguration();
+		Reason error = userService.reconcileUsers(configuration.getUsers(), configuration.getProvisioningGroup(),
+				configuration.getReconciliationRevision(), configuration.getDeleteVanishedUsers());
+		if (error != null)
+			throw new ReasonException(error);
 	}
 
 	public UserSessionService userSessionService() {
@@ -115,8 +118,14 @@ public class UserServicesSpace implements WireSpace {
 	@Managed
 	private StaticUserService staticUserService() {
 		StaticUserService bean = new StaticUserService();
+		bean.setPasswordHashing(passwordHashing());
 		bean.setUsers(configuredUsersAndSystemUser());
 		return bean;
+	}
+
+	@Managed
+	private hiconic.rx.security.api.PasswordHashing passwordHashing() {
+		return credentialProcessors.passwordHashing();
 	}
 
 	private List<User> configuredUsersAndSystemUser() {

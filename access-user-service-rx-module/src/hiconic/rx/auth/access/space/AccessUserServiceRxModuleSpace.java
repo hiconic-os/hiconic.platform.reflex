@@ -12,9 +12,12 @@ import hiconic.rx.access.model.configuration.AccessConfiguration;
 import hiconic.rx.access.module.api.AccessContract;
 import hiconic.rx.auth.access.model.configuration.AccessUserServiceConfiguration;
 import hiconic.rx.auth.access.processing.AccessBasedUserService;
+import hiconic.rx.db.module.api.DatabaseContract;
+import hiconic.rx.locking.api.LockingContract;
 import hiconic.rx.module.api.config.RxPlatformConfigurator;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
+import hiconic.rx.security.api.SecurityContract;
 import hiconic.rx.security.api.SecurityExtensionContract;
 import hiconic.rx.security.api.UserService;
 
@@ -34,7 +37,16 @@ public class AccessUserServiceRxModuleSpace implements RxModuleContract {
 	private SecurityExtensionContract securityExtension;
 
 	@Import
+	private SecurityContract security;
+
+	@Import
 	private AccessContract access;
+
+	@Import
+	private DatabaseContract database;
+
+	@Import
+	private LockingContract locking;
 
 	@Override
 	public void configurePlatform(RxPlatformConfigurator configurator) {
@@ -45,6 +57,11 @@ public class AccessUserServiceRxModuleSpace implements RxModuleContract {
 		AccessBasedUserService bean = new AccessBasedUserService();
 		bean.setAuthAccessId(configuration().getAuthAccessId());
 		bean.setSystemSessionFactory(access.systemSessionFactory());
+		bean.setPasswordHashing(security.passwordHashing());
+		bean.setUserSessionInvalidation(security.userSessionInvalidation());
+		bean.setProvisioningStateDataSource(getOrTunnel(database.dataSource(configuration().getProvisioningStateDatabaseId())));
+		bean.setProvisioningLocking(locking.locking());
+		bean.setNodeId(platform.application().nodeId());
 
 		return bean;
 	}

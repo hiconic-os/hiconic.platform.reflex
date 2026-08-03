@@ -91,6 +91,30 @@ public class LogbackLogStreamInventoryTest {
 	}
 
 	@Test
+	public void reflectsUnstructuredProcessProtocol() throws Exception {
+		Path protocol = Files.createTempFile("rx-process-protocol-", ".log");
+		try {
+			Files.writeString(protocol, "bootstrap output\nwithout canonical fields\n");
+			LogbackLogStreamInventory inventory = new LogbackLogStreamInventory();
+			inventory.setLoggerContext(context);
+			inventory.setInstanceId(instanceId());
+			inventory.setProcessProtocolPath(protocol);
+
+			LogStreamDescriptor descriptor = inventory.streams().stream()
+					.filter(stream -> LogbackLogStreamInventory.PROCESS_PROTOCOL_STREAM_ID.equals(stream.getStreamId()))
+					.findFirst().orElseThrow();
+
+			assertThat(descriptor.getDisplayName()).isEqualTo("Process protocol");
+			assertThat(descriptor.getFormat()).isEqualTo(LogFormat.RAW);
+			assertThat(descriptor.getParsingQuality()).isEqualTo(LogParsingQuality.RAW_ONLY);
+			assertThat(descriptor.getCapabilities()).containsExactly(LogCapability.FULLTEXT);
+			assertThat(inventory.fileStream(descriptor.getStreamId()).path()).isEqualTo(protocol.toAbsolutePath().normalize());
+		} finally {
+			Files.deleteIfExists(protocol);
+		}
+	}
+
+	@Test
 	public void reflectsSegmentsFromTheAppenderRollingPolicy() throws Exception {
 		Logger root = context.getLogger(Logger.ROOT_LOGGER_NAME);
 		@SuppressWarnings("unchecked")

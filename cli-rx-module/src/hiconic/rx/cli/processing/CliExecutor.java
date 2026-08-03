@@ -21,7 +21,6 @@ import static com.braintribe.console.ConsoleOutputs.text;
 
 import java.io.Closeable;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -69,12 +68,12 @@ import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.model.service.api.result.Neutral;
 import com.braintribe.utils.collection.impl.AttributeContexts;
 import com.braintribe.utils.lcd.StringTools;
-import com.braintribe.utils.stream.NullOutputStream;
-
 import hiconic.rx.cli.posix.parser.PosixCommandLineParser;
 import hiconic.rx.cli.posix.parser.api.ParsedCommandLine;
 import hiconic.rx.module.api.endpoint.EndpointInput;
 import hiconic.rx.module.api.endpoint.EndpointInputAttribute;
+import hiconic.rx.module.api.output.OutputChannel;
+import hiconic.rx.module.api.output.OutputChannels;
 import hiconic.rx.module.api.service.ServiceDomains;
 import hiconic.rx.platform.cli.model.api.Introduce;
 import hiconic.rx.platform.cli.model.api.Options;
@@ -246,28 +245,43 @@ public class CliExecutor implements EndpointInput {
 	
 	public Reason configureProtocolling(Options options) {
 		String protocolTo = Optional.ofNullable(options.getProtocol()).orElse(OutputChannels.NONE);
-		
-		switch (protocolTo) {
-			case OutputChannels.STDOUT:
-				return ensureCharsetAndInstallProtocolOutput(stdout);
-			case OutputChannels.STDERR:
-				return ensureCharsetAndInstallProtocolOutput(stderr);
-			case OutputChannels.NONE:
-				return ensureCharsetAndInstallProtocolOutput(new PrintStream(NullOutputStream.getInstance()));
-			default:
-				Reason error = checkChannelValue(protocolTo, "protocol");
-				
-				if (error != null)
-					return error;
 
-				try {
-					PrintStream printStream = new PrintStream(new FileOutputStream(protocolTo), true, "UTF-8");
-					closeAtExit(printStream);
-					return ensureCharsetAndInstallProtocolOutput(printStream);
-				} catch (IOException e) {
-					throw new UncheckedIOException(e);
-				}
+		if (!isNamedOutputChannel(protocolTo)) {
+			Reason error = checkChannelValue(protocolTo, "protocol");
+			if (error != null)
+				return error;
 		}
+
+		Charset charset = StandardCharsets.UTF_8;
+		Reason error = null;
+		if (options.getProtocolCharset() != null) {
+			charset = Charset.forName(options.getProtocolCharset(), (Charset)null);
+			if (charset == null) {
+				error = Reasons.build(NotFound.T) //
+						.text("Charset configured with Options.protocolCharset not found: " + options.getProtocolCharset()) //
+						.toReason();
+				charset = StandardCharsets.UTF_8;
+			}
+		}
+
+		try {
+			OutputChannel channel = OutputChannel.open(protocolTo, null, charset, false, false, stdout, stderr);
+			runAtExit(channel::close);
+
+			PrintStream stream = channel.stream();
+			// Preserve the CLI's existing explicit charset behavior for borrowed
+			// stdout/stderr without transferring ownership of the process stream.
+			if (options.getProtocolCharset() != null && !channel.owned())
+				stream = new PrintStream(stream, false, charset);
+			System.setOut(stream);
+			return error;
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+
+	private static boolean isNamedOutputChannel(String value) {
+		return OutputChannels.STDOUT.equals(value) || OutputChannels.STDERR.equals(value) || OutputChannels.NONE.equals(value);
 	}
 	
 	private void installConsole(Console console) {
@@ -286,27 +300,6 @@ public class CliExecutor implements EndpointInput {
 		return null;
 	}
 
-
-	private Reason ensureCharsetAndInstallProtocolOutput(PrintStream stream) {
-		Reason error = null;
-		
-		if (options.getProtocolCharset() != null) {
-			Charset charset = Charset.forName(options.getProtocolCharset(), (Charset)null);
-			
-			if (charset == null) {
-				error = Reasons.build(NotFound.T) //
-					.text("Charset configured with Options.protocolCharset not found: " + options.getProtocolCharset()) //
-					.toReason();
-				charset = StandardCharsets.UTF_8;
-			}
-			
-			stream = new PrintStream(stream, false, charset);
-		}
-		
-		System.setOut(stream);
-		
-		return error;
-	}
 
 	public static OutputProvider configureResponding(Options options) {
 		String respondTo = options.getResponse();

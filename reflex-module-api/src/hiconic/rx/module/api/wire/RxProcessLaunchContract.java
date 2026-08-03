@@ -13,6 +13,8 @@
 // ============================================================================
 package hiconic.rx.module.api.wire;
 
+import java.nio.file.Path;
+
 import com.braintribe.wire.api.space.WireSpace;
 
 /**
@@ -32,5 +34,13 @@ public interface RxProcessLaunchContract extends WireSpace {
 	 * The name of the launch script (bat/sh) that started the process
 	 */
 	String launchScriptName();
+
+	/**
+	 * The file receiving unstructured process stdout/stderr, or {@code null}
+	 * when direct process protocol was not redirected.
+	 */
+	default Path protocolOutputPath() {
+		return null;
+	}
 
 }

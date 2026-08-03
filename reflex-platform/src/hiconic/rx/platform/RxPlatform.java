@@ -59,6 +59,7 @@ import hiconic.rx.platform.configuration.ConfigurationImportDeclarations;
 import hiconic.rx.platform.logging.LayeredLogbackConfiguration;
 import hiconic.rx.platform.logging.LayeredLogLevelPersistence;
 import hiconic.rx.platform.logging.LogbackLogLevelFramework;
+import hiconic.rx.platform.logging.ProcessStandardStreams;
 import hiconic.rx.platform.loading.RxModuleLoader;
 import hiconic.rx.platform.loading.RxPropertiesLoader;
 import hiconic.rx.platform.wire.RxPlatformWireModule;
@@ -79,11 +80,10 @@ public class RxPlatform implements AutoCloseable {
 
 	private WireContext<RxPlatformContract> wireContext;
 
-	private boolean configureLogging = true;
+	private final boolean configureLogging;
 	
 	public RxPlatform() {
-		this(new String[] {});
-		configureLogging = false;
+		this(new String[] {}, defaultSystemPropertyLookup(), defaultApplicationPropertyLookup(), Map.of(), false);
 	}
 
 	public RxPlatform(String[] args) {
@@ -91,16 +91,17 @@ public class RxPlatform implements AutoCloseable {
 				args, //
 				defaultSystemPropertyLookup(), //
 				defaultApplicationPropertyLookup(), //
-				Map.of() //
+				Map.of(), //
+				true //
 		);
 	}
 
 	public RxPlatform(Function<String, String> systemPropertyLookup, Function<String, String> applicationPropertyLookup) {
-		this(new String[] {}, systemPropertyLookup, applicationPropertyLookup, Map.of());
+		this(new String[] {}, systemPropertyLookup, applicationPropertyLookup, Map.of(), true);
 	}
 
 	public RxPlatform(String[] args, Function<String, String> systemPropertyLookup, Function<String, String> applicationPropertyLookup) {
-		this(args, systemPropertyLookup, applicationPropertyLookup, Map.of());
+		this(args, systemPropertyLookup, applicationPropertyLookup, Map.of(), true);
 	}
 
 	/**
@@ -110,12 +111,22 @@ public class RxPlatform implements AutoCloseable {
 	 */
 	public RxPlatform(String[] args, Function<String, String> systemPropertyLookup, Function<String, String> applicationPropertyLookup,
 			Map<String, String> managedPropertyOverrides) {
+		this(args, systemPropertyLookup, applicationPropertyLookup, managedPropertyOverrides, true);
+	}
+
+	private RxPlatform(String[] args, Function<String, String> systemPropertyLookup, Function<String, String> applicationPropertyLookup,
+			Map<String, String> managedPropertyOverrides, boolean configureLogging) {
 		this.args = args;
 		this.managedPropertyOverrides = Map.copyOf(managedPropertyOverrides);
+		this.configureLogging = configureLogging;
 		
 		systemProperties = PropertyLookups.create(SystemProperties.class, systemPropertyLookup);
 		applicationProperties = PropertyLookups.create(ApplicationProperties.class, applicationPropertyLookup);
 		classpathIndex = createClasspathIndex();
+		// Install Logback and the JUL bridge before configuration loading initializes
+		// model reflection. Otherwise those early diagnostics escape through JUL's
+		// default ConsoleHandler even when the application disables console logging.
+		setupLogging();
 		propertyResolver = createPropertyResolver();
 
 		start();
@@ -163,48 +174,53 @@ public class RxPlatform implements AutoCloseable {
 	}
 
 	public static void main(String[] args) {
-		try (@SuppressWarnings("unused") RxPlatform platform = new RxPlatform(args)) {
-			Object monitor = new Object();
+		ProcessStandardStreams.initialize();
+		ProcessStandardStreams.redirectConfigured();
+		try {
+			try (@SuppressWarnings("unused") RxPlatform platform = new RxPlatform(args)) {
+				Object monitor = new Object();
 
-			// Registering the shutdown hook
-			Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-				ConsoleOutputs.println("Shutting down Application");
-				synchronized (monitor) {
-					monitor.notify();
-				}
-			}));
+				// Registering the shutdown hook
+				Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+					ConsoleOutputs.println("Shutting down Application");
+					synchronized (monitor) {
+						monitor.notify();
+					}
+				}));
 
-			try {
-				synchronized (monitor) {
-					monitor.wait();
+				try {
+					synchronized (monitor) {
+						monitor.wait();
+					}
+				} catch (InterruptedException e) {
+					logger.log(Level.ERROR, "Unexpected interruption", e);
 				}
-			} catch (InterruptedException e) {
-				logger.log(Level.ERROR, "Unexpected interruption", e);
 			}
-		}
-		catch (UnsatisfiedMaybeTunneling e) {
-			String msg = "Error while starting application:\n" + e.getMaybe().whyUnsatisfied().stringify();
-			logger.log(Level.ERROR, msg, e);
-			System.err.println(msg);
-		}
-		catch (ReasonException e) {
-			String msg = "Error while starting application:\n" + e.getReason().stringify();
-			logger.log(Level.ERROR, msg, e);
-			System.err.println(msg);
-		}
-		catch (Exception e) {
-			String msg = "Error while starting application";
-			// Handle errors during configuration
-			logger.log(Level.ERROR, msg, e);
+			catch (UnsatisfiedMaybeTunneling e) {
+				String msg = "Error while starting application:\n" + e.getMaybe().whyUnsatisfied().stringify();
+				logger.log(Level.ERROR, msg, e);
+				System.err.println(msg);
+			}
+			catch (ReasonException e) {
+				String msg = "Error while starting application:\n" + e.getReason().stringify();
+				logger.log(Level.ERROR, msg, e);
+				System.err.println(msg);
+			}
+			catch (Exception e) {
+				String msg = "Error while starting application";
+				// Handle errors during configuration
+				logger.log(Level.ERROR, msg, e);
 
-			System.err.println(msg);
-			e.printStackTrace(System.err);
+				System.err.println(msg);
+				e.printStackTrace(System.err);
+			}
+		} finally {
+			ProcessStandardStreams.restore();
 		}
 	}
 
 	private void start() {
 		long startTime = System.currentTimeMillis();
-		setupLogging();
 		setupLogLevels();
 		setupConsoleOutput();
 
@@ -231,7 +247,10 @@ public class RxPlatform implements AutoCloseable {
 				cyan(formattedStartupDuration + "s") //
 		));
 
-		String domainIds = platformContract.serviceProcessing().serviceDomains().list().stream().map(ServiceDomain::domainId).collect(Collectors.joining("\n\t"));
+		String domainIds = platformContract.serviceProcessing().serviceDomains().list().stream() //
+				.map(RxPlatform::formatServiceDomain) //
+				.sorted() //
+				.collect(Collectors.joining("\n\t"));
 		ConsoleOutputs.println(sequence( //
 				text("Service Domains:\n\t"), //
 				cyan(domainIds)) //
@@ -241,6 +260,14 @@ public class RxPlatform implements AutoCloseable {
 
 		logger.log(Level.INFO, "Application loaded");
 
+	}
+
+	private static String formatServiceDomain(ServiceDomain domain) {
+		if (domain.aliases().isEmpty())
+			return domain.domainId();
+
+		String aliases = domain.aliases().stream().sorted().collect(Collectors.joining(", "));
+		return domain.domainId() + " (aliases: " + aliases + ")";
 	}
 
 	@Override

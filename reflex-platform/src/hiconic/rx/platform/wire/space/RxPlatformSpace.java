@@ -13,6 +13,7 @@
 // ============================================================================
 package hiconic.rx.platform.wire.space;
 
+import java.nio.file.Path;
 import java.util.List;
 
 import com.braintribe.gm.model.reason.Maybe;
@@ -42,6 +43,7 @@ import hiconic.rx.module.api.wire.RxProcessLaunchContract;
 import hiconic.rx.module.api.wire.RxServiceProcessingContract;
 import hiconic.rx.module.api.wire.RxTransientDataContract;
 import hiconic.rx.platform.conf.RxPlatformConfiguratorImpl;
+import hiconic.rx.platform.logging.ProcessStandardStreams;
 import hiconic.rx.platform.loading.RxModuleLoader;
 import hiconic.rx.platform.resource.RxResourcesStorages;
 import hiconic.rx.platform.service.RxServiceDomain;
@@ -192,6 +194,11 @@ public class RxPlatformSpace extends CoreServicesSpace implements ExtendedRxPlat
 	@Override
 	public String launchScriptName() {
 		return config.launchScriptName();
+	}
+
+	@Override
+	public Path protocolOutputPath() {
+		return ProcessStandardStreams.protocolPath();
 	}
 
 	// ######################################

@@ -25,6 +25,7 @@ import com.braintribe.model.user.User;
 import com.braintribe.model.usersession.UserSession;
 
 import hiconic.rx.security.processor.usersession.base.UserSessionServiceTestBase;
+import hiconic.rx.security.api.UserSessionInvalidation;
 
 /**
  * Tests on {@link UserSessionService} method(s) used for {@link UserSession} deletion.
@@ -74,6 +75,22 @@ public class JdbcUserSessionDeletionTest extends UserSessionServiceTestBase {
 		Assert.assertEquals(deletedUserSession3.getSessionId(), userSession3.getSessionId());
 
 		Assert.assertTrue(userSessionService.findUserSession(userSession3.getSessionId()).isUnsatisfiedBy(SessionNotFound.T));
+	}
+
+	@Test
+	public void invalidatesAllSessionsOfOneUser() {
+		User user1 = getUser(UserConfig.user);
+		User user2 = getUser(UserConfig.userWithRoles);
+		UserSession userSession1a = userSessionService.createUserSession(user1, null, null, null, null, null, null, null, false).get();
+		UserSession userSession1b = userSessionService.createUserSession(user1, null, null, null, null, null, null, null, false).get();
+		UserSession userSession2 = userSessionService.createUserSession(user2, null, null, null, null, null, null, null, false).get();
+
+		int invalidated = ((UserSessionInvalidation) userSessionService).invalidateUserSessions(user1.getName());
+
+		Assertions.assertThat(invalidated).isEqualTo(2);
+		Assertions.assertThat(userSessionService.findUserSession(userSession1a.getSessionId()).isUnsatisfiedBy(SessionNotFound.T)).isTrue();
+		Assertions.assertThat(userSessionService.findUserSession(userSession1b.getSessionId()).isUnsatisfiedBy(SessionNotFound.T)).isTrue();
+		Assertions.assertThat(userSessionService.findUserSession(userSession2.getSessionId()).isSatisfied()).isTrue();
 	}
 
 }

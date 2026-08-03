@@ -14,12 +14,16 @@
 package hiconic.rx.security.wire.space;
 
 import com.braintribe.gm._UserModel_;
+import com.braintribe.model.crypto.configuration.hashing.HashingConfiguration;
 import com.braintribe.model.meta.GmMetaModel;
+import com.braintribe.model.meta.data.crypto.PropertyCrypting;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.meta.cmd.CmdResolverImpl;
 import com.braintribe.model.processing.meta.configuration.ConfigurationModels;
+import com.braintribe.model.processing.meta.editor.BasicModelMetaDataEditor;
 import com.braintribe.model.processing.meta.oracle.BasicModelOracle;
 import com.braintribe.model.processing.meta.oracle.ModelOracle;
+import com.braintribe.model.user.User;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
@@ -29,6 +33,8 @@ import hiconic.rx.auth.processor.GrantedCredentialsAuthenticationServiceProcesso
 import hiconic.rx.auth.processor.TrustedCredentialsAuthenticationServiceProcessor;
 import hiconic.rx.auth.processor.UserPasswordCredentialsAuthenticationServiceProcessor;
 import hiconic.rx.module.api.wire.RxModuleContract;
+import hiconic.rx.security.api.PasswordHashing;
+import hiconic.rx.security.processor.CryptorPasswordHashing;
 
 @Managed
 public class CredentialProcessorsSpace implements RxModuleContract {
@@ -77,6 +83,17 @@ public class CredentialProcessorsSpace implements RxModuleContract {
 	}
 
 	@Managed
+	public PasswordHashing passwordHashing() {
+		CryptorPasswordHashing bean = new CryptorPasswordHashing();
+		try {
+			bean.setCryptor(crypto.cryptorProvider().provideFor(userPasswordPropertyCrypting()));
+		} catch (Exception e) {
+			throw new IllegalStateException("Unable to configure user password hashing", e);
+		}
+		return bean;
+	}
+
+	@Managed
 	public CmdResolver cmdResolver() {
 		CmdResolver bean = CmdResolverImpl.create(modelOracle()).done();
 		return bean;
@@ -94,6 +111,24 @@ public class CredentialProcessorsSpace implements RxModuleContract {
 				.addDependency(_UserModel_.reflection) //
 				.get();
 
+		new BasicModelMetaDataEditor(bean).onEntityType(User.T).addPropertyMetaData(User.password, userPasswordPropertyCrypting());
+
+		return bean;
+	}
+
+	@Managed
+	private PropertyCrypting userPasswordPropertyCrypting() {
+		PropertyCrypting bean = PropertyCrypting.T.create();
+		bean.setCryptoConfiguration(userPasswordHashingConfiguration());
+		return bean;
+	}
+
+	@Managed
+	private HashingConfiguration userPasswordHashingConfiguration() {
+		HashingConfiguration bean = HashingConfiguration.T.create();
+		bean.setAlgorithm("SHA-256");
+		bean.setEnableRandomSalt(true);
+		bean.setRandomSaltSize(16);
 		return bean;
 	}
 }

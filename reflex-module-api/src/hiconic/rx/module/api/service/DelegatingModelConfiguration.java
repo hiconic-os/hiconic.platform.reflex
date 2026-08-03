@@ -70,6 +70,12 @@ public interface DelegatingModelConfiguration extends ModelConfiguration {
 	}
 
 	@Override
+	default <R extends ServiceRequest> void bindRequest(EntityType<R> requestType,
+			Supplier<ServiceProcessor<? super R, ?>> serviceProcessorSupplier, double conflictPriority) {
+		modelConfiguration().bindRequest(requestType, serviceProcessorSupplier, conflictPriority);
+	}
+
+	@Override
 	default <R extends ServiceRequest> void bindRequest(EntityType<R> requestType, String serviceProcessorKey) {
 		modelConfiguration().bindRequest(requestType, serviceProcessorKey);
 	}

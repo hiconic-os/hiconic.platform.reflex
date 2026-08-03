@@ -24,6 +24,14 @@ public interface ServiceDomainConfiguration extends ModelConfiguration {
 	void setDisplayName(String displayName);
 
 	/**
+	 * Adds an alternative id resolving to this service domain.
+	 * <p>
+	 * Aliases are intended for compatibility names and do not create additional service domains. They are therefore not listed as domains and do
+	 * not produce additional externally reflected endpoints.
+	 */
+	void addAlias(String alias);
+
+	/**
 	 * Adds roles of which at least one is required for evaluating requests in this domain. This restriction is enforced before the domain's normal
 	 * request interception chain and therefore also applies to non-interceptable requests.
 	 */

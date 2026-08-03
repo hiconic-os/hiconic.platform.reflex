@@ -50,6 +50,7 @@ import hiconic.rx.web.ddra.servlet.ApiV1RestServletUtils;
 import hiconic.rx.web.ddra.servlet.DdraEndpointsExceptionHandler;
 import hiconic.rx.web.ddra.servlet.WebApiV1Server;
 import hiconic.rx.webapi.model.meta.HttpRequestMethod;
+import hiconic.rx.webapi.server.model.configuration.WebApiServerConfiguration;
 import hiconic.rx.web.server.api.WebServerContract;
 import jakarta.servlet.DispatcherType;
 
@@ -88,7 +89,6 @@ public class WebApiServerRxModuleSpace implements RxModuleContract, WebApiServer
 
 	@Override
 	public void onDeploy() {
-		// TODO make web api servlet path configurable, not always "/api/*"
 		webServer.addServlet("web-api", "/" + servletPath() + "/*", server());
 
 		if (appIncludesWebSecurity())
@@ -135,7 +135,7 @@ public class WebApiServerRxModuleSpace implements RxModuleContract, WebApiServer
 	}
 
 	private void registerPlatformMappings(WebApiMappingRegistry mappings) {
-		mappings.mapping("/v1/download", HttpRequestMethod.GET, GetResource.T) //
+		mappings.mapping("/download", HttpRequestMethod.GET, GetResource.T) //
 				.responseProjection("resource") //
 				.downloadResource(true) //
 				.register();
@@ -144,7 +144,7 @@ public class WebApiServerRxModuleSpace implements RxModuleContract, WebApiServer
 	@Override
 	@Managed
 	public String servletPath() {
-		return "api";
+		return configuration().getEndpointPath();
 	}
 
 	private CmdResolver cmdResolverForDomain(String domainId) {
@@ -159,7 +159,23 @@ public class WebApiServerRxModuleSpace implements RxModuleContract, WebApiServer
 	private ApiV1RestServletUtils servletUtils() {
 		ApiV1RestServletUtils bean = new ApiV1RestServletUtils();
 		bean.setMimeTypeRegistry(mimeTypeRegistry());
+		bean.setDefaultResponseDepth(configuration().getDefaultResponseDepth());
 		return bean;
+	}
+
+	@Managed
+	private WebApiServerConfiguration configuration() {
+		WebApiServerConfiguration configuration = platform.configuration().readConfig(WebApiServerConfiguration.T).get();
+		validateEndpointPath(configuration.getEndpointPath());
+		if (configuration.getDefaultResponseDepth() == null || configuration.getDefaultResponseDepth().isBlank())
+			throw new IllegalArgumentException("WebApiServerConfiguration.defaultResponseDepth must not be empty");
+		return configuration;
+	}
+
+	private void validateEndpointPath(String endpointPath) {
+		if (endpointPath == null || endpointPath.isBlank() || endpointPath.startsWith("/") || endpointPath.endsWith("/"))
+			throw new IllegalArgumentException("WebApiServerConfiguration.endpointPath must be relative, non-empty and must not start or end with '/': "
+					+ endpointPath);
 	}
 
 	private MimeTypeRegistryImpl mimeTypeRegistry() {

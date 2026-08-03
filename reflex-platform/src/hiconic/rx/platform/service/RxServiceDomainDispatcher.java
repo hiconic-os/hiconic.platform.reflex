@@ -30,7 +30,7 @@ import com.braintribe.model.processing.service.api.ReasonedServiceProcessor;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
 import com.braintribe.model.processing.service.api.aspect.DomainIdAspect;
 import com.braintribe.model.processing.service.common.context.UserSessionAspect;
-import com.braintribe.model.service.api.DomainRequest;
+import com.braintribe.model.service.api.CompositeRequest;
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.model.usersession.UserSession;
 
@@ -59,16 +59,22 @@ public class RxServiceDomainDispatcher
 		String domainId = context.getDomainId();
 
 		ServiceDomain serviceDomain = serviceDomains.byId(domainId);
-		Maybe<? extends Object> authorizationFailure = authorizeDomain(context, serviceDomain);
+		Maybe<? extends Object> authorizationFailure = authorizeDomain(context, serviceDomain, request);
 		if (authorizationFailure != null)
 			return authorizationFailure;
 
 		return serviceDomain.evaluator().eval(request).getReasoned();
 	}
 
-	private Maybe<? extends Object> authorizeDomain(ServiceRequestContext context, ServiceDomain serviceDomain) {
+	private Maybe<? extends Object> authorizeDomain(ServiceRequestContext context, ServiceDomain serviceDomain, ServiceRequest request) {
 		var allowedRoles = serviceDomain.allowedRoles();
 		if (allowedRoles.isEmpty())
+			return null;
+
+		// CompositeRequest is a hardwired routing container, not an internal operation in its own right. Its children are
+		// evaluated through this dispatcher again and therefore still have to pass their own domain authorization. This
+		// narrow exemption preserves the historic Web-RPC/Explorer contract without opening the internal domain itself.
+		if (request instanceof CompositeRequest)
 			return null;
 
 		UserSession userSession = context.findAttribute(UserSessionAspect.class).orElse(null);
@@ -78,7 +84,8 @@ public class RxServiceDomainDispatcher
 					return null;
 
 		return Reasons.build(Forbidden.T) //
-				.text("Insufficient privileges to access service domain '" + serviceDomain.domainId() + "'.") //
+				.text("Insufficient privileges to access service domain '" + serviceDomain.domainId() + "' with request '"
+						+ request.entityType().getTypeSignature() + "'.") //
 				.toMaybe();
 	}
 
@@ -118,6 +125,9 @@ public class RxServiceDomainDispatcher
 				return Reasons.build(UnsupportedOperation.T) //
 						.text("Service domain " + domainId + " does not support request " + requestType.getTypeSignature()) //
 						.toMaybe();
+
+			// From this point on the evaluation context carries the canonical id, even if the request selected the domain through an alias.
+			domainId = serviceDomain.domainId();
 		}
 
 		ServiceRequestContext enrichedContext = context.derive().set(DomainIdAspect.class, domainId).build();
@@ -126,10 +136,7 @@ public class RxServiceDomainDispatcher
 	}
 
 	private String resolveDomainId(ServiceRequest serviceRequest) {
-		if (serviceRequest instanceof DomainRequest dr)
-			return dr.getDomainId();
-
-		return null;
+		return serviceRequest.domainId();
 	}
 
 	private boolean domainProcessesRequest(ServiceDomain domain, EntityType<? extends ServiceRequest> requestType) {

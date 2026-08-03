@@ -57,6 +57,7 @@ public class LogReflectionRxModuleSpace implements RxModuleContract {
 	private LogbackLogStreamInventory inventory() {
 		LogbackLogStreamInventory bean = new LogbackLogStreamInventory();
 		bean.setInstanceId(platform.application().instanceId());
+		bean.setProcessProtocolPath(platform.processLaunch().protocolOutputPath());
 		return bean;
 	}
 }

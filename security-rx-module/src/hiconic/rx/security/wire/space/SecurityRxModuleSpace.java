@@ -53,7 +53,9 @@ import hiconic.rx.module.api.wire.RxServiceProcessingContract;
 import hiconic.rx.security.api.SecurityContract;
 import hiconic.rx.security.api.SecurityExtensionContract;
 import hiconic.rx.security.api.SecurityServiceDomain;
+import hiconic.rx.security.api.PasswordHashing;
 import hiconic.rx.security.api.UserService;
+import hiconic.rx.security.api.UserSessionInvalidation;
 import hiconic.rx.security.model.configuration.SecurityConfiguration;
 import hiconic.rx.security.processor.AuthenticationProcessor;
 import hiconic.rx.security.processor.AuthorizingServiceInterceptor;
@@ -138,6 +140,16 @@ public class SecurityRxModuleSpace implements RxModuleContract, SecurityContract
 	@Override
 	public UserService userService() {
 		return userServices.userService();
+	}
+
+	@Override
+	public PasswordHashing passwordHashing() {
+		return credentialProcessors.passwordHashing();
+	}
+
+	@Override
+	public UserSessionInvalidation userSessionInvalidation() {
+		return (UserSessionInvalidation) userServices.userSessionService();
 	}
 
 	@Managed

@@ -13,6 +13,8 @@
 // ============================================================================
 package hiconic.rx.security.api;
 
+import java.util.List;
+
 import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.model.processing.securityservice.api.exceptions.SecurityServiceError;
 import com.braintribe.model.processing.securityservice.api.exceptions.UserNotFoundException;
@@ -160,4 +162,28 @@ public interface UserService {
 	 * implementation.
 	 */
 	Reason ensureUser(User user);
+
+	/**
+	 * Reconciles the given users as the authoritative state of one provisioning source.
+	 * <p>
+	 * Implementations supporting persistent provisioning should assign every desired user to {@code provisioningGroup}, reconcile all
+	 * non-credential properties and only reconcile credentials for existing users when {@code reconciliationRevision} has changed. New users always
+	 * receive their configured initial credential.
+	 */
+	default Reason reconcileUsers(List<User> users, String provisioningGroup, String reconciliationRevision) {
+		for (User user : users) {
+			Reason error = ensureUser(user);
+			if (error != null)
+				return error;
+		}
+
+		return null;
+	}
+
+	/**
+	 * Variant which may delete users previously marked as owned by the provisioning source but no longer present in {@code users}.
+	 */
+	default Reason reconcileUsers(List<User> users, String provisioningGroup, String reconciliationRevision, boolean deleteVanishedUsers) {
+		return reconcileUsers(users, provisioningGroup, reconciliationRevision);
+	}
 }

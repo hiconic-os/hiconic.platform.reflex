@@ -21,6 +21,7 @@ import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.access.module.api.AccessContract;
 import hiconic.rx.access.module.api.PersistenceServiceDomain;
+import hiconic.rx.access.module.api.AccessServiceDomain;
 import hiconic.rx.explorer.model.configuration.ExplorerConfiguration;
 import hiconic.rx.explorer.processing.ExplorerServiceDomain;
 import hiconic.rx.explorer.processing.WorkbenchReflectionProcessor;
@@ -61,10 +62,15 @@ public class ExplorerRxModuleSpace implements RxModuleContract {
 
 	@Override
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
+		ServiceDomainConfiguration accessesSd = configurations.byId(AccessServiceDomain.accesses);
+		accessesSd.setDisplayName("Accesses");
+		accessesSd.bindRequest(AvailableAccessesRequest.T, this::availableAccessesProcessor);
+		accessesSd.configureModel(editor -> editor.onEntityType(AvailableAccessesRequest.T)
+				.addMetaData(availableAccessesMapping()));
+
 		ServiceDomainConfiguration explorerSd = configurations.byId(ExplorerServiceDomain.explorer);
 		explorerSd.setDisplayName("Explorer");
 
-		explorerSd.bindRequest(AvailableAccessesRequest.T, this::availableAccessesProcessor);
 		explorerSd.bindRequest(CurrentUserInformationRequest.T, this::currentUserInformationProcessor);
 		explorerSd.bindRequest(PlatformReflectionRequest.T, platformReflection::platformReflectionProcessor);
 
@@ -74,6 +80,14 @@ public class ExplorerRxModuleSpace implements RxModuleContract {
 				.addMetaData(modelEnvironmentMapping()));
 
 		cortex.registerCortexAccess();
+	}
+
+	private RequestMapping availableAccessesMapping() {
+		RequestMapping mapping = RequestMapping.T.create();
+		mapping.setPath("available");
+		mapping.setMethod(HttpRequestMethod.GET);
+		mapping.setResponseMimeType("application/json");
+		return mapping;
 	}
 
 	private RequestMapping modelEnvironmentMapping() {

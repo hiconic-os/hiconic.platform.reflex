@@ -40,6 +40,7 @@ import com.braintribe.model.resourceapi.persistence.UploadResources;
 import com.braintribe.model.resourceapi.stream.DownloadResource;
 import com.braintribe.model.resourceapi.stream.GetResource;
 import com.braintribe.model.resourceapi.stream.StreamResource;
+import com.braintribe.model.service.api.PlatformRequest;
 import com.braintribe.utils.collection.impl.AttributeContexts;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
@@ -227,6 +228,9 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 
 		persistenceSd.addModel(_ModelEnvironmentApiModel_.reflection); // brings ModelEnvironmentRequests...
 		persistenceSd.bindRequest(PersistenceReflectionRequest.T, this::persistenceReflectionProcessor);
+
+		// Preserve the legacy natural domain declared by PlatformRequest without exposing a duplicate RX domain.
+		persistenceSd.addAlias(PlatformRequest.platformDomainId);
 
 		accesses().initServiceDomainConfigurations(configurations);
 		

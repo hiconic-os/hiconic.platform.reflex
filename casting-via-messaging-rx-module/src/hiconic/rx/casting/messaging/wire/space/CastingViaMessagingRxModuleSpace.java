@@ -93,6 +93,7 @@ public class CastingViaMessagingRxModuleSpace implements RxModuleContract {
 		bean.setExecutor(platform.execution().executorService());
 		bean.setThreadRenamer(platform.execution().threadRenamer());
 		bean.setTrusted(true);
+		bean.setAttributeContextProvider(platform.auth().systemAttributeContextSupplier());
 		bean.setKeepAliveInterval(10000L);
 		bean.setEndpointExposure(EndpointExposureAspect.MULTICAST);
 		return bean;

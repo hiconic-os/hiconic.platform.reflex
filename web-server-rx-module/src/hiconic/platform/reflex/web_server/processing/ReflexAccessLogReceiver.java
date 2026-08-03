@@ -19,6 +19,6 @@ public class ReflexAccessLogReceiver implements io.undertow.server.handlers.acce
 	private final Logger logger = Logger.getLogger(ReflexAccessLogReceiver.class);
 	@Override
 	public void logMessage(String message) {
-		//logger.info(message);
+		logger.info(message);
 	}
 }

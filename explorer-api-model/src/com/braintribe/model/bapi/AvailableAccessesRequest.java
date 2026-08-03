@@ -27,6 +27,12 @@ import com.braintribe.model.service.api.StandardRequest;
 public interface AvailableAccessesRequest extends StandardRequest {
 	
 	EntityType<AvailableAccessesRequest> T = EntityTypes.T(AvailableAccessesRequest.class);
+	String accessesDomainId = "accesses";
+
+	@Override
+	default String domainId() {
+		return accessesDomainId;
+	}
 	
 	@Initializer("true")
 	@Description("Should hardwired accesses (e.g.: cortex, auth, ...) be included in the result?")
