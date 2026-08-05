@@ -28,6 +28,7 @@ import com.braintribe.utils.stream.pools.SmartBlockPoolFactory;
 import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.module.api.wire.RxTransientDataContract;
+import hiconic.rx.platform.conf.DelegatingMimeTypeDetector;
 
 /**
  * 
@@ -69,8 +70,10 @@ public class RxTransientDataSpace implements RxTransientDataContract {
 	}
 
 	@Override
+	@Managed
 	public MimeTypeDetector mimeTypeDetector() {
-		return mimeTypeDetectorHolder().value;
+		Box<MimeTypeDetector> holder = mimeTypeDetectorHolder();
+		return new DelegatingMimeTypeDetector(() -> holder.value);
 	}
 
 	@Managed
