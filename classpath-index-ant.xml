@@ -8,6 +8,7 @@
 			<fileset dir="src">
 				<include name="**/*"/>
 				<exclude name="**/*.java"/>
+				<exclude name="**/.gitignore"/>
 				<exclude name="META-INF/classpath-index.txt"/>
 				<exclude name="META-INF/classpath-resource-only"/>
 			</fileset>
@@ -17,19 +18,36 @@
 	</target>
 
 	<!-- Eclipse consumes project resources from its output directory. Writing there avoids changing/refreshing src and recursively triggering this builder. -->
-	<target name="generate-eclipse-classpath-index">
+	<target name="prepare-eclipse-classpath-index">
 		<property name="eclipse.output.dir" value="classes"/>
 		<mkdir dir="${eclipse.output.dir}/META-INF"/>
+		<tempfile property="eclipse.classpath.index.tmp" destdir="${java.io.tmpdir}" prefix="classpath-index-" suffix=".txt" deleteonexit="true"/>
 		<pathconvert property="classpath.index.entries" pathsep="${line.separator}" targetos="unix">
 			<fileset dir="src">
 				<include name="**/*"/>
 				<exclude name="**/*.java"/>
+				<exclude name="**/.gitignore"/>
 				<exclude name="META-INF/classpath-index.txt"/>
 				<exclude name="META-INF/classpath-resource-only"/>
 			</fileset>
 			<map from="${basedir}/src/" to=""/>
 		</pathconvert>
-		<echo file="${eclipse.output.dir}/META-INF/classpath-index.txt">${classpath.index.entries}${line.separator}</echo>
+		<echo file="${eclipse.classpath.index.tmp}">${classpath.index.entries}${line.separator}</echo>
+		<condition property="eclipse.classpath.index.unchanged">
+			<and>
+				<available file="${eclipse.output.dir}/META-INF/classpath-index.txt"/>
+				<filesmatch file1="${eclipse.output.dir}/META-INF/classpath-index.txt" file2="${eclipse.classpath.index.tmp}"/>
+			</and>
+		</condition>
+	</target>
+
+	<!-- Avoid timestamp-only workspace deltas which recursively schedule the incremental builder. -->
+	<target name="update-eclipse-classpath-index" depends="prepare-eclipse-classpath-index" unless="eclipse.classpath.index.unchanged">
+		<copy file="${eclipse.classpath.index.tmp}" tofile="${eclipse.output.dir}/META-INF/classpath-index.txt" overwrite="true"/>
+	</target>
+
+	<target name="generate-eclipse-classpath-index" depends="update-eclipse-classpath-index">
+		<delete file="${eclipse.classpath.index.tmp}" quiet="true"/>
 	</target>
 
 	<target name="generate-pure-classpath-index" depends="generate-classpath-index">

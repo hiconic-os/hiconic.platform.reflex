@@ -10,7 +10,7 @@
     <stringAttribute key="process_factory_id" value="org.eclipse.ant.ui.remoteAntProcessFactory"/>
     <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="explorer-web-resources - hiconic.platform.reflex"/>
     <stringAttribute key="org.eclipse.ui.externaltools.ATTR_LOCATION" value="${project_loc:explorer-web-resources - hiconic.platform.reflex}/build-index.xml"/>
-    <stringAttribute key="org.eclipse.ui.externaltools.ATTR_RUN_BUILD_KINDS" value="full,incremental,"/>
+    <stringAttribute key="org.eclipse.ui.externaltools.ATTR_RUN_BUILD_KINDS" value="full,"/>
     <booleanAttribute key="org.eclipse.ui.externaltools.ATTR_TRIGGERS_CONFIGURED" value="true"/>
     <stringAttribute key="org.eclipse.ui.externaltools.ATTR_WORKING_DIRECTORY" value="${project_loc:explorer-web-resources - hiconic.platform.reflex}"/>
 </launchConfiguration>
