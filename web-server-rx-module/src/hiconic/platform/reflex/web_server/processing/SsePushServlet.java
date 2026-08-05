@@ -30,6 +30,7 @@ import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.processing.service.api.ServiceProcessor;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
+import com.braintribe.model.processing.service.common.context.UserSessionAspect;
 import com.braintribe.model.securityservice.ValidateUserSession;
 import com.braintribe.model.service.api.InstanceId;
 import com.braintribe.model.service.api.InternalPushRequest;
@@ -37,6 +38,7 @@ import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.model.service.api.result.PushResponse;
 import com.braintribe.model.service.api.result.PushResponseMessage;
 import com.braintribe.model.usersession.UserSession;
+import com.braintribe.utils.collection.impl.AttributeContexts;
 
 import hiconic.rx.push.api.PushChannel;
 import hiconic.rx.push.api.PushContract;
@@ -82,23 +84,27 @@ public class SsePushServlet extends HttpServlet implements ServiceProcessor<Inte
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		String clientId = request.getParameter("clientId");
-		if (clientId == null || clientId.isBlank()) {
-			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "A clientId is required to open an SSE connection.");
-			return;
-		}
+		if (clientId != null && clientId.isBlank())
+			clientId = null;
 
 		String accept = request.getParameter("accept");
 		if (accept == null || accept.isBlank())
 			accept = "application/json";
 		if (marshallerRegistry.getMarshaller(accept) == null) {
+			log.debug("Rejected SSE connection because the requested payload format is unsupported.");
 			response.sendError(HttpServletResponse.SC_NOT_ACCEPTABLE, "Unsupported payload format: " + accept);
 			return;
 		}
 
-		String sessionId = request.getParameter("sessionId");
-		UserSession userSession = validateSession(sessionId, response);
-		if (sessionId != null && userSession == null)
+		String requestedSessionId = request.getParameter("sessionId");
+		boolean explicitSession = requestedSessionId != null && !requestedSessionId.isBlank();
+		UserSession userSession = !explicitSession
+				? AttributeContexts.peek().findOrNull(UserSessionAspect.class)
+				: validateSession(requestedSessionId, response);
+		if (explicitSession && userSession == null)
 			return;
+		String sessionId = userSession == null ? null : userSession.getSessionId();
+		String sessionSource = explicitSession ? "explicit" : userSession == null ? "none" : "web-auth-context";
 
 		response.setStatus(HttpServletResponse.SC_OK);
 		response.setCharacterEncoding(StandardCharsets.UTF_8.name());
@@ -115,6 +121,10 @@ public class SsePushServlet extends HttpServlet implements ServiceProcessor<Inte
 		push.registerChannel(channel);
 
 		channel.send("channel", channel.getChannelId());
+		boolean identifiedClient = clientId != null;
+		String payloadFormat = accept;
+		log.debug(() -> "Opened SSE channel (identifiedClient=" + identifiedClient + ", sessionSource=" + sessionSource
+				+ ", payloadFormat=" + payloadFormat + ", activeChannels=" + channels.size() + ")");
 	}
 
 	private UserSession validateSession(String sessionId, HttpServletResponse response) throws IOException {
@@ -127,6 +137,7 @@ public class SsePushServlet extends HttpServlet implements ServiceProcessor<Inte
 		if (maybe.isSatisfied())
 			return maybe.get();
 
+		log.debug("Rejected SSE connection because the explicitly supplied session is invalid.");
 		response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "The provided session ID is invalid.");
 		return null;
 	}
@@ -233,6 +244,7 @@ public class SsePushServlet extends HttpServlet implements ServiceProcessor<Inte
 				return;
 			channels.remove(channelId, this);
 			push.unregisterChannel(this);
+			log.debug(() -> "Closed SSE channel (activeChannels=" + channels.size() + ")");
 			try {
 				async.complete();
 			} catch (IllegalStateException ignored) {

@@ -27,6 +27,19 @@ import hiconic.rx.test.common.AbstractRxTest;
 import hiconic.rx.web.server.api.WebServerContract;
 
 public class SsePushTest extends AbstractRxTest {
+	@Test
+	public void acceptsAnonymousSseConnection() throws Exception {
+		WebServerContract webServer = platform.getWireContext().contract(WebServerContract.class);
+		URI uri = URI.create("http://localhost:" + webServer.getEffectiveServerPort() + "/push/sse");
+
+		HttpRequest request = HttpRequest.newBuilder(uri).GET().build();
+		HttpResponse<InputStream> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofInputStream());
+		Assertions.assertThat(response.statusCode()).isEqualTo(200);
+		try (InputStream stream = response.body();
+				BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+			Assertions.assertThat(readEvent(reader)).contains("event: channel", "data: ");
+		}
+	}
 
 	@Test
 	public void receivesPushViaSse() throws Exception {
