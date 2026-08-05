@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <project name="classpath-index">
 	<target name="generate-classpath-index">
-		<mkdir dir="src/META-INF"/>
+		<mkdir dir="build/META-INF"/>
+		<delete file="src/META-INF/classpath-index.txt" quiet="true"/>
 		<delete file="src/META-INF/classpath-resource-only" quiet="true"/>
 		<delete file="build/META-INF/classpath-resource-only" quiet="true"/>
 		<pathconvert property="classpath.index.entries" pathsep="${line.separator}" targetos="unix">
@@ -14,12 +15,13 @@
 			</fileset>
 			<map from="${basedir}/src/" to=""/>
 		</pathconvert>
-		<echo file="src/META-INF/classpath-index.txt">${classpath.index.entries}${line.separator}</echo>
+		<echo file="build/META-INF/classpath-index.txt">${classpath.index.entries}${line.separator}</echo>
 	</target>
 
-	<!-- Eclipse consumes project resources from its output directory. Writing there avoids changing/refreshing src and recursively triggering this builder. -->
+	<!-- Devrock always contributes class-gen to the Eclipse classpath. Keeping the
+	     generated index there avoids source-tree changes and recursive builds. -->
 	<target name="prepare-eclipse-classpath-index">
-		<property name="eclipse.output.dir" value="classes"/>
+		<property name="eclipse.output.dir" value="class-gen"/>
 		<mkdir dir="${eclipse.output.dir}/META-INF"/>
 		<tempfile property="eclipse.classpath.index.tmp" destdir="${java.io.tmpdir}" prefix="classpath-index-" suffix=".txt" deleteonexit="true"/>
 		<pathconvert property="classpath.index.entries" pathsep="${line.separator}" targetos="unix">
