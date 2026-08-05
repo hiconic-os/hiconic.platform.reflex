@@ -81,14 +81,13 @@ public class ExternalToolsRxModuleSpace implements RxModuleContract, ExternalToo
 		String dockerCommand = requireText(backend.getDockerCommand(), "backend.dockerCommand");
 		String service = requireText(backend.getService(), "backend.service");
 		Path normalizedHostRoot = hostRoot.toAbsolutePath().normalize();
-		Path containerRoot = Paths.get(requireText(backend.getContainerFileSystemRoot(), "backend.containerFileSystemRoot")).normalize();
-		if (!containerRoot.isAbsolute())
-			throw new IllegalStateException("External tools configuration property 'backend.containerFileSystemRoot' must be absolute.");
+		String containerRoot = normalizeContainerRoot(backend.getContainerFileSystemRoot());
 		String composeFile = trimToNull(backend.getComposeFile());
 		String projectDirectory = trimToNull(backend.getProjectDirectory());
 
 		return (ToolWorkspace workspace, List<String> arguments) -> {
-			Path containerWorkspace = containerRoot.resolve(normalizedHostRoot.relativize(workspace.root().toAbsolutePath().normalize())).normalize();
+			Path relativeWorkspace = normalizedHostRoot.relativize(workspace.root().toAbsolutePath().normalize());
+			String containerWorkspace = containerPath(containerRoot, relativeWorkspace.toString());
 			List<String> result = new ArrayList<String>();
 			result.add(dockerCommand);
 			result.add("compose");
@@ -114,10 +113,44 @@ public class ExternalToolsRxModuleSpace implements RxModuleContract, ExternalToo
 		};
 	}
 
-	private String projectPath(String argument, Path hostRoot, Path containerRoot) {
+	private String projectPath(String argument, Path hostRoot, String containerRoot) {
 		if (argument == null)
 			return null;
-		return argument.replace(hostRoot.toString(), containerRoot.toString());
+		String hostPrefix = hostRoot.toString();
+		if (!argument.startsWith(hostPrefix))
+			return argument;
+		return containerPath(containerRoot, argument.substring(hostPrefix.length()));
+	}
+
+	private String normalizeContainerRoot(String configuredRoot) {
+		String path = requireText(configuredRoot, "backend.containerFileSystemRoot").replace('\\', '/');
+		if (!path.startsWith("/"))
+			throw new IllegalStateException("External tools configuration property 'backend.containerFileSystemRoot' must be an absolute "
+					+ "container path.");
+
+		List<String> segments = new ArrayList<String>();
+		for (String segment : path.split("/+")) {
+			if (segment.isEmpty() || ".".equals(segment))
+				continue;
+			if ("..".equals(segment)) {
+				if (segments.isEmpty())
+					throw new IllegalStateException("External tools configuration property 'backend.containerFileSystemRoot' escapes the "
+							+ "container root.");
+				segments.remove(segments.size() - 1);
+			} else {
+				segments.add(segment);
+			}
+		}
+		return segments.isEmpty() ? "/" : "/" + String.join("/", segments);
+	}
+
+	private String containerPath(String root, String relative) {
+		String suffix = relative.replace('\\', '/');
+		while (suffix.startsWith("/"))
+			suffix = suffix.substring(1);
+		if (suffix.isEmpty())
+			return root;
+		return "/".equals(root) ? root + suffix : root + "/" + suffix;
 	}
 
 	@Managed
