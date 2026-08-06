@@ -107,7 +107,11 @@ public class RxServiceDomainDispatcher
 			List<? extends ServiceDomain> dependers = serviceDomains.listDomains(requestType);
 
 			if (dependers.size() != 1)
-				dependers.removeIf(domain -> !domainProcessesRequest(domain, requestType));
+				// The domain index owns and shares this list across evaluations. Filtering it in place corrupts the index and races
+				// with concurrent requests (for example the browser's parallel session bootstrap calls).
+				dependers = dependers.stream() //
+						.filter(domain -> domainProcessesRequest(domain, requestType)) //
+						.toList();
 
 			if (dependers.size() != 1)
 				return wrongNumberOfDependers(dependers, requestType);

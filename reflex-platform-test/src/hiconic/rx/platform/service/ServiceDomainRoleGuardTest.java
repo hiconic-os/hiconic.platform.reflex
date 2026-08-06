@@ -13,12 +13,15 @@
 // ============================================================================
 package hiconic.rx.platform.service;
 
+import java.util.List;
+
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.security.reason.Forbidden;
 import com.braintribe.model.resource.source.FileSystemSource;
+import com.braintribe.model.service.api.CompositeRequest;
 import com.braintribe.model.service.api.InstanceId;
 import com.braintribe.model.service.api.MulticastRequest;
 import com.braintribe.model.service.api.result.MulticastResponse;
@@ -26,6 +29,7 @@ import com.braintribe.model.service.api.result.MulticastResponse;
 import hiconic.rx.resource.model.api.GetResourcePayload;
 import hiconic.rx.model.service.processing.md.ProcessWith;
 import hiconic.rx.module.api.service.PlatformServiceDomains;
+import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.platform.test.PlatformTestDomains;
 import hiconic.rx.platform.test.wire.space.PlatformRxTestModuleSpace;
 import hiconic.rx.test.common.AbstractRxTest;
@@ -61,6 +65,18 @@ public class ServiceDomainRoleGuardTest extends AbstractRxTest {
 				.getMetaData().entityType(MulticastRequest.T).meta(ProcessWith.T).exclusive();
 		Assertions.assertThat(effectiveBinding).isNotNull();
 		Assertions.assertThat(effectiveBinding.getConflictPriority()).isEqualTo(0d);
+	}
+
+	@Test
+	public void domainInferenceDoesNotMutateSharedDomainIndex() {
+		var serviceDomains = platformContract.serviceProcessing().serviceDomains();
+		List<? extends ServiceDomain> domainsBefore = List.copyOf(serviceDomains.listDomains(CompositeRequest.T));
+
+		CompositeRequest request = CompositeRequest.T.create();
+		request.setRequests(List.of(multicastRequest()));
+
+		request.eval(platformContract.serviceProcessing().systemEvaluator()).getReasoned();
+		Assertions.assertThat(serviceDomains.listDomains(CompositeRequest.T)).containsExactlyElementsOf(domainsBefore);
 	}
 
 	private MulticastRequest multicastRequest() {
