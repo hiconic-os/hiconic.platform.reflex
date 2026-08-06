@@ -24,9 +24,14 @@ import com.braintribe.model.generic.reflection.EntityTypes;
 import com.braintribe.model.openapi.v3_0.OpenApi;
 import com.braintribe.model.service.api.ServiceRequest;
 
+import hiconic.rx.webapi.endpoints.TypeExplicitness;
 import hiconic.rx.webapi.model.annotation.RequestPath;
+import hiconic.rx.webapi.model.annotation.ResponseMimeType;
+import hiconic.rx.webapi.model.annotation.ResponseTypeExplicitness;
 
 @RequestPath("services")
+@ResponseMimeType("text/yaml")
+@ResponseTypeExplicitness(TypeExplicitness.never)
 public interface OpenapiServicesRequest extends OpenapiRequest {
 
 	EntityType<OpenapiServicesRequest> T = EntityTypes.T(OpenapiServicesRequest.class);
