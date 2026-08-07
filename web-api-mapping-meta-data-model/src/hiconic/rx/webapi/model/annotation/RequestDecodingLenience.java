@@ -19,11 +19,15 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/** Annotation for {@link hiconic.rx.webapi.model.meta.RequestDecodingLenience}. */
+/**
+ * Enables tolerant decoding of unknown request properties.
+ * <p>
+ * The corresponding metadata is an explicit predicate: the annotation's presence enables it. A mapping-specific override can be expressed with
+ * {@link hiconic.rx.webapi.model.meta.RequestMapping#getDecodingLenience()}.
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 @Documented
 public @interface RequestDecodingLenience {
 	String globalId() default "";
-	boolean value() default true;
 }
