@@ -19,6 +19,7 @@ import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
 import com.braintribe.gm.model.reason.Maybe;
+import com.braintribe.gm.model.reason.essential.UnsupportedOperation;
 import com.braintribe.gm.model.security.reason.Forbidden;
 import com.braintribe.model.resource.source.FileSystemSource;
 import com.braintribe.model.service.api.CompositeRequest;
@@ -77,6 +78,17 @@ public class ServiceDomainRoleGuardTest extends AbstractRxTest {
 
 		request.eval(platformContract.serviceProcessing().systemEvaluator()).getReasoned();
 		Assertions.assertThat(serviceDomains.listDomains(CompositeRequest.T)).containsExactlyElementsOf(domainsBefore);
+	}
+
+	@Test
+	public void explicitDomainReturnsReasonWhenRequestIsModeledButHasNoProcessor() {
+		GetResourcePayload request = GetResourcePayload.T.create();
+		request.setDomainId(PlatformTestDomains.resources.name());
+
+		Maybe<?> result = request.eval(evaluator).getReasoned();
+
+		Assertions.assertThat(result.isUnsatisfiedBy(UnsupportedOperation.T)).isTrue();
+		Assertions.assertThat(result.whyUnsatisfied().getText()).contains("No service processor mapped", GetResourcePayload.T.getTypeSignature());
 	}
 
 	private MulticastRequest multicastRequest() {

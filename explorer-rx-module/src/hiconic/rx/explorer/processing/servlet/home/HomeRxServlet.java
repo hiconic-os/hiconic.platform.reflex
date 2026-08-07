@@ -329,24 +329,10 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 		if (logApplicationAvailable.getAsBoolean())
 			runtimeStatus.getNestedLinks().add(
 					createLink("Log", relativeLogPath, "_self", null, "./webpages/images/cortex/logs.png"));
-		runtimeStatus.getNestedLinks()
-				.add(createLink("Deployment Summary", "./home?selectedTab=DEPLOYMENT SUMMARY&selectedTabPath=" + relativeDeploymentSummaryPath,
-						"_self", null, "./webpages/images/cortex/deploy.png"));
 		administrationGroup.getLinks().add(runtimeStatus);
 		// administrationGroup.getLinks().add(createLink("Logfiles",
 		// "./home?selectedTab=LOGS&selectedTabPath="+relativeLogPath, "_self", null,
 		// "./webpages/images/cortex/logs.png"));
-
-		LinkCollection setupgroup = LinkCollection.T.create();
-		setupgroup.setDisplayName("Platform Setup (Assets)");
-		setupgroup.setIconRef("./webpages/images/cortex/asset.png");
-
-		setupgroup.getNestedLinks().add(createLink("Administration", explorerUrlWithTrailingSlash + "?accessId=" + defaultUserSetupAccessId,
-				"tfControlCenter-setup", null, "./webpages/images/cortex/asset.png"));
-
-		configureAccessDomainLink(setupgroup, "setup");
-
-		administrationGroup.getLinks().add(setupgroup);
 
 		usergroups.getNestedLinks().add(createLink("Administration",
 				explorerUrlWithTrailingSlash + "?accessId=" + urlEncode(defaultAuthAccessId) + "#default", "tfControlCenter-auth", null));

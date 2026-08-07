@@ -62,6 +62,7 @@ import com.braintribe.utils.lcd.NullSafe;
 import hiconic.rx.module.api.service.ConfiguredModel;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.service.ServiceDomains;
+import hiconic.rx.model.service.processing.md.ProcessWith;
 import hiconic.rx.web.ddra.endpoints.api.v1.SingleDdraMapping;
 import hiconic.rx.web.ddra.endpoints.api.v1.SingleDdraMappingImpl;
 import hiconic.rx.web.ddra.endpoints.api.v1.WebApiMappingOracle;
@@ -145,6 +146,7 @@ public class ApiV1OpenapiProcessor extends AbstractOpenapiProcessor<OpenapiServi
 			List<EntityType<?>> requestTypes = modelEntities(sessionScopedContext) //
 					.filter(et -> !et.isAbstract()) //
 					.filter(et -> ServiceRequest.T.isAssignableFrom(et)) //
+					.filter(et -> processesRequest(sessionScopedContext, et)) //
 					.filter(et -> !ddraMapedTypes.contains(et.getTypeSignature())) //
 					.collect(Collectors.toList());
 
@@ -190,6 +192,10 @@ public class ApiV1OpenapiProcessor extends AbstractOpenapiProcessor<OpenapiServi
 				.map(gmModel -> modelNameToTag.get(gmModel.getName())) //
 				.filter(tag -> tag != null) //
 				.forEach(tag -> addNewTag(openApi, tag));
+	}
+
+	private boolean processesRequest(OpenapiContext context, EntityType<?> requestType) {
+		return context.getMetaData().entityType(requestType).meta(ProcessWith.T).exclusive() != null;
 	}
 
 	private String shortNameIfUniqueOrFullSignature(Map<String, List<EntityType<?>>> typesBySimpleName, EntityType<?> et) {

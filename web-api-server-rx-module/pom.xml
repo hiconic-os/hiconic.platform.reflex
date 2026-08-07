@@ -61,6 +61,11 @@ limitations under the License.
         </dependency>
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>service-processing-metadata-model</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
             <artifactId>access-module-api</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>

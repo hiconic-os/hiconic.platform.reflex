@@ -54,6 +54,7 @@ import hiconic.rx.web.ddra.endpoints.api.WebApiMappingRegistry;
 import hiconic.rx.web.ddra.endpoints.api.v1.SingleDdraMapping;
 import hiconic.rx.web.ddra.endpoints.api.v1.SingleDdraMappingImpl;
 import hiconic.rx.web.ddra.endpoints.api.v1.WebApiMappingOracle;
+import hiconic.rx.model.service.processing.md.ProcessWith;
 import hiconic.rx.webapi.endpoints.OutputPrettiness;
 import hiconic.rx.webapi.endpoints.TypeExplicitness;
 import hiconic.rx.webapi.model.meta.BooleanOverride;
@@ -313,7 +314,14 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 					.getSubTypes() //
 					.transitive() //
 					.onlyInstantiable() //
-					.<EntityType<?>> asTypes();
+					.<EntityType<?>> asTypes() //
+					.stream() //
+					.filter(this::hasProcessorBinding) //
+					.collect(java.util.stream.Collectors.toSet());
+		}
+
+		private boolean hasProcessorBinding(EntityType<?> type) {
+			return cmdResolver.getMetaData().entityType(type).meta(ProcessWith.T).exclusive() != null;
 		}
 
 		private Set<EntityType<?>> ambiguousRequestTypes() {

@@ -130,6 +130,11 @@ public class RxServiceDomainDispatcher
 						.text("Service domain " + domainId + " does not support request " + requestType.getTypeSignature()) //
 						.toMaybe();
 
+			if (!domainProcessesRequest(serviceDomain, requestType))
+				return Reasons.build(UnsupportedOperation.T) //
+						.text("No service processor mapped for request " + requestType.getTypeSignature() + " in service domain " + domainId) //
+						.toMaybe();
+
 			// From this point on the evaluation context carries the canonical id, even if the request selected the domain through an alias.
 			domainId = serviceDomain.domainId();
 		}

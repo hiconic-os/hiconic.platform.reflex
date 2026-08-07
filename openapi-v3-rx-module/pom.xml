@@ -16,6 +16,11 @@
         </dependency>
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>service-processing-metadata-model</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
             <artifactId>openapi-v3-api-model</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>

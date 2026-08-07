@@ -1,6 +1,9 @@
 package hiconic.rx.openapi.v3.wire.space;
 
 import com.braintribe.gm._ServiceApiModel_;
+import com.braintribe.model.generic.reflection.Property;
+import com.braintribe.model.meta.data.prompt.Hidden;
+import com.braintribe.model.meta.selector.UseCaseSelector;
 import com.braintribe.model.openapi.v3_0.api.OpenapiEntitiesRequest;
 import com.braintribe.model.openapi.v3_0.api.OpenapiPropertiesRequest;
 import com.braintribe.model.openapi.v3_0.api.OpenapiServicesRequest;
@@ -25,6 +28,7 @@ import hiconic.rx.openapi.v3.processing.servlet.OpenapiUiServlet;
 import hiconic.rx.security.web.api.AuthFilters;
 import hiconic.rx.web.ddra.endpoints.api.WebApiServerContract;
 import hiconic.rx.web.server.api.WebServerContract;
+import hiconic.rx.webapi.endpoints.DdraEndpoint;
 import hiconic.rx.webapi.endpoints.api.v1.ApiV1DdraEndpoint;
 import jakarta.servlet.DispatcherType;
 
@@ -57,6 +61,19 @@ public class OpenapiV3RxModuleSpace implements RxModuleContract {
 		ModelConfiguration modelConfiguration = configurations.bySymbol(AbstractOpenapiProcessor.basicOpenapiProcessingModelRef);
 		modelConfiguration.addModel(_ServiceApiModel_.reflection);
 		modelConfiguration.addModel(ApiV1DdraEndpoint.T.getModel());
+		modelConfiguration.configureModel(editor -> {
+			UseCaseSelector simpleOpenapi = UseCaseSelector.T.create();
+			simpleOpenapi.setUseCase("openapi:simple");
+
+			Hidden hiddenInSimpleOpenapi = Hidden.T.create();
+			hiddenInSimpleOpenapi.setSelector(simpleOpenapi);
+
+			for (Property property : DdraEndpoint.T.getProperties())
+				editor.onEntityType(DdraEndpoint.T).addPropertyMetaData(property, hiddenInSimpleOpenapi);
+
+			for (Property property : ApiV1DdraEndpoint.T.getDeclaredProperties())
+				editor.onEntityType(ApiV1DdraEndpoint.T).addPropertyMetaData(property, hiddenInSimpleOpenapi);
+		});
 	}
 
 	@Override
