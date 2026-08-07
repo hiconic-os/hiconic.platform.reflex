@@ -49,6 +49,8 @@ import com.braintribe.wire.api.space.WireSpace;
 import com.braintribe.wire.impl.properties.PropertyLookups;
 
 import hiconic.rx.module.api.wire.EnvironmentPropertiesContract;
+import hiconic.rx.module.api.wire.ModuleReflectionContract;
+import hiconic.rx.module.api.wire.PlatformReflectionContract;
 import hiconic.rx.module.api.wire.RxContractSpaceResolverConfigurator;
 import hiconic.rx.module.api.wire.RxModule;
 import hiconic.rx.module.api.wire.RxModuleContract;
@@ -57,13 +59,13 @@ import hiconic.rx.module.api.wire.SystemPropertiesContract;
 import hiconic.rx.platform.conf.RxPropertyResolver;
 import hiconic.rx.platform.loading.RxModuleAnalysis.RxExportEntry;
 
-public class RxModuleLoader implements LifecycleAware {
+public class RxModuleLoader implements LifecycleAware, PlatformReflectionContract {
 
 	private static final Logger logger = Logger.getLogger(RxModuleLoader.class);
 
 	private WireContext<?> parentContext;
 	
-	record LoadedModule(WireContext<RxModuleContract> wireContext, WireModule module) {}
+	record LoadedModule(WireContext<RxModuleContract> wireContext, WireModule module, ModuleReflectionContract reflection) {}
 	
 	private List<LoadedModule> loadedModules;
 	private RxContractSpaceResolverConfigurator resolverConfigurator;
@@ -97,6 +99,11 @@ public class RxModuleLoader implements LifecycleAware {
 		return loadedModules.stream() //
 				.map(c -> c.wireContext().contract()) //
 				.toList();
+	}
+
+	@Override
+	public List<ModuleReflectionContract> modules() {
+		return loadedModules == null ? List.of() : loadedModules.stream().map(LoadedModule::reflection).toList();
 	}
 
 	@Override
@@ -148,12 +155,12 @@ public class RxModuleLoader implements LifecycleAware {
 
 		// TODO parallelize instead
 		for (RxModuleNode node : nodesSortedDependenciesFirst(analysis)) {
-			var maybeWireCtx = loadWireContextForModule(node);
+			var maybeLoadedModule = loadWireContextForModule(node);
 
-			if (maybeWireCtx.isUnsatisfied())
-				lazyError.get().getReasons().add(maybeWireCtx.whyUnsatisfied());
+			if (maybeLoadedModule.isUnsatisfied())
+				lazyError.get().getReasons().add(maybeLoadedModule.whyUnsatisfied());
 			else
-				contexts.add(new LoadedModule(maybeWireCtx.get(), node.module));
+				contexts.add(maybeLoadedModule.get());
 		}
 
 		if (lazyError.isInitialized())
@@ -168,13 +175,16 @@ public class RxModuleLoader implements LifecycleAware {
 		return rxNodes;
 	}
 
-	private Maybe<WireContext<RxModuleContract>> loadWireContextForModule(RxModuleNode node) {
+	private Maybe<LoadedModule> loadWireContextForModule(RxModuleNode node) {
 		var rxModule = node.module;
 
 		printWireModule(rxModule.moduleName());
 
 		try {
+			var artifactReflection = ModuleArtifactReflectionResolver.resolve(rxModule);
+			var moduleReflection = new ModuleReflectionSpace(artifactReflection, rxModule.getClass().getClassLoader());
 			WireContextBuilder<RxModuleContract> contextBuilder = Wire.contextBuilder(rxModule);
+			contextBuilder.bindContract(ModuleReflectionContract.class, moduleReflection);
 			for (RxExportEntry export : node.exports)
 				if (export.spaceClass != null)
 					contextBuilder.bindContract(export.contractClass, export.spaceClass);
@@ -187,7 +197,7 @@ public class RxModuleLoader implements LifecycleAware {
 			for (RxExportEntry export : node.exports)
 				export.moduleWireContext = wireContext;
 
-			return Maybe.complete(wireContext);
+			return Maybe.complete(new LoadedModule(wireContext, node.module, moduleReflection));
 
 		} catch (Exception e) {
 			String tracebackId = UUID.randomUUID().toString();

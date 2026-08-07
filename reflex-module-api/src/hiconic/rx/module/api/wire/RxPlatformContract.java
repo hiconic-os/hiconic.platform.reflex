@@ -44,6 +44,8 @@ public interface RxPlatformContract extends DeprecatedRxPlatformContract {
 
 	RxProcessLaunchContract processLaunch();
 
+	PlatformReflectionContract reflection();
+
 	RxServiceProcessingContract serviceProcessing();
 
 	RxTransientDataContract transientData();

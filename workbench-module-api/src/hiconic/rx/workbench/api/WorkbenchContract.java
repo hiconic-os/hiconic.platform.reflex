@@ -13,4 +13,9 @@ public interface WorkbenchContract extends RxExportContract {
 	 */
 	void registerInitializer(String workbenchAccessId, WorkbenchInitializer initializer);
 
+	/** Registers an initializer with a stable Wire-derived identity for all entities it creates. */
+	default void registerInitializer(String workbenchAccessId, WorkbenchInitializerRegistration registration) {
+		registerInitializer(workbenchAccessId, registration.initializer());
+	}
+
 }

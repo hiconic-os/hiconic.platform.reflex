@@ -15,10 +15,14 @@ package hiconic.rx.platform.loading;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 import org.junit.Test;
 
 import com.braintribe.wire.api.Wire;
 import com.braintribe.wire.api.context.WireContext;
+import com.braintribe.common.artifact.ArtifactReflection;
 
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.platform.loading.samples.api.ApiContract;
@@ -40,6 +44,28 @@ public class RxModuleLoadingTest {
 		RxModuleContract exporterSpace = (RxModuleContract) wireContext.contract();
 		assertThat(exporterSpace).isNotNull();
 		assertThat(exporterSpace.getClass().getName()).isEqualTo(ExporterSpace.class.getName());
+	}
+
+	@Test
+	public void resolvesOwningArtifactReflectionFromExplodedTestArtifact() {
+		ArtifactReflection reflection = ModuleArtifactReflectionResolver.resolve(ExportingModule.INSTANCE);
+
+		assertThat(reflection.groupId()).isEqualTo("hiconic.platform.reflex");
+		assertThat(reflection.artifactId()).isEqualTo("reflex-platform-test");
+	}
+
+	@Test
+	public void resolvesLegacyModuleCoordinatesFromPackagedSolutions() throws Exception {
+		Path application = Files.createTempDirectory("rx-module-reflection-test");
+		Path lib = Files.createDirectory(application.resolve("lib"));
+		Path jar = Files.createFile(lib.resolve("some-rx-module-1.2.3-rc.jar"));
+		Files.writeString(application.resolve("packaged-solutions.txt"), "example.group:some-rx-module#1.2.3-rc\n");
+
+		ArtifactReflection reflection = ModuleArtifactReflectionResolver.reflectionFromLegacyJarName(jar);
+
+		assertThat(reflection.groupId()).isEqualTo("example.group");
+		assertThat(reflection.artifactId()).isEqualTo("some-rx-module");
+		assertThat(reflection.version()).isEqualTo("1.2.3-rc");
 	}
 
 }

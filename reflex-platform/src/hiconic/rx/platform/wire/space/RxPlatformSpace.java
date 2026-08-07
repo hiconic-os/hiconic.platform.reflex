@@ -39,6 +39,7 @@ import hiconic.rx.module.api.wire.RxMarshallingContract;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPackagedResourcesContract;
 import hiconic.rx.module.api.wire.RxPackagedPublicResourcesContract;
+import hiconic.rx.module.api.wire.PlatformReflectionContract;
 import hiconic.rx.module.api.wire.RxProcessLaunchContract;
 import hiconic.rx.module.api.wire.RxServiceProcessingContract;
 import hiconic.rx.module.api.wire.RxTransientDataContract;
@@ -80,6 +81,7 @@ public class RxPlatformSpace extends CoreServicesSpace implements ExtendedRxPlat
 	@Override public RxPackagedResourcesContract packagedResources() { return packagedResources; }
 	@Override public RxPackagedPublicResourcesContract packagedPublicResources() { return packagedPublicResources; }
 	@Override public RxProcessLaunchContract processLaunch() { return this; }
+	@Override public PlatformReflectionContract reflection() { return moduleLoader(); }
 	@Override public RxServiceProcessingContract serviceProcessing() { return serviceProcessing; }
 	@Override public RxTransientDataContract transientData() { return transientData; }
 	// @formatter:on

@@ -30,6 +30,11 @@ limitations under the License.
     </licenses>
     <dependencies>
         <dependency>
+            <groupId>com.braintribe.common</groupId>
+            <artifactId>common-api</artifactId>
+            <version>${V.com.braintribe.common}</version>
+        </dependency>
+        <dependency>
             <groupId>com.braintribe.gm</groupId>
             <artifactId>service-api-commons</artifactId>
             <version>${V.com.braintribe.gm}</version>

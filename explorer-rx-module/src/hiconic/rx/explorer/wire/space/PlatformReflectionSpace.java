@@ -91,6 +91,7 @@ public class PlatformReflectionSpace implements WireSpace {
 		StandardRxAppInfoProvider bean = new StandardRxAppInfoProvider();
 		bean.setPlatformApplicationContract(platform.application());
 		bean.setApplicationFilesContract(platformResources);
+		bean.setPlatformReflectionContract(platform.reflection());
 		if (transientData.streamPipeFactory() instanceof CompoundBlockPool blockPool)
 			bean.setCompoundBlockPool(blockPool);
 		return bean;

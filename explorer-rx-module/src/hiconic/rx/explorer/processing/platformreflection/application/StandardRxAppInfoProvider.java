@@ -16,9 +16,11 @@ import com.braintribe.utils.stream.pools.CompoundBlockPool;
 import com.braintribe.utils.stream.stats.BlockKind;
 import com.braintribe.utils.stream.stats.StreamPipeBlockStats;
 
+import hiconic.rx.module.api.wire.PlatformReflectionContract;
 import hiconic.rx.module.api.wire.RxApplicationContract;
 import hiconic.rx.module.api.wire.RxApplicationFilesContract;
 import hiconic.rx.reflection.model.application.RxAppInfo;
+import hiconic.rx.reflection.model.module.RxModuleInfo;
 import hiconic.rx.reflection.model.streampipes.PoolKind;
 import hiconic.rx.reflection.model.streampipes.StreamPipeBlocksInfo;
 import hiconic.rx.reflection.model.streampipes.StreamPipesInfo;
@@ -31,6 +33,7 @@ public class StandardRxAppInfoProvider implements Supplier<RxAppInfo> {
 
 	private RxApplicationContract application;
 	private RxApplicationFilesContract applicationFiles;
+	private PlatformReflectionContract platformReflection;
 
 	private CompoundBlockPool compoundBlockPool;
 
@@ -44,6 +47,11 @@ public class StandardRxAppInfoProvider implements Supplier<RxAppInfo> {
 		this.applicationFiles = applicationFiles;
 	}
 
+	@Required
+	public void setPlatformReflectionContract(PlatformReflectionContract platformReflection) {
+		this.platformReflection = platformReflection;
+	}
+
 	@Configurable
 	public void setCompoundBlockPool(CompoundBlockPool compoundBlockPool) {
 		this.compoundBlockPool = compoundBlockPool;
@@ -54,6 +62,13 @@ public class StandardRxAppInfoProvider implements Supplier<RxAppInfo> {
 		RxAppInfo result = RxAppInfo.T.create();
 		result.setApplicationName(application.applicationName());
 		result.setApplicationId(application.applicationId());
+		result.setModuleInfos(platformReflection.modules().stream().map(module -> {
+			RxModuleInfo info = RxModuleInfo.T.create();
+			info.setGroupId(module.groupId());
+			info.setArtifactId(module.artifactId());
+			info.setVersion(module.version());
+			return info;
+		}).toList());
 		result.setStreamPipeInfo(prepareStreamPipeBlocksInfo());
 		result.setTempDirInfo(createFolderInfo(applicationFiles.tmpPath()));
 
