@@ -78,9 +78,9 @@ public class OpenapiV3RxModuleSpace implements RxModuleContract {
 		OpenapiUiServlet bean = new OpenapiUiServlet();
 		bean.setServiceDomains(serviceProcessing.serviceDomains());
 		bean.setAccessDomains(access.accessDomains());
+		bean.setWebApiPath(webApiServer.servletPath());
 
-		// TODO configure api and rest paths, once they are configurable
-		// bean.setWebApiPath("api");
+		// TODO configure the REST path once it is configurable
 		// bean.setRestPath("rest");
 
 		return bean;
