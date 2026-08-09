@@ -44,10 +44,16 @@ public class RxServiceDomainDispatcher
 	private static final Logger log = Logger.getLogger(RxServiceDomainDispatcher.class);
 
 	private ServiceDomains serviceDomains;
+	private FallbackServiceProcessor fallbackProcessor;
 
 	@Required
 	public void setServiceDomains(ServiceDomains serviceDomains) {
 		this.serviceDomains = serviceDomains;
+	}
+
+	@Required
+	public void setFallbackProcessor(FallbackServiceProcessor fallbackProcessor) {
+		this.fallbackProcessor = fallbackProcessor;
 	}
 
 	// ###################################################
@@ -110,7 +116,7 @@ public class RxServiceDomainDispatcher
 				// The domain index owns and shares this list across evaluations. Filtering it in place corrupts the index and races
 				// with concurrent requests (for example the browser's parallel session bootstrap calls).
 				dependers = dependers.stream() //
-						.filter(domain -> domainProcessesRequest(domain, requestType)) //
+						.filter(domain -> domainProcessesRequest(domain, request)) //
 						.toList();
 
 			if (dependers.size() != 1)
@@ -130,7 +136,7 @@ public class RxServiceDomainDispatcher
 						.text("Service domain " + domainId + " does not support request " + requestType.getTypeSignature()) //
 						.toMaybe();
 
-			if (!domainProcessesRequest(serviceDomain, requestType))
+			if (!domainProcessesRequest(serviceDomain, request))
 				return Reasons.build(UnsupportedOperation.T) //
 						.text("No service processor mapped for request " + requestType.getTypeSignature() + " in service domain " + domainId) //
 						.toMaybe();
@@ -148,14 +154,14 @@ public class RxServiceDomainDispatcher
 		return serviceRequest.domainId();
 	}
 
-	private boolean domainProcessesRequest(ServiceDomain domain, EntityType<? extends ServiceRequest> requestType) {
+	private boolean domainProcessesRequest(ServiceDomain domain, ServiceRequest request) {
 		ProcessWith processWith = domain.contextCmdResolver() //
 				.getMetaData() //
-				.entityType(requestType) //
+				.entityType(request.entityType()) //
 				.meta(ProcessWith.T) //
 				.exclusive();
 
-		return processWith != null;
+		return processWith != null || fallbackProcessor.supports(request);
 	}
 
 	private Maybe<? extends Object> wrongNumberOfDependers(List<? extends ServiceDomain> dependers,

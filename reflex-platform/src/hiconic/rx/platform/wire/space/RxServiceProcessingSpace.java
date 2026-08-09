@@ -26,6 +26,7 @@ import hiconic.rx.module.api.wire.RxServiceProcessingContract;
 import hiconic.rx.module.api.service.ServiceProcessorRegistry;
 import hiconic.rx.platform.service.BasicServiceProcessorRegistry;
 import hiconic.rx.platform.service.ContextualizingServiceRequestEvaluator;
+import hiconic.rx.platform.service.FallbackServiceProcessor;
 import hiconic.rx.platform.service.RxServiceDomainDispatcher;
 import hiconic.rx.platform.service.RxServiceDomains;
 
@@ -99,12 +100,13 @@ public class RxServiceProcessingSpace implements RxServiceProcessingContract {
 	private RxServiceDomainDispatcher serviceDomainDispatcher() {
 		RxServiceDomainDispatcher bean = new RxServiceDomainDispatcher();
 		bean.setServiceDomains(serviceDomains());
+		bean.setFallbackProcessor(fallbackProcessor());
 		return bean;
 	}
 
 	@Managed
-	public ConfigurableDispatchingServiceProcessor fallbackProcessor() {
-		ConfigurableDispatchingServiceProcessor bean = new ConfigurableDispatchingServiceProcessor();
+	public FallbackServiceProcessor fallbackProcessor() {
+		FallbackServiceProcessor bean = new FallbackServiceProcessor();
 		return bean;
 	}
 
