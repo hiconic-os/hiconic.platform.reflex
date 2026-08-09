@@ -38,6 +38,8 @@ import com.braintribe.codec.marshaller.yaml.YamlMarshaller;
 import com.braintribe.console.AbstractAnsiConsole;
 import com.braintribe.console.ConsoleConfiguration;
 import com.braintribe.console.ConsoleOutputs;
+import com.braintribe.config.configurator.ClasspathConfigurator;
+import com.braintribe.config.configurator.ConfiguratorContext;
 import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 import com.braintribe.gm.model.reason.ReasonException;
 import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
@@ -127,9 +129,16 @@ public class RxPlatform implements AutoCloseable {
 		// model reflection. Otherwise those early diagnostics escape through JUL's
 		// default ConsoleHandler even when the application disables console logging.
 		setupLogging();
+		runClasspathConfigurators();
 		propertyResolver = createPropertyResolver();
 
 		start();
+	}
+
+	private void runClasspathConfigurators() {
+		ConfiguratorContext context = new ConfiguratorContext("");
+		context.setMaster(true);
+		new ClasspathConfigurator(context).configure();
 	}
 
 	private ClasspathIndex createClasspathIndex() {
