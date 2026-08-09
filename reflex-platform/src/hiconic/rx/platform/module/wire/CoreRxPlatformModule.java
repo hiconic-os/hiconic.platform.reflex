@@ -15,6 +15,8 @@ package hiconic.rx.platform.module.wire;
 
 import hiconic.rx.module.api.wire.RxModule;
 import hiconic.rx.module.api.wire.Exports;
+import hiconic.rx.initializer.api.InitializerBackendContract;
+import hiconic.rx.initializer.api.InitializerContract;
 import hiconic.rx.platform.module.wire.space.CoreRxPlatformModuleSpace;
 import hiconic.rx.push.api.PushContract;
 
@@ -25,6 +27,8 @@ public enum CoreRxPlatformModule implements RxModule<CoreRxPlatformModuleSpace> 
 	@Override
 	public void bindExports(Exports exports) {
 		exports.bind(PushContract.class, CoreRxPlatformModuleSpace.class);
+		exports.bind(InitializerContract.class, CoreRxPlatformModuleSpace.class);
+		exports.bind(InitializerBackendContract.class, CoreRxPlatformModuleSpace.class);
 	}
 
 }

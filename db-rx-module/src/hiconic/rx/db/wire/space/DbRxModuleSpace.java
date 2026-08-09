@@ -18,9 +18,12 @@ import java.util.List;
 import javax.sql.DataSource;
 
 import com.braintribe.gm.model.reason.Maybe;
+import com.braintribe.gm.initializer.jdbc.processing.GmDbInitializerManager;
+import com.braintribe.gm.initializer.model.configuration.InitializerDbConfiguration;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
+import com.braintribe.wire.api.context.WireContext;
 import com.braintribe.wire.api.scope.InstanceConfiguration;
 import com.zaxxer.hikari.HikariDataSource;
 
@@ -28,6 +31,9 @@ import hiconic.rx.db.model.configuration.Database;
 import hiconic.rx.db.model.configuration.DatabaseConfiguration;
 import hiconic.rx.db.module.api.DatabaseContract;
 import hiconic.rx.db.processing.HikariDataSources;
+import hiconic.rx.initializer.api.InitializerBackend;
+import hiconic.rx.initializer.api.InitializerBackendContract;
+import hiconic.rx.locking.api.LockingContract;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 
@@ -45,6 +51,14 @@ public class DbRxModuleSpace implements RxModuleContract, DatabaseContract {
 
 	@Import
 	private RxPlatformContract platform;
+
+	@Import
+	private WireContext<?> wireContext;
+
+	@Override
+	public void onDeploy() {
+		configureInitializerBackendIfRequested();
+	}
 
 	@Override
 	public DataSource findDataSource(String name) {
@@ -82,6 +96,29 @@ public class DbRxModuleSpace implements RxModuleContract, DatabaseContract {
 	@Override
 	public Maybe<DataSource> mainDataSource() {
 		return dataSource(DATABASE_NAME_MAIN);
+	}
+
+	private void configureInitializerBackendIfRequested() {
+		InitializerDbConfiguration configuration = platform.configuration().readConfig(InitializerDbConfiguration.T).get();
+		String databaseId = configuration.getDatabaseId();
+		if (databaseId == null || databaseId.isBlank())
+			return;
+
+		InitializerBackendContract initializerBackend = wireContext.findContract(InitializerBackendContract.class);
+		if (initializerBackend == null)
+			return;
+
+		LockingContract locking = wireContext.findContract(LockingContract.class);
+		if (locking == null)
+			throw new IllegalStateException("InitializerDbConfiguration requires an RX locking module");
+
+		GmDbInitializerManager manager = new GmDbInitializerManager();
+		manager.setUseCase("platform-initializers");
+		manager.setNodeId(platform.application().nodeId());
+		manager.setDataSource(dataSource(databaseId).get());
+		manager.setTasksTableName(configuration.getTasksTableName());
+		manager.setLocking(locking.locking());
+		initializerBackend.setBackend(InitializerBackend.of(manager, manager::runInitializers));
 	}
 
 }

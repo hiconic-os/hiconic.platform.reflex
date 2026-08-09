@@ -90,5 +90,10 @@ limitations under the License.
             <version>${V.hiconic.platform.reflex}</version>
             <?tag asset ?>
         </dependency>
+        <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>initializer-manager-api</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
     </dependencies>
 </project>

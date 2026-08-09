@@ -145,5 +145,10 @@ limitations under the License.
             <artifactId>security-service-api-commons</artifactId>
             <version>${V.com.braintribe.gm}</version>
         </dependency>
+        <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>initializer-manager-jdbc</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
     </dependencies>
 </project>

@@ -14,10 +14,13 @@
 package hiconic.rx.platform.module.wire.space;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
 
 import com.braintribe.gm.model.logging.level.api.LogLevelRequest;
+import com.braintribe.gm.initializer.api.InitializerRegistry;
+import com.braintribe.gm.initializer.jdbc.processing.FileSystemInitializerManager;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.model.processing.service.api.ProcessorRegistry;
 import com.braintribe.model.processing.service.api.ServiceProcessor;
@@ -37,6 +40,9 @@ import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.module.api.config.RxPlatformConfigurator;
+import hiconic.rx.initializer.api.InitializerBackend;
+import hiconic.rx.initializer.api.InitializerBackendContract;
+import hiconic.rx.initializer.api.InitializerContract;
 import hiconic.rx.module.api.resource.ResourceStorage;
 import hiconic.rx.module.api.service.ModelConfiguration;
 import hiconic.rx.module.api.service.ModelConfigurations;
@@ -46,6 +52,7 @@ import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.platform.processing.auth.RoleAuthorizationInterceptor;
 import hiconic.rx.platform.processing.cluster.SingleInstanceMulticastProcessor;
+import hiconic.rx.platform.processing.initializer.RxInitializerCoordinator;
 import hiconic.rx.platform.processing.push.PushChannelLifecycleHub;
 import hiconic.rx.platform.processing.push.PushProcessor;
 import hiconic.rx.platform.resource.FsResourceStorage;
@@ -63,7 +70,9 @@ import hiconic.rx.resource.model.configuration.ResourceStorageConfiguration;
  * Module that brings core ...
  */
 @Managed
-public class CoreRxPlatformModuleSpace implements RxModuleContract, PushContract {
+public class CoreRxPlatformModuleSpace implements RxModuleContract, PushContract, InitializerContract, InitializerBackendContract {
+
+	private static final String INITIALIZER_USE_CASE = "platform-initializers";
 
 	private static ModelSymbol internalDomainDefaultingApiModelSymbol = ModelSymbol.of("internal-domain-defaulting-api-model");
 	
@@ -234,6 +243,34 @@ public class CoreRxPlatformModuleSpace implements RxModuleContract, PushContract
 	@Override
 	public void onDeploy() {
 		configureResourceStorages();
+	}
+
+	@Override
+	public void onApplicationReady() {
+		initializerCoordinator().runInitializers();
+	}
+
+	@Override
+	public InitializerRegistry registry() {
+		return initializerCoordinator();
+	}
+
+	@Override
+	public void setBackend(InitializerBackend backend) {
+		initializerCoordinator().setBackend(backend);
+	}
+
+	@Managed
+	private RxInitializerCoordinator initializerCoordinator() {
+		return new RxInitializerCoordinator(fileSystemInitializerBackend());
+	}
+
+	private InitializerBackend fileSystemInitializerBackend() {
+		Path fingerprints = platform.applicationFiles().dataPath().resolve("initializers/platform-initializers.properties");
+		FileSystemInitializerManager manager = new FileSystemInitializerManager();
+		manager.setUseCase(INITIALIZER_USE_CASE);
+		manager.setTasksPropertiesFile(fingerprints.toFile());
+		return InitializerBackend.of(manager, manager::runInitializers);
 	}
 
 	private void configureResourceStorages() {
