@@ -51,6 +51,7 @@ public class JdbcLockingRxModuleSpace implements RxModuleContract, LockingContra
 		int lockExpirationInSecs = resolveLockExpiration(configuration);
 
 		DbLocking bean = new DbLocking();
+		bean.setNodeId(platform.application().nodeId());
 		// DB
 		bean.setAutoUpdateSchema(configuration.getAutoUpdateSchema());
 		bean.setDataSource(dataSource(configuration));
@@ -80,8 +81,8 @@ public class JdbcLockingRxModuleSpace implements RxModuleContract, LockingContra
 		});
 	}
 
-	private int resolveLockExpiration(JdbcLockingConfiguration deployable) {
-		int lockExpirationInSecs = deployable.getLockExpirationInSecs();
+	private int resolveLockExpiration(JdbcLockingConfiguration configuration) {
+		int lockExpirationInSecs = configuration.getLockExpirationInSecs();
 		if (lockExpirationInSecs >= 10)
 			return lockExpirationInSecs;
 
@@ -95,7 +96,6 @@ public class JdbcLockingRxModuleSpace implements RxModuleContract, LockingContra
 		return getOrTunnel(dataSourceMaybe);
 	}
 
-	@SuppressWarnings("deprecation")
 	private String unlockTopicName() {
 		return messagingDestinations.unlockTopicName();
 	}
