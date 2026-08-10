@@ -21,10 +21,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import javax.sql.DataSource;
 
 import org.hibernate.SessionFactory;
-import org.jboss.logging.Logger;
 
 import com.braintribe.cfg.Configurable;
 import com.braintribe.cfg.DestructionAware;
+import com.braintribe.logging.Logger;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.service.api.ServiceProcessor;
