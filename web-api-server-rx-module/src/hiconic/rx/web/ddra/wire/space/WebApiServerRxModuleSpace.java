@@ -20,9 +20,10 @@ import java.util.List;
 
 import org.jboss.logging.Logger;
 
-import com.braintribe.model.processing.meta.cmd.CmdResolver;
+import com.braintribe.gm._ResourceApiModel_;
 import com.braintribe.model.meta.data.prompt.Embedded;
 import com.braintribe.model.meta.selector.UseCaseSelector;
+import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.resource.api.MimeTypeRegistry;
 import com.braintribe.model.resource.utils.MimeTypeRegistryImpl;
 import com.braintribe.model.resourceapi.stream.GetResource;
@@ -32,7 +33,6 @@ import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 import com.braintribe.wire.api.context.WireContext;
 
-import hiconic.rx.access.module.api.AccessModelSymbols;
 import hiconic.rx.module.api.service.ModelConfiguration;
 import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.service.PlatformServiceDomains;
@@ -42,16 +42,16 @@ import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.module.api.wire.RxServiceProcessingContract;
 import hiconic.rx.security.web.api.AuthFilters;
 import hiconic.rx.security.web.api.WebSecurityContract;
-import hiconic.rx.web.ddra.endpoints.api.WebApiServerContract;
 import hiconic.rx.web.ddra.endpoints.api.WebApiMappingRegistry;
+import hiconic.rx.web.ddra.endpoints.api.WebApiServerContract;
 import hiconic.rx.web.ddra.endpoints.api.v1.WebApiMappingOracle;
 import hiconic.rx.web.ddra.mapping.StandardWebApiMappingOracle;
 import hiconic.rx.web.ddra.servlet.ApiV1RestServletUtils;
 import hiconic.rx.web.ddra.servlet.DdraEndpointsExceptionHandler;
 import hiconic.rx.web.ddra.servlet.WebApiV1Server;
+import hiconic.rx.web.server.api.WebServerContract;
 import hiconic.rx.webapi.model.meta.HttpRequestMethod;
 import hiconic.rx.webapi.server.model.configuration.WebApiServerConfiguration;
-import hiconic.rx.web.server.api.WebServerContract;
 import jakarta.servlet.DispatcherType;
 
 @Managed
@@ -68,7 +68,7 @@ public class WebApiServerRxModuleSpace implements RxModuleContract, WebApiServer
 
 	@Import
 	private RxServiceProcessingContract serviceProcessing;
-	
+
 	@Import
 	private TcSpace tc;
 
@@ -77,7 +77,10 @@ public class WebApiServerRxModuleSpace implements RxModuleContract, WebApiServer
 
 	@Override
 	public void configureModels(ModelConfigurations configurations) {
-		ModelConfiguration resourceApiModel = configurations.bySymbol(AccessModelSymbols.configuredResourceApiModel);
+		// TODO check if this makes sense
+		// but the original impl reference model that might not exist - configurations.configuredModel(_ResourceApiModel_.reflection)
+		ModelConfiguration resourceApiModel = configurations.configuredModel(_ResourceApiModel_.reflection);
+		// ModelConfiguration resourceApiModel = configurations.bySymbol(AccessModelSymbols.configuredResourceApiModel);
 
 		Embedded embedded = Embedded.T.create();
 		UseCaseSelector ddra = UseCaseSelector.T.create();
@@ -174,8 +177,8 @@ public class WebApiServerRxModuleSpace implements RxModuleContract, WebApiServer
 
 	private void validateEndpointPath(String endpointPath) {
 		if (endpointPath == null || endpointPath.isBlank() || endpointPath.startsWith("/") || endpointPath.endsWith("/"))
-			throw new IllegalArgumentException("WebApiServerConfiguration.endpointPath must be relative, non-empty and must not start or end with '/': "
-					+ endpointPath);
+			throw new IllegalArgumentException(
+					"WebApiServerConfiguration.endpointPath must be relative, non-empty and must not start or end with '/': " + endpointPath);
 	}
 
 	private MimeTypeRegistryImpl mimeTypeRegistry() {
