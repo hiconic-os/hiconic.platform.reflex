@@ -21,6 +21,7 @@ import javax.sql.DataSource;
 
 import com.braintribe.common.concurrent.ScheduledTask;
 import com.braintribe.common.concurrent.TaskScheduler;
+import com.braintribe.gm.marshaller.resource.aware.ResourceAwareMarshaller;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.messaging.jdbc.JdbcConnectionProvider;
 import com.braintribe.transport.messaging.api.MessagingSessionProvider;
@@ -68,6 +69,7 @@ public class JdbcMessagingRxModuleSpace implements RxModuleContract, MessagingCo
 		bean.setSqlPrefix(configuration.getSqlPrefix());
 		bean.setDataSource(dataSource(configuration));
 		bean.setMessagingContext(messagingBase.context());
+		bean.setMarshallerWithResourceSupport(resourceAwareMarshaller());
 
 		configureExpiredMessagesDeleting(bean, InstanceConfiguration.currentInstance());
 
@@ -77,6 +79,14 @@ public class JdbcMessagingRxModuleSpace implements RxModuleContract, MessagingCo
 	private DataSource dataSource(JdbcMessagingConfiguration configuration) {
 		Maybe<DataSource> dataSourceMaybe = database.dataSource(configuration.getDatabaseId());
 		return getOrTunnel(dataSourceMaybe);
+	}
+
+	@Managed
+	private ResourceAwareMarshaller resourceAwareMarshaller() {
+		ResourceAwareMarshaller bean = new ResourceAwareMarshaller();
+		bean.setGmDataMimeType("application/gm");
+		bean.setMarshaller(platform.marshalling().binMarshaller());
+		return bean;
 	}
 
 	private void configureExpiredMessagesDeleting(JdbcConnectionProvider bean, InstanceConfiguration instanceConfiguration) {
