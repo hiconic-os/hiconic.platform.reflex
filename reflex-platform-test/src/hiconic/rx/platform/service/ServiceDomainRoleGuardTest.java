@@ -27,6 +27,7 @@ import com.braintribe.model.service.api.MulticastRequest;
 import com.braintribe.model.service.api.result.MulticastResponse;
 
 import hiconic.rx.resource.model.api.GetResourcePayload;
+import hiconic.rx.model.service.processing.md.InterceptWith;
 import hiconic.rx.model.service.processing.md.ProcessWith;
 import hiconic.rx.module.api.service.PlatformServiceDomains;
 import hiconic.rx.module.api.service.ServiceDomain;
@@ -93,18 +94,30 @@ public class ServiceDomainRoleGuardTest extends AbstractRxTest {
 		Assertions.assertThat(result.whyUnsatisfied().getText()).doesNotContain("No service processor mapped");
 	}
 
-	private MulticastRequest multicastRequest() {
-		FileSystemSource source = FileSystemSource.T.create();
-		source.setPath("non/existent");
+	@Test
+	public void modeledServiceInterceptorsReflectDeclaredOrder() {
+		var configuredInterceptors = platformContract.serviceProcessing().serviceDomains().byId(PlatformTestDomains.resources)
+				.systemCmdResolver().getMetaData().entityType(GetResourcePayload.T).meta(InterceptWith.T).list();
+		Assertions.assertThat(configuredInterceptors).extracting(InterceptWith::getConflictPriority).containsExactly(2d, 1d);
+	}
 
-		GetResourcePayload payload = GetResourcePayload.T.create();
-		payload.setDomainId(PlatformTestDomains.resources.name());
-		payload.setResourceSource(source);
+	private MulticastRequest multicastRequest() {
+		GetResourcePayload payload = newResourcePayloadRequest();
 
 		InstanceId addressee = InstanceId.T.create();
 		MulticastRequest request = MulticastRequest.T.create();
 		request.setAddressee(addressee);
 		request.setServiceRequest(payload);
 		return request;
+	}
+
+	private GetResourcePayload newResourcePayloadRequest() {
+		FileSystemSource source = FileSystemSource.T.create();
+		source.setPath("non/existent");
+
+		GetResourcePayload payload = GetResourcePayload.T.create();
+		payload.setDomainId(PlatformTestDomains.resources.name());
+		payload.setResourceSource(source);
+		return payload;
 	}
 }

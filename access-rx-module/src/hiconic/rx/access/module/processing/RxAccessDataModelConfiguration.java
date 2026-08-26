@@ -107,12 +107,15 @@ public class RxAccessDataModelConfiguration implements AccessDataModelConfigurat
 	}
 
 	private void configureInterceptors(ModelMetaDataEditor editor) {
-		int prio = 0;
-		for (AccessInterceptorEntry entry : orderedInterceptors()) {
+		List<AccessInterceptorEntry> orderedInterceptors = orderedInterceptors();
+		int prio = orderedInterceptors.size();
+		for (AccessInterceptorEntry entry : orderedInterceptors) {
 			final InterceptAccessWith interceptWith = InterceptAccessWith.T.create();
 
 			interceptWith.setAssociate(entry.interceptorSupplier.get());
-			interceptWith.setConflictPriority((double) prio++);
+			// CMD returns multi metadata by descending conflict priority. The first
+			// declared aspect must therefore receive the highest priority.
+			interceptWith.setConflictPriority((double) prio--);
 
 			editor.addModelMetaData(interceptWith);
 		}

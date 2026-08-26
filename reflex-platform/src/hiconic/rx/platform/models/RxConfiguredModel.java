@@ -117,8 +117,9 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 	}
 
 	private void configureInterceptors(ModelMetaDataEditor editor) {
-		int prio = 0;
-		for (InterceptorEntry entry : orderedInterceptors()) {
+		List<InterceptorEntry> orderedInterceptors = orderedInterceptors();
+		int prio = orderedInterceptors.size();
+		for (InterceptorEntry entry : orderedInterceptors) {
 			final InterceptWith interceptWith;
 			ServiceInterceptorProcessor processor = entry.interceptorSupplier.get();
 			InterceptorKind kind = processor.getKind();
@@ -139,7 +140,9 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 			RxInterceptor interceptor = new RxInterceptor(processor, entry.predicate);
 
 			interceptWith.setAssociate(interceptor);
-			interceptWith.setConflictPriority((double) prio++);
+			// CMD returns multi metadata by descending conflict priority. The first
+			// declared interceptor must therefore receive the highest priority.
+			interceptWith.setConflictPriority((double) prio--);
 
 			editor.onEntityType(entry.requestType).addMetaData(interceptWith);
 		}
