@@ -15,6 +15,7 @@ package hiconic.rx.hibernate.test.common;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -42,15 +43,19 @@ import hiconic.rx.platform.RxPlatform;
  * instances, resolves their pooled data sources through the platform, and resets every physical
  * H2 database/schema only once. It therefore does not duplicate access ids or JDBC settings in
  * test code.
+ * The Hibernate schema checksum table is deliberately preserved so a later access/platform startup
+ * does not pay for schema reconciliation again merely because application test data was reset.
  * <p>
  * Call this immediately after booting the platform and before opening application persistence
  * sessions. Hibernate accesses are deployed lazily, which keeps their session-level state out of
- * the reset operation.
+ * the reset operation. This running-platform form is only appropriate for tests which deliberately
+ * need a blank database; it also removes data created by application initializers.
  */
 public final class HibernateAccessTestDatabaseReset {
 
 	private static final String H2_PRODUCT_NAME = "H2";
 	private static final String H2_SYSTEM_SCHEMA = "INFORMATION_SCHEMA";
+	private static final String HIBERNATE_SCHEMA_UPDATE_TABLE = "TF_SCHEMA_UPDATE_TMP";
 
 	private HibernateAccessTestDatabaseReset() {
 	}
@@ -79,6 +84,29 @@ public final class HibernateAccessTestDatabaseReset {
 		}
 
 		return new ResetReport(resets);
+	}
+
+	/**
+	 * Resets one H2 database through a fresh JDBC connection. This variant is meant
+	 * for test fixtures which close an application platform, clear its data while
+	 * preserving the Hibernate schema checksum, and then start a new platform on
+	 * the same schema. The JDBC URL must keep the in-memory database alive across
+	 * platform connections (for example with {@code DB_CLOSE_DELAY=-1}).
+	 */
+	public static DatabaseReset resetH2Database(String databaseName, String jdbcUrl) throws SQLException {
+		return resetH2Database(databaseName, jdbcUrl, null, null, null);
+	}
+
+	public static DatabaseReset resetH2Database(String databaseName, String jdbcUrl, String user, String password,
+			String configuredSchema) throws SQLException {
+		Objects.requireNonNull(databaseName, "databaseName");
+		Objects.requireNonNull(jdbcUrl, "jdbcUrl");
+
+		try (Connection connection = user == null
+				? DriverManager.getConnection(jdbcUrl)
+				: DriverManager.getConnection(jdbcUrl, user, password)) {
+			return resetH2Database(databaseName, configuredSchema, connection);
+		}
 	}
 
 	private static Set<String> referencedHibernateDatabaseNames(AccessConfiguration configuration) {
@@ -146,7 +174,9 @@ public final class HibernateAccessTestDatabaseReset {
 			while (rs.next()) {
 				String type = rs.getString("TABLE_TYPE");
 				String schema = rs.getString("TABLE_SCHEM");
-				if (("TABLE".equalsIgnoreCase(type) || "BASE TABLE".equalsIgnoreCase(type)) && !H2_SYSTEM_SCHEMA.equalsIgnoreCase(schema))
+				if (("TABLE".equalsIgnoreCase(type) || "BASE TABLE".equalsIgnoreCase(type))
+						&& !H2_SYSTEM_SCHEMA.equalsIgnoreCase(schema)
+						&& !HIBERNATE_SCHEMA_UPDATE_TABLE.equalsIgnoreCase(rs.getString("TABLE_NAME")))
 					result.add(new Table(schema, rs.getString("TABLE_NAME")));
 			}
 		}

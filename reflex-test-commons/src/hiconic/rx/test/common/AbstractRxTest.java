@@ -57,10 +57,20 @@ public abstract class AbstractRxTest {
 		return new RxPlatform(systemPropertyLookup(appDir), applicationPropertyLookup(appName));
 	}
 
+	public static RxPlatform loadPlatform(String appDir, String appName, Map<String, String> managedPropertyOverrides) {
+		return new RxPlatform(new String[] {}, systemPropertyLookup(appDir), applicationPropertyLookup(appName), managedPropertyOverrides);
+	}
+
 	@After
-	public void onAfter() {
-		if (platform != null)
+	public void onAfter() throws Exception {
+		if (platform == null)
+			return;
+
+		try {
 			platform.close();
+		} finally {
+			afterPlatformClosed();
+		}
 	}
 
 	//
@@ -73,6 +83,14 @@ public abstract class AbstractRxTest {
 
 	protected Map<String, String> managedPropertyOverrides() {
 		return Map.of();
+	}
+
+	/**
+	 * Hook for fixtures which reuse external resources between otherwise isolated
+	 * platform starts. It runs only after a successfully created platform has been
+	 * closed, so persistent test state can safely be reset before the next start.
+	 */
+	protected void afterPlatformClosed() throws Exception {
 	}
 
 	//
