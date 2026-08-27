@@ -46,6 +46,7 @@ public class RxServiceDomains implements ServiceDomains {
 
 	private ConfigurableDispatchingServiceProcessor fallbackProcessor;
 	private Evaluator<ServiceRequest> contextEvaluator;
+	private Evaluator<ServiceRequest> systemEvaluator;
 	private ExecutorService executorService;
 	private RxModelConfigurations modelConfigurations;
 
@@ -67,6 +68,11 @@ public class RxServiceDomains implements ServiceDomains {
 	@Required
 	public void setContextEvaluator(Evaluator<ServiceRequest> contextEvaluator) {
 		this.contextEvaluator = contextEvaluator;
+	}
+
+	@Required
+	public void setSystemEvaluator(Evaluator<ServiceRequest> systemEvaluator) {
+		this.systemEvaluator = systemEvaluator;
 	}
 
 	@Required
@@ -153,7 +159,7 @@ public class RxServiceDomains implements ServiceDomains {
 	private RxServiceDomain createServiceDomain(String domainId) {
 		RxConfiguredModel configuredModel = modelConfigurations.byName(ServiceDomains.serviceDomainModelName(domainId));
 
-		return new RxServiceDomain(domainId, this, configuredModel, executorService, contextEvaluator, fallbackProcessor);
+		return new RxServiceDomain(domainId, this, configuredModel, executorService, contextEvaluator, systemEvaluator, fallbackProcessor);
 	}
 
 	public synchronized void registerAlias(String alias, RxServiceDomain domain) {

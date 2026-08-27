@@ -68,6 +68,7 @@ public class RxAccessDataModelConfiguration implements AccessDataModelConfigurat
 			}
 
 			@Override
+			@Deprecated
 			public AccessInterceptorBuilder before(String identification) {
 				this.insertIdentification = identification;
 				this.before = true;
@@ -75,6 +76,7 @@ public class RxAccessDataModelConfiguration implements AccessDataModelConfigurat
 			}
 
 			@Override
+			@Deprecated
 			public AccessInterceptorBuilder after(String identification) {
 				this.insertIdentification = identification;
 				this.before = false;

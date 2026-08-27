@@ -19,8 +19,9 @@ import com.braintribe.common.attribute.AttributeContext;
 import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.meta.oracle.ModelOracle;
-import com.braintribe.model.processing.service.api.ServiceProcessor;
 import com.braintribe.model.service.api.ServiceRequest;
+
+import hiconic.rx.module.api.wire.RxServiceProcessingContract;
 
 public interface ServiceDomain {
 
@@ -54,8 +55,14 @@ public interface ServiceDomain {
 	/** The {@link ModelOracle} taken from the associated {@link ConfiguredModel} via {@link ConfiguredModel#modelOracle()} */
 	ModelOracle modelOracle();
 
-	/** The {@link Evaluator} that is configured via the {@link #contextCmdResolver()} for {@link ServiceProcessor} bindings */
+	/**
+	 * An {@link Evaluator} bound to this domain - i.e. resolving processor bindings against the model of this domain - backed by
+	 * {@link RxServiceProcessingContract#evaluator()}.
+	 */
 	Evaluator<ServiceRequest> evaluator();
+
+	/** Similar to {@link #evaluator()}, but backed by {@link RxServiceProcessingContract#systemEvaluator()}. */
+	Evaluator<ServiceRequest> systemEvaluator();
 
 	/**
 	 * The {@link ServiceRequest} that should be executed for this domain if no {@link ServiceRequest} was supplied.

@@ -44,39 +44,47 @@ public class RxServiceDomain implements ServiceDomain, ServiceDomainConfiguratio
 	private final RxServiceDomains serviceDomains;
 	private volatile String displayName;
 	private final ConfigurableServiceRequestEvaluator evaluator;
+	private final ConfigurableServiceRequestEvaluator systemEvaluator;
 
 	private final RxConfiguredModel modelConfiguration;
 	private final RxRequestDispatcher dispatcher;
-	
+
 	private final List<Supplier<? extends ServiceRequest>> defaultRequestSuppliers = Collections.synchronizedList(new ArrayList<>());
 	private final Set<String> allowedRoles = Collections.synchronizedSet(new HashSet<>());
-	
+
 	public RxServiceDomain(String domainId, RxServiceDomains serviceDomains, RxConfiguredModel modelConfiguration, ExecutorService executorService,
-			Evaluator<ServiceRequest> contextEvaluator, ServiceProcessor<ServiceRequest, Object> fallbackProcessor) {
+			Evaluator<ServiceRequest> contextEvaluator, Evaluator<ServiceRequest> _systemEvaluator,
+			ServiceProcessor<ServiceRequest, Object> fallbackProcessor) {
+
 		this.domainId = domainId;
 		this.serviceDomains = serviceDomains;
 		this.modelConfiguration = modelConfiguration;
-		
+
 		dispatcher = new RxRequestDispatcher();
 		dispatcher.setServiceDomain(this);
 		dispatcher.setFallbackProcessor(fallbackProcessor);
-		
+
 		evaluator = new ConfigurableServiceRequestEvaluator();
 		evaluator.setExecutorService(executorService);
 		evaluator.setServiceProcessor(dispatcher);
 		evaluator.setContextEvaluator(contextEvaluator);
+
+		systemEvaluator = new ConfigurableServiceRequestEvaluator();
+		systemEvaluator.setExecutorService(executorService);
+		systemEvaluator.setServiceProcessor(dispatcher);
+		systemEvaluator.setContextEvaluator(_systemEvaluator);
 	}
-	
+
 	@Override
 	public ModelConfiguration modelConfiguration() {
 		return modelConfiguration;
 	}
-	
+
 	@Override
 	public ConfiguredModel configuredModel() {
 		return modelConfiguration;
 	}
-	
+
 	@Override
 	public String domainId() {
 		return domainId;
@@ -124,12 +132,12 @@ public class RxServiceDomain implements ServiceDomain, ServiceDomainConfiguratio
 	public CmdResolver systemCmdResolver() {
 		return modelConfiguration.systemCmdResolver();
 	}
-	
+
 	@Override
 	public CmdResolver contextCmdResolver() {
 		return modelConfiguration.contextCmdResolver();
 	}
-	
+
 	@Override
 	public CmdResolver cmdResolver(AttributeContext attributeContext) {
 		return modelConfiguration.cmdResolver(attributeContext);
@@ -144,18 +152,23 @@ public class RxServiceDomain implements ServiceDomain, ServiceDomainConfiguratio
 	public Evaluator<ServiceRequest> evaluator() {
 		return evaluator;
 	}
-	
+
+	@Override
+	public Evaluator<ServiceRequest> systemEvaluator() {
+		return systemEvaluator;
+	}
+
 	@Override
 	public ServiceRequest defaultRequest() {
-		for (Supplier<? extends ServiceRequest> supplier: defaultRequestSuppliers) {
+		for (Supplier<? extends ServiceRequest> supplier : defaultRequestSuppliers) {
 			ServiceRequest request = supplier.get();
 			if (request != null)
 				return request;
 		}
-		
+
 		return null;
 	}
-	
+
 	@Override
 	public void addDefaultRequestSupplier(Supplier<? extends ServiceRequest> serviceRequestSupplier) {
 		this.defaultRequestSuppliers.add(serviceRequestSupplier);
@@ -166,4 +179,4 @@ public class RxServiceDomain implements ServiceDomain, ServiceDomainConfiguratio
 		return getClass().getSimpleName() + "[" + domainId + "]";
 	}
 
-}	
+}

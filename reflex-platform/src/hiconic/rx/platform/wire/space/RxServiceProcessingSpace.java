@@ -47,6 +47,7 @@ public class RxServiceProcessingSpace implements RxServiceProcessingContract {
 	public RxServiceDomains serviceDomains() {
 		RxServiceDomains bean = new RxServiceDomains();
 		bean.setContextEvaluator(evaluator());
+		bean.setSystemEvaluator(systemEvaluator());
 		bean.setFallbackProcessor(fallbackProcessor());
 		bean.setExecutorService(execution.executorService());
 		bean.setModelConfigurations(configuration.modelConfigurations());
