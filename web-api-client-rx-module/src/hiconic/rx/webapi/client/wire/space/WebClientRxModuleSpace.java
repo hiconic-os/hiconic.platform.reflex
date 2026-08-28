@@ -11,6 +11,7 @@ import org.apache.http.auth.Credentials;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.config.RequestConfig.Builder;
+import org.apache.http.conn.ssl.DefaultHostnameVerifier;
 
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.service.api.ServiceProcessor;
@@ -19,6 +20,7 @@ import com.braintribe.transport.http.DefaultHttpClientProvider;
 import com.braintribe.transport.http.HttpClientProvider;
 import com.braintribe.transport.ssl.SslSocketFactoryProvider;
 import com.braintribe.transport.ssl.impl.EasySslSocketFactoryProvider;
+import com.braintribe.transport.ssl.impl.PemSslSocketFactoryProvider;
 import com.braintribe.transport.ssl.impl.StrictSslSocketFactoryProvider;
 import com.braintribe.utils.lcd.CollectionTools2;
 import com.braintribe.utils.logging.LogLevels;
@@ -33,6 +35,7 @@ import hiconic.rx.module.api.wire.RxServiceProcessingContract;
 import hiconic.rx.webapi.client.api.ClientsFactory;
 import hiconic.rx.webapi.client.api.HttpClient;
 import hiconic.rx.webapi.client.api.WebApiClientContract;
+import hiconic.rx.webapi.client.model.configuration.HttpClientCertificate;
 import hiconic.rx.webapi.client.model.configuration.HttpCredentials;
 import hiconic.rx.webapi.client.model.configuration.HttpUsernamePasswordCredentials;
 import hiconic.rx.webapi.client.model.configuration.WebApiRemoteProcessor;
@@ -68,9 +71,10 @@ public class WebClientRxModuleSpace implements RxModuleContract, WebApiClientCon
 		bean.setBaseUrl(deployable.getBaseUrl());
 		bean.setMimeTypeRegistry(platform.transientData().mimeTypeRegistry());
 		bean.setMarshallerRegistry(platform.marshalling().marshallers());
-		bean.setHttpClientProvider(clientProvider());
+		bean.setHttpClientProvider(clientProviderFor(deployable));
 		bean.setHttpRequestConfig(buildRequestConfig(deployable));
 		bean.setCredentials(getCredentials(deployable));
+		bean.setDefaultHeaders(deployable.getDefaultHeaders());
 		bean.setRequestLogging(LogLevels.convert(deployable.getRequestLogging()));
 		bean.setResponseLogging(LogLevels.convert(deployable.getResponseLogging()));
 		bean.setEvaluator(serviceProcessing.systemEvaluator());
@@ -79,21 +83,59 @@ public class WebClientRxModuleSpace implements RxModuleContract, WebApiClientCon
 		return bean;
 	}
 
+	/**
+	 * The client provider for a concrete remote processor. Processors which leave the TLS related properties at their defaults share the
+	 * module's {@link #clientProvider() default provider} and thus its connection pool; anything deviating - a client certificate or relaxed
+	 * certificate/hostname verification - gets its own provider with its own pool and SSL context.
+	 */
+	private HttpClientProvider clientProviderFor(WebApiRemoteProcessor deployable) {
+		boolean defaultTls = deployable.getClientCertificate() == null //
+				&& deployable.getVerifyServerCertificate() //
+				&& deployable.getVerifyServerHostname();
+
+		return defaultTls ? clientProvider() : tlsSpecificClientProvider(deployable);
+	}
+
 	@Managed
 	private HttpClientProvider clientProvider() {
 		DefaultHttpClientProvider bean = new DefaultHttpClientProvider();
 		bean.setSslSocketFactoryProvider(sslSocketFactoryProvider());
+		bean.setHostnameVerifier(new DefaultHostnameVerifier());
 		return bean;
 	}
 
 	@Managed
 	private SslSocketFactoryProvider sslSocketFactoryProvider() {
-		// TODO this used to be TribefireRuntime.getAcceptSslCertificates(), which resolves TRIBEFIRE_ACCEPT_SSL_CERTIFICATES
-		boolean acceptSslCertificates = true;
+		return new StrictSslSocketFactoryProvider();
+	}
 
-		SslSocketFactoryProvider bean = acceptSslCertificates ? //
-				new EasySslSocketFactoryProvider() : //
-				new StrictSslSocketFactoryProvider();
+	/** Not managed on purpose: the TLS settings behind it are per remote processor. */
+	private HttpClientProvider tlsSpecificClientProvider(WebApiRemoteProcessor deployable) {
+		DefaultHttpClientProvider bean = new DefaultHttpClientProvider();
+		bean.setSslSocketFactoryProvider(tlsSpecificSslSocketFactoryProvider(deployable));
+
+		// the transport defaults to no hostname verification, so this has to be set explicitly
+		if (deployable.getVerifyServerHostname())
+			bean.setHostnameVerifier(new DefaultHostnameVerifier());
+
+		return bean;
+	}
+
+	/**
+	 * Provides the client side identity (mutual TLS) if a client certificate is configured, and in any case honours the certificate validation
+	 * setting of the remote processor.
+	 */
+	private SslSocketFactoryProvider tlsSpecificSslSocketFactoryProvider(WebApiRemoteProcessor deployable) {
+		boolean trustAll = !deployable.getVerifyServerCertificate();
+		HttpClientCertificate certificate = deployable.getClientCertificate();
+
+		if (certificate == null)
+			return trustAll ? new EasySslSocketFactoryProvider() : new StrictSslSocketFactoryProvider();
+
+		PemSslSocketFactoryProvider bean = new PemSslSocketFactoryProvider();
+		bean.setCertificatePem(certificate.getCertificate());
+		bean.setPrivateKeyPem(certificate.getPrivateKey());
+		bean.setTrustAll(trustAll);
 
 		return bean;
 	}

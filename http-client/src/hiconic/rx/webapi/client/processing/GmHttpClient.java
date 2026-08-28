@@ -26,6 +26,8 @@ import java.net.URISyntaxException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Collections;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
@@ -123,6 +125,7 @@ public class GmHttpClient implements HttpClient {
 	private RequestConfig httpRequestConfig = RequestConfig.DEFAULT;
 	private MarshallerRegistry marshallerRegistry = defaultMarshallerRegistry();
 	private Credentials credentials = null;
+	private Map<String, String> defaultHeaders = Collections.emptyMap();
 	private final BaseType baseType = BaseType.INSTANCE;
 	private LogLevel requestLogging;
 	private LogLevel responseLogging;
@@ -188,6 +191,15 @@ public class GmHttpClient implements HttpClient {
 	@Configurable
 	public void setCredentials(Credentials credentials) {
 		this.credentials = credentials;
+	}
+
+	/**
+	 * Static headers to be sent with every request, e.g. gateway credentials which identify the client beyond its TLS certificate. Headers of
+	 * the individual request take precedence.
+	 */
+	@Configurable
+	public void setDefaultHeaders(Map<String, String> defaultHeaders) {
+		this.defaultHeaders = defaultHeaders == null ? Collections.emptyMap() : defaultHeaders;
 	}
 
 	@Configurable
@@ -446,6 +458,13 @@ public class GmHttpClient implements HttpClient {
 		//@formatter:on
 
 		context.headerParameters().forEach(p -> requestBuilder.addHeader(p.getName(), p.getValue()));
+
+		// headers of the individual request take precedence over the client's statically configured ones
+		defaultHeaders.forEach((name, value) -> {
+			if (requestBuilder.getFirstHeader(name) == null) {
+				requestBuilder.addHeader(name, value);
+			}
+		});
 
 		if (requestBuilder.getFirstHeader(HttpConstants.HTTP_HEADER_ACCEPT) == null) {
 			requestBuilder.addHeader(HttpConstants.HTTP_HEADER_ACCEPT, context.produces());

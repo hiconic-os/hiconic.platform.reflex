@@ -1,5 +1,6 @@
 package hiconic.rx.webapi.client.model.configuration;
 
+import java.util.Map;
 import java.util.Set;
 
 import com.braintribe.model.generic.GenericEntity;
@@ -28,6 +29,34 @@ public interface WebApiRemoteProcessor extends GenericEntity {
 
 	HttpCredentials getCredentials();
 	void setCredentials(HttpCredentials credentials);
+
+	@Name("Client Certificate")
+	@Description("Certificate and private key presented during the TLS handshake, i.e. the client side of mutual TLS. "
+			+ "If not set, the client does not authenticate itself on the transport layer.")
+	HttpClientCertificate getClientCertificate();
+	void setClientCertificate(HttpClientCertificate clientCertificate);
+
+	@Name("Verify Server Certificate")
+	@Description("Whether the certificate chain presented by the server is validated against the trust store of the JVM. "
+			+ "Disable only for development against servers with self-signed certificates.")
+	@Initializer("true")
+	boolean getVerifyServerCertificate();
+	void setVerifyServerCertificate(boolean verifyServerCertificate);
+
+	@Name("Verify Server Hostname")
+	@Description("Whether the server certificate has to be issued for the host that was actually addressed. This is an independent check from "
+			+ "the chain validation: without it, any certificate trusted by the trust store is accepted for any host, so an attacker who can "
+			+ "redirect traffic and holds a certificate for a domain of their own can impersonate the counterpart. "
+			+ "Disable only when a legitimate certificate is reached under a different name, e.g. through a port forward.")
+	@Initializer("true")
+	boolean getVerifyServerHostname();
+	void setVerifyServerHostname(boolean verifyServerHostname);
+
+	@Name("Default Headers")
+	@Description("Static HTTP headers sent with every request of this client, e.g. gateway credentials like API key and API secret headers. "
+			+ "Headers of the individual request take precedence, i.e. a default header is only added if the request does not carry it already.")
+	Map<String, String> getDefaultHeaders();
+	void setDefaultHeaders(Map<String, String> defaultHeaders);
 
 	String getProxy();
 	void setProxy(String proxy);
