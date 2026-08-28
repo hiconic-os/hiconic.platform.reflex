@@ -199,7 +199,19 @@ public class GmHttpClient implements HttpClient {
 	 */
 	@Configurable
 	public void setDefaultHeaders(Map<String, String> defaultHeaders) {
-		this.defaultHeaders = defaultHeaders == null ? Collections.emptyMap() : defaultHeaders;
+		if (defaultHeaders == null || defaultHeaders.isEmpty()) {
+			this.defaultHeaders = Collections.emptyMap();
+			return;
+		}
+
+		defaultHeaders.forEach((name, value) -> {
+			if (name == null || name.isBlank())
+				throw new IllegalArgumentException("A default HTTP header name must not be null or blank.");
+			if (value == null)
+				throw new IllegalArgumentException("Default HTTP header '" + name + "' must not have a null value.");
+		});
+
+		this.defaultHeaders = Map.copyOf(defaultHeaders);
 	}
 
 	@Configurable

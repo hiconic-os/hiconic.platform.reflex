@@ -90,8 +90,8 @@ public class WebClientRxModuleSpace implements RxModuleContract, WebApiClientCon
 	 */
 	private HttpClientProvider clientProviderFor(WebApiRemoteProcessor deployable) {
 		boolean defaultTls = deployable.getClientCertificate() == null //
-				&& deployable.getVerifyServerCertificate() //
-				&& deployable.getVerifyServerHostname();
+				&& deployable.getVerifyServerCertificate() == null //
+				&& deployable.getVerifyServerHostname() == null;
 
 		return defaultTls ? clientProvider() : tlsSpecificClientProvider(deployable);
 	}
@@ -100,13 +100,13 @@ public class WebClientRxModuleSpace implements RxModuleContract, WebApiClientCon
 	private HttpClientProvider clientProvider() {
 		DefaultHttpClientProvider bean = new DefaultHttpClientProvider();
 		bean.setSslSocketFactoryProvider(sslSocketFactoryProvider());
-		bean.setHostnameVerifier(new DefaultHostnameVerifier());
 		return bean;
 	}
 
 	@Managed
 	private SslSocketFactoryProvider sslSocketFactoryProvider() {
-		return new StrictSslSocketFactoryProvider();
+		// Keep the existing RX default for backwards compatibility. New remote processors should configure TLS verification explicitly.
+		return new EasySslSocketFactoryProvider();
 	}
 
 	/** Not managed on purpose: the TLS settings behind it are per remote processor. */
@@ -115,7 +115,7 @@ public class WebClientRxModuleSpace implements RxModuleContract, WebApiClientCon
 		bean.setSslSocketFactoryProvider(tlsSpecificSslSocketFactoryProvider(deployable));
 
 		// the transport defaults to no hostname verification, so this has to be set explicitly
-		if (deployable.getVerifyServerHostname())
+		if (Boolean.TRUE.equals(deployable.getVerifyServerHostname()))
 			bean.setHostnameVerifier(new DefaultHostnameVerifier());
 
 		return bean;
@@ -126,16 +126,19 @@ public class WebClientRxModuleSpace implements RxModuleContract, WebApiClientCon
 	 * setting of the remote processor.
 	 */
 	private SslSocketFactoryProvider tlsSpecificSslSocketFactoryProvider(WebApiRemoteProcessor deployable) {
-		boolean trustAll = !deployable.getVerifyServerCertificate();
+		boolean verifyServerCertificate = Boolean.TRUE.equals(deployable.getVerifyServerCertificate());
 		HttpClientCertificate certificate = deployable.getClientCertificate();
 
 		if (certificate == null)
-			return trustAll ? new EasySslSocketFactoryProvider() : new StrictSslSocketFactoryProvider();
+			return verifyServerCertificate ? new StrictSslSocketFactoryProvider() : new EasySslSocketFactoryProvider();
+
+		if (!verifyServerCertificate)
+			throw new IllegalStateException("Remote processor '" + deployable.getName() + "' configures a client certificate, but does not "
+					+ "explicitly enable server certificate verification. Mutual TLS without authenticating the server is not supported.");
 
 		PemSslSocketFactoryProvider bean = new PemSslSocketFactoryProvider();
 		bean.setCertificatePem(certificate.getCertificate());
 		bean.setPrivateKeyPem(certificate.getPrivateKey());
-		bean.setTrustAll(trustAll);
 
 		return bean;
 	}

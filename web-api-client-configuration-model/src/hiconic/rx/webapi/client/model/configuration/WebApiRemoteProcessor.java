@@ -5,6 +5,7 @@ import java.util.Set;
 
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.annotation.Initializer;
+import com.braintribe.model.generic.annotation.meta.Confidential;
 import com.braintribe.model.generic.annotation.meta.Description;
 import com.braintribe.model.generic.annotation.meta.Name;
 import com.braintribe.model.generic.reflection.EntityType;
@@ -38,21 +39,20 @@ public interface WebApiRemoteProcessor extends GenericEntity {
 
 	@Name("Verify Server Certificate")
 	@Description("Whether the certificate chain presented by the server is validated against the trust store of the JVM. "
-			+ "Disable only for development against servers with self-signed certificates.")
-	@Initializer("true")
-	boolean getVerifyServerCertificate();
-	void setVerifyServerCertificate(boolean verifyServerCertificate);
+			+ "If unset, the module's legacy TLS behaviour is preserved. A client certificate requires this property to be true.")
+	Boolean getVerifyServerCertificate();
+	void setVerifyServerCertificate(Boolean verifyServerCertificate);
 
 	@Name("Verify Server Hostname")
 	@Description("Whether the server certificate has to be issued for the host that was actually addressed. This is an independent check from "
 			+ "the chain validation: without it, any certificate trusted by the trust store is accepted for any host, so an attacker who can "
 			+ "redirect traffic and holds a certificate for a domain of their own can impersonate the counterpart. "
-			+ "Disable only when a legitimate certificate is reached under a different name, e.g. through a port forward.")
-	@Initializer("true")
-	boolean getVerifyServerHostname();
-	void setVerifyServerHostname(boolean verifyServerHostname);
+			+ "If unset, the module's legacy TLS behaviour is preserved. Set this explicitly for newly configured remote processors.")
+	Boolean getVerifyServerHostname();
+	void setVerifyServerHostname(Boolean verifyServerHostname);
 
 	@Name("Default Headers")
+	@Confidential
 	@Description("Static HTTP headers sent with every request of this client, e.g. gateway credentials like API key and API secret headers. "
 			+ "Headers of the individual request take precedence, i.e. a default header is only added if the request does not carry it already.")
 	Map<String, String> getDefaultHeaders();
