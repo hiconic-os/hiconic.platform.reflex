@@ -11,6 +11,11 @@
 		<archetype>model</archetype>
 	</properties>
 	<dependencies>
+		<dependency>
+			<groupId>com.braintribe.gm</groupId>
+			<artifactId>value-descriptor-model</artifactId>
+			<version>${V.com.braintribe.gm}</version>
+		</dependency>
 		<dependency> 
 			<groupId>com.braintribe.gm</groupId>
 			<artifactId>root-model</artifactId>

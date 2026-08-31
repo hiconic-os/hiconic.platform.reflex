@@ -3,11 +3,18 @@ package hiconic.rx.platform.conf;
 import static com.braintribe.utils.lcd.CollectionTools2.newMap;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Map;
 
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
+import com.braintribe.gm.config.yaml.ModeledYamlConfiguration;
+import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 import com.braintribe.gm.config.yaml.PropertyResolutions;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.config.PropertyNotFound;
@@ -15,10 +22,17 @@ import com.braintribe.gm.model.reason.config.UnresolvedProperty;
 import com.braintribe.utils.encryption.Cryptor;
 import com.braintribe.ve.api.VirtualEnvironment;
 
+import hiconic.rx.platform.model.configuration.ReflexAppConfiguration;
+import hiconic.rx.platform.processing.resource.RxIndexedPackagedResourceResolver;
+import hiconic.rx.resource.model.packaged.PackagedResourceNamespace;
+
 /**
  * Tests for {@link RxPropertyResolver}.
  */
 public class RxPropertyResolverTest {
+
+	@Rule
+	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
 	private RxPropertyResolver resolver;
 	private final Map<String, String> rawProperties = newMap();
@@ -169,6 +183,44 @@ public class RxPropertyResolverTest {
 
 		String resolved = resolver.resolve("password");
 		assertThat(resolved).isEqualTo(plainText);
+	}
+
+	@Test
+	public void testDirectDecryptPlaceholderContent() {
+		String secret = "mySecret";
+		String plainText = "sensitiveData";
+		String encrypted = Cryptor.encrypt(secret, null, null, null, plainText);
+
+		rawProperties.put("RX_DECRYPT_SECRET", secret);
+
+		Maybe<String> resolved = resolver.resolvePlaceholderReasoned("decrypt('" + encrypted + "')");
+		assertThat(resolved.isSatisfied()).isTrue();
+		assertThat(resolved.get()).isEqualTo(plainText);
+	}
+
+	@Test
+	public void testDecryptInModeledYamlConfiguration() throws Exception {
+		String secret = "mySecret";
+		String plainText = "sensitiveData";
+		String encrypted = Cryptor.encrypt(secret, null, null, null, plainText);
+
+		rawProperties.put("RX_DECRYPT_SECRET", secret);
+
+		File configFolder = temporaryFolder.newFolder("conf");
+		Files.writeString(new File(configFolder, "reflex-app-configuration.yaml").toPath(), //
+				"applicationId: ${decrypt('" + encrypted + "')}\n", StandardCharsets.UTF_8);
+
+		ModeledYamlConfiguration modeledConfiguration = new ModeledYamlConfiguration();
+		modeledConfiguration.setConfigFolder(configFolder);
+		modeledConfiguration.setExternalReasonedPropertyLookup(resolver::resolvePlaceholderReasoned);
+		modeledConfiguration.setValueDescriptorExpressionCodec(RxConfigurationValueDescriptorExperts.expressionCodec());
+		var resources = new RxIndexedPackagedResourceResolver(new ClasspathIndex(getClass().getClassLoader()), "HICONIC-RESOURCES",
+				PackagedResourceNamespace.resources);
+		modeledConfiguration.setValueDescriptorExpertConfigurer(
+				registry -> RxConfigurationValueDescriptorExperts.register(registry, resources, resolver));
+
+		ReflexAppConfiguration config = modeledConfiguration.config(ReflexAppConfiguration.T);
+		assertThat(config.getApplicationId()).isEqualTo(plainText);
 	}
 
 	@Test

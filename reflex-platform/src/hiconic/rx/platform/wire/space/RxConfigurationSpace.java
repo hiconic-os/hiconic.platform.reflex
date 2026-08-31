@@ -29,11 +29,11 @@ import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.module.api.wire.RxConfigurationContract;
 import hiconic.rx.platform.conf.RxConfigurationConstants;
+import hiconic.rx.platform.conf.RxConfigurationValueDescriptorExperts;
 import hiconic.rx.platform.conf.RxPropertyResolver;
 import hiconic.rx.platform.models.RxCmdResolverManager;
 import hiconic.rx.platform.models.RxConfiguredModels;
 import hiconic.rx.platform.models.RxModelConfigurations;
-import hiconic.rx.platform.processing.resource.PackagedResourceValueDescriptorExperts;
 import hiconic.rx.platform.processing.resource.RxResourcesBuilding.RxUrlResourcesBuilder;
 import hiconic.rx.platform.wire.contract.RxPlatformConfigContract;
 
@@ -117,10 +117,10 @@ public class RxConfigurationSpace implements RxConfigurationContract {
 		bean.setConfigFolder(applicationFiles.confPath().toFile());
 		bean.setClasspathConfPath(RxConfigurationConstants.CLASSPATH_CONF_PATH);
 		bean.setClasspathIndex(platformConfig.classpathIndex());
-		bean.setExternalReasonedPropertyLookup(propertyResolver()::resolveReasoned);
-		bean.setValueDescriptorExpressionCodec(PackagedResourceValueDescriptorExperts.expressionCodec());
+		bean.setExternalReasonedPropertyLookup(propertyResolver()::resolvePlaceholderReasoned);
+		bean.setValueDescriptorExpressionCodec(RxConfigurationValueDescriptorExperts.expressionCodec());
 		bean.setValueDescriptorExpertConfigurer(
-				registry -> PackagedResourceValueDescriptorExperts.register(registry, packagedResources.resolver()));
+				registry -> RxConfigurationValueDescriptorExperts.register(registry, packagedResources.resolver(), propertyResolver()));
 		return bean;
 	}
 

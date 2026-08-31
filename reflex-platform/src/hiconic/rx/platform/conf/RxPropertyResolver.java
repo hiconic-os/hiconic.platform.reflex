@@ -81,6 +81,18 @@ public class RxPropertyResolver implements PropertyResolver {
 		return result;
 	}
 
+	/**
+	 * Resolves the content of a configuration placeholder. Unlike {@link #resolveReasoned(String)},
+	 * the supplied value may itself be a property function such as {@code decrypt('...')}.
+	 */
+	public Maybe<String> resolvePlaceholderReasoned(String placeholder) {
+		var functionCall = RxPropertyExpression.functionCall(placeholder);
+		if (functionCall.isPresent())
+			return resolveFunction(functionCall.get());
+
+		return resolveReasoned(placeholder);
+	}
+
 	private Maybe<String> resolveRaw(String name) {
 		String rawValue = findRawValue(name);
 
@@ -140,6 +152,35 @@ public class RxPropertyResolver implements PropertyResolver {
 		return virtualEnvironment.getEnv(name);
 	}
 
+	private Maybe<String> resolveFunction(RxPropertyExpression.FunctionCall function) {
+		Maybe<String> paramMaybe = function.nestedProperty()
+				.map(this::resolveReasoned)
+				.orElseGet(() -> Maybe.complete(function.unquotedParameter()));
+		if (paramMaybe.isUnsatisfied())
+			return Reasons.build(UnresolvedProperty.T)
+					.text("Could not resolve parameter [" + function.rawParameter() + "] for method [" + function.name() + "]")
+					.cause(paramMaybe.whyUnsatisfied())
+					.toMaybe();
+
+		return switch (function.name()) {
+			case "decrypt" -> decryptReasoned(paramMaybe.get());
+			default -> Reasons.build(UnsupportedOperation.T).text("Unsupported operation: " + function.name()).toMaybe();
+		};
+	}
+
+	public Maybe<String> decryptReasoned(String encryptedValue) {
+		Maybe<String> maybeSecret = resolveReasoned(RxPlatform.PROPERTY_DECRYPT_SECRET);
+		if (maybeSecret.isUnsatisfied())
+			return Reasons.build(ConfigurationError.T).text("Could not resolve decryption secret")
+					.cause(maybeSecret.whyUnsatisfied()).toMaybe();
+
+		try {
+			return Maybe.complete(Cryptor.decrypt(maybeSecret.get(), null, null, null, encryptedValue));
+		} catch (Exception e) {
+			return Reasons.build(ConfigurationError.T).text("Wrong decryption secret").toMaybe();
+		}
+	}
+
 	private class PlaceholderResolutionContext {
 		private final Consumer<Reason> errorConsumer;
 
@@ -148,7 +189,7 @@ public class RxPropertyResolver implements PropertyResolver {
 		}
 
 		public String resolvePlaceholder(String placeholder) {
-			var maybe = resolvePlaceholderReasoned(placeholder);
+			var maybe = RxPropertyResolver.this.resolvePlaceholderReasoned(placeholder);
 			if (maybe.isSatisfied())
 				return maybe.get();
 
@@ -158,41 +199,5 @@ public class RxPropertyResolver implements PropertyResolver {
 			return "?";
 		}
 
-		private Maybe<String> resolvePlaceholderReasoned(String placeholder) {
-			var functionCall = RxPropertyExpression.functionCall(placeholder);
-			if (functionCall.isPresent())
-				return resolveFunction(functionCall.get());
-
-			return resolveReasoned(placeholder);
-		}
-
-		private Maybe<String> resolveFunction(RxPropertyExpression.FunctionCall function) {
-			Maybe<String> paramMaybe = function.nestedProperty()
-					.map(RxPropertyResolver.this::resolveReasoned)
-					.orElseGet(() -> Maybe.complete(function.unquotedParameter()));
-			if (paramMaybe.isUnsatisfied())
-				return Reasons.build(UnresolvedProperty.T)
-						.text("Could not resolve parameter [" + function.rawParameter() + "] for method [" + function.name() + "]")
-						.cause(paramMaybe.whyUnsatisfied())
-						.toMaybe();
-
-			return switch (function.name()) {
-				case "decrypt" -> decrypt(paramMaybe.get());
-				default -> Reasons.build(UnsupportedOperation.T).text("Unsupported operation: " + function.name()).toMaybe();
-			};
-		}
-
-		private Maybe<String> decrypt(String encryptedValue) {
-			Maybe<String> maybeSecret = resolveReasoned(RxPlatform.PROPERTY_DECRYPT_SECRET);
-			if (maybeSecret.isUnsatisfied())
-				return Reasons.build(ConfigurationError.T).text("Could not resolve decryption secret")
-						.cause(maybeSecret.whyUnsatisfied()).toMaybe();
-
-			try {
-				return Maybe.complete(Cryptor.decrypt(maybeSecret.get(), null, null, null, encryptedValue));
-			} catch (Exception e) {
-				return Reasons.build(ConfigurationError.T).text("Wrong decryption secret").toMaybe();
-			}
-		}
 	}
 }
