@@ -43,9 +43,11 @@ public class PackagedResourceStorage extends AbstractResourceStorage<PackagedRes
 		if (!(request.getResourceSource() instanceof PackagedResourceSource source))
 			return error(InvalidArgument.T, "Resource source is not a PackagedResourceSource");
 
-		RxPackagedResourceResolver resolver = resolver(source);
-		if (!resolver.inventory().contains(source.getPath()))
-			return error(NotFound.T, "Packaged resource not found: " + source.getNamespace() + ":" + source.getPath());
+		try {
+			resolver(source).resource(source);
+		} catch (IllegalArgumentException e) {
+			return error(NotFound.T, "Packaged resource not found: " + describe(source));
+		}
 
 		return Maybe.complete(source);
 	}
@@ -53,7 +55,7 @@ public class PackagedResourceStorage extends AbstractResourceStorage<PackagedRes
 	@Override
 	protected Maybe<GetResourcePayloadResponse> getPayload(PackagedResourceSource source, GetResourcePayload request,
 			GetResourcePayloadResponse response) throws UncheckedIOException {
-		Supplier<InputStream> streamSupplier = resolver(source).resource(source.getPath()).asHandle()::asStream;
+		Supplier<InputStream> streamSupplier = resolver(source).resource(source).asHandle()::asStream;
 		StreamRange range = request.getRange();
 		if (range != null) {
 			long start = range.getStart();
@@ -71,7 +73,7 @@ public class PackagedResourceStorage extends AbstractResourceStorage<PackagedRes
 
 	private InputStream rangedStream(PackagedResourceSource source, long start, long end) {
 		try {
-			InputStream in = resolver(source).resource(source.getPath()).asHandle().asStream();
+			InputStream in = resolver(source).resource(source).asHandle().asStream();
 			return new RangeInputStream(in, start, end == Long.MAX_VALUE ? end : end + 1);
 		} catch (IOException e) {
 			throw new UncheckedIOException("Could not apply stream range " + start + "-" + end + " to packaged resource " + source.getPath(), e);
@@ -80,6 +82,13 @@ public class PackagedResourceStorage extends AbstractResourceStorage<PackagedRes
 
 	private RxPackagedResourceResolver resolver(PackagedResourceSource source) {
 		return source.getNamespace() == PackagedResourceNamespace.publicResources ? publicResources : resources;
+	}
+
+	private static String describe(PackagedResourceSource source) {
+		String artifact = source.getArtifact();
+		return artifact == null || artifact.isBlank()
+				? source.getNamespace() + ":" + source.getPath()
+				: artifact + ":" + source.getPath();
 	}
 
 	@Override

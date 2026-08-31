@@ -82,6 +82,20 @@ public class RxIndexedPackagedResourceResolverTest {
 	}
 
 	@Test
+	public void resolvesAnyIndexedResourceByArtifactAndFullArtifactRelativePath() throws Exception {
+		var resolver = resolver(RxPackagedResourcesContract.CLASSPATH_ROOT);
+		Resource resource = resolver.resource("reflex-platform-test", "HICONIC-PUBLIC-RESOURCES/assets/hello.txt")
+				.asPersistableResource();
+
+		PackagedResourceSource source = (PackagedResourceSource) resource.getResourceSource();
+		assertThat(source.getArtifact()).isEqualTo("reflex-platform-test");
+		assertThat(source.getPath()).isEqualTo("HICONIC-PUBLIC-RESOURCES/assets/hello.txt");
+		try (var in = resolver.resource(source).asHandle().asStream()) {
+			assertThat(new String(in.readAllBytes(), StandardCharsets.UTF_8)).isEqualTo("public hello\n");
+		}
+	}
+
+	@Test
 	public void rejectsMissingAndUnsafePaths() {
 		var resolver = resolver(RxPackagedPublicResourcesContract.CLASSPATH_ROOT);
 		assertThat(resolver.inventory().contains("../assets/hello.txt")).isFalse();

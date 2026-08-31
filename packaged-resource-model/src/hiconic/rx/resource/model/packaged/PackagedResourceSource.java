@@ -19,10 +19,18 @@ public interface PackagedResourceSource extends ResourceSource {
 
 	String path = "path";
 	String namespace = "namespace";
+	String artifact = "artifact";
 
 	@Mandatory
 	String getPath();
 	void setPath(String path);
+
+	/**
+	 * Optional artifact identity. If present, {@link #getPath()} is relative to that artifact's indexed-resource root.
+	 * A missing artifact retains the original namespace-global addressing semantics.
+	 */
+	String getArtifact();
+	void setArtifact(String artifact);
 
 	@Initializer("enum(hiconic.rx.resource.model.packaged.PackagedResourceNamespace,resources)")
 	PackagedResourceNamespace getNamespace();

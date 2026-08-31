@@ -13,9 +13,22 @@
 // ============================================================================
 package hiconic.rx.module.api.resource;
 
+import hiconic.rx.resource.model.packaged.PackagedResourceSource;
+
 public interface RxPackagedResourceResolver {
 
 	RxPackagedResourceBuilder resource(String relativePath);
+
+	/** Resolves an indexed path within a specific artifact. */
+	default RxPackagedResourceBuilder resource(String artifact, String artifactRelativePath) {
+		throw new IllegalArgumentException("Artifact-scoped packaged resources are not supported by this resolver: " + artifact);
+	}
+
+	default RxPackagedResourceBuilder resource(PackagedResourceSource source) {
+		return source.getArtifact() == null || source.getArtifact().isBlank()
+				? resource(source.getPath())
+				: resource(source.getArtifact(), source.getPath());
+	}
 
 	RxPackagedResourceInventory inventory();
 }

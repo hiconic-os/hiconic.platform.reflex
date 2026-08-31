@@ -57,12 +57,14 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 	private final String classpathRoot;
 	private final PackagedResourceNamespace namespace;
 	private final Map<String, CachedResource> resources;
+	private final Map<ArtifactResourceKey, CachedResource> artifactResources;
 	private final RxPackagedResourceInventory inventory;
 
 	public RxIndexedPackagedResourceResolver(ClasspathIndex classpathIndex, String classpathRoot, PackagedResourceNamespace namespace) {
 		this.classpathRoot = requireRoot(classpathRoot);
 		this.namespace = namespace;
 		this.resources = indexResources(classpathIndex);
+		this.artifactResources = indexArtifactResources(classpathIndex);
 		this.inventory = new Inventory(resources.keySet());
 	}
 
@@ -72,7 +74,17 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 		CachedResource resource = resources.get(path);
 		if (resource == null)
 			throw new IllegalArgumentException("No indexed packaged resource found at: " + path);
-		return new Builder(path, resource, namespace);
+		return new Builder(path, null, resource, namespace);
+	}
+
+	@Override
+	public RxPackagedResourceBuilder resource(String artifact, String artifactRelativePath) {
+		String normalizedArtifact = normalizeArtifact(artifact);
+		String normalizedPath = normalizeResourcePath(artifactRelativePath);
+		CachedResource resource = artifactResources.get(new ArtifactResourceKey(normalizedArtifact, normalizedPath));
+		if (resource == null)
+			throw new IllegalArgumentException("No indexed packaged resource found at " + normalizedArtifact + ":" + normalizedPath);
+		return new Builder(normalizedPath, normalizedArtifact, resource, namespace);
 	}
 
 	@Override
@@ -90,6 +102,28 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 						+ previous.url + " and " + entry.url);
 		}
 		return Map.copyOf(result);
+	}
+
+	private Map<ArtifactResourceKey, CachedResource> indexArtifactResources(ClasspathIndex classpathIndex) {
+		Map<ArtifactResourceKey, CachedResource> result = new LinkedHashMap<>();
+		for (ClasspathEntry entry : classpathIndex.forPrefix("")) {
+			if (entry.origin == null || entry.origin.isBlank())
+				continue;
+			String path = normalizeResourcePath(entry.path);
+			ArtifactResourceKey key = new ArtifactResourceKey(normalizeArtifact(entry.origin), path);
+			CachedResource previous = result.putIfAbsent(key, new CachedResource(path, entry.url));
+			if (previous != null && !previous.url.equals(entry.url))
+				throw new IllegalStateException("Duplicate indexed packaged resource '" + key + "': " + previous.url + " and " + entry.url);
+		}
+		return Map.copyOf(result);
+	}
+
+	private static String normalizeArtifact(String artifact) {
+		if (artifact == null || artifact.isBlank())
+			throw new IllegalArgumentException("A packaged resource artifact must not be empty");
+		if (artifact.indexOf('/') >= 0 || artifact.indexOf('\\') >= 0 || artifact.equals(".") || artifact.equals(".."))
+			throw new IllegalArgumentException("Invalid packaged resource artifact: " + artifact);
+		return artifact;
 	}
 
 	private static String requireRoot(String root) {
@@ -131,12 +165,14 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 
 	private static class Builder implements RxPackagedResourceBuilder {
 		private final String path;
+		private final String artifact;
 		private final CachedResource cachedResource;
 		private final PackagedResourceNamespace namespace;
 		private final EnumSet<Enrichment> enrichments = EnumSet.noneOf(Enrichment.class);
 
-		Builder(String path, CachedResource cachedResource, PackagedResourceNamespace namespace) {
+		Builder(String path, String artifact, CachedResource cachedResource, PackagedResourceNamespace namespace) {
 			this.path = path;
+			this.artifact = artifact;
 			this.cachedResource = cachedResource;
 			this.namespace = namespace;
 		}
@@ -162,8 +198,39 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 		public PackagedResourceSource asSource() {
 			PackagedResourceSource result = PackagedResourceSource.T.create();
 			result.setPath(path);
+			result.setArtifact(artifact);
 			result.setNamespace(namespace);
 			return result;
+		}
+	}
+
+	private static final class ArtifactResourceKey {
+		private final String artifact;
+		private final String path;
+
+		private ArtifactResourceKey(String artifact, String path) {
+			this.artifact = artifact;
+			this.path = path;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (!(obj instanceof ArtifactResourceKey))
+				return false;
+			ArtifactResourceKey other = (ArtifactResourceKey) obj;
+			return artifact.equals(other.artifact) && path.equals(other.path);
+		}
+
+		@Override
+		public int hashCode() {
+			return 31 * artifact.hashCode() + path.hashCode();
+		}
+
+		@Override
+		public String toString() {
+			return artifact + ":" + path;
 		}
 	}
 

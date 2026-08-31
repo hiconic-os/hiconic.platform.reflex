@@ -34,6 +34,11 @@ public class RxPackagedResourcesSpace implements RxPackagedResourcesContract {
 	}
 
 	@Override
+	public RxPackagedResourceBuilder resource(String artifact, String artifactRelativePath) {
+		return resolver().resource(artifact, artifactRelativePath);
+	}
+
+	@Override
 	public RxPackagedResourceInventory inventory() {
 		return resolver().inventory();
 	}
