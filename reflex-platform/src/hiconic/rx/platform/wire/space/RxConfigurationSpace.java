@@ -33,6 +33,7 @@ import hiconic.rx.platform.conf.RxPropertyResolver;
 import hiconic.rx.platform.models.RxCmdResolverManager;
 import hiconic.rx.platform.models.RxConfiguredModels;
 import hiconic.rx.platform.models.RxModelConfigurations;
+import hiconic.rx.platform.processing.resource.PackagedResourceValueDescriptorExperts;
 import hiconic.rx.platform.processing.resource.RxResourcesBuilding.RxUrlResourcesBuilder;
 import hiconic.rx.platform.wire.contract.RxPlatformConfigContract;
 
@@ -47,6 +48,9 @@ public class RxConfigurationSpace implements RxConfigurationContract {
 
 	@Import
 	private RxPlatformConfigContract platformConfig;
+
+	@Import
+	private RxPackagedResourcesSpace packagedResources;
 
 	@Override
 	@Managed
@@ -114,6 +118,9 @@ public class RxConfigurationSpace implements RxConfigurationContract {
 		bean.setClasspathConfPath(RxConfigurationConstants.CLASSPATH_CONF_PATH);
 		bean.setClasspathIndex(platformConfig.classpathIndex());
 		bean.setExternalReasonedPropertyLookup(propertyResolver()::resolveReasoned);
+		bean.setValueDescriptorExpressionCodec(PackagedResourceValueDescriptorExperts.expressionCodec());
+		bean.setValueDescriptorExpertConfigurer(
+				registry -> PackagedResourceValueDescriptorExperts.register(registry, packagedResources.resolver()));
 		return bean;
 	}
 

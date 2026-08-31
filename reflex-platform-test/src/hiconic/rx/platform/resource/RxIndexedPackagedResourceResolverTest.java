@@ -22,12 +22,18 @@ import org.junit.Test;
 
 import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 import com.braintribe.model.resource.Resource;
+import com.braintribe.model.processing.vde.reasoned.api.ValueDescriptorSourceContext;
+import com.braintribe.model.processing.vde.reasoned.impl.StandardValueDescriptorEvaluationContext;
+import com.braintribe.model.processing.vde.reasoned.impl.ValueDescriptorExpertRegistry;
 
 import hiconic.rx.module.api.wire.RxPackagedPublicResourcesContract;
 import hiconic.rx.module.api.wire.RxPackagedResourcesContract;
 import hiconic.rx.platform.processing.resource.RxIndexedPackagedResourceResolver;
+import hiconic.rx.platform.processing.resource.PackagedResourceValueDescriptorExperts;
 import hiconic.rx.resource.model.packaged.PackagedResourceNamespace;
 import hiconic.rx.resource.model.packaged.PackagedResourceSource;
+import hiconic.rx.resource.model.packaged.vd.ImportText;
+import hiconic.rx.resource.model.packaged.vd.PackagedResource;
 
 public class RxIndexedPackagedResourceResolverTest {
 
@@ -93,6 +99,27 @@ public class RxIndexedPackagedResourceResolverTest {
 		try (var in = resolver.resource(source).asHandle().asStream()) {
 			assertThat(new String(in.readAllBytes(), StandardCharsets.UTF_8)).isEqualTo("public hello\n");
 		}
+	}
+
+	@Test
+	public void evaluatesResourcesRelativeToTheOwningConfigurationEntry() {
+		var resolver = resolver(RxPackagedResourcesContract.CLASSPATH_ROOT);
+		var registry = new ValueDescriptorExpertRegistry();
+		PackagedResourceValueDescriptorExperts.register(registry, resolver);
+		var context = new StandardValueDescriptorEvaluationContext(registry)
+				.withAspect(ValueDescriptorSourceContext.class,
+						new ValueDescriptorSourceContext("reflex-platform-test", "HICONIC-PUBLIC-RESOURCES/config.yaml"));
+
+		ImportText importText = ImportText.T.create();
+		importText.setPath("./assets/hello.txt");
+		assertThat(context.<String>evaluate(importText).get()).isEqualTo("public hello\n");
+
+		PackagedResource packagedResource = PackagedResource.T.create();
+		packagedResource.setPath("./assets/hello.txt");
+		Resource resource = context.<Resource>evaluate(packagedResource).get();
+		PackagedResourceSource source = (PackagedResourceSource) resource.getResourceSource();
+		assertThat(source.getArtifact()).isEqualTo("reflex-platform-test");
+		assertThat(source.getPath()).isEqualTo("HICONIC-PUBLIC-RESOURCES/assets/hello.txt");
 	}
 
 	@Test

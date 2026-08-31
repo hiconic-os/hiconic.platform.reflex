@@ -44,7 +44,7 @@ public class RxPackagedResourcesSpace implements RxPackagedResourcesContract {
 	}
 
 	@Managed
-	private RxIndexedPackagedResourceResolver resolver() {
+	public RxIndexedPackagedResourceResolver resolver() {
 		return new RxIndexedPackagedResourceResolver(config.classpathIndex(), CLASSPATH_ROOT, PackagedResourceNamespace.resources);
 	}
 }

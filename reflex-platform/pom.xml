@@ -30,6 +30,16 @@ limitations under the License.
     </licenses>
     <dependencies>
         <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>reasoned-value-descriptor-processing</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>value-descriptor-expression-processing</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
+        <dependency>
             <groupId>com.braintribe.common</groupId>
             <artifactId>configurator-api</artifactId>
             <version>${V.com.braintribe.common}</version>
