@@ -21,6 +21,13 @@ import java.nio.charset.StandardCharsets;
 import org.junit.Test;
 
 import com.braintribe.gm.config.yaml.index.ClasspathIndex;
+import com.braintribe.gm.config.yaml.ModeledYamlConfiguration;
+
+import hiconic.rx.platform.processing.resource.PackagedResourceValueDescriptorExperts;
+import hiconic.rx.platform.processing.resource.RxIndexedPackagedResourceResolver;
+import hiconic.rx.platform.resource.model.ResourceExpressionConfiguration;
+import hiconic.rx.resource.model.packaged.PackagedResourceNamespace;
+import hiconic.rx.resource.model.packaged.PackagedResourceSource;
 
 public class RxConfigurationSpaceTest {
 
@@ -44,5 +51,24 @@ public class RxConfigurationSpaceTest {
 		assertThatThrownBy(() -> RxConfigurationSpace.resolveIndexedClasspathResource(index, "../outside"))
 				.isInstanceOf(IllegalArgumentException.class)
 				.hasMessageContaining("Invalid");
+	}
+
+	@Test
+	public void evaluatesRelativePackagedResourcesThroughModeledConfiguration() {
+		var index = new ClasspathIndex(getClass().getClassLoader());
+		var resolver = new RxIndexedPackagedResourceResolver(index, "HICONIC-RESOURCES", PackagedResourceNamespace.resources);
+		var configuration = new ModeledYamlConfiguration();
+		configuration.setClasspathIndex(index);
+		configuration.setClasspathConfPath("HICONIC-CONF");
+		configuration.setValueDescriptorExpressionCodec(PackagedResourceValueDescriptorExperts.expressionCodec());
+		configuration.setValueDescriptorExpertConfigurer(
+				registry -> PackagedResourceValueDescriptorExperts.register(registry, resolver));
+
+		ResourceExpressionConfiguration loaded = configuration.config(ResourceExpressionConfiguration.T);
+
+		assertThat(loaded.getText()).isEqualTo("public hello\n");
+		PackagedResourceSource source = (PackagedResourceSource) loaded.getResource().getResourceSource();
+		assertThat(source.getArtifact()).isEqualTo("reflex-platform-test");
+		assertThat(source.getPath()).isEqualTo("HICONIC-PUBLIC-RESOURCES/assets/hello.txt");
 	}
 }

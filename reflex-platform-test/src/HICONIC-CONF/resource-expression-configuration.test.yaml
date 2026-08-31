@@ -1,0 +1,2 @@
+text: ${importText('../HICONIC-PUBLIC-RESOURCES/assets/hello.txt')}
+resource: ${packagedResource('../HICONIC-PUBLIC-RESOURCES/assets/hello.txt')}
