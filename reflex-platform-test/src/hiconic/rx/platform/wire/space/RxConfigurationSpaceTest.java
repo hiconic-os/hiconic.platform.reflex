@@ -17,11 +17,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.charset.StandardCharsets;
+import java.io.StringWriter;
 
 import org.junit.Test;
 
 import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 import com.braintribe.gm.config.yaml.ModeledYamlConfiguration;
+import com.braintribe.codec.marshaller.api.GmSerializationOptions;
+import com.braintribe.codec.marshaller.api.PlaceholderSupport;
+import com.braintribe.codec.marshaller.yaml.YamlMarshaller;
+import com.braintribe.model.processing.vde.expression.api.ValueDescriptorExpressionCodecOption;
+import com.braintribe.model.processing.vde.expression.api.ValueDescriptorExpressionProjectionOption;
+import com.braintribe.model.processing.vde.reasoned.api.ValueDescriptorSourceContext;
 
 import hiconic.rx.platform.processing.resource.PackagedResourceValueDescriptorExperts;
 import hiconic.rx.platform.processing.resource.RxIndexedPackagedResourceResolver;
@@ -70,5 +77,17 @@ public class RxConfigurationSpaceTest {
 		PackagedResourceSource source = (PackagedResourceSource) loaded.getResource().getResourceSource();
 		assertThat(source.getArtifact()).isEqualTo("reflex-platform-test");
 		assertThat(source.getPath()).isEqualTo("HICONIC-PUBLIC-RESOURCES/assets/hello.txt");
+
+		var outputContext = new ValueDescriptorSourceContext("reflex-platform-test",
+				"HICONIC-CONF/resource-expression-configuration.test.yaml");
+		var options = GmSerializationOptions.deriveDefaults()
+				.inferredRootType(ResourceExpressionConfiguration.T)
+				.set(PlaceholderSupport.class, true)
+				.set(ValueDescriptorExpressionCodecOption.class, PackagedResourceValueDescriptorExperts.expressionCodec())
+				.set(ValueDescriptorExpressionProjectionOption.class, PackagedResourceValueDescriptorExperts.projection(outputContext))
+				.build();
+		StringWriter writer = new StringWriter();
+		new YamlMarshaller().marshall(writer, loaded, options);
+		assertThat(writer.toString()).contains("resource: \"${packagedResource('../HICONIC-PUBLIC-RESOURCES/assets/hello.txt')}\"");
 	}
 }

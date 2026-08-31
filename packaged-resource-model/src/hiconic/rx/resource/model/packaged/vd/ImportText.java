@@ -9,7 +9,7 @@ import com.braintribe.model.generic.reflection.EntityTypes;
 import com.braintribe.model.generic.value.type.StringDescriptor;
 
 /** Imports UTF-8 text from an indexed resource, normally relative to the owning modeled configuration resource. */
-@PositionalArguments("path")
+@PositionalArguments({ "path", "artifact" })
 public interface ImportText extends StringDescriptor {
 
 	EntityType<ImportText> T = EntityTypes.T(ImportText.class);

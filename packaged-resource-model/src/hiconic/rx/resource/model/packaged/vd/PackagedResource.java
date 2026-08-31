@@ -11,7 +11,7 @@ import com.braintribe.model.generic.value.ValueDescriptor;
 import com.braintribe.model.resource.Resource;
 
 /** Resolves an indexed immutable payload as a persistable {@link Resource}. */
-@PositionalArguments("path")
+@PositionalArguments({ "path", "artifact" })
 public interface PackagedResource extends ValueDescriptor {
 
 	EntityType<PackagedResource> T = EntityTypes.T(PackagedResource.class);
