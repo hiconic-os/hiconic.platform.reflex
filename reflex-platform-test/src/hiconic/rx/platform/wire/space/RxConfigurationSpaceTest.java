@@ -94,10 +94,10 @@ public class RxConfigurationSpaceTest {
 		StringWriter writer = new StringWriter();
 		new YamlMarshaller().marshall(writer, loaded, options);
 		assertThat(writer.toString())
-				.contains("resourceSource: \"${packagedResourceSource('../HICONIC-PUBLIC-RESOURCES/assets/hello.txt')}\"")
+				.contains("resourceSource: \"${artifactResourceSource('../HICONIC-PUBLIC-RESOURCES/assets/hello.txt')}\"")
 				.contains("creator: \"configuration-curator\"")
 				.contains("branding")
-				.doesNotContain("resource: \"${packagedResource(");
+				.doesNotContain("resource: \"${artifactResource(");
 
 		ResourceExpressionConfiguration roundtripped = new ModeledYamlConfigurationLoader()
 				.valueDescriptorExpressions(PackagedResourceValueDescriptorExperts.expressionCodec())
@@ -123,7 +123,7 @@ public class RxConfigurationSpaceTest {
 		StringWriter compactWriter = new StringWriter();
 		new YamlMarshaller().marshall(compactWriter, loaded, compactOptions);
 		assertThat(compactWriter.toString())
-				.contains("resource: \"${packagedResource('../HICONIC-PUBLIC-RESOURCES/assets/hello.txt')}\"")
+				.contains("resource: \"${artifactResource('../HICONIC-PUBLIC-RESOURCES/assets/hello.txt')}\"")
 				.doesNotContain("configuration-curator");
 	}
 }

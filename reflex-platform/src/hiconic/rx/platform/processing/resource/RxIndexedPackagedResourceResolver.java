@@ -36,7 +36,10 @@ import javax.imageio.stream.ImageInputStream;
 
 import com.braintribe.gm.config.yaml.index.ClasspathEntry;
 import com.braintribe.gm.config.yaml.index.ClasspathIndex;
+import com.braintribe.gm.model.reason.Maybe;
+import com.braintribe.gm.model.reason.essential.NotFound;
 import com.braintribe.mimetype.PlatformMimeTypeDetector;
+import com.braintribe.model.processing.resource.artifact.api.ArtifactResourceResolver;
 import com.braintribe.model.resource.Resource;
 import com.braintribe.model.resource.api.ResourceHandle;
 import com.braintribe.model.resource.specification.RasterImageSpecification;
@@ -52,7 +55,7 @@ import hiconic.rx.resource.model.packaged.PackagedResourceNamespace;
 import hiconic.rx.resource.model.packaged.PackagedResourceSource;
 
 /** Index-backed resolver. Computed metadata is cached; mutable resource entities and payload streams are not. */
-public class RxIndexedPackagedResourceResolver implements RxPackagedResourceResolver {
+public class RxIndexedPackagedResourceResolver implements RxPackagedResourceResolver, ArtifactResourceResolver {
 
 	private final String classpathRoot;
 	private final PackagedResourceNamespace namespace;
@@ -90,6 +93,24 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 	@Override
 	public RxPackagedResourceInventory inventory() {
 		return inventory;
+	}
+
+	@Override
+	public Maybe<Resource> resolveResource(String artifact, String path) {
+		try {
+			return Maybe.complete(resource(artifact, path).asPersistableResource());
+		} catch (IllegalArgumentException e) {
+			return NotFound.create(e.getMessage()).asMaybe();
+		}
+	}
+
+	@Override
+	public Maybe<com.braintribe.model.resource.source.ArtifactResourceSource> resolveSource(String artifact, String path) {
+		try {
+			return Maybe.complete(resource(artifact, path).asSource());
+		} catch (IllegalArgumentException e) {
+			return NotFound.create(e.getMessage()).asMaybe();
+		}
 	}
 
 	private Map<String, CachedResource> indexResources(ClasspathIndex classpathIndex) {

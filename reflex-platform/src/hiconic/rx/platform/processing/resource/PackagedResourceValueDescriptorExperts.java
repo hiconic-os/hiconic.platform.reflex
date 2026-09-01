@@ -8,14 +8,14 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.function.Predicate;
 
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.essential.InternalError;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
 import com.braintribe.gm.model.reason.essential.NotFound;
+import com.braintribe.model.processing.resource.artifact.ArtifactResourceValueDescriptorExperts;
+import com.braintribe.model.processing.resource.artifact.api.ArtifactResourceResolver;
 import com.braintribe.model.processing.vde.expression.ModelBasedValueDescriptorExpressionCodec;
 import com.braintribe.model.processing.vde.expression.api.ValueDescriptorExpressionCodec;
 import com.braintribe.model.processing.vde.expression.api.ValueDescriptorExpressionProjection;
@@ -35,10 +35,14 @@ public final class PackagedResourceValueDescriptorExperts {
 
 	public static ValueDescriptorExpressionCodec expressionCodec() {
 		return new ModelBasedValueDescriptorExpressionCodec(ImportText.T,
+				com.braintribe.model.resource.source.vd.ArtifactResourceSource.T,
+				com.braintribe.model.resource.source.vd.ArtifactResource.T,
 				hiconic.rx.resource.model.packaged.vd.PackagedResourceSource.T, PackagedResource.T);
 	}
 
 	public static void register(ValueDescriptorExpertRegistry registry, RxPackagedResourceResolver resolver) {
+		ArtifactResourceValueDescriptorExperts.register(registry, artifactResolver(resolver));
+
 		registry.register(ImportText.T, (context, descriptor) -> {
 			Maybe<ResolvedPath> resolved = resolve(context.getAspect(ValueDescriptorSourceContext.class),
 					descriptor.getArtifact(), descriptor.getPath());
@@ -90,7 +94,7 @@ public final class PackagedResourceValueDescriptorExperts {
 	 * {@link Resource}, including all of its metadata, remains modeled explicitly.
 	 */
 	public static ValueDescriptorExpressionProjection projection(ValueDescriptorSourceContext target) {
-		return projection(target, resource -> false);
+		return ArtifactResourceValueDescriptorExperts.projection(target);
 	}
 
 	/**
@@ -99,63 +103,32 @@ public final class PackagedResourceValueDescriptorExperts {
 	 */
 	public static ValueDescriptorExpressionProjection projection(ValueDescriptorSourceContext target,
 			Predicate<? super Resource> regenerableResource) {
-		return (inferredType, value) -> {
-			if (value instanceof Resource resource && regenerableResource.test(resource)
-					&& resource.getResourceSource() instanceof hiconic.rx.resource.model.packaged.PackagedResourceSource source) {
-				PackagedResource descriptor = PackagedResource.T.create();
-				return configureLocation(descriptor::setPath, descriptor::setArtifact, source, target) ? descriptor : null;
+		return ArtifactResourceValueDescriptorExperts.projection(target, regenerableResource, source -> false);
+	}
+
+	private static ArtifactResourceResolver artifactResolver(RxPackagedResourceResolver resolver) {
+		if (resolver instanceof ArtifactResourceResolver)
+			return (ArtifactResourceResolver) resolver;
+
+		return new ArtifactResourceResolver() {
+			@Override
+			public Maybe<Resource> resolveResource(String artifact, String path) {
+				try {
+					return Maybe.complete(resolver.resource(artifact, path).asPersistableResource());
+				} catch (IllegalArgumentException e) {
+					return NotFound.create(e.getMessage()).asMaybe();
+				}
 			}
 
-			if (value instanceof hiconic.rx.resource.model.packaged.PackagedResourceSource source) {
-				hiconic.rx.resource.model.packaged.vd.PackagedResourceSource descriptor =
-						hiconic.rx.resource.model.packaged.vd.PackagedResourceSource.T.create();
-				return configureLocation(descriptor::setPath, descriptor::setArtifact, source, target) ? descriptor : null;
+			@Override
+			public Maybe<com.braintribe.model.resource.source.ArtifactResourceSource> resolveSource(String artifact, String path) {
+				try {
+					return Maybe.complete(resolver.resource(artifact, path).asSource());
+				} catch (IllegalArgumentException e) {
+					return NotFound.create(e.getMessage()).asMaybe();
+				}
 			}
-
-			return null;
 		};
-	}
-
-	private static boolean configureLocation(java.util.function.Consumer<String> pathSetter,
-			java.util.function.Consumer<String> artifactSetter,
-			hiconic.rx.resource.model.packaged.PackagedResourceSource source, ValueDescriptorSourceContext target) {
-		if (source.getArtifact() == null || source.getArtifact().isBlank() || source.getPath() == null || source.getPath().isBlank())
-			return false;
-
-		if (target != null && source.getArtifact().equals(target.artifact()) && target.path() != null && !target.path().isBlank()) {
-			pathSetter.accept(relativePath(target.path(), source.getPath()));
-		} else {
-			artifactSetter.accept(source.getArtifact());
-			pathSetter.accept(source.getPath());
-		}
-		return true;
-	}
-
-	private static String relativePath(String documentPath, String resourcePath) {
-		List<String> document = segments(documentPath);
-		List<String> resource = segments(resourcePath);
-		if (!document.isEmpty())
-			document.remove(document.size() - 1);
-
-		int common = 0;
-		while (common < document.size() && common < resource.size() && document.get(common).equals(resource.get(common)))
-			common++;
-
-		List<String> result = new ArrayList<>();
-		for (int i = common; i < document.size(); i++)
-			result.add("..");
-		result.addAll(resource.subList(common, resource.size()));
-
-		String relative = String.join("/", result);
-		return relative.startsWith("../") || relative.equals("..") ? relative : "./" + relative;
-	}
-
-	private static List<String> segments(String path) {
-		List<String> result = new ArrayList<>();
-		for (String segment : path.replace('\\', '/').split("/"))
-			if (!segment.isEmpty() && !segment.equals("."))
-				result.add(segment);
-		return result;
 	}
 
 	private static Maybe<ResolvedPath> resolve(ValueDescriptorSourceContext source, String explicitArtifact, String configuredPath) {

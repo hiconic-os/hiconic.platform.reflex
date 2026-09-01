@@ -21,7 +21,10 @@ public final class RxConfigurationValueDescriptorExperts {
 	}
 
 	public static ValueDescriptorExpressionCodec expressionCodec() {
-		return new ModelBasedValueDescriptorExpressionCodec(Decrypt.T, ImportText.T, PackagedResourceSource.T, PackagedResource.T);
+		return new ModelBasedValueDescriptorExpressionCodec(Decrypt.T, ImportText.T,
+				com.braintribe.model.resource.source.vd.ArtifactResourceSource.T,
+				com.braintribe.model.resource.source.vd.ArtifactResource.T,
+				PackagedResourceSource.T, PackagedResource.T);
 	}
 
 	public static void register(ValueDescriptorExpertRegistry registry, RxPackagedResourceResolver resources,
