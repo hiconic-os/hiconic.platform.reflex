@@ -16,13 +16,16 @@ package hiconic.rx.platform.wire.space;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.nio.charset.StandardCharsets;
+import java.io.ByteArrayInputStream;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
+import java.util.Set;
 
 import org.junit.Test;
 
 import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 import com.braintribe.gm.config.yaml.ModeledYamlConfiguration;
+import com.braintribe.gm.config.yaml.ModeledYamlConfigurationLoader;
 import com.braintribe.codec.marshaller.api.GmSerializationOptions;
 import com.braintribe.codec.marshaller.api.PlaceholderSupport;
 import com.braintribe.codec.marshaller.yaml.YamlMarshaller;
@@ -77,6 +80,8 @@ public class RxConfigurationSpaceTest {
 		PackagedResourceSource source = (PackagedResourceSource) loaded.getResource().getResourceSource();
 		assertThat(source.getArtifact()).isEqualTo("reflex-platform-test");
 		assertThat(source.getPath()).isEqualTo("HICONIC-PUBLIC-RESOURCES/assets/hello.txt");
+		loaded.getResource().setCreator("configuration-curator");
+		loaded.getResource().setTags(Set.of("branding", "stable"));
 
 		var outputContext = new ValueDescriptorSourceContext("reflex-platform-test",
 				"HICONIC-CONF/resource-expression-configuration.test.yaml");
@@ -88,6 +93,37 @@ public class RxConfigurationSpaceTest {
 				.build();
 		StringWriter writer = new StringWriter();
 		new YamlMarshaller().marshall(writer, loaded, options);
-		assertThat(writer.toString()).contains("resource: \"${packagedResource('../HICONIC-PUBLIC-RESOURCES/assets/hello.txt')}\"");
+		assertThat(writer.toString())
+				.contains("resourceSource: \"${packagedResourceSource('../HICONIC-PUBLIC-RESOURCES/assets/hello.txt')}\"")
+				.contains("creator: \"configuration-curator\"")
+				.contains("branding")
+				.doesNotContain("resource: \"${packagedResource(");
+
+		ResourceExpressionConfiguration roundtripped = new ModeledYamlConfigurationLoader()
+				.valueDescriptorExpressions(PackagedResourceValueDescriptorExperts.expressionCodec())
+				.valueDescriptorExperts(registry -> PackagedResourceValueDescriptorExperts.register(registry, resolver))
+				.valueDescriptorAspect(ValueDescriptorSourceContext.class, outputContext)
+				.loadConfig(ResourceExpressionConfiguration.T,
+						() -> new ByteArrayInputStream(writer.toString().getBytes(StandardCharsets.UTF_8)))
+				.get();
+		assertThat(roundtripped.getResource().getCreator()).isEqualTo("configuration-curator");
+		assertThat(roundtripped.getResource().getTags()).containsExactlyInAnyOrder("branding", "stable");
+		PackagedResourceSource roundtrippedSource = (PackagedResourceSource) roundtripped.getResource().getResourceSource();
+		assertThat(roundtrippedSource.getArtifact()).isEqualTo("reflex-platform-test");
+		assertThat(roundtrippedSource.getPath()).isEqualTo("HICONIC-PUBLIC-RESOURCES/assets/hello.txt");
+
+		var compactOptions = GmSerializationOptions.deriveDefaults()
+				.inferredRootType(ResourceExpressionConfiguration.T)
+				.set(PlaceholderSupport.class, true)
+				.set(ValueDescriptorExpressionCodecOption.class, PackagedResourceValueDescriptorExperts.expressionCodec())
+				.set(ValueDescriptorExpressionProjectionOption.class,
+						PackagedResourceValueDescriptorExperts.projection(outputContext,
+								resource -> "configuration-curator".equals(resource.getCreator())))
+				.build();
+		StringWriter compactWriter = new StringWriter();
+		new YamlMarshaller().marshall(compactWriter, loaded, compactOptions);
+		assertThat(compactWriter.toString())
+				.contains("resource: \"${packagedResource('../HICONIC-PUBLIC-RESOURCES/assets/hello.txt')}\"")
+				.doesNotContain("configuration-curator");
 	}
 }

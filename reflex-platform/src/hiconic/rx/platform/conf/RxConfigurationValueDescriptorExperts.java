@@ -12,6 +12,7 @@ import hiconic.rx.platform.model.configuration.vd.Decrypt;
 import hiconic.rx.platform.processing.resource.PackagedResourceValueDescriptorExperts;
 import hiconic.rx.resource.model.packaged.vd.ImportText;
 import hiconic.rx.resource.model.packaged.vd.PackagedResource;
+import hiconic.rx.resource.model.packaged.vd.PackagedResourceSource;
 
 /** The typed value-descriptor vocabulary understood by RX modeled configuration. */
 public final class RxConfigurationValueDescriptorExperts {
@@ -20,7 +21,7 @@ public final class RxConfigurationValueDescriptorExperts {
 	}
 
 	public static ValueDescriptorExpressionCodec expressionCodec() {
-		return new ModelBasedValueDescriptorExpressionCodec(Decrypt.T, ImportText.T, PackagedResource.T);
+		return new ModelBasedValueDescriptorExpressionCodec(Decrypt.T, ImportText.T, PackagedResourceSource.T, PackagedResource.T);
 	}
 
 	public static void register(ValueDescriptorExpertRegistry registry, RxPackagedResourceResolver resources,

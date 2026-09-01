@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.essential.InternalError;
@@ -33,7 +34,8 @@ public final class PackagedResourceValueDescriptorExperts {
 	}
 
 	public static ValueDescriptorExpressionCodec expressionCodec() {
-		return new ModelBasedValueDescriptorExpressionCodec(ImportText.T, PackagedResource.T);
+		return new ModelBasedValueDescriptorExpressionCodec(ImportText.T,
+				hiconic.rx.resource.model.packaged.vd.PackagedResourceSource.T, PackagedResource.T);
 	}
 
 	public static void register(ValueDescriptorExpertRegistry registry, RxPackagedResourceResolver resolver) {
@@ -67,25 +69,66 @@ public final class PackagedResourceValueDescriptorExperts {
 				return NotFound.create("Indexed packaged resource not found: " + path).asMaybe();
 			}
 		});
+
+		registry.register(hiconic.rx.resource.model.packaged.vd.PackagedResourceSource.T, (context, descriptor) -> {
+			Maybe<ResolvedPath> resolved = resolve(context.getAspect(ValueDescriptorSourceContext.class),
+					descriptor.getArtifact(), descriptor.getPath());
+			if (resolved.isUnsatisfied())
+				return resolved.whyUnsatisfied().asMaybe();
+
+			ResolvedPath path = resolved.get();
+			try {
+				return Maybe.complete(resolver.resource(path.artifact, path.path).asSource());
+			} catch (IllegalArgumentException e) {
+				return NotFound.create("Indexed packaged resource not found: " + path).asMaybe();
+			}
+		});
 	}
 
-	/** Projects canonical packaged resources back to compact expressions relative to the document being written. */
+	/**
+	 * Losslessly projects packaged resource sources relative to the document being written. The surrounding
+	 * {@link Resource}, including all of its metadata, remains modeled explicitly.
+	 */
 	public static ValueDescriptorExpressionProjection projection(ValueDescriptorSourceContext target) {
-		return (inferredType, value) -> {
-			if (!(value instanceof Resource resource) || !(resource.getResourceSource() instanceof hiconic.rx.resource.model.packaged.PackagedResourceSource source))
-				return null;
-			if (source.getArtifact() == null || source.getArtifact().isBlank() || source.getPath() == null || source.getPath().isBlank())
-				return null;
+		return projection(target, resource -> false);
+	}
 
-			PackagedResource descriptor = PackagedResource.T.create();
-			if (target != null && source.getArtifact().equals(target.artifact()) && target.path() != null && !target.path().isBlank()) {
-				descriptor.setPath(relativePath(target.path(), source.getPath()));
-			} else {
-				descriptor.setArtifact(source.getArtifact());
-				descriptor.setPath(source.getPath());
+	/**
+	 * Projects packaged resource sources and, when explicitly approved by the caller, entire regenerable resources.
+	 * The predicate is deliberately external: source shape alone is not proof that resource metadata may be discarded.
+	 */
+	public static ValueDescriptorExpressionProjection projection(ValueDescriptorSourceContext target,
+			Predicate<? super Resource> regenerableResource) {
+		return (inferredType, value) -> {
+			if (value instanceof Resource resource && regenerableResource.test(resource)
+					&& resource.getResourceSource() instanceof hiconic.rx.resource.model.packaged.PackagedResourceSource source) {
+				PackagedResource descriptor = PackagedResource.T.create();
+				return configureLocation(descriptor::setPath, descriptor::setArtifact, source, target) ? descriptor : null;
 			}
-			return descriptor;
+
+			if (value instanceof hiconic.rx.resource.model.packaged.PackagedResourceSource source) {
+				hiconic.rx.resource.model.packaged.vd.PackagedResourceSource descriptor =
+						hiconic.rx.resource.model.packaged.vd.PackagedResourceSource.T.create();
+				return configureLocation(descriptor::setPath, descriptor::setArtifact, source, target) ? descriptor : null;
+			}
+
+			return null;
 		};
+	}
+
+	private static boolean configureLocation(java.util.function.Consumer<String> pathSetter,
+			java.util.function.Consumer<String> artifactSetter,
+			hiconic.rx.resource.model.packaged.PackagedResourceSource source, ValueDescriptorSourceContext target) {
+		if (source.getArtifact() == null || source.getArtifact().isBlank() || source.getPath() == null || source.getPath().isBlank())
+			return false;
+
+		if (target != null && source.getArtifact().equals(target.artifact()) && target.path() != null && !target.path().isBlank()) {
+			pathSetter.accept(relativePath(target.path(), source.getPath()));
+		} else {
+			artifactSetter.accept(source.getArtifact());
+			pathSetter.accept(source.getPath());
+		}
+		return true;
 	}
 
 	private static String relativePath(String documentPath, String resourcePath) {
