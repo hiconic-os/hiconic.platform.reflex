@@ -31,6 +31,7 @@ import com.braintribe.model.processing.service.api.ServiceRequestContext;
 import com.braintribe.model.processing.service.api.aspect.DomainIdAspect;
 import com.braintribe.model.processing.service.common.context.UserSessionAspect;
 import com.braintribe.model.service.api.CompositeRequest;
+import com.braintribe.model.service.api.ExecuteInDomain;
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.model.usersession.UserSession;
 
@@ -38,6 +39,12 @@ import hiconic.rx.model.service.processing.md.ProcessWith;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.service.ServiceDomains;
 
+/**
+ * Top level processor + around processor, whose responsibility is to pick the correct {@link ServiceDomain} and evaluate the request by its
+ * evaluator.
+ * 
+ * @see #processReasoned(ServiceRequestContext, ServiceRequest, ProceedContext)
+ */
 public class RxServiceDomainDispatcher
 		implements ReasonedServiceProcessor<ServiceRequest, Object>, ReasonedServiceAroundProcessor<ServiceRequest, Object> {
 
@@ -100,29 +107,53 @@ public class RxServiceDomainDispatcher
 	// ###################################################
 
 	/**
-	 * Configures {@link DomainIdAspect} for the {@link ServiceRequestContext}, so that #processReasoned(ServiceRequestContext, ServiceRequest) can
-	 * delegate to the evaluator of the right service domain.
+	 * This around-processing configures {@link DomainIdAspect} for the {@link ServiceRequestContext}, so that #processReasoned(ServiceRequestContext,
+	 * ServiceRequest) can delegate to the evaluator of the right service domain.
+	 * <p>
+	 * If domain is not specified, but there is exactly one domain that supports this request, that domain is selected.
+	 * <p>
+	 * If domain is specified, but it does not exists, or does not support this request, an {@link InvalidArgument} reason is returned.
+	 * <p>
+	 * This around processor also handles {@link ExecuteInDomain} by extracting the domainId and unwrapping the nested request as the very first step.
 	 */
 	@Override
 	public Maybe<? extends Object> processReasoned(ServiceRequestContext context, ServiceRequest request, ProceedContext proceedContext) {
-		String domainId = resolveDomainId(request);
+		String domainId = request.domainId();
 
 		EntityType<? extends ServiceRequest> requestType = request.entityType();
 
-		if (domainId == null) {
-			List<? extends ServiceDomain> dependers = serviceDomains.listDomains(requestType);
+		// For ExecuteInDomain we pass the nested request to the explicitly specified domain
+		if (requestType == ExecuteInDomain.T) {
+			request = ((ExecuteInDomain) request).getServiceRequest();
 
-			if (dependers.size() != 1)
+			if (request == null)
+				return Reasons.build(InvalidArgument.T) //
+						.text("Missing nested request of ExecuteInDomain for domain: " + domainId) //
+						.toMaybe();
+
+			if (domainId == null)
+				return Reasons.build(InvalidArgument.T) //
+						.text("Missing service domain for ExecuteInDomain request. Nested request: " + request.entityType().getTypeSignature()) //
+						.toMaybe();
+		}
+
+		// If domain is unknown, we look for the single domain that handles this request
+		if (domainId == null) {
+			List<? extends ServiceDomain> handlers = serviceDomains.listDomains(requestType);
+
+			if (handlers.size() != 1) {
 				// The domain index owns and shares this list across evaluations. Filtering it in place corrupts the index and races
 				// with concurrent requests (for example the browser's parallel session bootstrap calls).
-				dependers = dependers.stream() //
-						.filter(domain -> domainProcessesRequest(domain, request)) //
+				ServiceRequest _request = request;
+				handlers = handlers.stream() //
+						.filter(domain -> domainProcessesRequest(domain, _request)) //
 						.toList();
+			}
 
-			if (dependers.size() != 1)
-				return wrongNumberOfDependers(dependers, requestType);
+			if (handlers.size() != 1)
+				return wrongNumberOfHandlers(handlers, requestType);
 
-			domainId = dependers.get(0).domainId();
+			domainId = handlers.get(0).domainId();
 
 		} else {
 			ServiceDomain serviceDomain = serviceDomains.byId(domainId);
@@ -150,10 +181,6 @@ public class RxServiceDomainDispatcher
 		return proceedContext.proceedReasoned(enrichedContext, request);
 	}
 
-	private String resolveDomainId(ServiceRequest serviceRequest) {
-		return serviceRequest.domainId();
-	}
-
 	private boolean domainProcessesRequest(ServiceDomain domain, ServiceRequest request) {
 		ProcessWith processWith = domain.contextCmdResolver() //
 				.getMetaData() //
@@ -164,9 +191,7 @@ public class RxServiceDomainDispatcher
 		return processWith != null || fallbackProcessor.supports(request);
 	}
 
-	private Maybe<? extends Object> wrongNumberOfDependers(List<? extends ServiceDomain> dependers,
-			EntityType<? extends ServiceRequest> requestType) {
-
+	private Maybe<? extends Object> wrongNumberOfHandlers(List<? extends ServiceDomain> dependers, EntityType<? extends ServiceRequest> requestType) {
 		String text = dependers.isEmpty() //
 				? "Missing service domain for request " + requestType.getTypeSignature() //
 				: "Ambiguous service domains for request " + requestType.getTypeSignature() + ": " + dependers.stream() //
