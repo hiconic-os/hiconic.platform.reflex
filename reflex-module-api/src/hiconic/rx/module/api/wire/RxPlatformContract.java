@@ -40,8 +40,6 @@ public interface RxPlatformContract extends DeprecatedRxPlatformContract {
 
 	RxPackagedResourcesContract packagedResources();
 
-	RxPackagedPublicResourcesContract packagedPublicResources();
-
 	RxProcessLaunchContract processLaunch();
 
 	PlatformReflectionContract reflection();

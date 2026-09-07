@@ -18,20 +18,25 @@ import java.io.InputStream;
 
 import com.braintribe.model.resource.Resource;
 
-import hiconic.rx.module.api.wire.RxPackagedPublicResourcesContract;
+import hiconic.rx.module.api.resource.RxPackagedResourceResolver;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-/** Streams indexed packaged public resources without exposing their classpath or packaging backing. */
-public class PackagedPublicResourceServlet extends HttpServlet {
+/**
+ * Streams files of the web folder of the packaged resources, without exposing their classpath or packaging backing.
+ * <p>
+ * Everything this servlet can reach is served unauthenticated, by path. That is a property of this servlet, not of the folder: the platform attaches
+ * no meaning to a folder, this module does.
+ */
+public class PackagedWebResourceServlet extends HttpServlet {
 
 	private static final long serialVersionUID = 1L;
 
-	private RxPackagedPublicResourcesContract resources;
+	private RxPackagedResourceResolver resources;
 	private String resourcePathPrefix = "";
 
-	public void setResources(RxPackagedPublicResourcesContract resources) {
+	public void setResources(RxPackagedResourceResolver resources) {
 		this.resources = resources;
 	}
 

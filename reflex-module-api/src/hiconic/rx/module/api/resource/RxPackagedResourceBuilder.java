@@ -16,7 +16,7 @@ package hiconic.rx.module.api.resource;
 import com.braintribe.model.resource.Resource;
 import com.braintribe.model.resource.api.ResourceHandle;
 
-import hiconic.rx.resource.model.packaged.PackagedResourceSource;
+import com.braintribe.model.resource.source.PackagedSource;
 
 /** Builds a transient {@link Resource} view of an indexed packaged resource. */
 public interface RxPackagedResourceBuilder {
@@ -51,5 +51,5 @@ public interface RxPackagedResourceBuilder {
 	 */
 	Resource asPersistableResource();
 
-	PackagedResourceSource asSource();
+	PackagedSource asSource();
 }

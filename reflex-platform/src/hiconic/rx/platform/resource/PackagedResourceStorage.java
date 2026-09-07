@@ -23,28 +23,25 @@ import hiconic.rx.resource.model.api.GetResourcePayload;
 import hiconic.rx.resource.model.api.GetResourcePayloadResponse;
 import hiconic.rx.resource.model.api.StoreResourcePayload;
 import hiconic.rx.resource.model.api.StoreResourcePayloadResponse;
-import hiconic.rx.resource.model.packaged.PackagedResourceNamespace;
-import hiconic.rx.resource.model.packaged.PackagedResourceSource;
+import com.braintribe.model.resource.source.PackagedSource;
 
 /** Read-only storage adapter for modeled references into indexed application-package resources. */
-public class PackagedResourceStorage extends AbstractResourceStorage<PackagedResourceSource> {
+public class PackagedResourceStorage extends AbstractResourceStorage<PackagedSource> {
 
 	private final RxPackagedResourceResolver resources;
-	private final RxPackagedResourceResolver publicResources;
 
-	public PackagedResourceStorage(RxPackagedResourceResolver resources, RxPackagedResourceResolver publicResources) {
+	public PackagedResourceStorage(RxPackagedResourceResolver resources) {
 		this.resources = resources;
-		this.publicResources = publicResources;
 		setStorageId("packaged");
 	}
 
 	@Override
-	protected Maybe<PackagedResourceSource> resolvePayload(GetResourcePayload request) {
-		if (!(request.getResourceSource() instanceof PackagedResourceSource source))
-			return error(InvalidArgument.T, "Resource source is not a PackagedResourceSource");
+	protected Maybe<PackagedSource> resolvePayload(GetResourcePayload request) {
+		if (!(request.getResourceSource() instanceof PackagedSource source))
+			return error(InvalidArgument.T, "Resource source is not a PackagedSource");
 
 		try {
-			resolver(source).resource(source);
+			resources.resource(source);
 		} catch (IllegalArgumentException e) {
 			return error(NotFound.T, "Packaged resource not found: " + describe(source));
 		}
@@ -53,9 +50,9 @@ public class PackagedResourceStorage extends AbstractResourceStorage<PackagedRes
 	}
 
 	@Override
-	protected Maybe<GetResourcePayloadResponse> getPayload(PackagedResourceSource source, GetResourcePayload request,
+	protected Maybe<GetResourcePayloadResponse> getPayload(PackagedSource source, GetResourcePayload request,
 			GetResourcePayloadResponse response) throws UncheckedIOException {
-		Supplier<InputStream> streamSupplier = resolver(source).resource(source).asHandle()::asStream;
+		Supplier<InputStream> streamSupplier = resources.resource(source).asHandle()::asStream;
 		StreamRange range = request.getRange();
 		if (range != null) {
 			long start = range.getStart();
@@ -71,24 +68,18 @@ public class PackagedResourceStorage extends AbstractResourceStorage<PackagedRes
 		return Maybe.complete(response);
 	}
 
-	private InputStream rangedStream(PackagedResourceSource source, long start, long end) {
+	private InputStream rangedStream(PackagedSource source, long start, long end) {
 		try {
-			InputStream in = resolver(source).resource(source).asHandle().asStream();
+			InputStream in = resources.resource(source).asHandle().asStream();
 			return new RangeInputStream(in, start, end == Long.MAX_VALUE ? end : end + 1);
 		} catch (IOException e) {
 			throw new UncheckedIOException("Could not apply stream range " + start + "-" + end + " to packaged resource " + source.getPath(), e);
 		}
 	}
 
-	private RxPackagedResourceResolver resolver(PackagedResourceSource source) {
-		return source.getNamespace() == PackagedResourceNamespace.publicResources ? publicResources : resources;
-	}
-
-	private static String describe(PackagedResourceSource source) {
+	private static String describe(PackagedSource source) {
 		String artifact = source.getArtifact();
-		return artifact == null || artifact.isBlank()
-				? source.getNamespace() + ":" + source.getPath()
-				: artifact + ":" + source.getPath();
+		return artifact == null || artifact.isBlank() ? source.getPath() : artifact + ":" + source.getPath();
 	}
 
 	@Override

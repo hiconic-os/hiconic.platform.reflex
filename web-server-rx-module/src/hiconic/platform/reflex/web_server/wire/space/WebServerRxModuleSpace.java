@@ -45,7 +45,8 @@ import hiconic.platform.reflex.web_server.processing.ApplicationStateGateHandler
 import hiconic.platform.reflex.web_server.processing.DelegatingAuthenticationContextFilter;
 import hiconic.platform.reflex.web_server.processing.DefaultRxServlet;
 import hiconic.platform.reflex.web_server.processing.InstanceEndpointConfigurator;
-import hiconic.platform.reflex.web_server.processing.PackagedPublicResourceServlet;
+import hiconic.platform.reflex.web_server.processing.PackagedWebResourceServlet;
+import hiconic.rx.module.api.resource.RxPackagedResourceResolver;
 import hiconic.platform.reflex.web_server.processing.ReflexAccessLogReceiver;
 import hiconic.platform.reflex.web_server.processing.RoleAuthorizationFilter;
 import hiconic.platform.reflex.web_server.processing.RuntimeConfigurationHandler;
@@ -117,7 +118,7 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	public void onLoaded(WireContextConfiguration configuration) {
 		platform.application().logManager().setLogLevel("io.undertow.request.error-response", System.Logger.Level.INFO);
 		registerPushTransports();
-		registerPackagedPublicResources();
+		registerPackagedWebResources();
 		registerLogLevelServlet();
 		undertowServer().start();
 
@@ -162,14 +163,25 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 		return bean;
 	}
 
-	private void registerPackagedPublicResources() {
-		addServlet("/", "packaged-public-resources", "/res/*", packagedPublicResourceServlet());
+	/**
+	 * The folder of the packaged resources that this module serves. Everything below it is delivered unauthenticated, by path, so nothing may be put
+	 * there that is not meant for anonymous download.
+	 */
+	private static final String WEB_FOLDER = "www";
+
+	@Managed
+	private RxPackagedResourceResolver webResources() {
+		return platform.packagedResources().below(WEB_FOLDER);
+	}
+
+	private void registerPackagedWebResources() {
+		addServlet("/", "packaged-web-resources", "/res/*", packagedWebResourceServlet());
 	}
 
 	@Managed
-	private PackagedPublicResourceServlet packagedPublicResourceServlet() {
-		PackagedPublicResourceServlet bean = new PackagedPublicResourceServlet();
-		bean.setResources(platform.packagedPublicResources());
+	private PackagedWebResourceServlet packagedWebResourceServlet() {
+		PackagedWebResourceServlet bean = new PackagedWebResourceServlet();
+		bean.setResources(webResources());
 		return bean;
 	}
 
@@ -297,9 +309,9 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	}
 
 	@Override
-	public void addPackagedPublicResources(String name, String path, String resourcePathPrefix) {
-		PackagedPublicResourceServlet servlet = new PackagedPublicResourceServlet();
-		servlet.setResources(platform.packagedPublicResources());
+	public void addPackagedWebResources(String name, String path, String resourcePathPrefix) {
+		PackagedWebResourceServlet servlet = new PackagedWebResourceServlet();
+		servlet.setResources(webResources());
 		servlet.setResourcePathPrefix(resourcePathPrefix);
 		String mapping = URLUtils.normalizeSlashes("/" + path + "/*");
 		addServlet(name, mapping, servlet);

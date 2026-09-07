@@ -33,11 +33,10 @@ import com.braintribe.model.processing.vde.expression.api.ValueDescriptorExpress
 import com.braintribe.model.processing.vde.expression.api.ValueDescriptorExpressionProjectionOption;
 import com.braintribe.model.processing.vde.reasoned.api.ValueDescriptorSourceContext;
 
-import hiconic.rx.platform.processing.resource.PackagedResourceValueDescriptorExperts;
+import hiconic.rx.platform.processing.resource.RxPackagedResourceValueDescriptorExperts;
 import hiconic.rx.platform.processing.resource.RxIndexedPackagedResourceResolver;
 import hiconic.rx.platform.resource.model.ResourceExpressionConfiguration;
-import hiconic.rx.resource.model.packaged.PackagedResourceNamespace;
-import hiconic.rx.resource.model.packaged.PackagedResourceSource;
+import com.braintribe.model.resource.source.PackagedSource;
 
 public class RxConfigurationSpaceTest {
 
@@ -47,7 +46,7 @@ public class RxConfigurationSpaceTest {
 		var resource = RxConfigurationSpace.resolveIndexedClasspathResource(index, "/HICONIC-RESOURCES/test/hello.txt");
 
 		try (var in = resource.asStream()) {
-			assertThat(new String(in.readAllBytes(), StandardCharsets.UTF_8)).isEqualTo("private hello\n");
+			assertThat(new String(in.readAllBytes(), StandardCharsets.UTF_8)).isEqualTo("private hello");
 		}
 	}
 
@@ -66,20 +65,20 @@ public class RxConfigurationSpaceTest {
 	@Test
 	public void evaluatesRelativePackagedResourcesThroughModeledConfiguration() {
 		var index = new ClasspathIndex(getClass().getClassLoader());
-		var resolver = new RxIndexedPackagedResourceResolver(index, "HICONIC-RESOURCES", PackagedResourceNamespace.resources);
+		var resolver = new RxIndexedPackagedResourceResolver(index, "HICONIC-RESOURCES");
 		var configuration = new ModeledYamlConfiguration();
 		configuration.setClasspathIndex(index);
 		configuration.setClasspathConfPath("HICONIC-CONF");
-		configuration.setValueDescriptorExpressionCodec(PackagedResourceValueDescriptorExperts.expressionCodec());
+		configuration.setValueDescriptorExpressionCodec(RxPackagedResourceValueDescriptorExperts.expressionCodec());
 		configuration.setValueDescriptorExpertConfigurer(
-				registry -> PackagedResourceValueDescriptorExperts.register(registry, resolver));
+				registry -> RxPackagedResourceValueDescriptorExperts.register(registry, resolver));
 
 		ResourceExpressionConfiguration loaded = configuration.config(ResourceExpressionConfiguration.T);
 
-		assertThat(loaded.getText()).isEqualTo("public hello\n");
-		PackagedResourceSource source = (PackagedResourceSource) loaded.getResource().getResourceSource();
+		assertThat(loaded.getText()).isEqualTo("public hello");
+		PackagedSource source = (PackagedSource) loaded.getResource().getResourceSource();
 		assertThat(source.getArtifact()).isEqualTo("reflex-platform-test");
-		assertThat(source.getPath()).isEqualTo("HICONIC-PUBLIC-RESOURCES/assets/hello.txt");
+		assertThat(source.getPath()).isEqualTo("HICONIC-RESOURCES/www/assets/hello.txt");
 		loaded.getResource().setCreator("configuration-curator");
 		loaded.getResource().setTags(Set.of("branding", "stable"));
 
@@ -88,42 +87,42 @@ public class RxConfigurationSpaceTest {
 		var options = GmSerializationOptions.deriveDefaults()
 				.inferredRootType(ResourceExpressionConfiguration.T)
 				.set(PlaceholderSupport.class, true)
-				.set(ValueDescriptorExpressionCodecOption.class, PackagedResourceValueDescriptorExperts.expressionCodec())
-				.set(ValueDescriptorExpressionProjectionOption.class, PackagedResourceValueDescriptorExperts.projection(outputContext))
+				.set(ValueDescriptorExpressionCodecOption.class, RxPackagedResourceValueDescriptorExperts.expressionCodec())
+				.set(ValueDescriptorExpressionProjectionOption.class, RxPackagedResourceValueDescriptorExperts.projection(outputContext))
 				.build();
 		StringWriter writer = new StringWriter();
 		new YamlMarshaller().marshall(writer, loaded, options);
 		assertThat(writer.toString())
-				.contains("resourceSource: \"${artifactResourceSource('../HICONIC-PUBLIC-RESOURCES/assets/hello.txt')}\"")
+				.contains("resourceSource: \"${packagedSource('../HICONIC-RESOURCES/www/assets/hello.txt')}\"")
 				.contains("creator: \"configuration-curator\"")
 				.contains("branding")
-				.doesNotContain("resource: \"${artifactResource(");
+				.doesNotContain("resource: \"${packagedResource(");
 
 		ResourceExpressionConfiguration roundtripped = new ModeledYamlConfigurationLoader()
-				.valueDescriptorExpressions(PackagedResourceValueDescriptorExperts.expressionCodec())
-				.valueDescriptorExperts(registry -> PackagedResourceValueDescriptorExperts.register(registry, resolver))
+				.valueDescriptorExpressions(RxPackagedResourceValueDescriptorExperts.expressionCodec())
+				.valueDescriptorExperts(registry -> RxPackagedResourceValueDescriptorExperts.register(registry, resolver))
 				.valueDescriptorAspect(ValueDescriptorSourceContext.class, outputContext)
 				.loadConfig(ResourceExpressionConfiguration.T,
 						() -> new ByteArrayInputStream(writer.toString().getBytes(StandardCharsets.UTF_8)))
 				.get();
 		assertThat(roundtripped.getResource().getCreator()).isEqualTo("configuration-curator");
 		assertThat(roundtripped.getResource().getTags()).containsExactlyInAnyOrder("branding", "stable");
-		PackagedResourceSource roundtrippedSource = (PackagedResourceSource) roundtripped.getResource().getResourceSource();
+		PackagedSource roundtrippedSource = (PackagedSource) roundtripped.getResource().getResourceSource();
 		assertThat(roundtrippedSource.getArtifact()).isEqualTo("reflex-platform-test");
-		assertThat(roundtrippedSource.getPath()).isEqualTo("HICONIC-PUBLIC-RESOURCES/assets/hello.txt");
+		assertThat(roundtrippedSource.getPath()).isEqualTo("HICONIC-RESOURCES/www/assets/hello.txt");
 
 		var compactOptions = GmSerializationOptions.deriveDefaults()
 				.inferredRootType(ResourceExpressionConfiguration.T)
 				.set(PlaceholderSupport.class, true)
-				.set(ValueDescriptorExpressionCodecOption.class, PackagedResourceValueDescriptorExperts.expressionCodec())
+				.set(ValueDescriptorExpressionCodecOption.class, RxPackagedResourceValueDescriptorExperts.expressionCodec())
 				.set(ValueDescriptorExpressionProjectionOption.class,
-						PackagedResourceValueDescriptorExperts.projection(outputContext,
+						RxPackagedResourceValueDescriptorExperts.projection(outputContext,
 								resource -> "configuration-curator".equals(resource.getCreator())))
 				.build();
 		StringWriter compactWriter = new StringWriter();
 		new YamlMarshaller().marshall(compactWriter, loaded, compactOptions);
 		assertThat(compactWriter.toString())
-				.contains("resource: \"${artifactResource('../HICONIC-PUBLIC-RESOURCES/assets/hello.txt')}\"")
+				.contains("resource: \"${packagedResource('../HICONIC-RESOURCES/www/assets/hello.txt')}\"")
 				.doesNotContain("configuration-curator");
 	}
 }

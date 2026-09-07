@@ -39,7 +39,7 @@ import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.essential.NotFound;
 import com.braintribe.mimetype.PlatformMimeTypeDetector;
-import com.braintribe.model.processing.resource.artifact.api.ArtifactResourceResolver;
+import com.braintribe.model.processing.resource.packaged.api.PackagedResourceResolver;
 import com.braintribe.model.resource.Resource;
 import com.braintribe.model.resource.api.ResourceHandle;
 import com.braintribe.model.resource.specification.RasterImageSpecification;
@@ -50,44 +50,56 @@ import hiconic.rx.module.api.resource.RxPackagedResourceBuilder;
 import hiconic.rx.module.api.resource.RxPackagedResourceEntry;
 import hiconic.rx.module.api.resource.RxPackagedResourceInventory;
 import hiconic.rx.module.api.resource.RxPackagedResourceResolver;
+import com.braintribe.model.resource.source.PackagedSource;
+
 import hiconic.rx.platform.processing.resource.RxResourcesBuilding.RxUrlResourcesBuilder;
-import hiconic.rx.resource.model.packaged.PackagedResourceNamespace;
-import hiconic.rx.resource.model.packaged.PackagedResourceSource;
 
 /** Index-backed resolver. Computed metadata is cached; mutable resource entities and payload streams are not. */
-public class RxIndexedPackagedResourceResolver implements RxPackagedResourceResolver, ArtifactResourceResolver {
+public class RxIndexedPackagedResourceResolver implements RxPackagedResourceResolver, PackagedResourceResolver {
 
+	private final ClasspathIndex classpathIndex;
 	private final String classpathRoot;
-	private final PackagedResourceNamespace namespace;
-	private final Map<String, CachedResource> resources;
-	private final Map<ArtifactResourceKey, CachedResource> artifactResources;
+	private final Map<String, IndexedResource> resources;
+	private final Map<ArtifactPathKey, CachedResource> resourcesByArtifactPath;
 	private final RxPackagedResourceInventory inventory;
 
-	public RxIndexedPackagedResourceResolver(ClasspathIndex classpathIndex, String classpathRoot, PackagedResourceNamespace namespace) {
+	public RxIndexedPackagedResourceResolver(ClasspathIndex classpathIndex, String classpathRoot) {
+		this.classpathIndex = classpathIndex;
 		this.classpathRoot = requireRoot(classpathRoot);
-		this.namespace = namespace;
 		this.resources = indexResources(classpathIndex);
-		this.artifactResources = indexArtifactResources(classpathIndex);
+		this.resourcesByArtifactPath = indexByArtifactPath(classpathIndex);
 		this.inventory = new Inventory(resources.keySet());
+	}
+
+	/**
+	 * A resolver for a folder below this one, for a module that owns such a folder and wants to address its files by a short path.
+	 * <p>
+	 * The platform knows nothing about what a folder means. A module that puts files there gives them their meaning, for example by serving them.
+	 */
+	@Override
+	public RxPackagedResourceResolver below(String folder) {
+		return new RxIndexedPackagedResourceResolver(classpathIndex, classpathRoot + normalizeDirectoryPath(folder) + "/");
 	}
 
 	@Override
 	public RxPackagedResourceBuilder resource(String relativePath) {
 		String path = normalizeResourcePath(relativePath);
-		CachedResource resource = resources.get(path);
+		IndexedResource resource = resources.get(path);
 		if (resource == null)
-			throw new IllegalArgumentException("No indexed packaged resource found at: " + path);
-		return new Builder(path, null, resource, namespace);
+			throw new IllegalArgumentException("No indexed packaged resource found at: " + classpathRoot + path);
+
+		// The artifact and the full artifact relative path, so that the produced source says where the file is without any further context.
+		return new Builder(resource.artifactRelativePath, resource.artifact, resource.cachedResource);
 	}
 
 	@Override
 	public RxPackagedResourceBuilder resource(String artifact, String artifactRelativePath) {
 		String normalizedArtifact = normalizeArtifact(artifact);
 		String normalizedPath = normalizeResourcePath(artifactRelativePath);
-		CachedResource resource = artifactResources.get(new ArtifactResourceKey(normalizedArtifact, normalizedPath));
+		CachedResource resource = resourcesByArtifactPath.get(new ArtifactPathKey(normalizedArtifact, normalizedPath));
 		if (resource == null)
 			throw new IllegalArgumentException("No indexed packaged resource found at " + normalizedArtifact + ":" + normalizedPath);
-		return new Builder(normalizedPath, normalizedArtifact, resource, namespace);
+		return new Builder(normalizedPath, normalizedArtifact, resource);
 	}
 
 	@Override
@@ -105,7 +117,7 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 	}
 
 	@Override
-	public Maybe<com.braintribe.model.resource.source.ArtifactResourceSource> resolveSource(String artifact, String path) {
+	public Maybe<com.braintribe.model.resource.source.PackagedSource> resolveSource(String artifact, String path) {
 		try {
 			return Maybe.complete(resource(artifact, path).asSource());
 		} catch (IllegalArgumentException e) {
@@ -113,25 +125,37 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 		}
 	}
 
-	private Map<String, CachedResource> indexResources(ClasspathIndex classpathIndex) {
-		Map<String, CachedResource> result = new LinkedHashMap<>();
+	@Override
+	public Maybe<java.io.InputStream> openStream(String artifact, String path) {
+		try {
+			return Maybe.complete(resource(artifact, path).asHandle().asStream());
+		} catch (IllegalArgumentException e) {
+			return NotFound.create(e.getMessage()).asMaybe();
+		}
+	}
+
+	private Map<String, IndexedResource> indexResources(ClasspathIndex classpathIndex) {
+		Map<String, IndexedResource> result = new LinkedHashMap<>();
 		for (ClasspathEntry entry : classpathIndex.forPrefix(classpathRoot)) {
+			String artifactRelativePath = normalizeResourcePath(entry.path);
 			String path = normalizeResourcePath(entry.path.substring(classpathRoot.length()));
-			CachedResource previous = result.putIfAbsent(path, new CachedResource(path, entry.url));
-			if (previous != null && !previous.url.equals(entry.url))
+
+			IndexedResource indexed = new IndexedResource(entry.origin, artifactRelativePath, new CachedResource(artifactRelativePath, entry.url));
+			IndexedResource previous = result.putIfAbsent(path, indexed);
+			if (previous != null && !previous.cachedResource.url.equals(entry.url))
 				throw new IllegalStateException("Duplicate packaged resource path '" + path + "' below " + classpathRoot + ": "
-						+ previous.url + " and " + entry.url);
+						+ previous.cachedResource.url + " and " + entry.url);
 		}
 		return Map.copyOf(result);
 	}
 
-	private Map<ArtifactResourceKey, CachedResource> indexArtifactResources(ClasspathIndex classpathIndex) {
-		Map<ArtifactResourceKey, CachedResource> result = new LinkedHashMap<>();
+	private Map<ArtifactPathKey, CachedResource> indexByArtifactPath(ClasspathIndex classpathIndex) {
+		Map<ArtifactPathKey, CachedResource> result = new LinkedHashMap<>();
 		for (ClasspathEntry entry : classpathIndex.forPrefix("")) {
 			if (entry.origin == null || entry.origin.isBlank())
 				continue;
 			String path = normalizeResourcePath(entry.path);
-			ArtifactResourceKey key = new ArtifactResourceKey(normalizeArtifact(entry.origin), path);
+			ArtifactPathKey key = new ArtifactPathKey(normalizeArtifact(entry.origin), path);
 			CachedResource previous = result.putIfAbsent(key, new CachedResource(path, entry.url));
 			if (previous != null && !previous.url.equals(entry.url))
 				throw new IllegalStateException("Duplicate indexed packaged resource '" + key + "': " + previous.url + " and " + entry.url);
@@ -184,18 +208,29 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 		mimeType, fileSize, md5, specification
 	}
 
+	/** An entry of the root relative index: the file, plus where it really is. */
+	private static final class IndexedResource {
+		private final String artifact;
+		private final String artifactRelativePath;
+		private final CachedResource cachedResource;
+
+		private IndexedResource(String artifact, String artifactRelativePath, CachedResource cachedResource) {
+			this.artifact = artifact;
+			this.artifactRelativePath = artifactRelativePath;
+			this.cachedResource = cachedResource;
+		}
+	}
+
 	private static class Builder implements RxPackagedResourceBuilder {
 		private final String path;
 		private final String artifact;
 		private final CachedResource cachedResource;
-		private final PackagedResourceNamespace namespace;
 		private final EnumSet<Enrichment> enrichments = EnumSet.noneOf(Enrichment.class);
 
-		Builder(String path, String artifact, CachedResource cachedResource, PackagedResourceNamespace namespace) {
+		Builder(String path, String artifact, CachedResource cachedResource) {
 			this.path = path;
 			this.artifact = artifact;
 			this.cachedResource = cachedResource;
-			this.namespace = namespace;
 		}
 
 		@Override public String path() { return path; }
@@ -216,20 +251,19 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 		}
 
 		@Override
-		public PackagedResourceSource asSource() {
-			PackagedResourceSource result = PackagedResourceSource.T.create();
+		public PackagedSource asSource() {
+			PackagedSource result = PackagedSource.T.create();
 			result.setPath(path);
 			result.setArtifact(artifact);
-			result.setNamespace(namespace);
 			return result;
 		}
 	}
 
-	private static final class ArtifactResourceKey {
+	private static final class ArtifactPathKey {
 		private final String artifact;
 		private final String path;
 
-		private ArtifactResourceKey(String artifact, String path) {
+		private ArtifactPathKey(String artifact, String path) {
 			this.artifact = artifact;
 			this.path = path;
 		}
@@ -238,9 +272,9 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 		public boolean equals(Object obj) {
 			if (this == obj)
 				return true;
-			if (!(obj instanceof ArtifactResourceKey))
+			if (!(obj instanceof ArtifactPathKey))
 				return false;
-			ArtifactResourceKey other = (ArtifactResourceKey) obj;
+			ArtifactPathKey other = (ArtifactPathKey) obj;
 			return artifact.equals(other.artifact) && path.equals(other.path);
 		}
 
@@ -278,7 +312,7 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 			return result;
 		}
 
-		synchronized Resource asPersistableResource(Set<Enrichment> requested, PackagedResourceSource source) {
+		synchronized Resource asPersistableResource(Set<Enrichment> requested, PackagedSource source) {
 			ensureMetadata(requested);
 			Resource result = Resource.T.create();
 			result.setResourceSource(source);

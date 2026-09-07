@@ -24,7 +24,6 @@ import com.braintribe.ve.api.VirtualEnvironment;
 
 import hiconic.rx.platform.model.configuration.ReflexAppConfiguration;
 import hiconic.rx.platform.processing.resource.RxIndexedPackagedResourceResolver;
-import hiconic.rx.resource.model.packaged.PackagedResourceNamespace;
 
 /**
  * Tests for {@link RxPropertyResolver}.
@@ -214,8 +213,7 @@ public class RxPropertyResolverTest {
 		modeledConfiguration.setConfigFolder(configFolder);
 		modeledConfiguration.setExternalReasonedPropertyLookup(resolver::resolvePlaceholderReasoned);
 		modeledConfiguration.setValueDescriptorExpressionCodec(RxConfigurationValueDescriptorExperts.expressionCodec());
-		var resources = new RxIndexedPackagedResourceResolver(new ClasspathIndex(getClass().getClassLoader()), "HICONIC-RESOURCES",
-				PackagedResourceNamespace.resources);
+		var resources = new RxIndexedPackagedResourceResolver(new ClasspathIndex(getClass().getClassLoader()), "HICONIC-RESOURCES");
 		modeledConfiguration.setValueDescriptorExpertConfigurer(
 				registry -> RxConfigurationValueDescriptorExperts.register(registry, resources, resolver));
 

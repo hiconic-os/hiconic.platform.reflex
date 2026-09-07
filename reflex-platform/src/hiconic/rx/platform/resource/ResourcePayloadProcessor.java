@@ -34,7 +34,7 @@ import hiconic.rx.resource.model.api.ResourcePayloadRequest;
 import hiconic.rx.resource.model.api.ResourcePayloadResponse;
 import hiconic.rx.resource.model.api.StoreResourcePayload;
 import hiconic.rx.resource.model.api.StoreResourcePayloadResponse;
-import hiconic.rx.resource.model.packaged.PackagedResourceSource;
+import com.braintribe.model.resource.source.PackagedSource;
 
 /**
  * Processor for {@link ResourcePayloadRequest}s
@@ -61,8 +61,8 @@ public class ResourcePayloadProcessor extends AbstractDispatchingServiceProcesso
 	}
 
 	@Required
-	public void setPackagedResourceResolvers(RxPackagedResourceResolver resources, RxPackagedResourceResolver publicResources) {
-		this.packagedResourceStorage = new PackagedResourceStorage(resources, publicResources);
+	public void setPackagedResourceResolver(RxPackagedResourceResolver resources) {
+		this.packagedResourceStorage = new PackagedResourceStorage(resources);
 	}
 
 	@Override
@@ -104,7 +104,7 @@ public class ResourcePayloadProcessor extends AbstractDispatchingServiceProcesso
 
 	private Maybe<ResourceStorage> resolveStorageForExisting(ServiceRequestContext context, ExistingResourcePayloadRequest request) {
 		ResourceSource source = request.getResourceSource();
-		if (source instanceof PackagedResourceSource)
+		if (source instanceof PackagedSource)
 			return Maybe.complete(packagedResourceStorage);
 
 		EntityType<? extends ResourceSource> sourceType = source.entityType();

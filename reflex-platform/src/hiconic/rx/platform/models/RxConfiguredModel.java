@@ -66,7 +66,7 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 	private volatile List<String> interceptorOrdering = List.of();
 
 	private boolean configuringModels = true;
-	
+
 	public RxConfiguredModel(RxConfiguredModels configuredModels, String modelName) {
 		super(configuredModels);
 		this.name = modelName;
@@ -206,10 +206,16 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 	public void addModelByName(String modelName) {
 		Model model = GMF.getTypeReflection().findModel(modelName);
 
-		if (model == null)
-			addRxModel(configuredModels.byName(modelName));
-		else
+		if (model != null) {
 			addModel(model);
+			return;
+		}
+
+		AbstractRxConfiguredModel configuredModel = configuredModels.byName(modelName);
+		if (configuredModel == null)
+			throw new IllegalArgumentException("No model found with name: " + modelName);
+
+		addRxModel(configuredModel);
 	}
 
 	@Override
@@ -229,8 +235,8 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 	@Override
 	public void addModel(GmMetaModel gmModel) {
 		if (!configuringModels)
-			throwCannotConfigureModelException("Cannot add model ["+ gmModel.getName() + "]");
-		
+			throwCannotConfigureModelException("Cannot add model [" + gmModel.getName() + "]");
+
 		synchronized (models) {
 			if (models.add(gmModel))
 				configurationModelBuilder.addDependency(gmModel);
@@ -246,18 +252,18 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 	}
 
 	private void throwCannotConfigureModelException(String problem) {
-		throw new IllegalStateException(problem + 
-				" after model configuration has been finalized. Model can only be configured before onDeploy() phase.");
+		throw new IllegalStateException(
+				problem + " after model configuration has been finalized. Model can only be configured before onDeploy() phase.");
 	}
-	
+
 	@Override
 	public <R extends ServiceRequest> void bindRequest(EntityType<R> requestType, Supplier<ServiceProcessor<? super R, ?>> serviceProcessorSupplier) {
 		bindRequest(requestType, serviceProcessorSupplier, 0d);
 	}
 
 	@Override
-	public <R extends ServiceRequest> void bindRequest(EntityType<R> requestType,
-			Supplier<ServiceProcessor<? super R, ?>> serviceProcessorSupplier, double conflictPriority) {
+	public <R extends ServiceRequest> void bindRequest(EntityType<R> requestType, Supplier<ServiceProcessor<? super R, ?>> serviceProcessorSupplier,
+			double conflictPriority) {
 		addModelIfNotNull(requestType.getModel());
 		configureModel(editor -> {
 			ProcessWith processWith = ProcessWith.create(serviceProcessorSupplier.get());
@@ -271,7 +277,7 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 		bindRequest(requestType, () -> lazyRegisteredProcessor(serviceProcessorKey));
 	}
 
-	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@SuppressWarnings("rawtypes")
 	private <R extends ServiceRequest> ServiceProcessor<? super R, ?> lazyRegisteredProcessor(String serviceProcessorKey) {
 		return (context, request) -> {
 			ServiceProcessorRegistration registration = configuredModels.serviceProcessorRegistry().require(serviceProcessorKey);
@@ -313,6 +319,7 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 			}
 
 			@Override
+			@Deprecated
 			public InterceptorBuilder before(String identification) {
 				this.insertIdentification = identification;
 				this.before = true;
@@ -320,6 +327,7 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 			}
 
 			@Override
+			@Deprecated
 			public InterceptorBuilder after(String identification) {
 				this.insertIdentification = identification;
 				this.before = false;

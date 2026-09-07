@@ -63,7 +63,7 @@ public interface WebServerContract extends RxExportContract {
 	boolean isWebAppRegistered(String webAppPath);
 
 	/** Maps a subtree of indexed packaged public resources below the default endpoint base path. */
-	void addPackagedPublicResources(String name, String path, String resourcePathPrefix);
+	void addPackagedWebResources(String name, String path, String resourcePathPrefix);
 
 	/**
 	 * URL with which the server can be reached from the outside. It is called public as it can be the URL of the proxy that propagates the request to

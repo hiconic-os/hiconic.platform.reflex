@@ -72,7 +72,7 @@ public class WebappsSpace implements WireSpace {
 
 	public void registerWebapps() {
 		webServer.addWebAppRuntimeConfiguration(EXPLORER_WEB_APP_PATH, this::clientRuntimeProperties);
-		webServer.addPackagedPublicResources("explorer-webpages", "webpages", "explorer/webpages");
+		webServer.addPackagedWebResources("explorer-webpages", "webpages", "explorer/webpages");
 
 		webServer.addServlet("alive-servlet", "/", aliveServlet());
 

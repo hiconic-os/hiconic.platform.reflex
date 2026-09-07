@@ -38,7 +38,7 @@ public class ExplorerPublicResourceServlet extends HttpServlet {
 
 	private static final long serialVersionUID = 1L;
 	private static final Logger log = Logger.getLogger(ExplorerPublicResourceServlet.class);
-	private static final String DEFAULT_LOGO = "/HICONIC-PUBLIC-RESOURCES/explorer/webpages/hiconic-logo.svg";
+	private static final String DEFAULT_LOGO = "/HICONIC-RESOURCES/www/explorer/webpages/hiconic-logo.svg";
 
 	private PersistenceGmSessionFactory sessionFactory;
 	private final Map<String, String> workbenchAccessIds = new HashMap<>();

@@ -13,18 +13,23 @@
 // ============================================================================
 package hiconic.rx.module.api.resource;
 
-import hiconic.rx.resource.model.packaged.PackagedResourceSource;
+import com.braintribe.model.resource.source.PackagedSource;
 
 public interface RxPackagedResourceResolver {
 
 	RxPackagedResourceBuilder resource(String relativePath);
 
 	/** Resolves an indexed path within a specific artifact. */
-	default RxPackagedResourceBuilder resource(String artifact, String artifactRelativePath) {
-		throw new IllegalArgumentException("Artifact-scoped packaged resources are not supported by this resolver: " + artifact);
-	}
+	RxPackagedResourceBuilder resource(String artifact, String artifactRelativePath);
 
-	default RxPackagedResourceBuilder resource(PackagedResourceSource source) {
+	/**
+	 * A resolver for a folder below this one, so that a module which owns such a folder can address its files by a short path.
+	 * <p>
+	 * The platform attaches no meaning to a folder. A module that puts files there gives them their meaning, for example by serving them.
+	 */
+	RxPackagedResourceResolver below(String folder);
+
+	default RxPackagedResourceBuilder resource(PackagedSource source) {
 		return source.getArtifact() == null || source.getArtifact().isBlank()
 				? resource(source.getPath())
 				: resource(source.getArtifact(), source.getPath());
