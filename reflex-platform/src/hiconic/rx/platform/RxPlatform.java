@@ -206,12 +206,12 @@ public class RxPlatform implements AutoCloseable {
 				}
 			}
 			catch (UnsatisfiedMaybeTunneling e) {
-				String msg = "Error while starting application:\n" + e.getMaybe().whyUnsatisfied().stringify();
+				String msg = "Error while starting application:\n" + e.getMaybe().whyUnsatisfied().stringify(true);
 				logger.log(Level.ERROR, msg, e);
 				System.err.println(msg);
 			}
 			catch (ReasonException e) {
-				String msg = "Error while starting application:\n" + e.getReason().stringify();
+				String msg = "Error while starting application:\n" + e.getReason().stringify(true);
 				logger.log(Level.ERROR, msg, e);
 				System.err.println(msg);
 			}

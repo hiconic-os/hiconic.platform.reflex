@@ -22,6 +22,7 @@ import com.braintribe.wire.api.annotation.Managed;
 import com.braintribe.wire.api.space.WireSpace;
 
 import hiconic.rx.access.module.api.AccessContract;
+import hiconic.rx.explorer.model.configuration.ExplorerConfiguration;
 import hiconic.rx.explorer.processing.servlet.about.AboutRxServlet;
 import hiconic.rx.explorer.processing.servlet.about.expert.DiagnosticMultinode;
 import hiconic.rx.explorer.processing.servlet.about.expert.Heapdump;
@@ -119,7 +120,7 @@ public class WebappsSpace implements WireSpace {
 	private ExplorerPublicResourceServlet explorerPublicResourceServlet() {
 		ExplorerPublicResourceServlet bean = new ExplorerPublicResourceServlet();
 		bean.setSessionFactory(access.systemSessionFactory());
-		bean.setConfiguration(platform.configuration().readConfig(hiconic.rx.explorer.model.configuration.ExplorerConfiguration.T).get());
+		bean.setConfiguration(platform.configuration().readConfig(ExplorerConfiguration.T).get());
 		return bean;
 	}
 
