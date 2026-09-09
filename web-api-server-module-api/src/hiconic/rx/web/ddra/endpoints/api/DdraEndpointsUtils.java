@@ -69,7 +69,7 @@ public class DdraEndpointsUtils {
 		} catch (RuntimeException e) {
 			// TODO handle other exceptions, check the root cause instead??
 			if (e instanceof AuthorizationException || e instanceof SecurityServiceException) {
-				HttpExceptions.throwUnauthorized(e.getMessage());
+				HttpExceptions.unauthotized(e.getMessage());
 			}
 
 			throw e;
@@ -166,12 +166,12 @@ public class DdraEndpointsUtils {
 				depth.setKind(DdraEndpointDepthKind.custom);
 				depth.setCustomDepth(Integer.valueOf(endpoint.getDepth()));
 			} catch (NumberFormatException e) {
-				HttpExceptions.throwBadRequest("Invalid depth parameter, expected \"shallow\", \"reachable\" or a number > 0 but got %s",
+				HttpExceptions.badRequest("Invalid depth parameter, expected \"shallow\", \"reachable\" or a number > 0 but got %s",
 						endpoint.getDepth());
 			}
 
 			if (depth.getCustomDepth() < 0) {
-				HttpExceptions.throwBadRequest("Invalid depth parameter, expected \"shallow\", \"reachable\" or a number > 0 but got %s",
+				HttpExceptions.badRequest("Invalid depth parameter, expected \"shallow\", \"reachable\" or a number > 0 but got %s",
 						endpoint.getDepth());
 			}
 		}
@@ -206,7 +206,7 @@ public class DdraEndpointsUtils {
 		}
 
 		if (marshaller == null)
-			HttpExceptions.throwNotAcceptable("Unsupported Content-Type: %s.", contentTypeParameter);
+			HttpExceptions.notAcceptable("Unsupported Content-Type: %s.", contentTypeParameter);
 		
 		return marshaller;
 	}

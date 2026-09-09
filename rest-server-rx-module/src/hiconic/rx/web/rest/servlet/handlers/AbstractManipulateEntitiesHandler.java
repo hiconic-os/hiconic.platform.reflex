@@ -92,9 +92,9 @@ public abstract class AbstractManipulateEntitiesHandler extends AbstractRestV2Ha
 			Throwable rootCause = ThrowableTools.getRootCause(e);
 			if (rootCause instanceof NotFoundException) {
 				if (parameters.getEntityId() != null)
-					HttpExceptions.throwNotFound(rootCause.getMessage());
+					HttpExceptions.notFound(rootCause.getMessage());
 				else
-					HttpExceptions.throwBadRequest(rootCause.getMessage());
+					HttpExceptions.badRequest(rootCause.getMessage());
 			}
 			throw e;
 		}
@@ -117,7 +117,7 @@ public abstract class AbstractManipulateEntitiesHandler extends AbstractRestV2Ha
 		Object result = unmarshallBody(context, endpoint, options);
 		boolean isCollection = result instanceof Collection;
 		if (isCollection && !allowMultipleEntities)
-			HttpExceptions.throwBadRequest("The body must only contain one entity.");
+			HttpExceptions.badRequest("The body must only contain one entity.");
 
 		manipulationTransformer.setTransformingMultipleEntities(isCollection);
 		if (result != null && !isCollection)
@@ -130,7 +130,7 @@ public abstract class AbstractManipulateEntitiesHandler extends AbstractRestV2Ha
 			DdraManipulateEntitiesEndpoint endpoint) {
 		List<GenericEntity> entities = manipulationTransformer.getEntities();
 		if (entities.isEmpty())
-			HttpExceptions.throwBadRequest("No generic entity found in the post body.");
+			HttpExceptions.badRequest("No generic entity found in the post body.");
 		else if (entities.size() > 1) {
 			if (parameters.getEntityId() != null)
 				entities.stream().filter(e -> e.getId() == null && e.type().getTypeSignature().equals(parameters.getTypeSignature())).findFirst()
@@ -143,7 +143,7 @@ public abstract class AbstractManipulateEntitiesHandler extends AbstractRestV2Ha
 			manipulationTransformer.setTransformingMultipleNestedEntities(true);
 
 			if (endpoint.getId() != null)
-				HttpExceptions.throwBadRequest("The body must only contain one entity because an id was specified in the URL path.");
+				HttpExceptions.badRequest("The body must only contain one entity because an id was specified in the URL path.");
 		} else {
 			GenericEntity decodedEntity = entities.iterator().next();
 			if (parameters.getEntityId() != null)
@@ -197,7 +197,7 @@ public abstract class AbstractManipulateEntitiesHandler extends AbstractRestV2Ha
 			case success:
 				return true;
 			default:
-				HttpExceptions.throwInternalServerError("Unexpected projection %s", endpoint.getProjection());
+				HttpExceptions.internalServerError("Unexpected projection %s", endpoint.getProjection());
 				return null;
 		}
 	}

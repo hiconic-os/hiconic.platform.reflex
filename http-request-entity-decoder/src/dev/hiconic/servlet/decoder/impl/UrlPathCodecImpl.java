@@ -51,7 +51,7 @@ public class UrlPathCodecImpl<E extends GenericEntity> implements UrlPathCodec<E
 		segments.add(propertyName);
 		if (optional) {
 			if (optionalSegment >= 0) {
-				HttpExceptions.throwInternalServerError("Only one optional segment allowed.");
+				HttpExceptions.internalServerError("Only one optional segment allowed.");
 			}
 			optionalSegment = segments.size() - 1;
 		}

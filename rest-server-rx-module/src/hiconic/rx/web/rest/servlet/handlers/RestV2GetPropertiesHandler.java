@@ -59,7 +59,7 @@ public class RestV2GetPropertiesHandler extends AbstractQueryingHandler<DdraGetP
 			case value:
 				return value.getPropertyValue();
 			default:
-				HttpExceptions.throwInternalServerError("Unexpected endpoint projection %s", endpoint.getProjection());
+				HttpExceptions.internalServerError("Unexpected endpoint projection %s", endpoint.getProjection());
 				return null;
 		}
 	}

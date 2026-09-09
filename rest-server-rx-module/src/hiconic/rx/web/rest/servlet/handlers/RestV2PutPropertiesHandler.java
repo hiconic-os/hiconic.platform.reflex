@@ -66,7 +66,7 @@ public class RestV2PutPropertiesHandler extends AbstractManipulationPropertiesHa
 			case listType:
 			case setType:
 			case mapType:
-				HttpExceptions.throwBadRequest(context.getRequest().getMethod() + " for properties is only allowed for non-collection properties, "
+				HttpExceptions.badRequest(context.getRequest().getMethod() + " for properties is only allowed for non-collection properties, "
 						+ "but property %s if of type: %s", property.getName(), type.getTypeName());
 				return;
 			default:

@@ -13,7 +13,7 @@
 // ============================================================================
 package dev.hiconic.servlet.decoder.impl;
 
-import static dev.hiconic.servlet.decoder.api.HttpExceptions.throwBadRequest;
+import static dev.hiconic.servlet.decoder.api.HttpExceptions.badRequest;
 import static dev.hiconic.servlet.decoder.impl.HttpRequestEntityDecoderUtils.checkArgumentNotNull;
 
 import java.math.BigDecimal;
@@ -157,10 +157,10 @@ public class HttpRequestEntityDecoderImpl implements HttpRequestEntityDecoder {
 
 		if (target == null) {
 			if (isHeader && !options.isIgnoringUnmappedHeaders()) {
-				throwBadRequest("No property found for header parameter: %s", parameter);
+				badRequest("No property found for header parameter: %s", parameter);
 			}
 			if (!isHeader && !options.isIgnoringUnmappedUrlParameters()) {
-				throwBadRequest("No property found for URL parameter: %s", parameter);
+				badRequest("No property found for URL parameter: %s", parameter);
 			}
 		}
 
@@ -176,7 +176,7 @@ public class HttpRequestEntityDecoderImpl implements HttpRequestEntityDecoder {
 			if ((isHeader && options.isIgnoringUnmappedHeaders()) || (!isHeader && options.isIgnoringUnmappedUrlParameters())) {
 				return null;
 			}
-			throwBadRequest("No prefix registered with name \"%s\", invalid %s parameter: %s", prefix, isHeader ? "header" : "URL", parameter);
+			badRequest("No prefix registered with name \"%s\", invalid %s parameter: %s", prefix, isHeader ? "header" : "URL", parameter);
 		}
 
 		String propertyName = sanitizedParameter.substring(lastIndexOfDot + 1);
@@ -216,7 +216,7 @@ public class HttpRequestEntityDecoderImpl implements HttpRequestEntityDecoder {
 		Property property = target.getTargetedProperty();
 		GenericModelType type = property.getType();
 		if (!type.isCollection() && target.isTargetPropertyValueSet()) {
-			throwBadRequest("Multiple values found in %s parameter %s mapped to property %s of entity %s but the property is not a collection.",
+			badRequest("Multiple values found in %s parameter %s mapped to property %s of entity %s but the property is not a collection.",
 					target.isPropertyTargetedFromHeader() ? "header" : "URL", target.getTargetedParameter(), property.getName(),
 					entity.entityType().getTypeSignature());
 		}
@@ -247,14 +247,14 @@ public class HttpRequestEntityDecoderImpl implements HttpRequestEntityDecoder {
 				case enumType:
 					return ((EnumType<?>) type).getEnumValue(encodedValue);
 				default:
-					throwBadRequest("type is not supported as scalar (non collection): %s", type.getTypeSignature());
+					badRequest("type is not supported as scalar (non collection): %s", type.getTypeSignature());
 					return null;
 			}
 		} catch (IllegalArgumentException e) {
 			if (logger.isDebugEnabled()) {
 				logger.debug("Error while parsing value", e);
 			}
-			throwBadRequest("Cannot parse %s parameter %s. Expected type %s but got \"%s\"", target.isPropertyTargetedFromHeader() ? "header" : "URL",
+			badRequest("Cannot parse %s parameter %s. Expected type %s but got \"%s\"", target.isPropertyTargetedFromHeader() ? "header" : "URL",
 					target.getTargetedParameter(), type.getTypeName(), encodedValue);
 			return null;
 		}
@@ -273,15 +273,15 @@ public class HttpRequestEntityDecoderImpl implements HttpRequestEntityDecoder {
 				collection.add(appliedValue);
 				break;
 			case mapType:
-				throwBadRequest("Map type properties are not allowed in headers or URL parameters, Cannot parse property %s for entity type %s",
+				badRequest("Map type properties are not allowed in headers or URL parameters, Cannot parse property %s for entity type %s",
 						property.getName(), entity.entityType().getTypeSignature());
 				break;
 			case entityType:
-				throwBadRequest("Entity type properties are not allowed in headers or URL parameters, Cannot parse property %s for entity type %s",
+				badRequest("Entity type properties are not allowed in headers or URL parameters, Cannot parse property %s for entity type %s",
 						property.getName(), entity.entityType().getTypeSignature());
 				break;
 			case objectType:
-				throwBadRequest("Object type properties are not allowed in headers or URL parameters, Cannot parse property %s for entity type %s",
+				badRequest("Object type properties are not allowed in headers or URL parameters, Cannot parse property %s for entity type %s",
 						property.getName(), entity.entityType().getTypeSignature());
 				break;
 			default:
@@ -336,7 +336,7 @@ public class HttpRequestEntityDecoderImpl implements HttpRequestEntityDecoder {
 				property.set(entity, collectionType.createPlain());
 				break;
 			case mapType:
-				throwBadRequest("Map type properties are not allowed in headers or URL parameters.");
+				badRequest("Map type properties are not allowed in headers or URL parameters.");
 				break;
 			default:
 		}

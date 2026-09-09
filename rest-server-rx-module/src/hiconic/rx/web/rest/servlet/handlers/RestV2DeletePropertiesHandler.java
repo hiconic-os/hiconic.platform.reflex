@@ -52,7 +52,7 @@ public class RestV2DeletePropertiesHandler extends AbstractRestV2Handler<DdraDel
 			case success:
 				return true;
 			default:
-				HttpExceptions.throwInternalServerError("Unexpected projection %s", endpoint.getProjection());
+				HttpExceptions.internalServerError("Unexpected projection %s", endpoint.getProjection());
 				return null;
 		}
 	}

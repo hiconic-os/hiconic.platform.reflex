@@ -50,7 +50,7 @@ public class RestV2DeleteEntitiesHandler extends AbstractEntityQueryingHandler<D
 		AbstractQueryBuilder<EntityQuery> builder = decodeEntityQueryBuilder(context);
 
 		if(parameters.getEntityId() == null && !endpoint.getAllowMultipleDelete()){
-			HttpExceptions.throwPreConditionFaild("The flag 'allowMultipleDelete' must be 'true' to perform operation. This is due prevention of unintentional deletion group of entities.");
+			HttpExceptions.preConditionFaild("The flag 'allowMultipleDelete' must be 'true' to perform operation. This is due prevention of unintentional deletion group of entities.");
 			return;
 		}
 
@@ -118,7 +118,7 @@ public class RestV2DeleteEntitiesHandler extends AbstractEntityQueryingHandler<D
 			case success:
 				return true;
 			default:
-				HttpExceptions.throwInternalServerError("Unexpected projection %s", endpoint.getProjection());
+				HttpExceptions.internalServerError("Unexpected projection %s", endpoint.getProjection());
 				return null;
 			
 		}

@@ -103,13 +103,13 @@ public class ApiV1RestServletUtils {
 
 			for (String propertyName : properties) {
 				if (!(currentType instanceof EntityType))
-					HttpExceptions.throwBadRequest("Invalid projection %s - the property %s in entityType %s is not an entityType", projection,
+					HttpExceptions.badRequest("Invalid projection %s - the property %s in entityType %s is not an entityType", projection,
 							propertyName, parentType.getTypeSignature());
 
 				EntityType<?> entityType = (EntityType<?>) currentType;
 				property = entityType.findProperty(propertyName);
 				if (property == null)
-					HttpExceptions.throwBadRequest("Invalid projection %s - no property found with name %s in entityType %s", projection, propertyName,
+					HttpExceptions.badRequest("Invalid projection %s - no property found with name %s in entityType %s", projection, propertyName,
 							entityType.getTypeSignature());
 
 				parentType = entityType;
@@ -122,7 +122,7 @@ public class ApiV1RestServletUtils {
 			return result;
 		}
 
-		HttpExceptions.throwBadRequest("Got projection %s but the result was not a GenericEntity, result class: %s", projection,
+		HttpExceptions.badRequest("Got projection %s but the result was not a GenericEntity, result class: %s", projection,
 				result.getClass().getName());
 
 		return null;
@@ -142,7 +142,7 @@ public class ApiV1RestServletUtils {
 			return null;
 
 		if (matchingTypes.size() > 1) {
-			HttpExceptions.throwNotFound("Cannot find request with type signature %s, but multiple requests found with given simple name.", typeSignature,
+			HttpExceptions.notFound("Cannot find request with type signature %s, but multiple requests found with given simple name.", typeSignature,
 					matchingTypes.toString());
 		}
 

@@ -59,7 +59,7 @@ public class DdraTraversingCriteriaMap {
 			case reachable:
 				return getCriterion(DdraEndpointDepthKind.reachable);
 			default:
-				HttpExceptions.throwInternalServerError("Unexpected enpoint depth kind %s", depth.getKind());
+				HttpExceptions.internalServerError("Unexpected enpoint depth kind %s", depth.getKind());
 				return null;
 		}
 	}

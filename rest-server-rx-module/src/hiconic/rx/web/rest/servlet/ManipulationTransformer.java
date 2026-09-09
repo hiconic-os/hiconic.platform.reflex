@@ -129,7 +129,7 @@ public class ManipulationTransformer {
 					result.add(changeValue);
 					break;
 				default:
-					HttpExceptions.throwBadRequest("INSTANTIATION or CHANGE_VALUE only supported.");
+					HttpExceptions.badRequest("INSTANTIATION or CHANGE_VALUE only supported.");
 			}
 		}
 
@@ -222,6 +222,6 @@ public class ManipulationTransformer {
 	}
 
 	private void badRequestIdentifierMissing() {
-		HttpExceptions.throwBadRequest("The entity must be fully identified (ID provided) either in the URL path, or in the payload.");
+		HttpExceptions.badRequest("The entity must be fully identified (ID provided) either in the URL path, or in the payload.");
 	}
 }

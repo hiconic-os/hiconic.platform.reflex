@@ -30,7 +30,7 @@ public abstract class AbstractManipulationPropertiesHandler<E extends RestV2Endp
 			case success:
 				return true;
 			default:
-				HttpExceptions.throwInternalServerError("Unexpected projection %s", projection);
+				HttpExceptions.internalServerError("Unexpected projection %s", projection);
 				return null;
 		}
 	}

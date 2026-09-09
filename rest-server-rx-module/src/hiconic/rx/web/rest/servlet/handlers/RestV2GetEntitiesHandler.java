@@ -93,12 +93,12 @@ public class RestV2GetEntitiesHandler extends AbstractEntityQueryingHandler<Ddra
 		EntityQueryResult result = evaluateQueryRequest(request, endpoint, true);
 
 		if(result.getEntities().isEmpty()) {
-			HttpExceptions.throwNotFound("Cannot find entity with type %s with ID %s %s in access %s.", context.getEntityType().getTypeSignature(), 
+			HttpExceptions.notFound("Cannot find entity with type %s with ID %s %s in access %s.", context.getEntityType().getTypeSignature(),
 					parameters.getEntityId(), partition != null ? " and partition " + partition : "", parameters.getAccessId());
 		}
 
 		if(result.getEntities().size() > 1) {
-			HttpExceptions.throwBadRequest("%d entities found with type %s with ID %s %s in access %s.", result.getEntities().size(), 
+			HttpExceptions.badRequest("%d entities found with type %s with ID %s %s in access %s.", result.getEntities().size(),
 					context.getEntityType().getTypeSignature(), parameters.getEntityId(), partition != null ? " and partition " + partition : "", parameters.getAccessId());
 		}
 
@@ -109,7 +109,7 @@ public class RestV2GetEntitiesHandler extends AbstractEntityQueryingHandler<Ddra
 
 	private void computeOrderBy(EntityType<?> entityType, DdraGetEntitiesEndpoint endpoint, AbstractQueryBuilder<EntityQuery> builder) {
 		if(endpoint.getOrderBy().size() < endpoint.getOrderDirection().size()) {
-			HttpExceptions.throwBadRequest("Expected at least as many orderBy (got %d) as there are orderDirection (got %d).", 
+			HttpExceptions.badRequest("Expected at least as many orderBy (got %d) as there are orderDirection (got %d).",
 					endpoint.getOrderBy().size(), endpoint.getOrderDirection().size());
 		}
 		if(endpoint.getOrderBy().size() == 1) {
@@ -128,7 +128,7 @@ public class RestV2GetEntitiesHandler extends AbstractEntityQueryingHandler<Ddra
 		String propertyName = endpoint.getOrderBy().get(index);
 		Property property = entityType.findProperty(propertyName);
 		if(property == null) {
-			HttpExceptions.throwBadRequest("Invalid orderBy: Cannot find property %s in entityType %s", propertyName, entityType.getTypeSignature());
+			HttpExceptions.badRequest("Invalid orderBy: Cannot find property %s in entityType %s", propertyName, entityType.getTypeSignature());
 		}
 		return propertyName;
 	}
@@ -164,7 +164,7 @@ public class RestV2GetEntitiesHandler extends AbstractEntityQueryingHandler<Ddra
 			case results:
 				return result.getEntities();
 			default:
-				HttpExceptions.throwInternalServerError("Unexpected projection %s", projection);
+				HttpExceptions.internalServerError("Unexpected projection %s", projection);
 				return null;
 		}
 	}

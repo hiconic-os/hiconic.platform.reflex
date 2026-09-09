@@ -219,7 +219,7 @@ public class RestV2Server extends AbstractDdraRestServlet<RestV2EndpointContext<
 		}
 
 		if (!accessDomains.hasDomain(parameters.getAccessId()))
-			HttpExceptions.throwNotFound("No access with accessId " + parameters.getAccessId() + " deployed");
+			HttpExceptions.notFound("No access with accessId " + parameters.getAccessId() + " deployed");
 	}
 
 	private void resolveTargetForSwagger(RestV2EndpointContext<RestV2Endpoint> context) {
@@ -242,7 +242,7 @@ public class RestV2Server extends AbstractDdraRestServlet<RestV2EndpointContext<
 			try {
 				context.setEntityType(EntityTypes.get(typeSignature));
 			} catch (GenericModelException e) {
-				HttpExceptions.throwNotFound("Entity type %s not found.", typeSignature);
+				HttpExceptions.notFound("Entity type %s not found.", typeSignature);
 			}
 		} else {
 			context.setEntityType(getBySimpleName(parameters));
@@ -260,11 +260,11 @@ public class RestV2Server extends AbstractDdraRestServlet<RestV2EndpointContext<
 				.<EntityType<?>> asTypes().collect(Collectors.toList());
 
 		if (types.isEmpty()) {
-			HttpExceptions.throwNotFound("Cannot find entity type with simple name %s in model %s", parameters.getTypeSignature(),
+			HttpExceptions.notFound("Cannot find entity type with simple name %s in model %s", parameters.getTypeSignature(),
 					dataModel.name());
 		}
 		if (types.size() > 1) {
-			HttpExceptions.throwBadRequest("Found multiple (at least 2) entities with simple name %s in access %s: %s and %s",
+			HttpExceptions.badRequest("Found multiple (at least 2) entities with simple name %s in access %s: %s and %s",
 					parameters.getTypeSignature(), parameters.getAccessId(), types.get(0).getTypeSignature(), types.get(1).getTypeSignature());
 		}
 
@@ -275,7 +275,7 @@ public class RestV2Server extends AbstractDdraRestServlet<RestV2EndpointContext<
 		DdraUrlPathParameters parameters = context.getParameters();
 
 		if (context.getTarget() == CrudRequestTarget.PROPERTY && parameters.getEntityIdStringValue() == null) {
-			HttpExceptions.throwBadRequest(
+			HttpExceptions.badRequest(
 					"Expected URL of the form /properties/accessId/entity.TypeSignature/id(/partition)/propertyName but the id was not specified.");
 		}
 
@@ -302,13 +302,13 @@ public class RestV2Server extends AbstractDdraRestServlet<RestV2EndpointContext<
 
 		DdraUrlPathParameters parameters = context.getParameters();
 		if (parameters.getProperty() == null) {
-			HttpExceptions.throwBadRequest(
+			HttpExceptions.badRequest(
 					"Expected URL of the form /properties/accessId/entity.TypeSignature/id(/partition)/propertyName but the propertyName was not specified.");
 		}
 
 		Property property = context.getEntityType().findProperty(parameters.getProperty());
 		if (property == null) {
-			HttpExceptions.throwNotFound("No property with name %s found in entityType %s.", parameters.getProperty(),
+			HttpExceptions.notFound("No property with name %s found in entityType %s.", parameters.getProperty(),
 					context.getEntityType().getTypeSignature());
 		}
 
@@ -379,7 +379,7 @@ public class RestV2Server extends AbstractDdraRestServlet<RestV2EndpointContext<
 			case enumType:
 				return ((EnumType<?>) type).getEnumValue(encodedValue);
 			default:
-				HttpExceptions.throwBadRequest("Unsupported ID type %s", type.getTypeName());
+				HttpExceptions.badRequest("Unsupported ID type %s", type.getTypeName());
 				return null;
 		}
 	}

@@ -784,10 +784,10 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 		ModelOracle modelOracle = mdResolverProvider.apply(serviceDomain).getModelOracle();
 		EntityType<? extends ServiceRequest> entityType = restServletUtils.resolveTypeFromSignature(typeSignature, modelOracle);
 		if (entityType == null)
-			HttpExceptions.throwNotFound("Cannot find request [%s]", typeSignature);
+			HttpExceptions.notFound("Cannot find request [%s]", typeSignature);
 
 		if (!ServiceRequest.T.isAssignableFrom(entityType))
-			HttpExceptions.throwBadRequest("Entity [%s] is not a ServiceRequest.", typeSignature);
+			HttpExceptions.badRequest("Entity [%s] is not a ServiceRequest.", typeSignature);
 
 		context.setServiceRequestType(entityType);
 		return entityType;
@@ -831,7 +831,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 	private void checkServiceDomain(ApiV1EndpointContext context) {
 		String serviceDomain = context.getServiceDomain();
 		if (!domainAvailabilityChecker.test(serviceDomain))
-			HttpExceptions.throwNotFound(
+			HttpExceptions.notFound(
 					"No ServiceDomain or DdraMapping found for name: " + serviceDomain + " and HTTP method: " + context.getRequest().getMethod());
 	}
 

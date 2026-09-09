@@ -52,7 +52,7 @@ public class RestV2PostPropertiesHandler extends AbstractManipulationPropertiesH
 
 		Object body = unmarshallBody(context, endpoint, GmDeserializationOptions.deriveDefaults().build());
 		if (body == null) {
-			HttpExceptions.throwBadRequest("Unexpected body: got null.");
+			HttpExceptions.badRequest("Unexpected body: got null.");
 		}
 		if (endpoint.getRemove()) {
 			request.setManipulation(getRemoveManipulationFor(context, body));
@@ -80,7 +80,7 @@ public class RestV2PostPropertiesHandler extends AbstractManipulationPropertiesH
 				break;
 			default:
 				// impossible
-				HttpExceptions.throwInternalServerError("Something is wrong in the code...");
+				HttpExceptions.internalServerError("Something is wrong in the code...");
 		}
 
 		return manipulation;
@@ -109,7 +109,7 @@ public class RestV2PostPropertiesHandler extends AbstractManipulationPropertiesH
 			for (Entry<Object, Object> entry : values.entrySet()) {
 				Object key = entry.getKey();
 				if (!(key instanceof Integer)) {
-					HttpExceptions.throwBadRequest("keys in the body must be int, got a key od type %s", key.getClass().getName());
+					HttpExceptions.badRequest("keys in the body must be int, got a key od type %s", key.getClass().getName());
 				}
 
 				Object value = getReferenceForPropertyValue(type.getCollectionElementType(), entry.getValue(), property);
@@ -162,7 +162,7 @@ public class RestV2PostPropertiesHandler extends AbstractManipulationPropertiesH
 
 			return result;
 		} else {
-			HttpExceptions.throwBadRequest("Property %s is a map, expected body to be a map but got %s", property.getName(), body.getClass().getName());
+			HttpExceptions.badRequest("Property %s is a map, expected body to be a map but got %s", property.getName(), body.getClass().getName());
 			return null;
 		}
 	}
@@ -183,7 +183,7 @@ public class RestV2PostPropertiesHandler extends AbstractManipulationPropertiesH
 				break;
 			default:
 				// impossible
-				HttpExceptions.throwInternalServerError("Something is wrong in the code...");
+				HttpExceptions.internalServerError("Something is wrong in the code...");
 		}
 
 		return manipulation;
@@ -191,7 +191,7 @@ public class RestV2PostPropertiesHandler extends AbstractManipulationPropertiesH
 
 	private Map<Object, Object> getItemsToRemoveForListProperty(RestV2EndpointContext<?> context, Object body) {
 		if (!(body instanceof Map)) {
-			HttpExceptions.throwBadRequest("When removing from a list property, the body must be a map<int, value> but got %s", body.getClass().getName());
+			HttpExceptions.badRequest("When removing from a list property, the body must be a map<int, value> but got %s", body.getClass().getName());
 		}
 
 		Property property = context.getProperty();
@@ -204,7 +204,7 @@ public class RestV2PostPropertiesHandler extends AbstractManipulationPropertiesH
 		for (Entry<Object, Object> entry : values.entrySet()) {
 			Object key = entry.getKey();
 			if (!(key instanceof Integer)) {
-				HttpExceptions.throwBadRequest("keys in the body must be int, got a key od type %s", key.getClass().getName());
+				HttpExceptions.badRequest("keys in the body must be int, got a key od type %s", key.getClass().getName());
 			}
 
 			Object value = getReferenceForPropertyValue(type.getCollectionElementType(), entry.getValue(), property);
@@ -221,7 +221,7 @@ public class RestV2PostPropertiesHandler extends AbstractManipulationPropertiesH
 
 	private Map<Object, Object> getItemsToRemoveForMapProperty(RestV2EndpointContext<?> context, Object body) {
 		if (!(body instanceof Map)) {
-			HttpExceptions.throwBadRequest("When removing from a map property, the body must be a map<key, value> but got %s", body.getClass().getName());
+			HttpExceptions.badRequest("When removing from a map property, the body must be a map<key, value> but got %s", body.getClass().getName());
 		}
 
 		Property property = context.getProperty();
@@ -249,7 +249,7 @@ public class RestV2PostPropertiesHandler extends AbstractManipulationPropertiesH
 				// allowed
 				return;
 			default:
-				HttpExceptions.throwBadRequest(
+				HttpExceptions.badRequest(
 						"POST for properties is only allowed for property of types list, map or set, " + "but property %s if of type: %s",
 						property.getName(), type.getTypeName());
 		}

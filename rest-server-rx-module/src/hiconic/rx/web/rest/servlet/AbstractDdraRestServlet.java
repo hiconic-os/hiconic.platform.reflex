@@ -203,7 +203,7 @@ public abstract class AbstractDdraRestServlet<Context extends DdraEndpointContex
 	}
 
 	private void unsupportedMethod(Context context) {
-		HttpExceptions.throwMethodNotAllowed("Unsupported method: \"$s\"", context.getRequest().getMethod());
+		HttpExceptions.methodNotAllowed("Unsupported method: \"$s\"", context.getRequest().getMethod());
 	}
 
 	private Pair<String, Boolean> logRequest(HttpServletRequest request) {

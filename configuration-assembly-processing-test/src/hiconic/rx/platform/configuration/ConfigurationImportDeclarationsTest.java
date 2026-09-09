@@ -150,6 +150,7 @@ public class ConfigurationImportDeclarationsTest {
 				"HICONIC-CONF/unknown-configuration.yaml", """
 						value: retained
 						""",
+				"HICONIC-CONF/sample-configuration/logo.svg", "<svg>retained beside its modeled configuration</svg>",
 				ConfigurationImportDeclarations.RESOURCE_PATH, """
 						imports:
 						  - name: DB_DEFAULT_HOST
@@ -194,6 +195,17 @@ public class ConfigurationImportDeclarationsTest {
 		assertThat(effectiveYaml).contains("${DB_DEFAULT_URL}");
 		assertThat(staleEffective).doesNotExist();
 		assertThat(output.resolve("base/unknown-configuration.yaml")).hasContent("value: retained");
+		assertThat(output.resolve("base/sample-configuration/logo.svg"))
+				.hasContent("<svg>retained beside its modeled configuration</svg>");
+		assertThat(assembly.report().getResidualResources())
+				.containsExactlyInAnyOrder("base/sample-configuration/logo.svg", "base/unknown-configuration.yaml");
+
+		ClasspathIndex runtimeIndex = new ClasspathIndex(List.of(
+				ClasspathIndex.filesystemSource(root, "", List.of("HICONIC-CONF/")),
+				ClasspathIndex.filesystemSlots(output, "HICONIC-CONF")));
+		assertThat(runtimeIndex.forPrefix("HICONIC-CONF/sample-configuration/logo.svg"))
+				.extracting(entry -> entry.origin)
+				.containsExactly("base");
 		assertThat(output.resolve("compiled/properties.yaml")).content().contains("DB_DEFAULT_URL");
 		assertThat(protocol).exists();
 	}

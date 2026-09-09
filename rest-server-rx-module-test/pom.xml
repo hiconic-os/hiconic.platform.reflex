@@ -69,5 +69,10 @@
             <artifactId>rest-server-rx-module</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
+		<dependency>
+			<groupId>hiconic.platform.reflex</groupId>
+			<artifactId>web-api-server-rx-module</artifactId>
+			<version>${V.hiconic.platform.reflex}</version>
+		</dependency>
 	</dependencies>
 </project>

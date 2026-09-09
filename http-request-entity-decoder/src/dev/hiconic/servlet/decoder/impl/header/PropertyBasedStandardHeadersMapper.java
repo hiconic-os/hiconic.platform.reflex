@@ -13,7 +13,7 @@
 // ============================================================================
 package dev.hiconic.servlet.decoder.impl.header;
 
-import static dev.hiconic.servlet.decoder.api.HttpExceptions.throwBadRequest;
+import static dev.hiconic.servlet.decoder.api.HttpExceptions.badRequest;
 import static dev.hiconic.servlet.decoder.impl.HttpRequestEntityDecoderUtils.illegalArgument;
 
 import java.util.Collection;
@@ -125,7 +125,7 @@ public class PropertyBasedStandardHeadersMapper<T extends GenericEntity> extends
 				Date date = new Date(request.getDateHeader(headerName));
 				property.set(target, date);
 			} catch (IllegalArgumentException e) {
-				throwBadRequest("Cannot parse header parameter %s as date, value: %s", headerName, request.getHeader(headerName));
+				badRequest("Cannot parse header parameter %s as date, value: %s", headerName, request.getHeader(headerName));
 			}
 		};
 	}
@@ -141,7 +141,7 @@ public class PropertyBasedStandardHeadersMapper<T extends GenericEntity> extends
 			boolean valueSet = false;
 			while(values.hasMoreElements()) {
 				if(valueSet) {
-					throwBadRequest("Only one value should be set for header parameter %s", headerName);
+					badRequest("Only one value should be set for header parameter %s", headerName);
 				}
 				valueSet = true;
 				
@@ -149,7 +149,7 @@ public class PropertyBasedStandardHeadersMapper<T extends GenericEntity> extends
 				try {
 					property.set(target, Integer.parseInt(value));
 				} catch (NumberFormatException e){
-					throwBadRequest("Invalid value for header %s, expected integer value but got %s", headerName, value);
+					badRequest("Invalid value for header %s, expected integer value but got %s", headerName, value);
 				}
 			}
 		};
@@ -166,7 +166,7 @@ public class PropertyBasedStandardHeadersMapper<T extends GenericEntity> extends
 			boolean valueSet = false;
 			while(values.hasMoreElements()) {
 				if(valueSet) {
-					throwBadRequest("Only one value should be set for header parameter %s", headerName);
+					badRequest("Only one value should be set for header parameter %s", headerName);
 				}
 				valueSet = true;
 

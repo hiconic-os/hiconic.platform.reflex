@@ -15,7 +15,7 @@
 // ============================================================================
 package dev.hiconic.servlet.decoder.impl;
 
-import static dev.hiconic.servlet.decoder.api.HttpExceptions.throwBadRequest;
+import static dev.hiconic.servlet.decoder.api.HttpExceptions.badRequest;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -436,7 +436,7 @@ public class QueryParamDecoder implements DecoderTargetRegistry {
 	}
 
 	private static void badQueryParam(String message) {
-		throwBadRequest("Could not parse query parameters: " + message);
+		badRequest("Could not parse query parameters: " + message);
 	}
 	
 	public void addSpecialHandlingFor(GenericModelType type, Function<String,Object> handling) {

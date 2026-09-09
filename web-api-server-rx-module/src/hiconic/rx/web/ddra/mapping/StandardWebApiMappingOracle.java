@@ -427,7 +427,7 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 				else
 					path = requestType.getShortName();
 
-			return serviceDomainPrefix + pathPrefix + path;
+			return composePath(serviceDomainPrefix, pathPrefix, path);
 		}
 
 		private Set<String> resolveTags() {
@@ -438,6 +438,11 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 			return StringTools.isEmpty(sectionName) ? emptySet() : asSet(sectionName);
 		}
 
+	}
+
+	static String composePath(String serviceDomainPrefix, String pathPrefix, String path) {
+		String result = serviceDomainPrefix + pathPrefix + path;
+		return path.isEmpty() && result.endsWith("/") ? result.substring(0, result.length() - 1) : result;
 	}
 
 	static class MappingMds {
@@ -475,11 +480,28 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 
 		/** Returns path that doesn't start with '/' or null */
 		public String pathWithNoSlashesOrNull() {
+			String configuredPath;
 			if (completeMapping != null)
-				return withoutSurroundingSlashes(completeMapping.getPath());
-			if (path == null)
+				configuredPath = completeMapping.getPath();
+			else if (path != null)
+				configuredPath = path.getPath();
+			else
 				return null;
-			return withoutSurroundingSlashes(path.getPath());
+
+			return withoutSurroundingSlashesPreservingEmpty(configuredPath);
+		}
+
+		private String withoutSurroundingSlashesPreservingEmpty(String value) {
+			if (value == null)
+				return null;
+
+			String result = value;
+			if (result.startsWith("/"))
+				result = result.substring(1);
+			if (result.endsWith("/"))
+				result = result.substring(0, result.length() - 1);
+
+			return result;
 		}
 
 		private String withoutSurroundingSlashes(String value) {

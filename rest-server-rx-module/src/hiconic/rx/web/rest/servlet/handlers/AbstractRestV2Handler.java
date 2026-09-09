@@ -116,7 +116,7 @@ public abstract class AbstractRestV2Handler<E extends RestV2Endpoint> implements
 			return marshaller.unmarshall(in, options);
 		} catch (IOException | MarshallException e) {
 			logger.warn("Error while unmarshalling body for request " + context.getRequest().getPathInfo(), e);
-			HttpExceptions.throwBadRequest("Error while unmarshalling body, reason: %s", e.getMessage());
+			HttpExceptions.badRequest("Error while unmarshalling body, reason: %s", e.getMessage());
 			return null;
 		}
 	}
@@ -130,7 +130,7 @@ public abstract class AbstractRestV2Handler<E extends RestV2Endpoint> implements
 
 	protected Object getReferenceForPropertyValue(GenericModelType type, Object value, Property property) {
 		if (value != null && !type.isInstance(value))
-			HttpExceptions.throwBadRequest("Unexpected value type, expected %s but got %s for property %s.", type.getJavaType().getName(),
+			HttpExceptions.badRequest("Unexpected value type, expected %s but got %s for property %s.", type.getJavaType().getName(),
 					value.getClass().getName(), property.getName());
 
 		if (GenericEntity.T.isInstance(value))
@@ -156,7 +156,7 @@ public abstract class AbstractRestV2Handler<E extends RestV2Endpoint> implements
 
 	protected void checkIsPersistentReference(Object reference) {
 		if (!PersistentEntityReference.T.isInstance(reference))
-			HttpExceptions.throwBadRequest("Only simple properties, or PersistentEntityReference  are allowed for PUT /properties");
+			HttpExceptions.badRequest("Only simple properties, or PersistentEntityReference  are allowed for PUT /properties");
 	}
 
 	protected ManipulationRequest createManipulationRequestFor(DdraUrlPathParameters parameters, RestV2Endpoint endpoint) {
@@ -174,7 +174,7 @@ public abstract class AbstractRestV2Handler<E extends RestV2Endpoint> implements
 			if (throw404OnNotFound) {
 				NotFoundException notFound = ThrowableTools.searchCause(e, NotFoundException.class);
 				if (notFound != null) {
-					HttpExceptions.throwNotFound(notFound.getMessage());
+					HttpExceptions.notFound(notFound.getMessage());
 				}
 			}
 			throw e;

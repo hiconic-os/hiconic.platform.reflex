@@ -26,6 +26,7 @@ import com.braintribe.model.meta.selector.UseCaseSelector;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.resource.api.MimeTypeRegistry;
 import com.braintribe.model.resource.utils.MimeTypeRegistryImpl;
+import com.braintribe.model.resourceapi.persistence.DeleteResource;
 import com.braintribe.model.resourceapi.stream.GetResource;
 import com.braintribe.utils.StringTools;
 import com.braintribe.utils.stream.api.StreamPipes;
@@ -33,6 +34,7 @@ import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 import com.braintribe.wire.api.context.WireContext;
 
+import hiconic.rx.access.module.api.AccessModelSymbols;
 import hiconic.rx.module.api.service.ModelConfiguration;
 import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.service.PlatformServiceDomains;
@@ -77,17 +79,18 @@ public class WebApiServerRxModuleSpace implements RxModuleContract, WebApiServer
 
 	@Override
 	public void configureModels(ModelConfigurations configurations) {
-		// TODO check if this makes sense
-		// but the original impl reference model that might not exist - configurations.configuredModel(_ResourceApiModel_.reflection)
-		ModelConfiguration resourceApiModel = configurations.configuredModel(_ResourceApiModel_.reflection);
-		// ModelConfiguration resourceApiModel = configurations.bySymbol(AccessModelSymbols.configuredResourceApiModel);
+		ModelConfiguration resourceApiModel = configurations.extendedModel(AccessModelSymbols.configuredResourceApiModel,
+				_ResourceApiModel_.reflection);
 
 		Embedded embedded = Embedded.T.create();
 		UseCaseSelector ddra = UseCaseSelector.T.create();
 		ddra.setUseCase("ddra");
 		embedded.setSelector(ddra);
 
-		resourceApiModel.configureModel(editor -> editor.onEntityType(GetResource.T).addPropertyMetaData("resource", embedded));
+		resourceApiModel.configureModel(editor -> {
+			editor.onEntityType(GetResource.T).addPropertyMetaData("resource", embedded);
+			editor.onEntityType(DeleteResource.T).addPropertyMetaData("resource", embedded);
+		});
 	}
 
 	@Override
