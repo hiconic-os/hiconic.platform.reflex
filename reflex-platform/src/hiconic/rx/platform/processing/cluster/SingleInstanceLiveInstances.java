@@ -23,6 +23,9 @@ public class SingleInstanceLiveInstances implements LiveInstances {
 
 	@Override
 	public Set<String> liveInstances(InstanceId matching) {
+		if (matching == null)
+			return liveInstances();
+
 		// test if app is either wildcard or a match
 		if (!(matching.getApplicationId() == null || matching.getApplicationId().equals(instanceId.getApplicationId())))
 			return Collections.emptySet();
