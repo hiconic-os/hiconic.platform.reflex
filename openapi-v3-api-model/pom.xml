@@ -22,10 +22,10 @@
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
         <dependency>
-        	<!-- TODO this sucks, we are adding model to the ServiceDomain only because of the mapping annotations... -->
             <groupId>hiconic.platform.reflex</groupId>
-            <artifactId>web-api-mapping-meta-data-model</artifactId>
+            <artifactId>web-api-mapping-meta-data-annotations</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
+            <?group functional?>
         </dependency>
     </dependencies>
 </project>
