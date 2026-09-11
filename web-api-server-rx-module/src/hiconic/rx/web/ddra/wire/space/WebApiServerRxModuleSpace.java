@@ -48,6 +48,7 @@ import hiconic.rx.web.ddra.endpoints.api.WebApiMappingRegistry;
 import hiconic.rx.web.ddra.endpoints.api.WebApiServerContract;
 import hiconic.rx.web.ddra.endpoints.api.v1.WebApiMappingOracle;
 import hiconic.rx.web.ddra.mapping.StandardWebApiMappingOracle;
+import hiconic.rx.web.ddra.mapping.PlatformWebApiMappings;
 import hiconic.rx.web.ddra.servlet.ApiV1RestServletUtils;
 import hiconic.rx.web.ddra.servlet.DdraEndpointsExceptionHandler;
 import hiconic.rx.web.ddra.servlet.WebApiV1Server;
@@ -141,10 +142,7 @@ public class WebApiServerRxModuleSpace implements RxModuleContract, WebApiServer
 	}
 
 	private void registerPlatformMappings(WebApiMappingRegistry mappings) {
-		mappings.mapping("/download", HttpRequestMethod.GET, GetResource.T) //
-				.responseProjection("resource") //
-				.downloadResource(true) //
-				.register();
+		PlatformWebApiMappings.register(mappings);
 	}
 
 	@Override

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -56,6 +57,7 @@ import com.braintribe.utils.lcd.Lazy;
 import dev.hiconic.servlet.api.HttpFilter;
 import dev.hiconic.servlet.impl.util.ServletTools;
 import hiconic.rx.security.web.api.WebSecurityConstants;
+import hiconic.rx.security.web.api.WebSecurityRequestContextContributor;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -101,6 +103,12 @@ public class AuthRxFilter implements HttpFilter, InitializationAware {
 	private Evaluator<ServiceRequest> requestEvaluator;
 	private ThreadRenamer threadRenamer = ThreadRenamer.NO_OP;
 	private final Map<String, WebCredentialsProvider> webCredentialProviders = new LinkedHashMap<>();
+	private List<WebSecurityRequestContextContributor> requestContextContributors = List.of();
+
+	@Configurable
+	public void setRequestContextContributors(List<WebSecurityRequestContextContributor> contributors) {
+		this.requestContextContributors = contributors;
+	}
 
 	private boolean throwExceptionOnAuthFailure = false;
 	
@@ -434,7 +442,14 @@ public class AuthRxFilter implements HttpFilter, InitializationAware {
 
 	@Override
 	public void doFilter(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws IOException, ServletException {
-		new StatefulAuthFilter(request, response, chain).doFilter();
+		AttributeContextBuilder builder = AttributeContexts.peek().derive();
+		requestContextContributors.forEach(c -> c.contribute(request, response, builder));
+		AttributeContexts.push(builder.build());
+		try {
+			new StatefulAuthFilter(request, response, chain).doFilter();
+		} finally {
+			AttributeContexts.pop();
+		}
 	}
 
 	/**

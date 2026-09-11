@@ -1,0 +1,37 @@
+roles:
+- &claimsdesk-user
+  name: claimsdesk-user
+- &claimsdesk-subject
+  name: claimsdesk-subject
+- &subject
+  name: browser-acceptance-test
+- &approver
+  name: browser-acceptance-approver
+- &exempt
+  name: browser-acceptance-exempt
+- &platform-user
+  name: platform-user
+- &api-user
+  name: api-user
+users:
+- id: subject-id
+  name: subject
+  password: subject-password
+  roles:
+  - *subject
+  - *platform-user
+  - *api-user
+- id: claimsdesk-subject
+  name: claimsdesk-subject
+  password: claimsdesk-password
+  roles:
+  - *claimsdesk-subject
+  - *claimsdesk-user
+- id: approver
+  name: approver
+  password: approver-password
+  roles:
+  - *approver
+  - *exempt
+  - *platform-user
+  - *api-user

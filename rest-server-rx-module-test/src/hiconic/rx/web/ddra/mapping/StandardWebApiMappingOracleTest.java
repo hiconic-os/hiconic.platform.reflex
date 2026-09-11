@@ -19,6 +19,11 @@ import java.util.List;
 
 import org.junit.Test;
 
+import com.braintribe.model.securityservice.Logout;
+import com.braintribe.model.securityservice.OpenUserSessionWithUserAndPassword;
+
+import hiconic.rx.web.ddra.endpoints.api.v1.SingleDdraMapping;
+import hiconic.rx.webapi.model.meta.HttpRequestMethod;
 import hiconic.rx.webapi.model.meta.RequestPath;
 import hiconic.rx.webapi.model.meta.RequestPathPrefix;
 
@@ -39,6 +44,21 @@ public class StandardWebApiMappingOracleTest {
 		assertEquals("", path);
 		assertEquals("/default.access.objectstore/v1/excerpt",
 				StandardWebApiMappingOracle.composePath("/default.access.objectstore/", mapping.pathPrefix(), path));
+	}
+
+	@Test
+	public void platformMappingsProvideCxCompatibleAuthenticationPaths() {
+		StandardWebApiMappingOracle oracle = new StandardWebApiMappingOracle();
+		PlatformWebApiMappings.register(oracle);
+
+		SingleDdraMapping authenticate = oracle.get("/authenticate", HttpRequestMethod.POST);
+		assertEquals(OpenUserSessionWithUserAndPassword.T, authenticate.getRequestType());
+		assertEquals("security", authenticate.getServiceDomain());
+		assertEquals("userSession.sessionId", authenticate.getDefaultProjection());
+
+		SingleDdraMapping logout = oracle.get("/logout", HttpRequestMethod.POST);
+		assertEquals(Logout.T, logout.getRequestType());
+		assertEquals("security", logout.getServiceDomain());
 	}
 
 	private RequestPathPrefix prefix(String value) {

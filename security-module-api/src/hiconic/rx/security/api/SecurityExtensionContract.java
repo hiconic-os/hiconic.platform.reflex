@@ -46,4 +46,8 @@ public interface SecurityExtensionContract extends RxExportContract {
 			ReasonedServiceProcessor<? extends AuthenticateCredentials, AuthenticateCredentialsResponse> processor);
 
 	void registerUserService(UserService userService);
+
+	void registerUserSessionOpeningVerificationExpert(UserSessionOpeningVerificationExpert expert);
+
+	void registerUserSessionAccessVerificationExpert(UserSessionAccessVerificationExpert expert);
 }

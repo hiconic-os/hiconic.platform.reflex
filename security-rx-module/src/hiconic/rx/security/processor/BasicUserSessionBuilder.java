@@ -137,6 +137,9 @@ public class BasicUserSessionBuilder implements UserSessionBuilder {
 		if (this.locale != null) {
 			this.properties.put("locale", this.locale);
 		}
+		if (this.entryPoint != null) {
+			this.properties.put("openUserSession.entryPoint", this.entryPoint.getName());
+		}
 		Map<String, String> requestProperties = this.request.getProperties();
 		if (requestProperties != null && !requestProperties.isEmpty()) {
 			this.properties.putAll(requestProperties);

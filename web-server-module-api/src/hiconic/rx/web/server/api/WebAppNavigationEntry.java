@@ -11,12 +11,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ============================================================================
-package hiconic.rx.security.api;
+package hiconic.rx.web.server.api;
 
-import com.braintribe.gm.model.reason.Reason;
-import com.braintribe.model.processing.service.api.ServiceRequestContext;
-import com.braintribe.model.usersession.UserSession;
+import java.util.Set;
 
-public interface UserSessionAccessVerificationExpert {
-	Reason verifyUserSessionAccess(ServiceRequestContext requestContext, UserSession userSession);
+/**
+ * Describes an optional landing-page entry contributed by a web application.
+ * <p>
+ * Role filtering only controls discoverability. The application's services must still enforce their own authorization.
+ */
+public record WebAppNavigationEntry(String webAppPath, String displayName, String description, Set<String> requiredRoles, int order) {
+
+	public WebAppNavigationEntry {
+		requiredRoles = requiredRoles == null ? Set.of() : Set.copyOf(requiredRoles);
+	}
+
+	public WebAppNavigationEntry(String webAppPath, String displayName, String description, Set<String> requiredRoles) {
+		this(webAppPath, displayName, description, requiredRoles, 0);
+	}
 }

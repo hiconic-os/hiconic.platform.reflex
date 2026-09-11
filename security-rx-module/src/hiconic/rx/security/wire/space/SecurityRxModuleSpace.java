@@ -13,7 +13,9 @@
 // ============================================================================
 package hiconic.rx.security.wire.space;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -56,6 +58,8 @@ import hiconic.rx.security.api.SecurityServiceDomain;
 import hiconic.rx.security.api.PasswordHashing;
 import hiconic.rx.security.api.UserService;
 import hiconic.rx.security.api.UserSessionInvalidation;
+import hiconic.rx.security.api.UserSessionAccessVerificationExpert;
+import hiconic.rx.security.api.UserSessionOpeningVerificationExpert;
 import hiconic.rx.security.model.configuration.SecurityConfiguration;
 import hiconic.rx.security.processor.AuthenticationProcessor;
 import hiconic.rx.security.processor.AuthorizingServiceInterceptor;
@@ -66,7 +70,6 @@ import hiconic.rx.security.processor.SystemUserScopingWorkerAspect;
 
 @Managed
 public class SecurityRxModuleSpace implements RxModuleContract, SecurityContract, SecurityExtensionContract {
-
 	@Import
 	private RxPlatformContract platform;
 
@@ -138,6 +141,26 @@ public class SecurityRxModuleSpace implements RxModuleContract, SecurityContract
 	}
 
 	@Override
+	public void registerUserSessionOpeningVerificationExpert(UserSessionOpeningVerificationExpert expert) {
+		openingVerificationExperts().add(expert);
+	}
+
+	@Override
+	public void registerUserSessionAccessVerificationExpert(UserSessionAccessVerificationExpert expert) {
+		accessVerificationExperts().add(expert);
+	}
+
+	@Managed
+	private List<UserSessionOpeningVerificationExpert> openingVerificationExperts() {
+		return new ArrayList<>();
+	}
+
+	@Managed
+	private List<UserSessionAccessVerificationExpert> accessVerificationExperts() {
+		return new ArrayList<>();
+	}
+
+	@Override
 	public UserService userService() {
 		return userServices.userService();
 	}
@@ -170,6 +193,8 @@ public class SecurityRxModuleSpace implements RxModuleContract, SecurityContract
 		bean.setUserSessionService(userServices.userSessionService());
 		bean.setOpenUserSessionConfiguration(platform.configuration().readConfig(OpenUserSessionConfiguration.T).get());
 		bean.setInternalRole(internalRole());
+		bean.setUserSessionOpeningVerificationExperts(openingVerificationExperts());
+		bean.setUserSessionAccessVerificationExperts(accessVerificationExperts());
 		return bean;
 	}
 

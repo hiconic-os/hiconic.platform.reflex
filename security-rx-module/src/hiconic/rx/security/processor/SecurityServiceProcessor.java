@@ -71,6 +71,7 @@ import com.braintribe.utils.lcd.Lazy;
 
 import hiconic.rx.security.api.UserService;
 import hiconic.rx.security.api.UserSessionAccessVerificationExpert;
+import hiconic.rx.security.api.UserSessionOpeningVerificationExpert;
 
 public class SecurityServiceProcessor extends AbstractDispatchingServiceProcessor<SecurityRequest, Object> {
 
@@ -79,7 +80,8 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 	private UserService userService;
 	private UserSessionService userSessionService;
 	private Evaluator<ServiceRequest> evaluator;
-	private List<UserSessionAccessVerificationExpert> userSessionAccessVerificationExperts;
+	private List<UserSessionOpeningVerificationExpert> userSessionOpeningVerificationExperts = List.of();
+	private List<UserSessionAccessVerificationExpert> userSessionAccessVerificationExperts = List.of();
 
 	private boolean enableUserStatistics;
 	private TimeSpan sessionMaxIdleTime;
@@ -121,6 +123,11 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 	@Configurable
 	public void setUserSessionAccessVerificationExperts(List<UserSessionAccessVerificationExpert> userSessionAccessVerificationExperts) {
 		this.userSessionAccessVerificationExperts = userSessionAccessVerificationExperts;
+	}
+
+	@Configurable
+	public void setUserSessionOpeningVerificationExperts(List<UserSessionOpeningVerificationExpert> experts) {
+		this.userSessionOpeningVerificationExperts = experts;
 	}
 	
 	@Configurable
@@ -216,7 +223,7 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 				if (authorizationFailure != null)
 					return authorizationFailure.asMaybe();
 
-				return Maybe.complete(createResponseFrom(userSession, true));
+				return validateUserSession(requestContext, userSession).map(s -> createResponseFrom(s, true));
 			}
 
 			// TODO: rethink the responsibility for UserSession transcription and therefore the responsibility of acquiration
@@ -246,16 +253,33 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 			if (authorizationFailure != null)
 				return authorizationFailure.asMaybe();
 
-			return Maybe.complete(createResponseFrom(userSession, true));
+			return validateUserSession(requestContext, userSession).map(s -> createResponseFrom(s, true));
 		}
 
-		Reason authorizationFailure = checkAuthorization(validationResult.entryPoint(),
-				Roles.authenticatedCredentialsEffectiveRoles(authenticatedCredentialsResponse));
+		Set<String> effectiveRoles = Roles.authenticatedCredentialsEffectiveRoles(authenticatedCredentialsResponse);
+		Reason authorizationFailure = checkAuthorization(validationResult.entryPoint(), effectiveRoles);
 		if (authorizationFailure != null)
 			return authorizationFailure.asMaybe();
 
+		if (authenticatedCredentialsResponse instanceof AuthenticatedUser authenticatedUser) {
+			Reason verificationFailure = verifyUserSessionOpening(requestContext, validationResult.entryPoint(), authenticatedUser.getUser(), effectiveRoles);
+			if (verificationFailure != null)
+				return verificationFailure.asMaybe();
+		}
+
 		return buildUserSession(requestContext, openUserSession, validationResult.entryPoint(), authenticatedCredentialsResponse, acquirationKey) //
 				.map(userSession -> createResponseFrom(userSession, false));
+	}
+
+	private Reason verifyUserSessionOpening(ServiceRequestContext context, OpenUserSessionEntryPoint entryPoint, User user,
+			Set<String> effectiveRoles) {
+		String entryPointName = entryPoint == null ? null : entryPoint.getName();
+		for (UserSessionOpeningVerificationExpert expert : userSessionOpeningVerificationExperts) {
+			Reason reason = expert.verifyUserSessionOpening(context, entryPointName, user, effectiveRoles);
+			if (reason != null)
+				return reason;
+		}
+		return null;
 	}
 
 	private record ValidationResult(OpenUserSessionEntryPoint entryPoint) {
@@ -500,7 +524,7 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 
 		if (verifyReason.isInitialized()) {
 			log.debug(verifyReason.get().stringify());
-			return Reasons.build(InvalidSession.T).text("User session '" + userSession.getSessionId() + "' is invalid.").toMaybe();
+			return verifyReason.get().asMaybe();
 		}
 
 		return Maybe.complete(userSession);

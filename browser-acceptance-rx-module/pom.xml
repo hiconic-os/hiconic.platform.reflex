@@ -1,0 +1,13 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"><modelVersion>4.0.0</modelVersion><parent><groupId>hiconic.platform.reflex</groupId><artifactId>parent</artifactId><version>[1.0,1.1)</version></parent><artifactId>browser-acceptance-rx-module</artifactId><version>1.0.1</version><dependencies>
+<dependency><groupId>hiconic.platform.reflex</groupId><artifactId>reflex-module-api</artifactId><version>${V.hiconic.platform.reflex}</version></dependency>
+<dependency><groupId>hiconic.platform.reflex</groupId><artifactId>security-module-api</artifactId><version>${V.hiconic.platform.reflex}</version></dependency>
+<dependency><groupId>hiconic.platform.reflex</groupId><artifactId>web-security-module-api</artifactId><version>${V.hiconic.platform.reflex}</version></dependency>
+<dependency><groupId>hiconic.platform.reflex</groupId><artifactId>db-module-api</artifactId><version>${V.hiconic.platform.reflex}</version></dependency>
+<dependency><groupId>hiconic.platform.reflex</groupId><artifactId>web-api-mapping-meta-data-model</artifactId><version>${V.hiconic.platform.reflex}</version></dependency>
+<dependency><groupId>hiconic.platform.reflex</groupId><artifactId>browser-acceptance-api-model</artifactId><version>${V.hiconic.platform.reflex}</version></dependency>
+<dependency><groupId>hiconic.platform.reflex</groupId><artifactId>browser-acceptance-configuration-model</artifactId><version>${V.hiconic.platform.reflex}</version></dependency>
+<dependency><groupId>com.braintribe.gm</groupId><artifactId>jdbc-gm-support</artifactId><version>${V.com.braintribe.gm}</version></dependency>
+<dependency><groupId>com.braintribe.gm</groupId><artifactId>security-reason-model</artifactId><version>${V.com.braintribe.gm}</version></dependency>
+<dependency><groupId>com.braintribe.gm</groupId><artifactId>service-api</artifactId><version>${V.com.braintribe.gm}</version></dependency>
+<dependency><groupId>jakarta.servlet</groupId><artifactId>jakarta.servlet-api</artifactId><version>${V.jakarta.servlet}</version></dependency>
+</dependencies></project>

@@ -1,0 +1,11 @@
+enabled: true
+dataSource: user-sessions
+pendingLifetimeSeconds: 3600
+acceptanceLifetimeSeconds: 86400
+policies:
+- entryPoints:
+  - platform
+  includedRoles:
+  - browser-acceptance-test
+  excludedRoles:
+  - browser-acceptance-exempt

@@ -14,7 +14,6 @@ import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Set;
 import java.util.function.BiConsumer;
-import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -44,6 +43,7 @@ import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.service.ServiceDomains;
 import hiconic.rx.module.api.util.DisplayNames;
 import hiconic.rx.servlet.velocity.BasicTemplateBasedServlet;
+import hiconic.rx.web.server.api.WebAppNavigationEntry;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -80,10 +80,9 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 
 	/* Application Links */
 	private String explorerUrlWithTrailingSlash;
+	private Supplier<List<WebAppNavigationEntry>> webAppNavigationProvider = List::of;
 
 	/* Relative Paths */
-	private String relativeLogPath = "logs";
-	private BooleanSupplier logApplicationAvailable = () -> false;
 	private String relativeAboutPath = "about";
 	private String relativeDeploymentSummaryPath = "deployment-summary";
 
@@ -128,12 +127,11 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 	/* Application Links */
 	@Required public void setApplicationName(String applicationName) { this.applicationName = applicationName; }
 	@Required 	public void setExplorerUrl(String explorerUrl) { this.explorerUrlWithTrailingSlash = ensureTrailingSlash(NullSafe.nonNull(explorerUrl, "explorerUrlWithTrailingSlash")); }
+	public void setWebAppNavigationProvider(Supplier<List<WebAppNavigationEntry>> webAppNavigationProvider) { this.webAppNavigationProvider = webAppNavigationProvider; }
 
 	/* Relative servlet paths */
 	public void setRelativeAboutPath(String aboutUrl) { this.relativeAboutPath = aboutUrl; }
 	public void setRelativeDeploymentSummaryPath(String deploymentSummaryUrl) { this.relativeDeploymentSummaryPath = deploymentSummaryUrl; }
-	public void setRelativeLogPath(String logUrl) { this.relativeLogPath = logUrl; }
-	public void setLogApplicationAvailable(BooleanSupplier logApplicationAvailable) { this.logApplicationAvailable = logApplicationAvailable; }
 	public void setRelativeSignInPath(String relativeSignInPath) { this.relativeSignInPath = relativeSignInPath; }
 	public void setOnlineCompanyImageUrl(String onlineCompanyImageUrl) { this.onlineCompanyImageUrl = onlineCompanyImageUrl; }
 	public void setCompanyUrl(String companyUrl) { this.onlineCompanyUrl = companyUrl; }
@@ -264,11 +262,33 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 
 	private void handleOverview(Home home, UserSession userSession) {
 		handleGroup(userSession, home, true, () -> buildAdminGroup());
+		LinkGroup applicationGroup = buildApplicationGroup(userSession);
+		if (!applicationGroup.getLinks().isEmpty())
+			home.getGroups().add(applicationGroup);
 		// handleGroup(userSession, home, true, () -> buildModelGroup());
 		handleGroup(userSession, home, false, () -> buildDomainGroup());
 		handleGroup(userSession, home, false, () -> buildAccessGroup());
 		// handleGroup(userSession, home, true, () -> buildFunctionalModuleGroup());
 		// handleGroup(userSession, home, false, () -> buildWebTerminalGroup());
+	}
+
+	private LinkGroup buildApplicationGroup(UserSession userSession) {
+		LinkGroup group = LinkGroup.T.create();
+		group.setName("Applications");
+		group.setIconRef("./webpages/images/cortex/runtime.png");
+
+		Set<String> effectiveRoles = userSession.getEffectiveRoles();
+		for (WebAppNavigationEntry entry : webAppNavigationProvider.get()) {
+			if (!entry.requiredRoles().isEmpty() && !CollectionTools.containsAny(entry.requiredRoles(), effectiveRoles))
+				continue;
+
+			Link link = createLink(entry.displayName(), "/" + entry.webAppPath() + "/", "_self", null);
+			link.setTechnicalName(entry.webAppPath());
+			link.setToolTip(entry.description());
+			group.getLinks().add(link);
+		}
+
+		return group;
 	}
 
 	private void handleGroup(UserSession userSession, Home home, boolean isAdminRequired, Supplier<LinkGroup> groupSupplier) {
@@ -326,9 +346,6 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 				"./home?selectedTab=HEALTH&selectedTabPath=" + urlEncode(relativePlatformBaseChecksPath), "_self", null));
 		runtimeStatus.getNestedLinks()
 				.add(createLink("Checks", "./home?selectedTab=HEALTH&selectedTabPath=" + urlEncode(relativePlatformChecksPath), "_self", null));
-		if (logApplicationAvailable.getAsBoolean())
-			runtimeStatus.getNestedLinks().add(
-					createLink("Log", relativeLogPath, "_self", null, "./webpages/images/cortex/logs.png"));
 		administrationGroup.getLinks().add(runtimeStatus);
 		// administrationGroup.getLinks().add(createLink("Logfiles",
 		// "./home?selectedTab=LOGS&selectedTabPath="+relativeLogPath, "_self", null,

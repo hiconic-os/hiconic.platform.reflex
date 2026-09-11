@@ -1,5 +1,10 @@
 package hiconic.rx.security.web.wire.space;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import com.braintribe.gm.model.reason.meta.HttpStatusCode;
+import com.braintribe.gm.model.security.reason.AuthenticationFailure;
 import com.braintribe.model.securityservice.web.GetWebAuthorization;
 import com.braintribe.model.securityservice.web.UserPassWebAuthenticate;
 import com.braintribe.model.securityservice.web.WebAuthorizationRequest;
@@ -17,6 +22,8 @@ import hiconic.rx.security.web.api.AuthFilters;
 import hiconic.rx.security.web.api.CookieHandler;
 import hiconic.rx.security.web.api.WebSecurityConfigurationContract;
 import hiconic.rx.security.web.api.WebSecurityContract;
+import hiconic.rx.security.web.api.WebSecurityExtensionContract;
+import hiconic.rx.security.web.api.WebSecurityRequestContextContributor;
 import hiconic.rx.security.web.api.WebSecurityServiceDomains;
 import hiconic.rx.security.web.model.configuration.WebSecurityConfiguration;
 import hiconic.rx.security.web.processing.credentials.extractor.BasicAuthCredentialsProvider;
@@ -38,8 +45,7 @@ import jakarta.servlet.DispatcherType;
  * This module's javadoc is yet to be written.
  */
 @Managed
-public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityContract, WebSecurityConfigurationContract {
-
+public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityContract, WebSecurityConfigurationContract, WebSecurityExtensionContract {
 	// @formatter:off
 	@Import private RxPlatformContract platform;
 	@Import private WebServerContract webServer;
@@ -62,7 +68,15 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 			editor.onEntityType(GetWebAuthorization.T)
 					.addMetaData(webAuthMapping("authorization", HttpRequestMethod.GET))
 					.addMetaData(webAuthMapping("authorization", HttpRequestMethod.POST));
+			editor.onEntityType(AuthenticationFailure.T)
+					.addMetaData(httpStatus(401));
 		});
+	}
+
+	private HttpStatusCode httpStatus(int code) {
+		HttpStatusCode metadata = HttpStatusCode.T.create();
+		metadata.setCode(code);
+		return metadata;
 	}
 
 	@Override
@@ -116,6 +130,7 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 		bean.setMarshallerRegistry(platform.marshalling().marshallers());
 		bean.setRequestEvaluator(platform.serviceProcessing().systemEvaluator());
 		bean.setEntryPointProvider(http.openUserSessionConfigurationProvider()::findEntryPointName);
+		bean.setRequestContextContributors(requestContextContributors());
 
 		return bean;
 	}
@@ -163,6 +178,7 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 		// }
 		authFilter.setThrowExceptionOnAuthFailure(true);
 		authFilter.setEntryPointProvider(http.openUserSessionConfigurationProvider()::findEntryPoint);
+		authFilter.setRequestContextContributors(requestContextContributors());
 
 		authFilter.addWebCredentialProvider("cookie", existingSessionFromCookieProvider());
 		authFilter.addWebCredentialProvider("request-parameter", existingSessionFromRequestParameterProvider());
@@ -173,6 +189,16 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 		String loginPath = defaultLoginPath();
 		if (!StringTools.isBlank(loginPath))
 			authFilter.setRelativeLoginPath(loginPath);
+	}
+
+	@Override
+	public void registerRequestContextContributor(WebSecurityRequestContextContributor contributor) {
+		requestContextContributors().add(contributor);
+	}
+
+	@Managed
+	private List<WebSecurityRequestContextContributor> requestContextContributors() {
+		return new ArrayList<>();
 	}
 
 	@Managed

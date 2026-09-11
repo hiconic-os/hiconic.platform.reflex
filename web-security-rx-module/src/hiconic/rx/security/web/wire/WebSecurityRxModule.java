@@ -4,6 +4,7 @@ import hiconic.rx.module.api.wire.Exports;
 import hiconic.rx.module.api.wire.RxModule;
 import hiconic.rx.security.web.api.WebSecurityConfigurationContract;
 import hiconic.rx.security.web.api.WebSecurityContract;
+import hiconic.rx.security.web.api.WebSecurityExtensionContract;
 import hiconic.rx.security.web.wire.space.WebSecurityRxModuleSpace;
 
 public enum WebSecurityRxModule implements RxModule<WebSecurityRxModuleSpace> {
@@ -14,6 +15,7 @@ public enum WebSecurityRxModule implements RxModule<WebSecurityRxModuleSpace> {
 	public void bindExports(Exports exports) {
 		exports.bind(WebSecurityContract.class, WebSecurityRxModuleSpace.class);
 		exports.bind(WebSecurityConfigurationContract.class, WebSecurityRxModuleSpace.class);
+		exports.bind(WebSecurityExtensionContract.class, WebSecurityRxModuleSpace.class);
 	}
 
 }

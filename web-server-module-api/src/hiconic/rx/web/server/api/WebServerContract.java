@@ -13,8 +13,9 @@
 // ============================================================================
 package hiconic.rx.web.server.api;
 
-import java.util.function.Supplier;
+import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import dev.hiconic.servlet.api.remote.RemoteClientAddressResolver;
 import hiconic.rx.module.api.wire.RxExportContract;
@@ -61,6 +62,14 @@ public interface WebServerContract extends RxExportContract {
 	 * dependency-free capability check.
 	 */
 	boolean isWebAppRegistered(String webAppPath);
+
+	/** Registers a discoverable landing-page entry for a web application. */
+	void addWebAppNavigation(WebAppNavigationEntry entry);
+
+	/**
+	 * Returns a stable snapshot of navigation entries whose web applications are currently registered.
+	 */
+	List<WebAppNavigationEntry> webAppNavigation();
 
 	/** Maps a subtree of indexed packaged public resources below the default endpoint base path. */
 	void addPackagedWebResources(String name, String path, String resourcePathPrefix);

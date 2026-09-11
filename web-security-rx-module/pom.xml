@@ -6,9 +6,14 @@
         <version>[1.0,1.1)</version>
     </parent>
     <artifactId>web-security-rx-module</artifactId>
-    <version>1.0.8</version>
+    <version>1.0.9</version>
     <properties/>
-    <dependencies>
+	<dependencies>
+		<dependency>
+			<groupId>com.braintribe.gm</groupId>
+			<artifactId>reason-meta-data-model</artifactId>
+			<version>${V.com.braintribe.gm}</version>
+		</dependency>
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>reflex-module-api</artifactId>

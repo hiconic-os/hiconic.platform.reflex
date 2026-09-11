@@ -51,7 +51,6 @@ import jakarta.servlet.DispatcherType;
 @Managed
 public class WebappsSpace implements WireSpace {
 	private static final String EXPLORER_WEB_APP_PATH = "tribefire-explorer";
-	private static final String LOG_REFLECTION_WEB_APP_PATH = "log-reflection";
 
 	private static final Map<String, String> OPTIONAL_CLIENT_PROPERTIES = Map.of(
 			"websocketUrl", "TRIBEFIRE_WEBSOCKET_URL",
@@ -140,8 +139,7 @@ public class WebappsSpace implements WireSpace {
 		bean.setServiceDomains(serviceProcessing.serviceDomains());
 		bean.setAccessDomains(access.accessDomains());
 		bean.setGrantedRoles(platform.auth().roleAuthorization().adminRoles());
-		bean.setRelativeLogPath("/" + LOG_REFLECTION_WEB_APP_PATH + "/");
-		bean.setLogApplicationAvailable(() -> webServer.isWebAppRegistered(LOG_REFLECTION_WEB_APP_PATH));
+		bean.setWebAppNavigationProvider(webServer::webAppNavigation);
 
 		bean.addAccessLinkConfigurer(openApiLandingPageLinkConfigurer());
 		bean.addServiceDomainLinkConfigurer(openApiLandingPageLinkConfigurer());

@@ -1,0 +1,1 @@
+package hiconic.rx.browser.acceptance.model.api; import com.braintribe.model.generic.reflection.EntityType; import com.braintribe.model.generic.reflection.EntityTypes; public interface RevokeBrowserAcceptance extends ChangeBrowserAcceptance { EntityType<RevokeBrowserAcceptance> T=EntityTypes.T(RevokeBrowserAcceptance.class); }

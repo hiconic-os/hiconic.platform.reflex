@@ -57,6 +57,7 @@ import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.push.api.PushContract;
 import hiconic.rx.web.server.api.FilterSymbol;
+import hiconic.rx.web.server.api.WebAppNavigationEntry;
 import hiconic.rx.web.server.api.WebServerContract;
 import hiconic.rx.web.server.api.WebServerFilters;
 import hiconic.rx.web.server.model.config.StaticFilesystemResourceMapping;
@@ -296,6 +297,18 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	@Override
 	public boolean isWebAppRegistered(String webAppPath) {
 		return webAppRegistry().isRegistered(normalizeWebAppPath(webAppPath));
+	}
+
+	@Override
+	public void addWebAppNavigation(WebAppNavigationEntry entry) {
+		String normalizedPath = normalizeWebAppPath(entry.webAppPath());
+		webAppRegistry().registerNavigation(new WebAppNavigationEntry(normalizedPath, entry.displayName(), entry.description(),
+				entry.requiredRoles(), entry.order()));
+	}
+
+	@Override
+	public List<WebAppNavigationEntry> webAppNavigation() {
+		return webAppRegistry().navigation();
 	}
 
 	@Managed

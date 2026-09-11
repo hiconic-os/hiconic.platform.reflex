@@ -364,6 +364,7 @@ public abstract class AbstractUserSessionService implements UserSessionService {
 		}
 		touchPersistenceUserSessionLocally(pUserSession);
 
+		pUserSession.setUserId(user.getId() != null ? user.getId().toString() : null);
 		pUserSession.setUserName(user.getName());
 		pUserSession.setUserFirstName(user.getFirstName());
 		pUserSession.setUserLastName(user.getLastName());

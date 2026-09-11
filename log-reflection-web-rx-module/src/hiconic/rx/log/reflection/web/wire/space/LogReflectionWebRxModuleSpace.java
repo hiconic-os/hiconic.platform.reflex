@@ -5,6 +5,7 @@ import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
+import hiconic.rx.web.server.api.WebAppNavigationEntry;
 import hiconic.rx.web.server.api.WebServerContract;
 
 @Managed
@@ -21,5 +22,7 @@ public class LogReflectionWebRxModuleSpace implements RxModuleContract {
 	public void onDeploy() {
 		webServer.addWebAppRuntimeConfiguration(WEBAPP_PATH,
 				() -> java.util.Map.of("adminRoles", platform.auth().roleAuthorization().adminRoles()));
+		webServer.addWebAppNavigation(new WebAppNavigationEntry(WEBAPP_PATH, "Log Reflection",
+				"Inspect and filter the application log.", platform.auth().roleAuthorization().adminRoles(), 100));
 	}
 }

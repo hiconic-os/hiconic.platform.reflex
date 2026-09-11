@@ -1,0 +1,3 @@
+package hiconic.rx.browser.acceptance.model.api;
+import com.braintribe.model.generic.annotation.Abstract; import com.braintribe.model.generic.eval.EvalContext; import com.braintribe.model.generic.eval.Evaluator; import com.braintribe.model.generic.reflection.EntityType; import com.braintribe.model.generic.reflection.EntityTypes; import com.braintribe.model.service.api.ServiceRequest; import hiconic.rx.browser.acceptance.model.BrowserAcceptance;
+@Abstract public interface ChangeBrowserAcceptance extends BrowserAcceptanceRequest { EntityType<ChangeBrowserAcceptance> T=EntityTypes.T(ChangeBrowserAcceptance.class); String getAcceptanceId(); void setAcceptanceId(String value); @Override EvalContext<BrowserAcceptance> eval(Evaluator<ServiceRequest> evaluator); }

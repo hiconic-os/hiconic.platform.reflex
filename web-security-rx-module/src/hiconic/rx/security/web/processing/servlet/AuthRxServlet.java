@@ -16,6 +16,7 @@ package hiconic.rx.security.web.processing.servlet;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Locale;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
 
@@ -52,6 +53,7 @@ import dev.hiconic.servlet.api.remote.RemoteAddressInformation;
 import dev.hiconic.servlet.api.remote.RemoteClientAddressResolver;
 import dev.hiconic.servlet.impl.remote.DefaultRemoteClientAddressResolver;
 import hiconic.rx.security.web.api.CookieHandler;
+import hiconic.rx.security.web.api.WebSecurityRequestContextContributor;
 import hiconic.rx.security.web.processing.servlet.aspect.AuthHttpRequestSupplier;
 import hiconic.rx.security.web.processing.servlet.aspect.AuthHttpRequestSupplierAspect;
 import hiconic.rx.security.web.processing.servlet.aspect.AuthHttpRequestSupplierImpl;
@@ -76,6 +78,12 @@ public class AuthRxServlet extends HttpServlet {
 	private CookieHandler cookieHandler;
 	private Evaluator<ServiceRequest> requestEvaluator;
 	private Function<HttpServletRequest, String> entryPointProvider = r -> null;
+	private List<WebSecurityRequestContextContributor> requestContextContributors = List.of();
+
+	@Configurable
+	public void setRequestContextContributors(List<WebSecurityRequestContextContributor> contributors) {
+		this.requestContextContributors = contributors;
+	}
 
 	@Configurable
 	public void setEntryPointProvider(Function<HttpServletRequest, String> entryPointProvider) {
@@ -105,7 +113,7 @@ public class AuthRxServlet extends HttpServlet {
 
 		OpenUserSessionWithUserAndPassword authRequest = unmarshallRequest(req);
 
-		AttributeContext attributeContext = buildAttributeContext(req, authRequest);
+		AttributeContext attributeContext = buildAttributeContext(req, resp, authRequest);
 		
 		OpenUserSession openUserSession = createOpenUserSession(req, authRequest);
 
@@ -293,19 +301,21 @@ public class AuthRxServlet extends HttpServlet {
 
 	}
 
-	protected AttributeContext buildAttributeContext(HttpServletRequest httpRequest, OpenUserSessionWithUserAndPassword authRequest) {
+	protected AttributeContext buildAttributeContext(HttpServletRequest httpRequest, HttpServletResponse httpResponse,
+			OpenUserSessionWithUserAndPassword authRequest) {
 		AuthHttpRequestSupplier httpRequestSupplier = new AuthHttpRequestSupplierImpl(authRequest, httpRequest);
 		AuthHttpResponseConfigurerImpl httpResponseConfigurer = new AuthHttpResponseConfigurerImpl();
 
 		//@formatter:off
-		return AttributeContexts.peek().derive()
+		var builder = AttributeContexts.peek().derive()
 				.set(RequestedEndpointAspect.class, httpRequest.getRequestURL().toString())
 				.set(RequestorAddressAspect.class, getClientRemoteInternetAddress(httpRequest))
 				.set(AuthHttpRequestSupplierAspect.class, httpRequestSupplier)
 				.set(AuthHttpResponseConfigurerAspect.class, httpResponseConfigurer)
-				.set(Waypoint.class, "platform-login")
-				.build();
+				.set(Waypoint.class, "platform-login");
 		//@formatter:on
+		requestContextContributors.forEach(c -> c.contribute(httpRequest, httpResponse, builder));
+		return builder.build();
 	}
 
 	@Required
