@@ -24,12 +24,19 @@ article { background: white; border: 1px solid #e0e3eb; border-radius: 12px; ove
 .state { font-size: .75rem; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; color: #6547ca; background: #f0ecff; border-radius: 999px; padding: .35rem .65rem; }
 .state.approved { color: #197148; background: #e5f6ed; }
 .state.rejected, .state.revoked, .state.expired { color: #a12d3d; background: #fcebed; }
+.state.forgotten { color: #555b6b; background: #eceef3; }
 .actions { display: flex; gap: .5rem; }
 .danger { color: #a72838; }
 .details { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.2rem 2rem; margin: 0; padding: 1.25rem; }
 .details div { min-width: 0; }
 .details dt { font-size: .72rem; font-weight: 700; letter-spacing: .045em; text-transform: uppercase; color: #858b99; margin-bottom: .3rem; }
 .details dd { font-size: .9rem; color: #303746; margin: 0; line-height: 1.4; overflow-wrap: anywhere; }
+.history { border-top: 1px solid #eceef3; padding: .9rem 1.25rem 1.1rem; }
+.history summary { cursor: pointer; color: #5540a8; font-size: .84rem; font-weight: 700; }
+.history ol { list-style: none; padding: .8rem 0 0; margin: 0; display: grid; gap: .45rem; }
+.history li { display: grid; grid-template-columns: minmax(6rem, .7fr) minmax(10rem, 1fr) minmax(8rem, 1fr) minmax(8rem, 1fr); gap: .75rem; align-items: baseline; font-size: .78rem; color: #5f6573; }
+.history small { grid-column: 2 / -1; color: #7a808d; }
+.event-type { color: #303746; font-weight: 700; }
 .error { padding: 1rem; background: #fdecef; color: #9a2535; border-radius: 8px; margin-bottom: 1rem; }
 .empty { padding: 3rem; text-align: center; color: #707685; background: white; border-radius: 12px; }
 
@@ -38,6 +45,8 @@ article { background: white; border: 1px solid #e0e3eb; border-radius: 12px; ove
   .card-header { grid-template-columns: 1fr auto; }
   .actions { grid-column: 1 / -1; }
   .details { grid-template-columns: 1fr 1fr; }
+  .history li { grid-template-columns: 1fr 1fr; }
+  .history small { grid-column: 1 / -1; }
 }
 
 @media (max-width: 480px) {

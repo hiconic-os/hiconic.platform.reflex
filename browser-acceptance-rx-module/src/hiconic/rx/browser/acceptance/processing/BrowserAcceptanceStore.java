@@ -47,10 +47,12 @@ public class BrowserAcceptanceStore {
 			BrowserRequestInformation requestInformation) {
 		String tokenHash = hash(rawToken);
 		StoredBrowserAcceptance stored = acceptances.find(tokenHash, userId, entryPoint);
+		if (stored == null)
+			stored = acceptances.findIncludingForgotten(tokenHash, userId, entryPoint);
 		Date now = new Date();
 		if (stored == null) {
 			stored = StoredBrowserAcceptance.T.create();
-			stored.setId(stableUuid("acceptance:" + tokenHash + ':' + userId + ':' + entryPoint));
+			stored.setId(UUID.randomUUID().toString());
 			stored.setBrowserContextId(stableUuid("browser-context:" + tokenHash));
 			stored.setTokenHash(tokenHash);
 			stored.setUserId(userId);
@@ -142,7 +144,13 @@ public class BrowserAcceptanceStore {
 		return view(stored);
 	}
 
-	public List<BrowserAcceptance> list(BrowserAcceptanceState state) { return acceptances.list(state).stream().map(BrowserAcceptanceStore::view).toList(); }
+	public List<BrowserAcceptance> list(BrowserAcceptanceState state) {
+		return acceptances.list(state).stream().map(stored -> {
+			BrowserAcceptance result = view(stored);
+			result.setEvents(events.list(stored.getId()));
+			return result;
+		}).toList();
+	}
 
 	public synchronized BrowserAcceptance change(String id, BrowserAcceptanceState state, String actor, String address) {
 		StoredBrowserAcceptance stored = acceptances.findById(id);
@@ -154,6 +162,23 @@ public class BrowserAcceptanceStore {
 		stored.setExpiresAt(state == BrowserAcceptanceState.APPROVED ? new Date(now.getTime() + acceptanceLifetimeMillis) : stored.getExpiresAt());
 		acceptances.write(stored);
 		event(stored, BrowserAcceptanceEventType.valueOf(state.name()), actor, address, null);
+		return view(stored);
+	}
+
+	/** Retires the acceptance until a later explicit request reactivates the same record and continues its event history. */
+	public synchronized BrowserAcceptance forget(String id, String actor, String address) {
+		StoredBrowserAcceptance stored = acceptances.findById(id);
+		if (stored == null)
+			return null;
+		if (stored.getState() == BrowserAcceptanceState.PENDING || stored.getState() == BrowserAcceptanceState.APPROVED)
+			throw new IllegalArgumentException("Only rejected, revoked or expired browser acceptances can be forgotten");
+
+		Date now = new Date();
+		stored.setState(BrowserAcceptanceState.FORGOTTEN);
+		stored.setDecidedAt(now);
+		stored.setDecidedBy(actor);
+		acceptances.write(stored);
+		event(stored, BrowserAcceptanceEventType.FORGOTTEN, actor, address, "Device/browser context forgotten");
 		return view(stored);
 	}
 
@@ -204,7 +229,9 @@ public class BrowserAcceptanceStore {
 			table=db.newTable(name).withColumns(id,contextId,tokenHash,userId,userName,entryPoint,state,created,lastSeen,decided,expires,decidedBy,address,
 					lastAddress,directAddress,lastDirectAddress,userAgent,clientHintsUserAgent,clientHintsPlatform,clientHintsMobile).withIndices(identity,pending,user).done();
 		}
-		StoredBrowserAcceptance find(String hash,String uid,String ep) { String q=tokenHash.getSingleSqlColumn()+" = ? and "+userId.getSingleSqlColumn()+" = ? and "+entryPoint.getSingleSqlColumn()+(ep==null?" is null":" = ?"); Object[] p=ep==null?new Object[]{hash,uid}:new Object[]{hash,uid,ep}; List<GmRow> rows=table.select().where(q,p).limit(1).rows(); return rows.isEmpty()?null:read(rows.get(0)); }
+		StoredBrowserAcceptance find(String hash,String uid,String ep) { return find(hash,uid,ep,false); }
+		StoredBrowserAcceptance findIncludingForgotten(String hash,String uid,String ep) { return find(hash,uid,ep,true); }
+		private StoredBrowserAcceptance find(String hash,String uid,String ep,boolean includeForgotten) { String q=tokenHash.getSingleSqlColumn()+" = ? and "+userId.getSingleSqlColumn()+" = ? and "+entryPoint.getSingleSqlColumn()+(ep==null?" is null":" = ?")+(includeForgotten?"":" and "+state.getSingleSqlColumn()+" <> ?"); Object[] p=ep==null?(includeForgotten?new Object[]{hash,uid}:new Object[]{hash,uid,BrowserAcceptanceState.FORGOTTEN.name()}):(includeForgotten?new Object[]{hash,uid,ep}:new Object[]{hash,uid,ep,BrowserAcceptanceState.FORGOTTEN.name()}); List<GmRow> rows=table.select().where(q,p).orderBy(created.getSingleSqlColumn()+" desc").limit(1).rows(); return rows.isEmpty()?null:read(rows.get(0)); }
 		StoredBrowserAcceptance findById(String value) { List<GmRow> rows=table.select().whereColumn(id,value).limit(1).rows(); return rows.isEmpty()?null:read(rows.get(0)); }
 		List<StoredBrowserAcceptance> list(BrowserAcceptanceState value) { var s=table.select(); if(value!=null)s=s.whereColumn(state,value.name()); return s.orderBy(created.getSingleSqlColumn()+" desc").mapRows(this::read); }
 		void write(StoredBrowserAcceptance e) { if(findById(e.getId())==null)table.insert(values(e)); else table.update(values(e)).whereColumn(id,e.getId()); }
@@ -216,5 +243,7 @@ public class BrowserAcceptanceStore {
 		final GmTable table; final GmColumn<String> id,acceptanceId,type,actor,address,details; final GmColumn<Date> timestamp;
 		EventTable(GmDb db,String name){id=db.shortString255("ID").primaryKey().notNull().done();acceptanceId=db.shortString255("ACCEPTANCE_ID").notNull().done();type=db.shortString255("TYPE").notNull().done();timestamp=db.date("EVENT_AT").notNull().done();actor=db.shortString255("ACTOR_USER_ID").done();address=db.shortString255("REQUESTOR_ADDRESS").done();details=db.string("DETAILS").done();table=db.newTable(name).withColumns(id,acceptanceId,type,timestamp,actor,address,details).withIndices(db.index(name+"_ACCEPTANCE_TIME_IDX",acceptanceId,timestamp)).done();}
 		void insert(BrowserAcceptanceEvent e){table.insert(id,e.getId(),acceptanceId,e.getAcceptanceId(),type,e.getType().name(),timestamp,e.getTimestamp(),actor,e.getActorUserId(),address,e.getRequestorAddress(),details,e.getDetails());}
+		List<BrowserAcceptanceEvent> list(String value){return table.select().whereColumn(acceptanceId,value).orderBy(timestamp.getSingleSqlColumn()+" asc").mapRows(this::read);}
+		private BrowserAcceptanceEvent read(GmRow row){BrowserAcceptanceEvent event=BrowserAcceptanceEvent.T.create();event.setId(row.getValue(id));event.setAcceptanceId(row.getValue(acceptanceId));event.setType(BrowserAcceptanceEventType.valueOf(row.getValue(type)));event.setTimestamp(row.getValue(timestamp));event.setActorUserId(row.getValue(actor));event.setRequestorAddress(row.getValue(address));event.setDetails(row.getValue(details));return event;}
 	}
 }

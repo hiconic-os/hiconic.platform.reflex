@@ -3,10 +3,9 @@ package hiconic.rx.browser.acceptance.processing;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.gm.model.reason.Reasons;
+import com.braintribe.gm.model.security.reason.AuthenticationFailure;
 import com.braintribe.gm.model.security.reason.ApprovalPending;
 import com.braintribe.gm.model.security.reason.ApprovalRequired;
-import com.braintribe.gm.model.security.reason.BrowserContextRejected;
-import com.braintribe.gm.model.security.reason.BrowserContextRevoked;
 import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.securityservice.OpenUserSessionWithUserAndPassword;
 import com.braintribe.model.securityservice.credentials.UserPasswordCredentials;
@@ -59,10 +58,16 @@ public class BrowserAcceptanceLoginFlowExtension implements LoginFlowExtension {
 		return switch (acceptance.getState()) {
 			case PENDING -> Maybe.complete(pending());
 			case APPROVED -> Maybe.complete(LoginIntervention.retryAuthentication());
-			case REJECTED -> Reasons.build(BrowserContextRejected.T).text("Device/browser approval was rejected").toMaybe();
-			case REVOKED -> Reasons.build(BrowserContextRevoked.T).text("Device/browser approval was revoked").toMaybe();
+			case REJECTED, REVOKED -> authenticationFailed();
 			case EXPIRED -> throw new IllegalStateException("An explicit approval request must renew an expired acceptance");
+			case FORGOTTEN -> throw new IllegalStateException("An explicit approval request must create a new acceptance after forgetting");
 		};
+	}
+
+	private static Maybe<LoginIntervention> authenticationFailed() {
+		return Reasons.build(AuthenticationFailure.T)
+				.text("Sign-in could not be completed. This browser or device is not authorized.")
+				.toMaybe();
 	}
 
 	private static LoginIntervention pending() {
