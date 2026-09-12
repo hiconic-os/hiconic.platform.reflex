@@ -38,6 +38,7 @@ import hiconic.rx.explorer.home.model.Home;
 import hiconic.rx.explorer.home.model.Link;
 import hiconic.rx.explorer.home.model.LinkCollection;
 import hiconic.rx.explorer.home.model.LinkGroup;
+import hiconic.rx.explorer.model.configuration.LandingPageLinkConfiguration;
 import hiconic.rx.module.api.service.ConfiguredModel;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.service.ServiceDomains;
@@ -81,6 +82,7 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 	/* Application Links */
 	private String explorerUrlWithTrailingSlash;
 	private Supplier<List<WebAppNavigationEntry>> webAppNavigationProvider = List::of;
+	private List<LandingPageLinkConfiguration> configuredApplicationLinks = List.of();
 
 	/* Relative Paths */
 	private String relativeAboutPath = "about";
@@ -128,6 +130,7 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 	@Required public void setApplicationName(String applicationName) { this.applicationName = applicationName; }
 	@Required 	public void setExplorerUrl(String explorerUrl) { this.explorerUrlWithTrailingSlash = ensureTrailingSlash(NullSafe.nonNull(explorerUrl, "explorerUrlWithTrailingSlash")); }
 	public void setWebAppNavigationProvider(Supplier<List<WebAppNavigationEntry>> webAppNavigationProvider) { this.webAppNavigationProvider = webAppNavigationProvider; }
+	public void setConfiguredApplicationLinks(List<LandingPageLinkConfiguration> configuredApplicationLinks) { this.configuredApplicationLinks = configuredApplicationLinks; }
 
 	/* Relative servlet paths */
 	public void setRelativeAboutPath(String aboutUrl) { this.relativeAboutPath = aboutUrl; }
@@ -282,9 +285,20 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 			if (!entry.requiredRoles().isEmpty() && !CollectionTools.containsAny(entry.requiredRoles(), effectiveRoles))
 				continue;
 
-			Link link = createLink(entry.displayName(), "/" + entry.webAppPath() + "/", "_self", null);
+			Link link = createLink(entry.displayName(), "/" + entry.webAppPath() + "/", "_blank", null);
 			link.setTechnicalName(entry.webAppPath());
 			link.setToolTip(entry.description());
+			group.getLinks().add(link);
+		}
+
+		for (LandingPageLinkConfiguration configuredLink : configuredApplicationLinks) {
+			if (!configuredLink.getRequiredRoles().isEmpty()
+					&& !CollectionTools.containsAny(configuredLink.getRequiredRoles(), effectiveRoles))
+				continue;
+
+			Link link = createLink(configuredLink.getDisplayName(), configuredLink.getUrl(), "_blank", null);
+			link.setTechnicalName(configuredLink.getUrl());
+			link.setToolTip(configuredLink.getDescription());
 			group.getLinks().add(link);
 		}
 

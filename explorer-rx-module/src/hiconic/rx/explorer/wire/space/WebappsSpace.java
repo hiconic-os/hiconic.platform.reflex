@@ -134,12 +134,14 @@ public class WebappsSpace implements WireSpace {
 	@Managed
 	private HomeRxServlet homeServlet() {
 		HomeRxServlet bean = new HomeRxServlet();
+		ExplorerConfiguration configuration = platform.configuration().readConfig(ExplorerConfiguration.T).get();
 		bean.setApplicationName(platform.application().applicationName());
 		bean.setExplorerUrl("/tribefire-explorer"); // relative path works
 		bean.setServiceDomains(serviceProcessing.serviceDomains());
 		bean.setAccessDomains(access.accessDomains());
 		bean.setGrantedRoles(platform.auth().roleAuthorization().adminRoles());
 		bean.setWebAppNavigationProvider(webServer::webAppNavigation);
+		bean.setConfiguredApplicationLinks(configuration.getApplicationLinks());
 
 		bean.addAccessLinkConfigurer(openApiLandingPageLinkConfigurer());
 		bean.addServiceDomainLinkConfigurer(openApiLandingPageLinkConfigurer());

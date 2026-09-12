@@ -15,6 +15,11 @@ public interface ExplorerConfiguration extends GenericEntity {
 	List<ModelEnvironmentConfiguration> getModelEnvironments();
 	void setModelEnvironments(List<ModelEnvironmentConfiguration> modelEnvironments);
 
+	/** Additional relative or absolute links shown in the landing page's Applications section. */
+	@Initializer("[]")
+	List<LandingPageLinkConfiguration> getApplicationLinks();
+	void setApplicationLinks(List<LandingPageLinkConfiguration> applicationLinks);
+
 	/**
 	 * Data access used for Explorer bootstrap resources when the entry-point URL does not yet carry
 	 * an {@code accessId}. This is deliberately explicit: a remembered client-side access must not
