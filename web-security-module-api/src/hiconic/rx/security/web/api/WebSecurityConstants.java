@@ -34,6 +34,13 @@ public interface WebSecurityConstants {
 	public static String HEADER_PARAM_PREFIX = "gm";
 	public static String HEADER_PARAM_SESSIONID = HEADER_PARAM_PREFIX + "-session-id";
 
+	public static String HEADER_LOGIN_ACTION = "X-Hiconic-Login-Action";
+	public static String HEADER_LOGIN_INTERVENTION_STATE = "X-Hiconic-Login-Intervention-State";
+	public static String HEADER_LOGIN_INTERVENTION_TITLE = "X-Hiconic-Login-Intervention-Title";
+	public static String HEADER_LOGIN_INTERVENTION_MESSAGE = "X-Hiconic-Login-Intervention-Message";
+	public static String HEADER_LOGIN_INTERVENTION_ACTION = "X-Hiconic-Login-Intervention-Action";
+	public static String HEADER_LOGIN_INTERVENTION_ACTION_LABEL = "X-Hiconic-Login-Intervention-Action-Label";
+
 	public final static String TRIBEFIRE_RUNTIME_OFFER_STAYSIGNED = "TRIBEFIRE_RUNTIME_OFFER_STAYSIGNED";
 
 }

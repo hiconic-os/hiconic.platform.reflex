@@ -16,12 +16,17 @@ function bindForm() {
  var form = document.getElementById("signinForm");
  form.addEventListener("submit", function (event) {
    event.preventDefault();
-   login(form);
+   login();
+ });
+
+ document.getElementById("loginAction").addEventListener("click", function () {
+	var action = this.getAttribute("data-action");
+	if (action) login(action);
  });
 
 }
 
-function login() {
+function login(action) {
 
 	var loginData = new Object();
 	loginData.user = document.getElementById("input_user").value;
@@ -38,12 +43,24 @@ function login() {
  	request.open('POST', 'login/auth');
 	request.setRequestHeader("Content-Type","application/json");
 	request.setRequestHeader("Accept","application/json");
+	if (action) request.setRequestHeader("X-Hiconic-Login-Action", action);
+	setBusy(true);
 	
 	// Define repsonse handling
 	request.onreadystatechange = function () {
 		
 		if(request.readyState == 4) {
-			
+			setBusy(false);
+			var interventionState = request.getResponseHeader("X-Hiconic-Login-Intervention-State");
+			if (interventionState == "RETRY_AUTHENTICATION") {
+				login();
+				return;
+			}
+			if (interventionState) {
+				renderIntervention(request, interventionState);
+				return;
+			}
+
 			if (request.status == 200) {
 				var sessionId = request.responseText;
 				
@@ -73,7 +90,7 @@ function login() {
 				} catch (err) {
 					console.log("Could not parse response text");
 				}	
-				window.location = "login?message="+encodeURI(failureMessage);
+				renderMessage("Sign in failed", failureMessage, null, null);
 			}
 			
 		}
@@ -83,6 +100,33 @@ function login() {
  	// Send login request
  	request.send(loginDataJson);
 	//request.send();
+}
+
+function renderIntervention(request, state) {
+	var title = request.getResponseHeader("X-Hiconic-Login-Intervention-Title") || "Additional verification required";
+	var message = request.getResponseHeader("X-Hiconic-Login-Intervention-Message") || "Please complete the required verification.";
+	var action = request.getResponseHeader("X-Hiconic-Login-Intervention-Action");
+	var actionLabel = request.getResponseHeader("X-Hiconic-Login-Intervention-Action-Label");
+	renderMessage(title, message, action, actionLabel);
+}
+
+function renderMessage(title, message, action, actionLabel) {
+	document.getElementById("loginMessageTitle").textContent = title || "";
+	document.getElementById("loginMessageText").textContent = message || "";
+	var actionButton = document.getElementById("loginAction");
+	if (action && actionLabel) {
+		actionButton.textContent = actionLabel;
+		actionButton.setAttribute("data-action", action);
+		actionButton.style.display = "inline-block";
+	} else {
+		actionButton.removeAttribute("data-action");
+		actionButton.style.display = "none";
+	}
+}
+
+function setBusy(busy) {
+	document.getElementById("signInButton").disabled = busy;
+	document.getElementById("loginAction").disabled = busy;
 }
 
 </script>
@@ -103,7 +147,7 @@ function login() {
 				<input id="input_password" type="password" name="password" placeholder="Password">
 			</div>
 			<div>
-				<button type="submit">Sign in</button>
+				<button id="signInButton" type="submit">Sign in</button>
 			</div>
 			#if($offerStaySigned)
 			<div>
@@ -118,11 +162,11 @@ function login() {
 				#else
 					<div class="errorMessage" align="center">
 				#end
-					#if($message)
-						$tools.escape($message)
-					#else
-						&nbsp;
-					#end
+					<strong id="loginMessageTitle"></strong>
+					<span id="loginMessageText">
+						#if($message)$tools.escape($message)#else&nbsp;#end
+					</span>
+					<button id="loginAction" type="button" style="display:none"></button>
 				</div>
 			</div>
 			

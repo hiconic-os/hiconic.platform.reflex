@@ -8,6 +8,7 @@ import org.junit.Test;
 
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.security.reason.ApprovalRequired;
+import com.braintribe.gm.model.security.reason.ApprovalPending;
 import com.braintribe.gm.model.security.reason.BrowserContextRevoked;
 import com.braintribe.gm.model.security.reason.InvalidCredentials;
 import com.braintribe.model.processing.securityservice.api.attributes.OpenUserSessionEntryPointAttribute;
@@ -16,6 +17,7 @@ import com.braintribe.model.security.service.config.OpenUserSessionEntryPoint;
 import com.braintribe.model.securityservice.OpenUserSessionResponse;
 import com.braintribe.model.securityservice.OpenUserSessionWithUserAndPassword;
 import com.braintribe.model.securityservice.ValidateUserSession;
+import com.braintribe.model.securityservice.credentials.UserPasswordCredentials;
 import com.braintribe.utils.collection.impl.AttributeContexts;
 
 import hiconic.rx.browser.acceptance.model.BrowserAcceptance;
@@ -24,9 +26,13 @@ import hiconic.rx.browser.acceptance.model.api.ApproveBrowserAcceptance;
 import hiconic.rx.browser.acceptance.model.api.BrowserAcceptances;
 import hiconic.rx.browser.acceptance.model.api.ListBrowserAcceptances;
 import hiconic.rx.browser.acceptance.model.api.RevokeBrowserAcceptance;
+import hiconic.rx.browser.acceptance.model.api.RequestBrowserAcceptance;
 import hiconic.rx.browser.acceptance.processing.BrowserContextIdAttribute;
 import hiconic.rx.browser.acceptance.processing.BrowserRequestInformation;
 import hiconic.rx.browser.acceptance.processing.BrowserRequestInformationAttribute;
+import hiconic.rx.browser.acceptance.processing.BrowserAcceptanceLoginFlowExtension;
+import hiconic.rx.security.web.api.LoginIntervention;
+import hiconic.rx.security.web.api.LoginInterventionState;
 import hiconic.rx.test.common.AbstractRxTest;
 
 public class BrowserAcceptancePlatformTest extends AbstractRxTest {
@@ -57,9 +63,37 @@ public class BrowserAcceptancePlatformTest extends AbstractRxTest {
                 () -> ListBrowserAcceptances.T.create().eval(evaluator).get());
         assertThat(beforeRequest.getAcceptances()).isEmpty();
 
-		Maybe<? extends OpenUserSessionResponse> pendingLogin = withBrowser(browserToken, browserInformation,
+		Maybe<? extends OpenUserSessionResponse> approvalRequired = withBrowser(browserToken, browserInformation,
                 () -> login(PLATFORM_ENTRY_POINT, "subject", "subject-password"));
-        assertThat(pendingLogin.isUnsatisfiedBy(ApprovalRequired.T)).isTrue();
+		assertThat(approvalRequired.isUnsatisfiedBy(ApprovalRequired.T)).isTrue();
+		assertThat(approvalRequired.isUnsatisfiedBy(ApprovalPending.T)).isFalse();
+		assertThat(authenticated(approverSession, () -> ListBrowserAcceptances.T.create().eval(evaluator).get()).getAcceptances()).isEmpty();
+		BrowserAcceptanceLoginFlowExtension loginFlow = new BrowserAcceptanceLoginFlowExtension(evaluator);
+		LoginIntervention requiredIntervention = loginFlow.describe(approvalRequired.whyUnsatisfied());
+		assertThat(requiredIntervention.state()).isEqualTo(LoginInterventionState.ACTION_REQUIRED);
+		assertThat(requiredIntervention.actionId()).isEqualTo(BrowserAcceptanceLoginFlowExtension.REQUEST_APPROVAL);
+
+		Maybe<BrowserAcceptance> invalidRequest = withBrowser(browserToken,
+				() -> requestApproval(PLATFORM_ENTRY_POINT, "subject", "wrong-password"));
+		assertThat(invalidRequest.isUnsatisfiedBy(InvalidCredentials.T))
+				.withFailMessage(() -> invalidRequest.isSatisfied()
+						? "Invalid credentials unexpectedly created an acceptance: " + invalidRequest.get()
+						: "Unexpected explicit approval failure: " + invalidRequest.whyUnsatisfied().stringify())
+				.isTrue();
+		assertThat(authenticated(approverSession, () -> ListBrowserAcceptances.T.create().eval(evaluator).get()).getAcceptances()).isEmpty();
+
+		OpenUserSessionWithUserAndPassword loginRequest = OpenUserSessionWithUserAndPassword.T.create();
+		loginRequest.setUser("subject");
+		loginRequest.setPassword("subject-password");
+		Maybe<LoginIntervention> requested = withBrowser(browserToken, browserInformation,
+				() -> loginFlow.performAction(BrowserAcceptanceLoginFlowExtension.REQUEST_APPROVAL, loginRequest,
+						PLATFORM_ENTRY_POINT.getName()));
+		assertThat(requested.isSatisfied()).isTrue();
+		assertThat(requested.get().state()).isEqualTo(LoginInterventionState.PENDING);
+
+		Maybe<? extends OpenUserSessionResponse> pendingLogin = withBrowser(browserToken,
+				() -> login(PLATFORM_ENTRY_POINT, "subject", "subject-password"));
+		assertThat(pendingLogin.isUnsatisfiedBy(ApprovalPending.T)).isTrue();
 
         BrowserAcceptance pending = authenticated(approverSession, () -> {
             ListBrowserAcceptances request = ListBrowserAcceptances.T.create();
@@ -73,6 +107,12 @@ public class BrowserAcceptancePlatformTest extends AbstractRxTest {
 		assertThat(pending.getClientHintsUserAgent()).isEqualTo("\"Test Browser\";v=\"1\"");
 		assertThat(pending.getClientHintsPlatform()).isEqualTo("\"Linux\"");
 		assertThat(pending.getClientHintsMobile()).isEqualTo("?0");
+		Maybe<BrowserAcceptance> repeatedRequest = withBrowser(browserToken,
+				() -> requestApproval(PLATFORM_ENTRY_POINT, "subject", "subject-password"));
+		assertThat(repeatedRequest.isSatisfied()).isTrue();
+		String repeatedRequestId = repeatedRequest.get().getId();
+		assertThat(repeatedRequestId).isEqualTo(pending.getId());
+		assertThat(authenticated(approverSession, () -> ListBrowserAcceptances.T.create().eval(evaluator).get()).getAcceptances()).hasSize(1);
 
         BrowserAcceptance approved = authenticated(approverSession, () -> {
             ApproveBrowserAcceptance request = ApproveBrowserAcceptance.T.create();
@@ -96,6 +136,10 @@ public class BrowserAcceptancePlatformTest extends AbstractRxTest {
 		});
 		assertThat(withBrowser(browserToken, () -> login(PLATFORM_ENTRY_POINT, "subject", "subject-password"))
 				.isUnsatisfiedBy(BrowserContextRevoked.T)).isTrue();
+		Maybe<BrowserAcceptance> requestAfterRevocation = withBrowser(browserToken,
+				() -> requestApproval(PLATFORM_ENTRY_POINT, "subject", "subject-password"));
+		assertThat(requestAfterRevocation.isSatisfied()).isTrue();
+		assertThat(requestAfterRevocation.get().getState()).isEqualTo(BrowserAcceptanceState.REVOKED);
 		BrowserAcceptances noPendingRequest = authenticated(approverSession, () -> {
 			ListBrowserAcceptances request = ListBrowserAcceptances.T.create();
 			request.setState(BrowserAcceptanceState.PENDING);
@@ -114,6 +158,13 @@ public class BrowserAcceptancePlatformTest extends AbstractRxTest {
                 .set(OpenUserSessionEntryPointAttribute.class, entryPoint)
                 .buildAnd().execute(() -> request.eval(evaluator).getReasoned());
     }
+
+	private Maybe<BrowserAcceptance> requestApproval(OpenUserSessionEntryPoint entryPoint, String user, String password) {
+		RequestBrowserAcceptance request = RequestBrowserAcceptance.T.create();
+		request.setCredentials(UserPasswordCredentials.forUserName(user, password));
+		request.setEntryPoint(entryPoint.getName());
+		return request.eval(evaluator).getReasoned();
+	}
 
 	private static OpenUserSessionEntryPoint entryPoint(String name, String allowedRole) {
 		OpenUserSessionEntryPoint entryPoint = OpenUserSessionEntryPoint.T.create();

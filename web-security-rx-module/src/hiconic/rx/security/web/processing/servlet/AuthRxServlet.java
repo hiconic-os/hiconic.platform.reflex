@@ -53,7 +53,10 @@ import dev.hiconic.servlet.api.remote.RemoteAddressInformation;
 import dev.hiconic.servlet.api.remote.RemoteClientAddressResolver;
 import dev.hiconic.servlet.impl.remote.DefaultRemoteClientAddressResolver;
 import hiconic.rx.security.web.api.CookieHandler;
+import hiconic.rx.security.web.api.LoginFlowExtension;
+import hiconic.rx.security.web.api.LoginIntervention;
 import hiconic.rx.security.web.api.WebSecurityRequestContextContributor;
+import hiconic.rx.security.web.api.WebSecurityConstants;
 import hiconic.rx.security.web.processing.servlet.aspect.AuthHttpRequestSupplier;
 import hiconic.rx.security.web.processing.servlet.aspect.AuthHttpRequestSupplierAspect;
 import hiconic.rx.security.web.processing.servlet.aspect.AuthHttpRequestSupplierImpl;
@@ -79,10 +82,16 @@ public class AuthRxServlet extends HttpServlet {
 	private Evaluator<ServiceRequest> requestEvaluator;
 	private Function<HttpServletRequest, String> entryPointProvider = r -> null;
 	private List<WebSecurityRequestContextContributor> requestContextContributors = List.of();
+	private List<LoginFlowExtension> loginFlowExtensions = List.of();
 
 	@Configurable
 	public void setRequestContextContributors(List<WebSecurityRequestContextContributor> contributors) {
 		this.requestContextContributors = contributors;
+	}
+
+	@Configurable
+	public void setLoginFlowExtensions(List<LoginFlowExtension> extensions) {
+		this.loginFlowExtensions = extensions;
 	}
 
 	@Configurable
@@ -113,12 +122,31 @@ public class AuthRxServlet extends HttpServlet {
 
 		OpenUserSessionWithUserAndPassword authRequest = unmarshallRequest(req);
 
-		AttributeContext attributeContext = buildAttributeContext(req, resp, authRequest);
-		
 		OpenUserSession openUserSession = createOpenUserSession(req, authRequest);
+		var attributeContextBuilder = buildAttributeContextBuilder(req, resp, authRequest);
+		String actionId = req.getHeader(WebSecurityConstants.HEADER_LOGIN_ACTION);
+		LoginFlowExtension actionExtension = null;
+		if (actionId != null && !actionId.isBlank()) {
+			actionExtension = loginFlowExtensions.stream().filter(e -> e.supportsAction(actionId)).findFirst().orElse(null);
+			if (actionExtension == null) {
+				writeFailure(resp, Reasons.build(InvalidArgument.T).text("Unsupported login action: " + actionId).toReason());
+				return;
+			}
+		}
+		AttributeContext attributeContext = attributeContextBuilder.build();
 
 		AttributeContexts.push(attributeContext);
 		try {
+			if (actionExtension != null) {
+				Maybe<LoginIntervention> actionResult = actionExtension.performAction(actionId, authRequest, openUserSession.getEntryPoint());
+				if (actionResult.isUnsatisfied()) {
+					writeFailure(resp, actionResult.whyUnsatisfied());
+					return;
+				}
+				writeInterventionHeaders(resp, actionResult.get());
+				resp.setStatus(HttpServletResponse.SC_OK);
+				return;
+			}
 
 			Maybe<UserSession> sessionMaybe = authenticate(resp, openUserSession);
 
@@ -135,11 +163,7 @@ public class AuthRxServlet extends HttpServlet {
 							.toReason();
 				}
 
-				Marshaller marshaller = marshallerRegistry.getMarshaller("application/json");
-				resp.setContentType("application/json");
-				
-				resp.setStatus(getStatus(whyUnsatisfied));
-				marshaller.marshall(resp.getOutputStream(), whyUnsatisfied);
+				writeFailure(resp, whyUnsatisfied);
 				return;
 			}
 			UserSession session = sessionMaybe.get();
@@ -152,6 +176,30 @@ public class AuthRxServlet extends HttpServlet {
 		} finally {
 			AttributeContexts.pop();
 		}
+	}
+
+	private void writeFailure(HttpServletResponse response, Reason reason) throws IOException {
+		LoginIntervention intervention = loginFlowExtensions.stream().map(e -> e.describe(reason)).filter(i -> i != null).findFirst().orElse(null);
+		if (intervention != null)
+			writeInterventionHeaders(response, intervention);
+
+		Marshaller marshaller = marshallerRegistry.getMarshaller("application/json");
+		response.setContentType("application/json");
+		response.setStatus(getStatus(reason));
+		marshaller.marshall(response.getOutputStream(), reason);
+	}
+
+	private void writeInterventionHeaders(HttpServletResponse response, LoginIntervention intervention) {
+		response.setHeader(WebSecurityConstants.HEADER_LOGIN_INTERVENTION_STATE, intervention.state().name());
+		setHeaderIfPresent(response, WebSecurityConstants.HEADER_LOGIN_INTERVENTION_TITLE, intervention.title());
+		setHeaderIfPresent(response, WebSecurityConstants.HEADER_LOGIN_INTERVENTION_MESSAGE, intervention.message());
+		setHeaderIfPresent(response, WebSecurityConstants.HEADER_LOGIN_INTERVENTION_ACTION, intervention.actionId());
+		setHeaderIfPresent(response, WebSecurityConstants.HEADER_LOGIN_INTERVENTION_ACTION_LABEL, intervention.actionLabel());
+	}
+
+	private static void setHeaderIfPresent(HttpServletResponse response, String name, String value) {
+		if (value != null)
+			response.setHeader(name, value.replace('\r', ' ').replace('\n', ' '));
 	}
 
 	private OpenUserSession createOpenUserSession(HttpServletRequest req, OpenUserSessionWithUserAndPassword authRequest) {
@@ -303,6 +351,11 @@ public class AuthRxServlet extends HttpServlet {
 
 	protected AttributeContext buildAttributeContext(HttpServletRequest httpRequest, HttpServletResponse httpResponse,
 			OpenUserSessionWithUserAndPassword authRequest) {
+		return buildAttributeContextBuilder(httpRequest, httpResponse, authRequest).build();
+	}
+
+	protected com.braintribe.common.attribute.AttributeContextBuilder buildAttributeContextBuilder(HttpServletRequest httpRequest,
+			HttpServletResponse httpResponse, OpenUserSessionWithUserAndPassword authRequest) {
 		AuthHttpRequestSupplier httpRequestSupplier = new AuthHttpRequestSupplierImpl(authRequest, httpRequest);
 		AuthHttpResponseConfigurerImpl httpResponseConfigurer = new AuthHttpResponseConfigurerImpl();
 
@@ -315,7 +368,7 @@ public class AuthRxServlet extends HttpServlet {
 				.set(Waypoint.class, "platform-login");
 		//@formatter:on
 		requestContextContributors.forEach(c -> c.contribute(httpRequest, httpResponse, builder));
-		return builder.build();
+		return builder;
 	}
 
 	@Required

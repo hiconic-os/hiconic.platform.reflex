@@ -10,6 +10,16 @@
     <properties/>
     <dependencies>
         <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>gm-core-api</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>security-service-api-model</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
+        <dependency>
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>reflex-module-api</artifactId>
             <version>${V.hiconic.platform.reflex}</version>

@@ -20,6 +20,7 @@ import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.security.model.configuration.SecurityConfiguration;
 import hiconic.rx.security.web.api.AuthFilters;
 import hiconic.rx.security.web.api.CookieHandler;
+import hiconic.rx.security.web.api.LoginFlowExtension;
 import hiconic.rx.security.web.api.WebSecurityConfigurationContract;
 import hiconic.rx.security.web.api.WebSecurityContract;
 import hiconic.rx.security.web.api.WebSecurityExtensionContract;
@@ -131,6 +132,7 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 		bean.setRequestEvaluator(platform.serviceProcessing().systemEvaluator());
 		bean.setEntryPointProvider(http.openUserSessionConfigurationProvider()::findEntryPointName);
 		bean.setRequestContextContributors(requestContextContributors());
+		bean.setLoginFlowExtensions(loginFlowExtensions());
 
 		return bean;
 	}
@@ -196,8 +198,18 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 		requestContextContributors().add(contributor);
 	}
 
+	@Override
+	public void registerLoginFlowExtension(LoginFlowExtension extension) {
+		loginFlowExtensions().add(extension);
+	}
+
 	@Managed
 	private List<WebSecurityRequestContextContributor> requestContextContributors() {
+		return new ArrayList<>();
+	}
+
+	@Managed
+	private List<LoginFlowExtension> loginFlowExtensions() {
 		return new ArrayList<>();
 	}
 

@@ -5,7 +5,7 @@ import java.util.Set;
 import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.security.reason.ApprovalRequired;
-import com.braintribe.gm.model.security.reason.BrowserContextExpired;
+import com.braintribe.gm.model.security.reason.ApprovalPending;
 import com.braintribe.gm.model.security.reason.BrowserContextRejected;
 import com.braintribe.gm.model.security.reason.BrowserContextRevoked;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
@@ -29,7 +29,7 @@ public class BrowserAcceptanceVerifier implements UserSessionOpeningVerification
 	public Reason verifyUserSessionOpening(ServiceRequestContext context, String entryPoint, User user, Set<String> roles) {
 		if (!policies.applies(entryPoint, roles))
 			return null;
-		return verify(context, entryPoint, userIdentity(user), user.getName());
+		return verify(context, entryPoint, userIdentity(user));
 	}
 
 	@Override
@@ -37,7 +37,7 @@ public class BrowserAcceptanceVerifier implements UserSessionOpeningVerification
 		String entryPoint = session.getProperties().get("openUserSession.entryPoint");
 		if (!policies.applies(entryPoint, session.getEffectiveRoles()))
 			return null;
-		return verify(context, entryPoint, userIdentity(session.getUser()), session.getUser().getName());
+		return verify(context, entryPoint, userIdentity(session.getUser()));
 	}
 
 	private String userIdentity(User user) {
@@ -45,18 +45,20 @@ public class BrowserAcceptanceVerifier implements UserSessionOpeningVerification
 		return user.getId() != null ? user.getId().toString() : user.getName();
 	}
 
-	private Reason verify(ServiceRequestContext context, String entryPoint, String userId, String userName) {
+	private Reason verify(ServiceRequestContext context, String entryPoint, String userId) {
 		String rawToken = context.findOrNull(BrowserContextIdAttribute.class);
 		if (rawToken == null)
 			return Reasons.build(ApprovalRequired.T).text("Approval is required").toReason();
-		BrowserAcceptance acceptance = store.findOrRequest(rawToken, userId, userName, entryPoint, context.getRequestorAddress(),
+		BrowserAcceptance acceptance = store.find(rawToken, userId, entryPoint, context.getRequestorAddress(),
 				context.findOrNull(BrowserRequestInformationAttribute.class));
+		if (acceptance == null || acceptance.getState() == BrowserAcceptanceState.EXPIRED)
+			return Reasons.build(ApprovalRequired.T).text("Device/browser approval is required").toReason();
 		return switch (acceptance.getState()) {
 			case APPROVED -> null;
 			case REJECTED -> Reasons.build(BrowserContextRejected.T).text("Browser context was rejected").toReason();
 			case REVOKED -> Reasons.build(BrowserContextRevoked.T).text("Browser context was revoked").toReason();
-			case EXPIRED -> Reasons.build(BrowserContextExpired.T).text("Browser context has expired").toReason();
-			case PENDING -> Reasons.build(ApprovalRequired.T).text("Approval is required")
+			case EXPIRED -> throw new IllegalStateException("Expired acceptance handled above");
+			case PENDING -> Reasons.build(ApprovalPending.T).text("Device/browser approval is pending")
 					.enrich(r -> {
 						r.setApprovalRequestId(acceptance.getId());
 						r.setExpiryDate(acceptance.getExpiresAt());

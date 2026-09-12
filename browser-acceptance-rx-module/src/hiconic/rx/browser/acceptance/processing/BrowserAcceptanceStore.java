@@ -98,6 +98,27 @@ public class BrowserAcceptanceStore {
 		return view(stored);
 	}
 
+	/** Finds and observes an existing acceptance without creating or renewing an approval request. */
+	public synchronized BrowserAcceptance find(String rawToken, String userId, String entryPoint, String requestorAddress,
+			BrowserRequestInformation requestInformation) {
+		StoredBrowserAcceptance stored = acceptances.find(hash(rawToken), userId, entryPoint);
+		if (stored == null)
+			return null;
+
+		Date now = new Date();
+		if ((stored.getState() == BrowserAcceptanceState.APPROVED || stored.getState() == BrowserAcceptanceState.PENDING)
+				&& (stored.getExpiresAt() == null || !stored.getExpiresAt().after(now))) {
+			stored.setState(BrowserAcceptanceState.EXPIRED);
+			stored.setLastSeenAt(now);
+			acceptances.write(stored);
+			event(stored, BrowserAcceptanceEventType.EXPIRED, null, requestorAddress, null);
+		} else if (stored.getLastSeenAt() == null || now.getTime() - stored.getLastSeenAt().getTime() >= LAST_SEEN_WRITE_INTERVAL_MILLIS) {
+			observe(stored, requestorAddress, requestInformation, now);
+			acceptances.write(stored);
+		}
+		return view(stored);
+	}
+
 	private static void observe(StoredBrowserAcceptance stored, String requestorAddress, BrowserRequestInformation information, Date now) {
 		stored.setLastSeenAt(now);
 		stored.setLastRequestorAddress(requestorAddress);
