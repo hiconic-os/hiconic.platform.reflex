@@ -4,10 +4,9 @@ import java.util.Set;
 
 import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.gm.model.reason.Reasons;
+import com.braintribe.gm.model.security.reason.AuthenticationFailure;
 import com.braintribe.gm.model.security.reason.ApprovalRequired;
 import com.braintribe.gm.model.security.reason.ApprovalPending;
-import com.braintribe.gm.model.security.reason.BrowserContextRejected;
-import com.braintribe.gm.model.security.reason.BrowserContextRevoked;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
 import com.braintribe.model.user.User;
 import com.braintribe.model.usersession.UserSession;
@@ -55,14 +54,20 @@ public class BrowserAcceptanceVerifier implements UserSessionOpeningVerification
 			return Reasons.build(ApprovalRequired.T).text("Device/browser approval is required").toReason();
 		return switch (acceptance.getState()) {
 			case APPROVED -> null;
-			case REJECTED -> Reasons.build(BrowserContextRejected.T).text("Browser context was rejected").toReason();
-			case REVOKED -> Reasons.build(BrowserContextRevoked.T).text("Browser context was revoked").toReason();
+			case REJECTED, REVOKED -> authenticationFailed();
 			case EXPIRED -> throw new IllegalStateException("Expired acceptance handled above");
+			case FORGOTTEN -> throw new IllegalStateException("Forgotten acceptances must not participate in active lookup");
 			case PENDING -> Reasons.build(ApprovalPending.T).text("Device/browser approval is pending")
 					.enrich(r -> {
 						r.setApprovalRequestId(acceptance.getId());
 						r.setExpiryDate(acceptance.getExpiresAt());
 					}).toReason();
 		};
+	}
+
+	private static Reason authenticationFailed() {
+		return Reasons.build(AuthenticationFailure.T)
+				.text("Sign-in could not be completed. This browser or device is not authorized.")
+				.toReason();
 	}
 }

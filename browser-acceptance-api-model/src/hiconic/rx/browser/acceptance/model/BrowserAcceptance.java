@@ -1,6 +1,7 @@
 package hiconic.rx.browser.acceptance.model;
 
 import java.util.Date;
+import java.util.List;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
@@ -28,4 +29,6 @@ public interface BrowserAcceptance extends GenericEntity {
 	String getClientHintsUserAgent(); void setClientHintsUserAgent(String clientHintsUserAgent);
 	String getClientHintsPlatform(); void setClientHintsPlatform(String clientHintsPlatform);
 	String getClientHintsMobile(); void setClientHintsMobile(String clientHintsMobile);
+	/** Chronological, append-only lifecycle history. Populated only for privileged administrative listings. */
+	List<BrowserAcceptanceEvent> getEvents(); void setEvents(List<BrowserAcceptanceEvent> events);
 }

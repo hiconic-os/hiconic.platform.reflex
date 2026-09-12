@@ -26,6 +26,7 @@ import hiconic.rx.browser.acceptance.model.api.ApproveBrowserAcceptance;
 import hiconic.rx.browser.acceptance.model.api.BrowserAcceptanceRequest;
 import hiconic.rx.browser.acceptance.model.api.BrowserAcceptances;
 import hiconic.rx.browser.acceptance.model.api.ChangeBrowserAcceptance;
+import hiconic.rx.browser.acceptance.model.api.ForgetBrowserAcceptance;
 import hiconic.rx.browser.acceptance.model.api.ListBrowserAcceptances;
 import hiconic.rx.browser.acceptance.model.api.RejectBrowserAcceptance;
 import hiconic.rx.browser.acceptance.model.api.RevokeBrowserAcceptance;
@@ -91,6 +92,7 @@ public class BrowserAcceptanceProcessor extends AbstractDispatchingServiceProces
 				(context, request) -> change(context, request, BrowserAcceptanceState.REJECTED));
 		dispatching.registerReasoned(RevokeBrowserAcceptance.T,
 				(context, request) -> change(context, request, BrowserAcceptanceState.REVOKED));
+		dispatching.registerReasoned(ForgetBrowserAcceptance.T, this::forget);
 	}
 
 	private Maybe<BrowserAcceptances> list(ServiceRequestContext context, ListBrowserAcceptances request) {
@@ -115,6 +117,24 @@ public class BrowserAcceptanceProcessor extends AbstractDispatchingServiceProces
 		return result == null
 				? Reasons.build(NotFound.T).text("Browser acceptance not found: " + request.getAcceptanceId()).toMaybe()
 				: Maybe.complete(result);
+	}
+
+	private Maybe<BrowserAcceptance> forget(ServiceRequestContext context, ForgetBrowserAcceptance request) {
+		Maybe<UserSession> approver = approver(context);
+		if (approver.isUnsatisfied())
+			return approver.propagateReason();
+
+		UserSession session = approver.get();
+		Object actorId = session.getUser().getId();
+		String actorUserId = actorId == null ? session.getUser().getName() : actorId.toString();
+		try {
+			BrowserAcceptance result = store.forget(request.getAcceptanceId(), actorUserId, context.getRequestorAddress());
+			return result == null
+					? Reasons.build(NotFound.T).text("Browser acceptance not found: " + request.getAcceptanceId()).toMaybe()
+					: Maybe.complete(result);
+		} catch (IllegalArgumentException e) {
+			return Reasons.build(InvalidArgument.T).text(e.getMessage()).toMaybe();
+		}
 	}
 
 	private Maybe<UserSession> approver(ServiceRequestContext context) {

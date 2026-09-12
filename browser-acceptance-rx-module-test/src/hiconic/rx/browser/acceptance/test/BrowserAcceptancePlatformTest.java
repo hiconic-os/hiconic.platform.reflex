@@ -9,7 +9,7 @@ import org.junit.Test;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.security.reason.ApprovalRequired;
 import com.braintribe.gm.model.security.reason.ApprovalPending;
-import com.braintribe.gm.model.security.reason.BrowserContextRevoked;
+import com.braintribe.gm.model.security.reason.AuthenticationFailure;
 import com.braintribe.gm.model.security.reason.InvalidCredentials;
 import com.braintribe.model.processing.securityservice.api.attributes.OpenUserSessionEntryPointAttribute;
 import com.braintribe.model.processing.service.api.SessionIdAspect;
@@ -24,6 +24,7 @@ import hiconic.rx.browser.acceptance.model.BrowserAcceptance;
 import hiconic.rx.browser.acceptance.model.BrowserAcceptanceState;
 import hiconic.rx.browser.acceptance.model.api.ApproveBrowserAcceptance;
 import hiconic.rx.browser.acceptance.model.api.BrowserAcceptances;
+import hiconic.rx.browser.acceptance.model.api.ForgetBrowserAcceptance;
 import hiconic.rx.browser.acceptance.model.api.ListBrowserAcceptances;
 import hiconic.rx.browser.acceptance.model.api.RevokeBrowserAcceptance;
 import hiconic.rx.browser.acceptance.model.api.RequestBrowserAcceptance;
@@ -134,8 +135,12 @@ public class BrowserAcceptancePlatformTest extends AbstractRxTest {
 			request.setAcceptanceId(pending.getId());
 			return request.eval(evaluator).get();
 		});
-		assertThat(withBrowser(browserToken, () -> login(PLATFORM_ENTRY_POINT, "subject", "subject-password"))
-				.isUnsatisfiedBy(BrowserContextRevoked.T)).isTrue();
+		Maybe<? extends OpenUserSessionResponse> revokedLogin = withBrowser(browserToken,
+				() -> login(PLATFORM_ENTRY_POINT, "subject", "subject-password"));
+		assertThat(revokedLogin.isUnsatisfiedBy(AuthenticationFailure.T)).isTrue();
+		assertThat(revokedLogin.whyUnsatisfied().entityType()).isEqualTo(AuthenticationFailure.T);
+		assertThat(revokedLogin.whyUnsatisfied().getText())
+				.isEqualTo("Sign-in could not be completed. This browser or device is not authorized.");
 		Maybe<BrowserAcceptance> requestAfterRevocation = withBrowser(browserToken,
 				() -> requestApproval(PLATFORM_ENTRY_POINT, "subject", "subject-password"));
 		assertThat(requestAfterRevocation.isSatisfied()).isTrue();
@@ -146,6 +151,28 @@ public class BrowserAcceptancePlatformTest extends AbstractRxTest {
 			return request.eval(evaluator).get();
 		});
 		assertThat(noPendingRequest.getAcceptances()).isEmpty();
+
+		BrowserAcceptance forgotten = authenticated(approverSession, () -> {
+			ForgetBrowserAcceptance request = ForgetBrowserAcceptance.T.create();
+			request.setAcceptanceId(pending.getId());
+			return request.eval(evaluator).get();
+		});
+		assertThat(forgotten.getState()).isEqualTo(BrowserAcceptanceState.FORGOTTEN);
+		assertThat(withBrowser(browserToken, () -> login(PLATFORM_ENTRY_POINT, "subject", "subject-password"))
+				.isUnsatisfiedBy(ApprovalRequired.T)).isTrue();
+		Maybe<BrowserAcceptance> newRequest = withBrowser(browserToken,
+				() -> requestApproval(PLATFORM_ENTRY_POINT, "subject", "subject-password"));
+		assertThat(newRequest.isSatisfied()).isTrue();
+		assertThat(newRequest.get().getState()).isEqualTo(BrowserAcceptanceState.PENDING);
+		assertThat(newRequest.get().getId()).isEqualTo(pending.getId());
+
+		BrowserAcceptances completeHistory = authenticated(approverSession,
+				() -> ListBrowserAcceptances.T.create().eval(evaluator).get());
+		assertThat(completeHistory.getAcceptances()).hasSize(1);
+		BrowserAcceptance reactivated = completeHistory.getAcceptances().get(0);
+		assertThat(reactivated.getState()).isEqualTo(BrowserAcceptanceState.PENDING);
+		assertThat(reactivated.getEvents()).extracting(event -> event.getType().name())
+				.containsExactly("REQUESTED", "APPROVED", "REVOKED", "FORGOTTEN", "REQUESTED");
 		assertThat(withBrowser("new-browser-token", () -> login(PLATFORM_ENTRY_POINT, "subject", "subject-password"))
 				.isUnsatisfiedBy(ApprovalRequired.T)).isTrue();
 	}

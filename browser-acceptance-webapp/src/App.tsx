@@ -1,5 +1,5 @@
 import { For, Show, createSignal, onMount } from "solid-js";
-import { BrowserAcceptanceApi, BrowserAcceptanceState, type BrowserAcceptance, type RuntimeConfig } from "./api";
+import { BrowserAcceptanceApi, BrowserAcceptanceState, type BrowserAcceptance, type BrowserAcceptanceEvent, type RuntimeConfig } from "./api";
 
 export function App() {
   const [api, setApi] = createSignal<BrowserAcceptanceApi>();
@@ -9,9 +9,9 @@ export function App() {
   const [error, setError] = createSignal<string>();
   onMount(async () => { const config = await fetch("./runtime-config.json").then(r => r.json()) as RuntimeConfig; const client = new BrowserAcceptanceApi(config); setApi(client); await refresh(client); });
   async function refresh(client = api()) { if (!client) return; setBusy(true); setError(); try { setItems(await client.list(state())); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }
-  async function change(action: "approve" | "reject" | "revoke", id: string) { const client = api(); if (!client) return; setBusy(true); setError(); try { await client[action](id); await refresh(client); } catch (e) { setError(e instanceof Error ? e.message : String(e)); setBusy(false); } }
+  async function change(action: "approve" | "reject" | "revoke" | "forget", id: string) { const client = api(); if (!client) return; setBusy(true); setError(); try { await client[action](id); await refresh(client); } catch (e) { setError(e instanceof Error ? e.message : String(e)); setBusy(false); } }
   return <main>
-    <header><div><span class="eyebrow">hiconic security</span><h1>Device approvals</h1><p class="intro">An approval recognizes this browser on this device.</p></div><button onClick={() => refresh()} disabled={busy()}>Refresh</button></header>
+    <header><div><span class="eyebrow">hiconic security</span><h1>Device approvals</h1><p class="intro">Review and manage browser and device sign-in approvals.</p></div><button onClick={() => refresh()} disabled={busy()}>Refresh</button></header>
     <nav>
       <button classList={{active: state() === BrowserAcceptanceState.PENDING}} onClick={() => { setState(BrowserAcceptanceState.PENDING); refresh(); }}>Pending</button>
       <button classList={{active: state() === BrowserAcceptanceState.APPROVED}} onClick={() => { setState(BrowserAcceptanceState.APPROVED); refresh(); }}>Approved</button>
@@ -26,7 +26,7 @@ export function App() {
             <span>{item.userId || "No user ID"}</span>
           </div>
           <span class={`state ${String(item.state).toLowerCase()}`}>{stateLabel(item.state)}</span>
-          <div class="actions"><Show when={item.state === BrowserAcceptanceState.PENDING}><button class="primary" onClick={() => change("approve", item.id!)}>Approve device</button><button onClick={() => change("reject", item.id!)}>Reject</button></Show><Show when={item.state === BrowserAcceptanceState.APPROVED}><button class="danger" onClick={() => change("revoke", item.id!)}>Revoke approval</button></Show></div>
+          <div class="actions"><Show when={item.state === BrowserAcceptanceState.PENDING}><button class="primary" onClick={() => change("approve", item.id!)}>Approve device</button><button onClick={() => change("reject", item.id!)}>Reject</button></Show><Show when={item.state === BrowserAcceptanceState.APPROVED}><button class="danger" onClick={() => change("revoke", item.id!)}>Revoke approval</button></Show><Show when={item.state === BrowserAcceptanceState.REJECTED || item.state === BrowserAcceptanceState.REVOKED || item.state === BrowserAcceptanceState.EXPIRED}><button class="danger" onClick={() => change("forget", item.id!)}>Forget device</button></Show></div>
         </div>
         <dl class="details">
           <Detail label="Browser" value={describeClient(item)} title={item.userAgent} />
@@ -36,6 +36,9 @@ export function App() {
           <Detail label="Client address" value={addressRange(item.requestorAddress, item.lastRequestorAddress)} />
           <Show when={directPeer(item)}>{value => <Detail label="Direct peer" value={value()} />}</Show>
         </dl>
+		<Show when={item.events?.length}><details class="history"><summary>Activity history ({item.events!.length})</summary><ol>
+		  <For each={Array.from(item.events ?? []) as BrowserAcceptanceEvent[]}>{event => <li><span class="event-type">{stateLabel(event.type)}</span><span>{format(event.timestamp)}</span><span>{event.actorUserId || "System"}</span><span>{event.requestorAddress || "—"}</span><Show when={event.details}><small>{event.details}</small></Show></li>}</For>
+		</ol></details></Show>
       </article>}</For>
     </Show></section>
   </main>;
