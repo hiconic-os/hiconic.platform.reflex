@@ -164,7 +164,7 @@ public class BrowserAcceptancePlatformTest extends AbstractRxTest {
 				() -> requestApproval(PLATFORM_ENTRY_POINT, "subject", "subject-password"));
 		assertThat(newRequest.isSatisfied()).isTrue();
 		assertThat(newRequest.get().getState()).isEqualTo(BrowserAcceptanceState.PENDING);
-		assertThat(newRequest.get().getId()).isEqualTo(pending.getId());
+		assertThat((Object) newRequest.get().getId()).isEqualTo(pending.getId());
 
 		BrowserAcceptances completeHistory = authenticated(approverSession,
 				() -> ListBrowserAcceptances.T.create().eval(evaluator).get());
