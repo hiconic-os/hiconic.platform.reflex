@@ -32,6 +32,9 @@ public interface WebServerConfiguration extends GenericEntity {
 	String coreTreads = "coreThreads";
 	String ioTreads = "ioThreads";
 	String maxConnections = "maxConnections";
+	String maxRequestSizeBytes = "maxRequestSizeBytes";
+	String maxMultipartRequestSizeBytes = "maxMultipartRequestSizeBytes";
+	String maxTransportRequestSizeBytes = "maxTransportRequestSizeBytes";
 	String sslKeyStore = "sslKeyStore";
 	String sslKeyStorePassword = "sslKeyStorePassword";
 	String defaultEndpointsBasePath = "defaultEndpointsBasePath";
@@ -78,6 +81,20 @@ public interface WebServerConfiguration extends GenericEntity {
 			+ "the active connection count falls below the limit.")
 	Integer getMaxConnections();
 	void setMaxConnections(Integer maxConnections);
+
+	@Description("Maximum HTTP request entity size in bytes. If omitted, Undertow's default applies. Use -1 for no limit.")
+	Long getMaxRequestSizeBytes();
+	void setMaxRequestSizeBytes(Long maxRequestSizeBytes);
+
+	@Description("Maximum multipart/form-data request entity size in bytes. If omitted, Undertow's default applies. "
+			+ "Use -1 for no multipart-specific limit. Multipart requests remain subject to maxRequestSizeBytes as well.")
+	Long getMaxMultipartRequestSizeBytes();
+	void setMaxMultipartRequestSizeBytes(Long maxMultipartRequestSizeBytes);
+
+	@Description("Absolute Undertow transport limit in bytes. It may be set above the application request limits so oversized "
+			+ "requests can receive a modeled response. If omitted, maxRequestSizeBytes is also used as the transport limit.")
+	Long getMaxTransportRequestSizeBytes();
+	void setMaxTransportRequestSizeBytes(Long maxTransportRequestSizeBytes);
 
 	CorsConfiguration getCorsConfiguration();
 	void setCorsConfiguration(CorsConfiguration corsConfiguration);

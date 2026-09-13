@@ -524,6 +524,16 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 		if (configuration.getAccessLogEnabled())
 			builder.setServerOption(UndertowOptions.RECORD_REQUEST_START_TIME, true);
 
+		Long maxTransportRequestSizeBytes = configuration.getMaxTransportRequestSizeBytes();
+		if (maxTransportRequestSizeBytes == null)
+			maxTransportRequestSizeBytes = configuration.getMaxRequestSizeBytes();
+		if (maxTransportRequestSizeBytes != null)
+			builder.setServerOption(UndertowOptions.MAX_ENTITY_SIZE, maxTransportRequestSizeBytes);
+
+		Long maxMultipartRequestSizeBytes = configuration.getMaxMultipartRequestSizeBytes();
+		if (maxMultipartRequestSizeBytes != null)
+			builder.setServerOption(UndertowOptions.MULTIPART_MAX_ENTITY_SIZE, maxMultipartRequestSizeBytes);
+
 		Integer ioThreads = configuration.getIoThreads();
 		if (ioThreads != null)
 			builder.setIoThreads(ioThreads);
@@ -604,6 +614,9 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 
 		if (configuration.getCorsConfiguration() != null)
 			registerFilter(bean, "cors", filters.corsFilter(), "/*", DispatcherType.REQUEST);
+
+		if (configuration.getMaxRequestSizeBytes() != null || configuration.getMaxMultipartRequestSizeBytes() != null)
+			registerFilter(bean, "request-size", filters.requestSizeFilter(), "/*", DispatcherType.REQUEST);
 
 		return bean;
 	}

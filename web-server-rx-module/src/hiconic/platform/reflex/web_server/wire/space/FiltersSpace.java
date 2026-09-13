@@ -9,6 +9,7 @@ import com.braintribe.wire.api.space.WireSpace;
 
 import hiconic.platform.reflex.web_server.processing.CallerInfoFilter;
 import hiconic.platform.reflex.web_server.processing.CaptureFilter;
+import hiconic.platform.reflex.web_server.processing.RequestSizeFilter;
 import hiconic.platform.reflex.web_server.processing.ThreadRenamerFilter;
 import hiconic.platform.reflex.web_server.processing.cors.CorsFilter;
 import hiconic.platform.reflex.web_server.processing.cors.handler.BasicCorsHandler;
@@ -57,6 +58,15 @@ public class FiltersSpace implements WireSpace {
 	public ThreadRenamerFilter threadRenamerFilter() {
 		ThreadRenamerFilter bean = new ThreadRenamerFilter();
 		bean.setThreadRenamer(platform.execution().threadRenamer());
+		return bean;
+	}
+
+	@Managed
+	public RequestSizeFilter requestSizeFilter() {
+		WebServerConfiguration configuration = configuration();
+		RequestSizeFilter bean = new RequestSizeFilter();
+		bean.setMaxRequestSizeBytes(configuration.getMaxRequestSizeBytes());
+		bean.setMaxMultipartRequestSizeBytes(configuration.getMaxMultipartRequestSizeBytes());
 		return bean;
 	}
 
