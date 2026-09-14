@@ -20,8 +20,11 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.function.Supplier;
 
 import javax.sql.DataSource;
 
@@ -30,10 +33,13 @@ import org.hibernate.cfg.Configuration;
 import org.hibernate.cfg.Environment;
 
 import com.braintribe.cfg.Configurable;
+import com.braintribe.logging.Logger;
 import com.braintribe.model.accessdeployment.hibernate.meta.MappingVersion;
 import com.braintribe.model.generic.GMF;
 import com.braintribe.model.processing.deployment.hibernate.mapping.HbmXmlGeneratingService;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
+import com.braintribe.model.processing.lock.api.Locking;
+import com.braintribe.model.processing.deployment.hibernate.mapping.SourceDescriptor;
 import com.braintribe.utils.CommonTools;
 import com.braintribe.utils.FileTools;
 import com.braintribe.utils.StringTools;
@@ -42,6 +48,7 @@ import com.braintribe.utils.stream.ReaderInputStream;
 import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguration;
 
 /* package */ class HibernateModelSessionFactoryBuilder {
+	private static final Logger log = Logger.getLogger(HibernateModelSessionFactoryBuilder.class);
 
 	private final HibernatePersistenceConfiguration hpConfiguration;
 	private final String objectNamePrefix;
@@ -52,6 +59,8 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 	private File ormDebugOutputFolder;
 	private DialectAutoSense dialectAutoSense;
 	private Integer defaultMappingVersion;
+	private String instanceId;
+	private Supplier<Locking> lockingSupplier;
 
 	public HibernateModelSessionFactoryBuilder(SessionFactoryKey key) {
 		this.hpConfiguration = CommonTools.getValueOrSupplyDefault(key.configuration(), HibernatePersistenceConfiguration.T::create);
@@ -76,6 +85,16 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 		this.defaultMappingVersion = defaultMappingVersion;
 	}
 
+	@Configurable
+	public void setInstanceId(String instanceId) {
+		this.instanceId = instanceId;
+	}
+
+	@Configurable
+	public void setLockingSupplier(Supplier<Locking> lockingSupplier) {
+		this.lockingSupplier = lockingSupplier;
+	}
+
 	private ClassLoader itwOrModuleClassLoader() {
 		if (isLoadedByModule())
 			return getClass().getClassLoader();
@@ -88,14 +107,13 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 	}
 
 	public SessionFactory build() {
+		long started = System.nanoTime();
 		Configuration configuration = new Configuration();
 
 		Properties properties = configuration.getProperties();
 		properties.put(Environment.JAKARTA_JTA_DATASOURCE, dataSource);
 		properties.put(Environment.INTERCEPTOR, new GmAdaptionInterceptor());
 		properties.put(Environment.TC_CLASSLOADER, itwOrModuleClassLoader());
-		// TODO review - bring model change detection from cortex
-		properties.put(Environment.HBM2DDL_AUTO, "update");
 		if (hpConfiguration.getShowSql())
 			properties.put(Environment.SHOW_SQL, "true");
 
@@ -108,9 +126,32 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 
 		addConfigureadProperties(properties, hpConfiguration.getProperties());
 
-		generateMappings(configuration, mappingVersion);
+		MappingBundle mappings = generateMappings(configuration, mappingVersion);
+		long mappingsGenerated = System.nanoTime();
+		Locking locking = lockingSupplier == null ? null : lockingSupplier.get();
+		if (locking == null) {
+			log.warn("No platform Locking is available; Hibernate schema update cannot be coordinated across nodes and will run unconditionally for ["
+					+ schemaIdentity() + "]");
+			properties.put(Environment.HBM2DDL_AUTO, "update");
+			SessionFactory result = configuration.buildSessionFactory();
+			logTimings(schemaIdentity(), true, started, mappingsGenerated);
+			return result;
+		}
 
-		return configuration.buildSessionFactory();
+		String schemaIdentity = schemaIdentity();
+		try (HibernateSchemaUpdateGate.Decision decision = new HibernateSchemaUpdateGate(dataSource, locking, schemaIdentity, physicalSchemaIdentity(),
+				mappings.fingerprint(), instanceId).decide()) {
+			properties.put(Environment.HBM2DDL_AUTO, decision.updateRequired() ? "update" : "none");
+			SessionFactory result = configuration.buildSessionFactory();
+			try {
+				decision.markSuccessful();
+				logTimings(schemaIdentity, decision.updateRequired(), started, mappingsGenerated);
+				return result;
+			} catch (RuntimeException e) {
+				result.close();
+				throw e;
+			}
+		}
 	}
 
 	private int mappingVersion() {
@@ -139,7 +180,8 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 		}
 	}
 
-	private void generateMappings(Configuration configuration, Integer mappingVersion) {
+	private MappingBundle generateMappings(Configuration configuration, Integer mappingVersion) {
+		List<SourceDescriptor> mappings = new ArrayList<>();
 		new HbmXmlGeneratingService() //
 				.mappingVersion(mappingVersion) //
 				.defaultSchema(hpConfiguration.getDefaultSchema()) //
@@ -161,15 +203,45 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 								.string(sd.sourceCode);
 					}
 
-					if (!sd.sourceRelativePath.endsWith(".hbm.xml"))
-						return;
-
-					try (ReaderInputStream in = new ReaderInputStream(new StringReader(sd.sourceCode))) {
-						configuration.addInputStream(in);
-					} catch (IOException e) {
-						throw new UncheckedIOException("Error while applying " + sd.sourceRelativePath + " as hibernate configuration", e);
-					}
+					if (sd.sourceRelativePath.endsWith(".hbm.xml"))
+						mappings.add(sd);
 				}).renderMappings();
+
+		for (SourceDescriptor sd : mappings) {
+			try (ReaderInputStream in = new ReaderInputStream(new StringReader(sd.sourceCode))) {
+				configuration.addInputStream(in);
+			} catch (IOException e) {
+				throw new UncheckedIOException("Error while applying " + sd.sourceRelativePath + " as hibernate configuration", e);
+			}
+		}
+
+		return new MappingBundle(HibernateSchemaUpdateGate.fingerprint(mappings));
+	}
+
+	private void logTimings(String schemaIdentity, boolean schemaUpdate, long started, long mappingsGenerated) {
+		long completed = System.nanoTime();
+		long mappingMillis = (mappingsGenerated - started) / 1_000_000;
+		long sessionFactoryMillis = (completed - mappingsGenerated) / 1_000_000;
+		log.info("Built Hibernate SessionFactory for [" + schemaIdentity + "] in " + ((completed - started) / 1_000_000)
+				+ " ms (mapping " + mappingMillis + " ms, schema action " + (schemaUpdate ? "update" : "none")
+				+ ", SessionFactory/gate " + sessionFactoryMillis + " ms)");
+	}
+
+	private String schemaIdentity() {
+		String modelName = cmdResolver.getModelOracle().getGmMetaModel().getName();
+		return safe(modelName) + "|" + physicalSchemaIdentity();
+	}
+
+	private String physicalSchemaIdentity() {
+		return String.join("|", safe(hpConfiguration.getDefaultCatalog()), safe(hpConfiguration.getDefaultSchema()), safe(getTableNamePrefix()));
+	}
+
+	private static String safe(String value) {
+		return value == null ? "" : value;
+	}
+
+	private record MappingBundle(String fingerprint) {
+		// empty
 	}
 
 	private String getTableNamePrefix() {

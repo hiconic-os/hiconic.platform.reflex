@@ -21,6 +21,7 @@ import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.persistence.hibernate.dialects.HibernateDialectMappings;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
+import com.braintribe.wire.api.context.WireContext;
 
 import hiconic.rx.db.module.api.DatabaseContract;
 import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguration;
@@ -30,6 +31,7 @@ import hiconic.rx.hibernate.processing.HibernatePersistences;
 import hiconic.rx.hibernate.service.api.HibernatePersistence;
 import hiconic.rx.hibernate.wire.contract.HibernatePropertiesContract;
 import hiconic.rx.hibernate.wire.contract.HibernateSystemPropertiesContract;
+import hiconic.rx.locking.api.LockingContract;
 import hiconic.rx.module.api.service.ConfiguredModel;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
@@ -48,6 +50,9 @@ public class HibernateRxModuleSpace implements RxModuleContract, HibernateContra
 	
 	@Import
 	private DatabaseContract database;
+
+	@Import
+	private WireContext<?> wireContext;
 
 	@Override
 	public HibernatePersistence persistence(HibernatePersistenceConfiguration configuration, ConfiguredModel configuredModel, DataSource dataSource) {
@@ -70,7 +75,14 @@ public class HibernateRxModuleSpace implements RxModuleContract, HibernateContra
 		bean.setDebugOrmOutputFolder(hibernateSystemProperties.ormDebugOutputFolder());
 		bean.setDialectAutoSense(dialectAutoSense());
 		bean.setDefaultMappingVersion(hibernateProperties.HC_HBM_MAPPING_VERSION());
+		bean.setInstanceId(platform.application().nodeId());
+		bean.setLockingSupplier(this::locking);
 		return bean;
+	}
+
+	private com.braintribe.model.processing.lock.api.Locking locking() {
+		LockingContract contract = wireContext.findContract(LockingContract.class);
+		return contract == null ? null : contract.locking();
 	}
 
 	@Managed

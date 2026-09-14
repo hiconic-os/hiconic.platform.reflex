@@ -67,6 +67,11 @@ limitations under the License.
             <version>2.2.224</version>
         </dependency>
         <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>gm-locking-api</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
+        <dependency>
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>hibernate-test-api-model</artifactId>
             <version>${V.hiconic.platform.reflex}</version>

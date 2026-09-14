@@ -69,5 +69,10 @@ limitations under the License.
             <artifactId>db-module-api</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>cluster-module-api</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
     </dependencies>
 </project>

@@ -17,6 +17,7 @@ import java.io.File;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 import javax.sql.DataSource;
 
@@ -27,6 +28,7 @@ import com.braintribe.cfg.DestructionAware;
 import com.braintribe.logging.Logger;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
+import com.braintribe.model.processing.lock.api.Locking;
 import com.braintribe.model.processing.service.api.ServiceProcessor;
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.utils.lcd.Lazy;
@@ -47,6 +49,8 @@ public class HibernatePersistences implements DestructionAware {
 	private File debugOrmOutputFolder;
 	private DialectAutoSense dialectAutoSense;
 	private Integer defaultMappingVersion;
+	private String instanceId;
+	private Supplier<Locking> lockingSupplier;
 
 	@Configurable
 	public void setDebugOrmOutputFolder(File debugOrmOutputFolder) {
@@ -61,6 +65,16 @@ public class HibernatePersistences implements DestructionAware {
 	@Configurable
 	public void setDefaultMappingVersion(Integer defaultMappingVersion) {
 		this.defaultMappingVersion = defaultMappingVersion;
+	}
+
+	@Configurable
+	public void setInstanceId(String instanceId) {
+		this.instanceId = instanceId;
+	}
+
+	@Configurable
+	public void setLockingSupplier(Supplier<Locking> lockingSupplier) {
+		this.lockingSupplier = lockingSupplier;
 	}
 
 	public HibernatePersistence acquirePersistence(HibernatePersistenceConfiguration configuration, CmdResolver resolver, DataSource dataSource) {
@@ -103,6 +117,8 @@ public class HibernatePersistences implements DestructionAware {
 			builder.setOrmDebugOutputFolder(debugOrmOutputFolder);
 			builder.setDialectAutoSense(dialectAutoSense);
 			builder.setDefaultMappingVersion(defaultMappingVersion);
+			builder.setInstanceId(instanceId);
+			builder.setLockingSupplier(lockingSupplier);
 			SessionFactory sessionFactory = builder.build();
 			return sessionFactory;
 		}
