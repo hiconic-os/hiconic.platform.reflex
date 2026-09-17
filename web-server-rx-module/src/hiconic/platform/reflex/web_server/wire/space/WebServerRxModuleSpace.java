@@ -169,14 +169,16 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	 * The folder of the packaged resources that this module serves. Everything below it is delivered unauthenticated, by path, so nothing may be put
 	 * there that is not meant for anonymous download.
 	 */
+	// TODO make this configurable
 	private static final String WEB_FOLDER = "www";
 
 	@Managed
 	private RxPackagedResourceResolver webResources() {
-		return platform.packagedResources().below(WEB_FOLDER);
+		return platform.packagedResources().resolver().below(WEB_FOLDER);
 	}
 
 	private void registerPackagedWebResources() {
+		// TODO make configurable
 		addServlet("/", "packaged-web-resources", "/res/*", packagedWebResourceServlet());
 	}
 

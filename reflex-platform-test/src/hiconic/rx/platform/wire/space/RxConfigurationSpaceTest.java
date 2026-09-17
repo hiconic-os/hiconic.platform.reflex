@@ -23,20 +23,21 @@ import java.util.Set;
 
 import org.junit.Test;
 
-import com.braintribe.gm.config.yaml.index.ClasspathIndex;
-import com.braintribe.gm.config.yaml.ModeledYamlConfiguration;
-import com.braintribe.gm.config.yaml.ModeledYamlConfigurationLoader;
 import com.braintribe.codec.marshaller.api.GmSerializationOptions;
 import com.braintribe.codec.marshaller.api.PlaceholderSupport;
 import com.braintribe.codec.marshaller.yaml.YamlMarshaller;
+import com.braintribe.gm.config.yaml.ModeledYamlConfiguration;
+import com.braintribe.gm.config.yaml.ModeledYamlConfigurationLoader;
+import com.braintribe.gm.config.yaml.index.ClasspathIndex;
+import com.braintribe.model.processing.resource.packaged.PackagedResourceValueDescriptorExperts;
 import com.braintribe.model.processing.vde.expression.api.ValueDescriptorExpressionCodecOption;
 import com.braintribe.model.processing.vde.expression.api.ValueDescriptorExpressionProjectionOption;
 import com.braintribe.model.processing.vde.reasoned.api.ValueDescriptorSourceContext;
-
-import hiconic.rx.platform.processing.resource.RxPackagedResourceValueDescriptorExperts;
-import hiconic.rx.platform.processing.resource.RxIndexedPackagedResourceResolver;
-import hiconic.rx.platform.resource.model.ResourceExpressionConfiguration;
 import com.braintribe.model.resource.source.PackagedSource;
+
+import hiconic.rx.platform.processing.resource.RxIndexedPackagedResourceResolver;
+import hiconic.rx.platform.processing.resource.RxPackagedResourceValueDescriptorExperts;
+import hiconic.rx.platform.resource.model.ResourceExpressionConfiguration;
 
 public class RxConfigurationSpaceTest {
 
@@ -69,9 +70,9 @@ public class RxConfigurationSpaceTest {
 		var configuration = new ModeledYamlConfiguration();
 		configuration.setClasspathIndex(index);
 		configuration.setClasspathConfPath("HICONIC-CONF");
-		configuration.setValueDescriptorExpressionCodec(RxPackagedResourceValueDescriptorExperts.expressionCodec());
+		configuration.setValueDescriptorExpressionCodec(PackagedResourceValueDescriptorExperts.expressionCodec());
 		configuration.setValueDescriptorExpertConfigurer(
-				registry -> RxPackagedResourceValueDescriptorExperts.register(registry, resolver));
+				registry -> PackagedResourceValueDescriptorExperts.register(registry, resolver));
 
 		ResourceExpressionConfiguration loaded = configuration.config(ResourceExpressionConfiguration.T);
 
@@ -87,8 +88,8 @@ public class RxConfigurationSpaceTest {
 		var options = GmSerializationOptions.deriveDefaults()
 				.inferredRootType(ResourceExpressionConfiguration.T)
 				.set(PlaceholderSupport.class, true)
-				.set(ValueDescriptorExpressionCodecOption.class, RxPackagedResourceValueDescriptorExperts.expressionCodec())
-				.set(ValueDescriptorExpressionProjectionOption.class, RxPackagedResourceValueDescriptorExperts.projection(outputContext))
+				.set(ValueDescriptorExpressionCodecOption.class, PackagedResourceValueDescriptorExperts.expressionCodec())
+				.set(ValueDescriptorExpressionProjectionOption.class, PackagedResourceValueDescriptorExperts.projection(outputContext))
 				.build();
 		StringWriter writer = new StringWriter();
 		new YamlMarshaller().marshall(writer, loaded, options);
@@ -99,8 +100,8 @@ public class RxConfigurationSpaceTest {
 				.doesNotContain("resource: \"${packagedResource(");
 
 		ResourceExpressionConfiguration roundtripped = new ModeledYamlConfigurationLoader()
-				.valueDescriptorExpressions(RxPackagedResourceValueDescriptorExperts.expressionCodec())
-				.valueDescriptorExperts(registry -> RxPackagedResourceValueDescriptorExperts.register(registry, resolver))
+				.valueDescriptorExpressions(PackagedResourceValueDescriptorExperts.expressionCodec())
+				.valueDescriptorExperts(registry -> PackagedResourceValueDescriptorExperts.register(registry, resolver))
 				.valueDescriptorAspect(ValueDescriptorSourceContext.class, outputContext)
 				.loadConfig(ResourceExpressionConfiguration.T,
 						() -> new ByteArrayInputStream(writer.toString().getBytes(StandardCharsets.UTF_8)))
@@ -114,7 +115,7 @@ public class RxConfigurationSpaceTest {
 		var compactOptions = GmSerializationOptions.deriveDefaults()
 				.inferredRootType(ResourceExpressionConfiguration.T)
 				.set(PlaceholderSupport.class, true)
-				.set(ValueDescriptorExpressionCodecOption.class, RxPackagedResourceValueDescriptorExperts.expressionCodec())
+				.set(ValueDescriptorExpressionCodecOption.class, PackagedResourceValueDescriptorExperts.expressionCodec())
 				.set(ValueDescriptorExpressionProjectionOption.class,
 						RxPackagedResourceValueDescriptorExperts.projection(outputContext,
 								resource -> "configuration-curator".equals(resource.getCreator())))

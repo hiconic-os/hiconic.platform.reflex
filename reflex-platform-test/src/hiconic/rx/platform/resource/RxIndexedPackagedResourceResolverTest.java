@@ -13,7 +13,9 @@
 // ============================================================================
 package hiconic.rx.platform.resource;
 
+import static com.braintribe.testing.junit.assertions.assertj.core.api.Assertions.assertThat;
 import static com.braintribe.testing.junit.assertions.gm.assertj.core.api.GmAssertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.charset.StandardCharsets;
@@ -24,17 +26,17 @@ import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.model.bvd.resource.PackagedResource;
 import com.braintribe.model.bvd.resource.PackagedResourceText;
+import com.braintribe.model.generic.session.exception.GmSessionRuntimeException;
+import com.braintribe.model.processing.resource.packaged.PackagedResourceValueDescriptorExperts;
 import com.braintribe.model.processing.vde.reasoned.api.ValueDescriptorSourceContext;
 import com.braintribe.model.processing.vde.reasoned.impl.StandardValueDescriptorEvaluationContext;
 import com.braintribe.model.processing.vde.reasoned.impl.ValueDescriptorExpertRegistry;
 import com.braintribe.model.resource.Resource;
 import com.braintribe.model.resource.source.PackagedSource;
-import com.braintribe.testing.junit.assertions.gm.assertj.core.api.GmAssertions;
 
 import hiconic.rx.module.api.resource.RxPackagedResourceResolver;
 import hiconic.rx.module.api.wire.RxPackagedResourcesContract;
 import hiconic.rx.platform.processing.resource.RxIndexedPackagedResourceResolver;
-import hiconic.rx.platform.processing.resource.RxPackagedResourceValueDescriptorExperts;
 
 public class RxIndexedPackagedResourceResolverTest {
 
@@ -74,9 +76,9 @@ public class RxIndexedPackagedResourceResolverTest {
 	}
 
 	@Test
-	public void buildsModeledPersistableReferencesWithoutTransientStreamState() {
+	public void buildsModeledReferencesThatArePersistableAndReadableAtOnce() throws Exception {
 		var resolver = rootResolver();
-		Resource resource = resolver.resource("test/hello.txt").withMimeType().asPersistableResource();
+		Resource resource = resolver.resource("test/hello.txt").withMimeType().asResource();
 
 		assertThat(resource.isTransient()).isFalse();
 		assertThat(resource.getMimeType()).isEqualTo("text/plain");
@@ -86,12 +88,29 @@ public class RxIndexedPackagedResourceResolverTest {
 		PackagedSource source = (PackagedSource) resource.getResourceSource();
 		assertThat(source.getArtifact()).isEqualTo("reflex-platform-test");
 		assertThat(source.getPath()).isEqualTo("HICONIC-RESOURCES/test/hello.txt");
+
+		// The very same Resource can be read without a session, because the resolver attached a reader to the address.
+		try (var in = resource.openStream()) {
+			assertThat(new String(in.readAllBytes(), StandardCharsets.UTF_8)).isEqualTo("private hello");
+		}
+	}
+
+	/** The reader is transient, so an address that came back from an access or a file carries none. Such a Resource is read through its session. */
+	@Test
+	public void addressWithoutReaderIsNotStreamableByItself() {
+		var resolver = rootResolver();
+		Resource resource = resolver.resource("test/hello.txt").asResource();
+
+		PackagedSource source = (PackagedSource) resource.getResourceSource();
+		source.setInputStreamProvider(null);
+
+		assertThatThrownBy(resource::openStream).isInstanceOf(GmSessionRuntimeException.class);
 	}
 
 	@Test
 	public void resolvesAnyIndexedResourceByArtifactAndFullArtifactRelativePath() throws Exception {
 		var resolver = rootResolver();
-		Resource resource = resolver.resource("reflex-platform-test", "HICONIC-RESOURCES/www/assets/hello.txt").asPersistableResource();
+		Resource resource = resolver.resource("reflex-platform-test", "HICONIC-RESOURCES/www/assets/hello.txt").asResource();
 
 		PackagedSource source = (PackagedSource) resource.getResourceSource();
 		assertThat(source.getArtifact()).isEqualTo("reflex-platform-test");
@@ -105,7 +124,7 @@ public class RxIndexedPackagedResourceResolverTest {
 	public void evaluatesResourcesRelativeToTheOwningConfigurationEntry() {
 		var resolver = rootResolver();
 		var registry = new ValueDescriptorExpertRegistry();
-		RxPackagedResourceValueDescriptorExperts.register(registry, resolver);
+		PackagedResourceValueDescriptorExperts.register(registry, resolver);
 		var context = new StandardValueDescriptorEvaluationContext(registry) //
 				.withAspect(ValueDescriptorSourceContext.class,
 						new ValueDescriptorSourceContext("reflex-platform-test", "HICONIC-RESOURCES/www/config.yaml"));

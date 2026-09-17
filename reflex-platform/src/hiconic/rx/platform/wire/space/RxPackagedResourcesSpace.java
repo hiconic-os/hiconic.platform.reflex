@@ -16,40 +16,21 @@ package hiconic.rx.platform.wire.space;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
-import hiconic.rx.module.api.resource.RxPackagedResourceBuilder;
-import hiconic.rx.module.api.resource.RxPackagedResourceInventory;
 import hiconic.rx.module.api.wire.RxPackagedResourcesContract;
 import hiconic.rx.platform.processing.resource.RxIndexedPackagedResourceResolver;
-import hiconic.rx.module.api.resource.RxPackagedResourceResolver;
 import hiconic.rx.platform.wire.contract.RxPlatformConfigContract;
 
 /** Classpath-backed packaged resources. The contract permits adding a materialized-filesystem layer without changing consumers. */
 @Managed
 public class RxPackagedResourcesSpace implements RxPackagedResourcesContract {
-	@Import private RxPlatformConfigContract config;
+
+	@Import
+	private RxPlatformConfigContract config;
 
 	@Override
-	public RxPackagedResourceBuilder resource(String relativePath) {
-		return resolver().resource(relativePath);
-	}
-
-	@Override
-	public RxPackagedResourceBuilder resource(String artifact, String artifactRelativePath) {
-		return resolver().resource(artifact, artifactRelativePath);
-	}
-
-	@Override
-	public RxPackagedResourceInventory inventory() {
-		return resolver().inventory();
-	}
-
-	@Override
-	public RxPackagedResourceResolver below(String folder) {
-		return resolver().below(folder);
-	}
-
 	@Managed
 	public RxIndexedPackagedResourceResolver resolver() {
 		return new RxIndexedPackagedResourceResolver(config.classpathIndex(), CLASSPATH_ROOT);
 	}
+
 }

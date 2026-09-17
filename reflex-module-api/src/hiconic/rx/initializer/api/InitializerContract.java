@@ -14,11 +14,19 @@
 package hiconic.rx.initializer.api;
 
 import com.braintribe.gm.initializer.api.InitializerRegistry;
+import com.braintribe.gm.initializer.api.InitializerTask;
 
 import hiconic.rx.module.api.wire.RxExportContract;
+import hiconic.rx.module.api.wire.RxModuleContract;
 
 /** Application-wide registry for fingerprinted initialization tasks. */
 public interface InitializerContract extends RxExportContract {
 
+	/**
+	 * Registry for registering {@link InitializerTask}s.
+	 * <p>
+	 * The initialization should happen during the {@link RxModuleContract#onDeploy() onDeploy} round of module loading. 
+	 */
 	InitializerRegistry registry();
+
 }

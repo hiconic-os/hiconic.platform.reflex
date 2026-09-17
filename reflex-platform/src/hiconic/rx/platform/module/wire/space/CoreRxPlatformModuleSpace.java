@@ -218,7 +218,7 @@ public class CoreRxPlatformModuleSpace implements RxModuleContract, PushContract
 		ResourcePayloadProcessor bean = new ResourcePayloadProcessor();
 		bean.setServiceDomains(platform.serviceProcessing().serviceDomains());
 		bean.setResourceStorages(platform.resourceStorages());
-		bean.setPackagedResourceResolver(platform.packagedResources());
+		bean.setPackagedResourceResolver(platform.packagedResources().resolver());
 
 		return bean;
 	}

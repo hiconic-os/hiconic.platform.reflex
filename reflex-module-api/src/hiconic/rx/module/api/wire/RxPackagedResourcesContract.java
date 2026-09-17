@@ -20,11 +20,15 @@ import hiconic.rx.module.api.resource.RxPackagedResourceResolver;
 /**
  * Resolves immutable resources which form part of the logical application package.
  * <p>
- * Callers address resources relative to the packaged-resources root and do not depend on the physical backing. A development runtime may resolve
- * them from the classpath while a packaged application may provide materialized files.
+ * Callers address resources relative to the packaged-resources root and do not depend on the physical backing. A development runtime may resolve them
+ * from the classpath while a packaged application may provide materialized files.
  */
-public interface RxPackagedResourcesContract extends RxPackagedResourceResolver, WireSpace {
+public interface RxPackagedResourcesContract extends WireSpace {
 
+	// TODO this makes no sense anymore, there is no special HICONIC-RESOURCES folder
+	@Deprecated
 	String CLASSPATH_ROOT = "HICONIC-RESOURCES/";
+
+	RxPackagedResourceResolver resolver();
 
 }

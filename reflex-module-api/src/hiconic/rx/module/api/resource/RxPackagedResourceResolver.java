@@ -13,9 +13,10 @@
 // ============================================================================
 package hiconic.rx.module.api.resource;
 
+import com.braintribe.model.processing.resource.packaged.api.PackagedResourceResolver;
 import com.braintribe.model.resource.source.PackagedSource;
 
-public interface RxPackagedResourceResolver {
+public interface RxPackagedResourceResolver extends PackagedResourceResolver {
 
 	RxPackagedResourceBuilder resource(String relativePath);
 

@@ -39,9 +39,9 @@ import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.essential.NotFound;
 import com.braintribe.mimetype.PlatformMimeTypeDetector;
-import com.braintribe.model.processing.resource.packaged.api.PackagedResourceResolver;
 import com.braintribe.model.resource.Resource;
 import com.braintribe.model.resource.api.ResourceHandle;
+import com.braintribe.model.resource.source.PackagedSource;
 import com.braintribe.model.resource.specification.RasterImageSpecification;
 import com.braintribe.utils.IOTools;
 import com.braintribe.utils.StringTools;
@@ -50,12 +50,15 @@ import hiconic.rx.module.api.resource.RxPackagedResourceBuilder;
 import hiconic.rx.module.api.resource.RxPackagedResourceEntry;
 import hiconic.rx.module.api.resource.RxPackagedResourceInventory;
 import hiconic.rx.module.api.resource.RxPackagedResourceResolver;
-import com.braintribe.model.resource.source.PackagedSource;
-
 import hiconic.rx.platform.processing.resource.RxResourcesBuilding.RxUrlResourcesBuilder;
 
-/** Index-backed resolver. Computed metadata is cached; mutable resource entities and payload streams are not. */
-public class RxIndexedPackagedResourceResolver implements RxPackagedResourceResolver, PackagedResourceResolver {
+/**
+ * Index-backed resolver. Computed metadata is cached; mutable resource entities and payload streams are not.
+ * <p>
+ * Every {@link PackagedSource} it builds carries its reader, so the Resource around it can be streamed right away and still be persisted as a plain
+ * address.
+ */
+public class RxIndexedPackagedResourceResolver implements RxPackagedResourceResolver {
 
 	private final ClasspathIndex classpathIndex;
 	private final String classpathRoot;
@@ -110,7 +113,7 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 	@Override
 	public Maybe<Resource> resolveResource(String artifact, String path) {
 		try {
-			return Maybe.complete(resource(artifact, path).asPersistableResource());
+			return Maybe.complete(resource(artifact, path).asResource());
 		} catch (IllegalArgumentException e) {
 			return NotFound.create(e.getMessage()).asMaybe();
 		}
@@ -242,12 +245,7 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 
 		@Override
 		public Resource asResource() {
-			return cachedResource.asResource(enrichments);
-		}
-
-		@Override
-		public Resource asPersistableResource() {
-			return cachedResource.asPersistableResource(enrichments, asSource());
+			return cachedResource.asResource(enrichments, asSource());
 		}
 
 		@Override
@@ -255,6 +253,8 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 			PackagedSource result = PackagedSource.T.create();
 			result.setPath(path);
 			result.setArtifact(artifact);
+			// The address alone says nothing about how to read it. Whoever resolves it knows, so the reader is attached right here.
+			result.setInputStreamProvider(cachedResource.handle::asStream);
 			return result;
 		}
 	}
@@ -305,14 +305,8 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 			this.handle = new RxUrlResourcesBuilder(url);
 		}
 
-		synchronized Resource asResource(Set<Enrichment> requested) {
-			ensureMetadata(requested);
-			Resource result = Resource.createTransient(handle::asStream);
-			applyMetadata(result, requested);
-			return result;
-		}
-
-		synchronized Resource asPersistableResource(Set<Enrichment> requested, PackagedSource source) {
+		/** The source carries both the address and the reader, so one Resource is at once persistable and readable. */
+		synchronized Resource asResource(Set<Enrichment> requested, PackagedSource source) {
 			ensureMetadata(requested);
 			Resource result = Resource.T.create();
 			result.setResourceSource(source);

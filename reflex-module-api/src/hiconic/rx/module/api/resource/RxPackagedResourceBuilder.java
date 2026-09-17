@@ -18,7 +18,7 @@ import com.braintribe.model.resource.api.ResourceHandle;
 
 import com.braintribe.model.resource.source.PackagedSource;
 
-/** Builds a transient {@link Resource} view of an indexed packaged resource. */
+/** Builds a {@link Resource} view of an indexed packaged resource. */
 public interface RxPackagedResourceBuilder {
 
 	String path();
@@ -38,18 +38,13 @@ public interface RxPackagedResourceBuilder {
 	}
 
 	/**
-	 * Returns a new transient resource instance. Requested metadata is computed lazily and cached by the resolver, but
-	 * copied onto each new resource so callers cannot mutate shared state. Every {@link Resource#openStream()} call opens
-	 * a fresh stream; payload bytes are never cached.
+	 * Returns a new Resource backed by the {@link #asSource() packaged source}, thus it is at once persistable and readable: the address is fully
+	 * modeled, and the source carries a reader for it.
+	 * <p>
+	 * Requested metadata is computed lazily and cached by the resolver, but copied onto each new Resource, so callers cannot mutate shared state.
+	 * Every {@link Resource#openStream()} call opens a fresh stream; payload bytes are never cached.
 	 */
 	Resource asResource();
-
-	/**
-	 * Returns a modeled, persistable reference to this packaged resource. Unlike
-	 * {@link #asResource()}, the resulting resource does not carry transient JVM
-	 * stream state and can safely cross persistence-session boundaries.
-	 */
-	Resource asPersistableResource();
 
 	PackagedSource asSource();
 }
