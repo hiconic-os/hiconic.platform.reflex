@@ -48,6 +48,7 @@ import hiconic.platform.reflex.web_server.processing.InstanceEndpointConfigurato
 import hiconic.platform.reflex.web_server.processing.PackagedWebResourceServlet;
 import hiconic.rx.module.api.resource.RxPackagedResourceResolver;
 import hiconic.platform.reflex.web_server.processing.ReflexAccessLogReceiver;
+import hiconic.platform.reflex.web_server.processing.RequestMetaLoggingHandler;
 import hiconic.platform.reflex.web_server.processing.RoleAuthorizationFilter;
 import hiconic.platform.reflex.web_server.processing.RuntimeConfigurationHandler;
 import hiconic.platform.reflex.web_server.processing.SsePushServlet;
@@ -563,7 +564,7 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	}
 
 	private HttpHandler rootHandler() {
-		return configuration().getAccessLogEnabled() ? accessLogHandler() : applicationStateGateHandler();
+		return new RequestMetaLoggingHandler(configuration().getAccessLogEnabled() ? accessLogHandler() : applicationStateGateHandler());
 	}
 
 	@Managed
@@ -574,7 +575,10 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	@Managed
 	private AccessLogHandler accessLogHandler() {
 		AccessLogHandler bean = new AccessLogHandler(applicationStateGateHandler(), logReceiver(), configuration().getAccessLogFormat(),
-				Undertow.class.getClassLoader());
+				Undertow.class.getClassLoader(), exchange -> {
+					var control = RequestMetaLoggingHandler.control(exchange);
+					return control == null || !control.isSuppressed();
+				});
 		return bean;
 	}
 

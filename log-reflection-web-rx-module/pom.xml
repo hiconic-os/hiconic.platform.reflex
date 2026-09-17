@@ -35,6 +35,11 @@
 		</dependency>
 		<dependency>
 			<groupId>hiconic.platform.reflex</groupId>
+			<artifactId>log-reflection-api-model</artifactId>
+			<version>${V.hiconic.platform.reflex}</version>
+		</dependency>
+		<dependency>
+			<groupId>hiconic.platform.reflex</groupId>
 			<artifactId>log-reflection-webapp</artifactId>
 			<version>${V.hiconic.platform.reflex}</version>
 			<type>pom</type>

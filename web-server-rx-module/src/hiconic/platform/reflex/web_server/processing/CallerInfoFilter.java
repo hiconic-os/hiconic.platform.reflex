@@ -21,6 +21,7 @@ import java.util.Locale;
 
 import com.braintribe.cfg.Configurable;
 import com.braintribe.common.attribute.AttributeContext;
+import com.braintribe.common.attribute.AttributeContextBuilder;
 import com.braintribe.common.attribute.common.CallerAcceptedLocales;
 import com.braintribe.model.processing.service.api.aspect.RequestedEndpointAspect;
 import com.braintribe.model.processing.service.api.aspect.RequestorAddressAspect;
@@ -33,6 +34,9 @@ import dev.hiconic.servlet.api.HttpServletArguments;
 import dev.hiconic.servlet.api.HttpServletArgumentsAttribute;
 import dev.hiconic.servlet.api.remote.RemoteClientAddressResolver;
 import dev.hiconic.servlet.impl.remote.DefaultRemoteClientAddressResolver;
+import hiconic.rx.web.server.api.attribute.RequestMetaLoggingAttribute;
+import hiconic.rx.web.server.api.attribute.RequestMetaLoggingControl;
+import io.undertow.servlet.handlers.ServletRequestContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -71,12 +75,18 @@ public class CallerInfoFilter implements HttpFilter {
 		String requestedEndpoint = request.getRequestURL().toString();
 
 		AttributeContext attributeContext = AttributeContexts.peek();
-		AttributeContext derivedContext = attributeContext.derive() //
+		ServletRequestContext servletContext = ServletRequestContext.current();
+		RequestMetaLoggingControl control = servletContext == null ? null
+				: RequestMetaLoggingHandler.control(servletContext.getExchange());
+		AttributeContextBuilder contextBuilder = attributeContext.derive() //
 				.set(RequestorAddressAspect.class, getClientRemoteInternetAddress(request)) //
 				.set(CallerAcceptedLocales.class, getLocaleList(request)) //
 				.set(RequestorIdAspect.class, requestorId) //
 				.set(RequestedEndpointAspect.class, requestedEndpoint) //
-				.set(HttpServletArgumentsAttribute.class, new HttpServletArguments(request, response)).build();
+				.set(HttpServletArgumentsAttribute.class, new HttpServletArguments(request, response));
+		if (control != null)
+			contextBuilder.set(RequestMetaLoggingAttribute.class, control);
+		AttributeContext derivedContext = contextBuilder.build();
 
 		AttributeContexts.push(derivedContext);
 
