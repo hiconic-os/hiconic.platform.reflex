@@ -43,6 +43,7 @@ import com.braintribe.model.generic.reflection.StandardCloningContext;
 import com.braintribe.model.generic.reflection.StrategyOnCriterionMatch;
 import com.braintribe.model.processing.securityservice.api.exceptions.SecurityServiceException;
 import com.braintribe.model.resource.CallStreamCapture;
+import com.braintribe.model.resource.source.PackagedSource;
 import com.braintribe.model.resource.source.TransientSource;
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.model.service.api.result.Neutral;
@@ -141,6 +142,10 @@ public class DdraEndpointsUtils {
 						CallStreamCapture callStreamCapture = (CallStreamCapture) entity;
 						CallStreamCapture clonedCallStreamCapture = (CallStreamCapture) clonedEntity;
 						clonedCallStreamCapture.setOutputStreamProvider(callStreamCapture.getOutputStreamProvider());
+					} else if (entity instanceof PackagedSource) {
+						PackagedSource packagedSource = (PackagedSource) entity;
+						PackagedSource clonedPackagedSource = (PackagedSource) clonedEntity;
+						clonedPackagedSource.setInputStreamProvider(packagedSource.getInputStreamProvider());
 					}
 				}
 
