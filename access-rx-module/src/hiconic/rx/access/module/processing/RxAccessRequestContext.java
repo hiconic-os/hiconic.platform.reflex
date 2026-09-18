@@ -19,14 +19,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
 import java.util.stream.Stream;
 
 import com.braintribe.common.attribute.AttributeContext;
 import com.braintribe.common.attribute.TypeSafeAttribute;
 import com.braintribe.common.attribute.TypeSafeAttributeEntry;
 import com.braintribe.model.accessapi.AccessRequest;
-import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.eval.EvalContext;
 import com.braintribe.model.generic.manipulation.Manipulation;
 import com.braintribe.model.generic.session.exception.GmSessionException;
@@ -39,9 +37,6 @@ import com.braintribe.model.processing.service.api.ServiceRequestSummaryLogger;
 import com.braintribe.model.processing.session.api.persistence.CommitListener;
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSession;
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSessionFactory;
-import com.braintribe.model.resource.CallStreamCapture;
-import com.braintribe.model.resource.source.PackagedSource;
-import com.braintribe.model.resource.source.TransientSource;
 import com.braintribe.model.service.api.ServiceRequest;
 
 public class RxAccessRequestContext<P extends AccessRequest> implements AccessRequestContext<P> {
@@ -123,7 +118,7 @@ public class RxAccessRequestContext<P extends AccessRequest> implements AccessRe
 	@Override
 	public P getRequest() {
 		if (request == null) {
-			request = getSession().merge().adoptUnexposed(false).envelopeFactory(new TransientDataAwareEnvelopeFactory()).suspendHistory(true)
+			request = getSession().merge().adoptUnexposed(false).transferTransientProperties(true).suspendHistory(true)
 					.doFor(originalRequest);
 		}
 		return request;
@@ -132,39 +127,11 @@ public class RxAccessRequestContext<P extends AccessRequest> implements AccessRe
 	@Override
 	public P getSystemRequest() {
 		if (systemRequest == null) {
-			systemRequest = getSystemSession().merge().adoptUnexposed(false).envelopeFactory(new TransientDataAwareEnvelopeFactory())
-					.suspendHistory(true).doFor(originalRequest);
+			systemRequest = getSystemSession().merge().adoptUnexposed(false).transferTransientProperties(true).suspendHistory(true).doFor(originalRequest);
 		}
 		return systemRequest;
 	}
 
-	private static class TransientDataAwareEnvelopeFactory implements Function<GenericEntity, GenericEntity> {
-
-		@Override
-		public GenericEntity apply(GenericEntity t) {
-			if (t.hasTransientData()) {
-				if (t instanceof TransientSource) {
-					TransientSource transientSource = (TransientSource) t;
-					TransientSource clonedTransientSource = (TransientSource) transientSource.entityType().create();
-					clonedTransientSource.setInputStreamProvider(transientSource.getInputStreamProvider());
-					return clonedTransientSource;
-				} else if (t instanceof CallStreamCapture) {
-					CallStreamCapture callStreamCapture = (CallStreamCapture) t;
-					CallStreamCapture clonedCallStreamCapture = (CallStreamCapture) callStreamCapture.entityType().create();
-					clonedCallStreamCapture.setOutputStreamProvider(callStreamCapture.getOutputStreamProvider());
-					return clonedCallStreamCapture;
-				} else if (t instanceof PackagedSource) {
-					PackagedSource packagedSource = (PackagedSource) t;
-					PackagedSource clonedPackagedSource = (PackagedSource) packagedSource.entityType().create();
-					clonedPackagedSource.setInputStreamProvider(packagedSource.getInputStreamProvider());
-					return clonedPackagedSource;
-				}
-			}
-
-			return t.entityType().create();
-		}
-
-	}
 
 	public List<PersistenceGmSession> getUsedSessions() {
 		List<PersistenceGmSession> usedSessions = new ArrayList<>(2);

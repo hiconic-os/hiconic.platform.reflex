@@ -37,14 +37,10 @@ import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.generic.pr.criteria.TraversingCriterion;
 import com.braintribe.model.generic.pr.criteria.matching.StandardMatcher;
 import com.braintribe.model.generic.reflection.BaseType;
-import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.GenericModelType;
 import com.braintribe.model.generic.reflection.StandardCloningContext;
 import com.braintribe.model.generic.reflection.StrategyOnCriterionMatch;
 import com.braintribe.model.processing.securityservice.api.exceptions.SecurityServiceException;
-import com.braintribe.model.resource.CallStreamCapture;
-import com.braintribe.model.resource.source.PackagedSource;
-import com.braintribe.model.resource.source.TransientSource;
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.model.service.api.result.Neutral;
 import com.braintribe.utils.lcd.StringTools;
@@ -128,30 +124,8 @@ public class DdraEndpointsUtils {
 		StandardMatcher matcher = new StandardMatcher();
 		matcher.setCriterion(traversingCriterion);
 
-		StandardCloningContext cloningContext = new StandardCloningContext() {
-			@Override
-			public GenericEntity supplyRawClone(EntityType<? extends GenericEntity> entityType, GenericEntity entity) {
-				GenericEntity clonedEntity = super.supplyRawClone(entityType, entity);
-
-				if (entity.hasTransientData()) {
-					if (entity instanceof TransientSource) {
-						TransientSource transientSource = (TransientSource) entity;
-						TransientSource clonedTransientSource = (TransientSource) clonedEntity;
-						clonedTransientSource.setInputStreamProvider(transientSource.getInputStreamProvider());
-					} else if (entity instanceof CallStreamCapture) {
-						CallStreamCapture callStreamCapture = (CallStreamCapture) entity;
-						CallStreamCapture clonedCallStreamCapture = (CallStreamCapture) clonedEntity;
-						clonedCallStreamCapture.setOutputStreamProvider(callStreamCapture.getOutputStreamProvider());
-					} else if (entity instanceof PackagedSource) {
-						PackagedSource packagedSource = (PackagedSource) entity;
-						PackagedSource clonedPackagedSource = (PackagedSource) clonedEntity;
-						clonedPackagedSource.setInputStreamProvider(packagedSource.getInputStreamProvider());
-					}
-				}
-
-				return clonedEntity;
-			}
-		};
+		// Transient properties are transferred by AbstractEntityType.cloneImpl, for every type, so nothing has to be handled here.
+		StandardCloningContext cloningContext = new StandardCloningContext();
 
 		cloningContext.setMatcher(matcher);
 		cloningContext.setAbsenceResolvable(true);
