@@ -150,10 +150,12 @@ public class RxPlatform implements AutoCloseable {
 
 		List<ClasspathIndex.FilesystemSource> sources = new ArrayList<>();
 		Path effectiveConfDir = systemProperties.appDir().toPath().resolve("effective-conf");
+
 		if (Files.isDirectory(effectiveConfDir)) {
 			sources.add(ClasspathIndex.filesystemSource(new File(resourcesDir).toPath(), "",
 					List.of(RxConfigurationConstants.CLASSPATH_CONF_PATH)));
 			sources.add(ClasspathIndex.filesystemSlots(effectiveConfDir, RxConfigurationConstants.CLASSPATH_CONF_PATH));
+
 		} else {
 			sources.add(ClasspathIndex.filesystemSource(new File(resourcesDir).toPath(), ""));
 
