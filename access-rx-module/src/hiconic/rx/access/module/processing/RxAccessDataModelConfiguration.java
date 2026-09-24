@@ -15,12 +15,14 @@ package hiconic.rx.access.module.processing;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 import com.braintribe.model.generic.reflection.EntityType;
@@ -40,6 +42,7 @@ public class RxAccessDataModelConfiguration implements AccessDataModelConfigurat
 
 	private final ModelConfiguration modelConfiguration;
 	private final List<AccessInterceptorEntry> interceptors = Collections.synchronizedList(new ArrayList<>());
+	private final List<AccessInterceptorEntry> defaultInterceptors = Collections.synchronizedList(new ArrayList<>());
 	private volatile List<String> aspectOrdering = List.of();
 
 	public RxAccessDataModelConfiguration(ModelConfiguration modelConfiguration) {
@@ -57,13 +60,22 @@ public class RxAccessDataModelConfiguration implements AccessDataModelConfigurat
 
 	@Override
 	public AccessInterceptorBuilder bindAspect(String identification) {
+		return bindAspect(identification, false, () -> true);
+	}
+
+	@Override
+	public AccessInterceptorBuilder bindDefaultAspect(String identification, BooleanSupplier condition) {
+		return bindAspect(identification, true, condition);
+	}
+
+	private AccessInterceptorBuilder bindAspect(String identification, boolean defaultBinding, BooleanSupplier condition) {
 		return new AccessInterceptorBuilder() {
 			private String insertIdentification;
 			private boolean before;
 
 			@Override
 			public void bind(Supplier<AccessAspect> interceptorSupplier) {
-				AccessInterceptorEntry interceptorEntry = new AccessInterceptorEntry(identification, interceptorSupplier);
+				AccessInterceptorEntry interceptorEntry = new AccessInterceptorEntry(identification, interceptorSupplier, condition);
 				register(interceptorEntry);
 			}
 
@@ -84,17 +96,18 @@ public class RxAccessDataModelConfiguration implements AccessDataModelConfigurat
 			}
 
 			private void register(AccessInterceptorEntry interceptorEntry) {
-				synchronized (interceptors) {
+				List<AccessInterceptorEntry> target = defaultBinding ? defaultInterceptors : interceptors;
+				synchronized (target) {
 					if (insertIdentification == null) {
-						interceptors.add(interceptorEntry);
+						target.add(interceptorEntry);
 					} else {
 						int targetIndex = indexOfInterceptor(insertIdentification);
 						if (targetIndex < 0)
 							throw new NoSuchElementException("No access aspect found with identification: '" + insertIdentification + "'");
-						interceptors.add(before ? targetIndex : targetIndex + 1, interceptorEntry);
+						target.add(before ? targetIndex : targetIndex + 1, interceptorEntry);
 					}
 
-					if (interceptors.size() == 1)
+					if (interceptors.size() + defaultInterceptors.size() == 1)
 						configureModel(RxAccessDataModelConfiguration.this::configureInterceptors);
 				}
 			}
@@ -112,6 +125,8 @@ public class RxAccessDataModelConfiguration implements AccessDataModelConfigurat
 		List<AccessInterceptorEntry> orderedInterceptors = orderedInterceptors();
 		int prio = orderedInterceptors.size();
 		for (AccessInterceptorEntry entry : orderedInterceptors) {
+			if (!entry.condition().getAsBoolean())
+				continue;
 			final InterceptAccessWith interceptWith = InterceptAccessWith.T.create();
 
 			interceptWith.setAssociate(entry.interceptorSupplier.get());
@@ -130,10 +145,18 @@ public class RxAccessDataModelConfiguration implements AccessDataModelConfigurat
 		}
 
 		Map<String, AccessInterceptorEntry> byIdentification = new LinkedHashMap<>();
-		for (AccessInterceptorEntry entry : entries) {
-			if (byIdentification.putIfAbsent(entry.identification(), entry) != null)
-				throw new IllegalStateException("Duplicate access aspect identification: '" + entry.identification() + "'");
+		synchronized (defaultInterceptors) {
+			for (AccessInterceptorEntry entry : defaultInterceptors)
+				if (byIdentification.putIfAbsent(entry.identification(), entry) != null)
+					throw new IllegalStateException("Duplicate default access aspect identification: '" + entry.identification() + "'");
 		}
+		Set<String> explicitIdentifications = new HashSet<>();
+		for (AccessInterceptorEntry entry : entries) {
+			if (!explicitIdentifications.add(entry.identification()))
+				throw new IllegalStateException("Duplicate access aspect identification: '" + entry.identification() + "'");
+			byIdentification.put(entry.identification(), entry);
+		}
+		entries = new ArrayList<>(byIdentification.values());
 
 		List<AccessInterceptorEntry> result = new ArrayList<>(entries.size());
 		Set<String> explicitlyOrdered = new LinkedHashSet<>();
@@ -154,7 +177,7 @@ public class RxAccessDataModelConfiguration implements AccessDataModelConfigurat
 		aspectOrdering = List.of(identifiers.clone());
 	}
 
-	private static record AccessInterceptorEntry(String identification, Supplier<AccessAspect> interceptorSupplier) {
+	private static record AccessInterceptorEntry(String identification, Supplier<AccessAspect> interceptorSupplier, BooleanSupplier condition) {
 	}
 
 	// #################################################

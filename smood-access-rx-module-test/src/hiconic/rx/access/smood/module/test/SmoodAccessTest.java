@@ -16,15 +16,44 @@ package hiconic.rx.access.smood.module.test;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
+import com.braintribe.model.processing.query.fluent.EntityQueryBuilder;
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSession;
+import com.braintribe.model.processing.service.common.context.UserSessionAspect;
+import com.braintribe.model.user.User;
+import com.braintribe.model.usersession.UserSession;
+import com.braintribe.utils.collection.impl.AttributeContexts;
 
 import hiconic.rx.access.module.api.AccessContract;
+import hiconic.rx.access.model.md.InterceptAccessWith;
 import hiconic.rx.hibernate.model.test.Container;
 import hiconic.rx.hibernate.model.test.Element;
 import hiconic.rx.hibernate.model.test.Person;
 import hiconic.rx.test.common.AbstractRxTest;
 
 public class SmoodAccessTest extends AbstractRxTest {
+	@Test
+	public void accessModelsRemainOpenWithoutSecurityFeature() {
+		AccessContract access = resolveExportContract(AccessContract.class);
+		var model = access.accessDomains().byId("main-access").configuredDataModel();
+
+		Assertions.assertThat(model.systemCmdResolver().getMetaData().meta(InterceptAccessWith.T).list()).isEmpty();
+
+		PersistenceGmSession systemSession = access.systemSessionFactory().newSession("main-access");
+		Person person = systemSession.create(Person.T);
+		person.setName("Open");
+		systemSession.commit();
+
+		User user = User.T.create();
+		user.setId("regular-user");
+		user.setName("regular-user");
+		UserSession userSession = UserSession.T.create();
+		userSession.setUser(user);
+		userSession.getEffectiveRoles().add("regular-user");
+
+		var people = AttributeContexts.derivePeek().set(UserSessionAspect.class, userSession).buildAnd().execute(() -> access
+				.contextSessionFactory().newSession("main-access").query().entities(EntityQueryBuilder.from(Person.T).done()).list());
+		Assertions.assertThat(people).hasSize(1);
+	}
 
 	@Test
 	public void storesAndQueriesPolymorphicModelDataAcrossSessions() {

@@ -13,6 +13,7 @@
 // ============================================================================
 package hiconic.rx.access.module.api;
 
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 import com.braintribe.model.generic.reflection.EntityType;
@@ -23,6 +24,17 @@ import hiconic.rx.module.api.service.ModelConfiguration;
 public interface AccessDataModelConfiguration extends ModelConfiguration {
 
 	AccessInterceptorBuilder bindAspect(String identifier);
+
+	/**
+	 * Binds a platform-provided aspect which an application may replace by binding the same identifier via
+	 * {@link #bindAspect(String)}.
+	 */
+	default AccessInterceptorBuilder bindDefaultAspect(String identifier) {
+		return bindDefaultAspect(identifier, () -> true);
+	}
+
+	/** Like {@link #bindDefaultAspect(String)}, but evaluates the condition when configured models are finalized. */
+	AccessInterceptorBuilder bindDefaultAspect(String identifier, BooleanSupplier condition);
 
 	default AccessInterceptorBuilder bindAspect(AccessAspectSymbol identifier) {
 		return bindAspect(identifier.name());

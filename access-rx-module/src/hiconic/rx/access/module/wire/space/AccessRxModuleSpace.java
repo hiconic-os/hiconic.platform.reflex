@@ -20,6 +20,8 @@ import static com.braintribe.wire.api.util.Maps.map;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.Supplier;
 
 import com.braintribe.common.attribute.AttributeContext;
@@ -29,8 +31,18 @@ import com.braintribe.gm._ResourceApiModel_;
 import com.braintribe.gm._ResourceModel_;
 import com.braintribe.gm.model.persistence.reflection.api.PersistenceReflectionRequest;
 import com.braintribe.model.access.IncrementalAccess;
+import com.braintribe.model.access.security.SecurityAspect;
+import com.braintribe.model.access.security.manipulation.experts.EntityDeletionExpert;
+import com.braintribe.model.access.security.manipulation.experts.EntityInstantiationDisabledExpert;
+import com.braintribe.model.access.security.manipulation.experts.MandatoryPropertyExpert;
+import com.braintribe.model.access.security.manipulation.experts.PropertyModifiableExpert;
+import com.braintribe.model.access.security.manipulation.experts.UniqueKeyPropertyExpert;
 import com.braintribe.model.accessapi.PersistenceRequest;
 import com.braintribe.model.generic.reflection.EntityType;
+import com.braintribe.model.meta.data.prompt.Hidden;
+import com.braintribe.model.meta.selector.NegationSelector;
+import com.braintribe.model.meta.selector.RoleSelector;
+import com.braintribe.model.resource.Resource;
 import com.braintribe.model.resource.source.ResourceSource;
 import com.braintribe.model.resourceapi.persistence.DeleteResource;
 import com.braintribe.model.resourceapi.persistence.ManageResource;
@@ -80,6 +92,7 @@ import hiconic.rx.model.service.processing.md.StoreWith;
 
 @Managed
 public class AccessRxModuleSpace implements RxModuleContract, AccessContract, AccessExpertContract, AccessModelSymbols {
+	public static final String MODEL_SECURITY_ASPECT_ID = "model-security";
 	private Supplier<String> resourceStreamingUrlSupplier = () -> {
 		throw new IllegalStateException("No resource streaming URL was contributed. Add a resource streaming web module before requesting resource URLs.");
 	};
@@ -117,6 +130,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		dataModel.addModel(configuredResourceModel);
 		for (String dataModelName : access.getDataModelNames())
 			dataModel.addModelByName(dataModelName);
+		configureModelSecurity(dataModel);
 
 		AccessServiceModelConfiguration serviceModel = accessModelConfigurations().serviceModelConfiguration(accessId);
 		serviceModel.addModel(configuredAccessApiModel);
@@ -126,6 +140,47 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 			serviceModel.configureModel(editor -> editor.onEntityType(ResourceSource.T).addMetaData(StoreWith.create(resourceStorageId)));
 		for (String serviceModelName : access.getServiceModelNames())
 			serviceModel.addModelByName(serviceModelName);
+	}
+
+	private void configureModelSecurity(AccessDataModelConfiguration dataModel) {
+		dataModel.configureModel(editor -> {
+			if (!auth.roleAuthorization().securityActive())
+				return;
+
+			RoleSelector adminSelector = RoleSelector.T.create();
+			adminSelector.setRoles(adminAndInternalRoles());
+
+			NegationSelector nonAdminSelector = NegationSelector.T.create();
+			nonAdminSelector.setOperand(adminSelector);
+
+			Hidden hiddenForNonAdmins = Hidden.T.create();
+			hiddenForNonAdmins.setSelector(nonAdminSelector);
+			editor.addModelMetaData(hiddenForNonAdmins);
+			editor.onEntityType(Resource.T).addMetaData(hiddenForNonAdmins);
+		});
+		dataModel.bindDefaultAspect(MODEL_SECURITY_ASPECT_ID, () -> auth.roleAuthorization().securityActive())
+				.bind(this::modelSecurityAspect);
+	}
+
+	private Set<String> adminAndInternalRoles() {
+		Set<String> roles = new HashSet<>(auth.roleAuthorization().adminRoles());
+		auth.systemUser().getRoles().forEach(role -> roles.add(role.getName()));
+		return roles;
+	}
+
+	@Managed
+	private SecurityAspect modelSecurityAspect() {
+		SecurityAspect bean = new SecurityAspect();
+		Set<String> trustedRoles = new HashSet<>();
+		auth.systemUser().getRoles().forEach(role -> trustedRoles.add(role.getName()));
+		bean.setTrustedRoles(trustedRoles);
+		bean.setManipulationSecurityExperts(Set.of(
+				new UniqueKeyPropertyExpert(),
+				new MandatoryPropertyExpert(),
+				new EntityInstantiationDisabledExpert(),
+				new EntityDeletionExpert(),
+				new PropertyModifiableExpert()));
+		return bean;
 	}
 
 	//

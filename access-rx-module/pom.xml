@@ -76,6 +76,11 @@ limitations under the License.
         </dependency>
         <dependency>
             <groupId>com.braintribe.gm</groupId>
+            <artifactId>security-aspect</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.braintribe.gm</groupId>
             <artifactId>persistence-reflection-api-model</artifactId>
             <version>${V.com.braintribe.gm}</version>
         </dependency>

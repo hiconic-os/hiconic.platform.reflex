@@ -13,6 +13,7 @@
 // ============================================================================
 package hiconic.rx.security.test;
 
+import java.util.Set;
 import java.util.function.Supplier;
 
 import org.assertj.core.api.Assertions;
@@ -24,8 +25,11 @@ import com.braintribe.gm.model.security.reason.Forbidden;
 import com.braintribe.gm.model.security.reason.InvalidCredentials;
 import com.braintribe.logging.Logger;
 import com.braintribe.logging.ndc.mbean.NestedDiagnosticContext;
-import com.braintribe.model.processing.service.api.SessionIdAspect;
+import com.braintribe.model.access.security.SecurityAspect;
+import com.braintribe.model.processing.query.fluent.EntityQueryBuilder;
 import com.braintribe.model.processing.securityservice.api.attributes.OpenUserSessionEntryPointAttribute;
+import com.braintribe.model.processing.service.api.SessionIdAspect;
+import com.braintribe.model.processing.service.common.context.UserSessionAspect;
 import com.braintribe.model.security.service.config.OpenUserSessionEntryPoint;
 import com.braintribe.model.securityservice.Logout;
 import com.braintribe.model.securityservice.OpenUserSession;
@@ -34,8 +38,13 @@ import com.braintribe.model.securityservice.OpenUserSessionWithUserAndPassword;
 import com.braintribe.model.securityservice.credentials.ExistingSessionCredentials;
 import com.braintribe.model.securityservice.credentials.UserPasswordCredentials;
 import com.braintribe.model.securityservice.credentials.identification.UserNameIdentification;
+import com.braintribe.model.user.User;
+import com.braintribe.model.usersession.UserSession;
 import com.braintribe.utils.collection.impl.AttributeContexts;
 
+import hiconic.rx.access.model.md.InterceptAccessWith;
+import hiconic.rx.access.module.api.AccessContract;
+import hiconic.rx.hibernate.model.test.Person;
 import hiconic.rx.security.model.test.RunSecured;
 import hiconic.rx.test.common.AbstractRxTest;
 
@@ -45,6 +54,37 @@ public class SecurityTest extends AbstractRxTest {
 	@Test
 	public void defaultAdminRoleIsConfigured() {
 		Assertions.assertThat(platformContract.auth().roleAuthorization().adminRoles()).containsExactly("admin");
+	}
+
+	@Test
+	public void securityFeatureProtectsConfiguredAccessModels() {
+		AccessContract access = resolveExportContract(AccessContract.class);
+		var model = access.accessDomains().byId("main-access").configuredDataModel();
+
+		Assertions.assertThat(model.systemCmdResolver().getMetaData().meta(InterceptAccessWith.T).list())
+				.extracting(md -> md.getAssociate().getClass().getName())
+				.containsExactly(SecurityAspect.class.getName());
+
+		var systemSession = access.systemSessionFactory().newSession("main-access");
+		Person person = systemSession.create(Person.T);
+		person.setName("Secured");
+		systemSession.commit();
+
+		Assertions.assertThatThrownBy(() -> runWithRoles(Set.of("regular-user"), () -> access.contextSessionFactory()
+				.newSession("main-access").query().entities(EntityQueryBuilder.from(Person.T).done()).list()))
+				.hasMessageContaining("not visible");
+		Assertions.assertThat(runWithRoles(Set.of("admin"), () -> access.contextSessionFactory().newSession("main-access")
+				.query().entities(EntityQueryBuilder.from(Person.T).done()).list())).hasSize(1);
+	}
+
+	private <T> T runWithRoles(Set<String> roles, Supplier<T> action) {
+		User user = User.T.create();
+		user.setId("test-user");
+		user.setName("test-user");
+		UserSession userSession = UserSession.T.create();
+		userSession.setUser(user);
+		userSession.setEffectiveRoles(roles);
+		return AttributeContexts.derivePeek().set(UserSessionAspect.class, userSession).buildAnd().execute(action);
 	}
 	
 	@Test

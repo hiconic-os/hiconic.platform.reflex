@@ -72,6 +72,16 @@ limitations under the License.
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
         <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>smood-access-rx-module</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>hibernate-test-model</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
             <groupId>com.braintribe.testing</groupId>
             <artifactId>db-test-connections</artifactId>
             <version>${V.com.braintribe.testing}</version>
