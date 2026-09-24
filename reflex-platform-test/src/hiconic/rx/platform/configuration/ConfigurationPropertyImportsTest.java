@@ -72,7 +72,9 @@ public class ConfigurationPropertyImportsTest {
 		Maybe<Map<String, String>> result = ConfigurationPropertyImports.bind(Map.of(), declarations, virtualEnvironment());
 
 		assertThat(result.isUnsatisfied()).isTrue();
-		assertThat(result.whyUnsatisfied().stringify()).contains("REQUIRED");
+		assertThat(result.whyUnsatisfied().stringify())
+				.contains("REQUIRED")
+				.contains("declared by [test]");
 	}
 
 	private ConfigurationImportDeclarations declarations(String yaml) throws Exception {

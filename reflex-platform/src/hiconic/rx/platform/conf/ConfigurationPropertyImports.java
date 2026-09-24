@@ -54,8 +54,11 @@ public final class ConfigurationPropertyImports {
 				continue;
 			}
 
-			if (declaration.getRequired())
-				errors.accept(ConfigurationError.create("Required configuration import [" + name + "] was not supplied"));
+			if (declaration.getRequired()) {
+				String origins = String.join(", ", declarations.origins(name));
+				errors.accept(ConfigurationError.create("Required configuration import [" + name + "] declared by [" + origins
+						+ "] was not supplied"));
+			}
 		}
 
 		if (errors.hasReason())

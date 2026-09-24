@@ -44,10 +44,13 @@ public final class ConfigurationImportDeclarations {
 	public static final Set<String> PLATFORM_VARIABLES = Set.of("reflex.app.dir");
 
 	private final Map<String, ConfigurationImport> importsByName;
+	private final Map<String, List<String>> originsByName;
 	private final boolean declaredConfiguration;
 
-	private ConfigurationImportDeclarations(Map<String, ConfigurationImport> importsByName, boolean declaredConfiguration) {
+	private ConfigurationImportDeclarations(Map<String, ConfigurationImport> importsByName, Map<String, List<String>> originsByName,
+			boolean declaredConfiguration) {
 		this.importsByName = Map.copyOf(importsByName);
+		this.originsByName = Map.copyOf(originsByName);
 		this.declaredConfiguration = declaredConfiguration;
 	}
 
@@ -82,9 +85,12 @@ public final class ConfigurationImportDeclarations {
 		}
 
 		Map<String, ConfigurationImport> result = new LinkedHashMap<>();
+		Map<String, List<String>> origins = new LinkedHashMap<>();
 		merged.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry -> result.put(entry.getKey(), entry.getValue().declaration()));
+		merged.entrySet().stream().sorted(Map.Entry.comparingByKey())
+				.forEach(entry -> origins.put(entry.getKey(), entry.getValue().origins().stream().sorted().toList()));
 
-		ConfigurationImportDeclarations declarations = new ConfigurationImportDeclarations(result, !sources.isEmpty());
+		ConfigurationImportDeclarations declarations = new ConfigurationImportDeclarations(result, origins, !sources.isEmpty());
 		if (errors.hasReason())
 			return Maybe.incomplete(declarations, errors.get());
 
@@ -93,6 +99,13 @@ public final class ConfigurationImportDeclarations {
 
 	public List<ConfigurationImport> imports() {
 		return importsByName.values().stream().sorted(Comparator.comparing(ConfigurationImport::getName)).toList();
+	}
+
+	/**
+	 * Returns the classpath origins which declared the given import. Equivalent declarations may be contributed by more than one artifact.
+	 */
+	public List<String> origins(String name) {
+		return originsByName.getOrDefault(name, List.of());
 	}
 
 	public Set<String> names() {
@@ -145,14 +158,17 @@ public final class ConfigurationImportDeclarations {
 
 		DeclaredImport previous = merged.get(name);
 		if (previous == null) {
-			merged.put(name, new DeclaredImport(origin, declaration));
+			merged.put(name, new DeclaredImport(new LinkedHashSet<>(List.of(origin)), declaration));
 			return;
 		}
 
 		if (!equivalent(previous.declaration(), declaration)) {
 			errors.accept(ConfigurationError.create("Incompatible declarations for configuration import [" + name + "] in ["
-					+ previous.origin() + "] and [" + origin + "]"));
+					+ String.join(", ", previous.origins()) + "] and [" + origin + "]"));
+			return;
 		}
+
+		previous.origins().add(origin);
 	}
 
 	private static boolean equivalent(ConfigurationImport left, ConfigurationImport right) {
@@ -164,6 +180,6 @@ public final class ConfigurationImportDeclarations {
 	record DeclarationSource(String origin, ClasspathEntry entry) {
 	}
 
-	private record DeclaredImport(String origin, ConfigurationImport declaration) {
+	private record DeclaredImport(Set<String> origins, ConfigurationImport declaration) {
 	}
 }

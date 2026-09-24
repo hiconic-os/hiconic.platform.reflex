@@ -60,6 +60,8 @@ public class ConfigurationImportDeclarationsTest {
 		assertThat(declarationsMaybe.isSatisfied()).isTrue();
 		ConfigurationImportDeclarations declarations = declarationsMaybe.get();
 		assertThat(declarations.names()).containsExactlyInAnyOrder("DB_HOST", "DB_PASSWORD");
+		assertThat(declarations.origins("DB_HOST")).containsExactly("base", "overlay");
+		assertThat(declarations.origins("DB_PASSWORD")).containsExactly("overlay");
 
 		ConfigurationAssemblyReport report = declarations.report(List.of("DB_PASSWORD", "MISSING", "reflex.app.dir"));
 		assertThat(report.getUnresolvedVariables()).containsExactly("DB_PASSWORD", "MISSING", "reflex.app.dir");
