@@ -52,6 +52,7 @@ public class CortexSpace implements WireSpace {
 
 	public void configureCortexAccessModels() {
 		access.configureModels(cortexDenotation());
+		access.protectSystemAccess(CORTEX_ACCESS_ID);
 	}
 
 	public void registerCortexAccess() {

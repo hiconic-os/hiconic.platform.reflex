@@ -27,6 +27,9 @@ public interface AccessContract extends RxExportContract {
 	/** Configures the data and service models for an access during the model configuration phase. */
 	void configureModels(Access accessDenotation);
 
+	/** Applies the standard platform protection to a system access when Security is active. */
+	void protectSystemAccess(String accessId);
+
 	void deploy(Access accessDenotation);
 	void deploy(Access accessDenotation, IncrementalAccess access);
 

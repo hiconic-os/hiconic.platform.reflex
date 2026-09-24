@@ -15,6 +15,7 @@ import hiconic.rx.auth.access.processing.AccessBasedUserService;
 import hiconic.rx.db.module.api.DatabaseContract;
 import hiconic.rx.locking.api.LockingContract;
 import hiconic.rx.module.api.config.RxPlatformConfigurator;
+import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.security.api.SecurityContract;
@@ -47,6 +48,11 @@ public class AccessUserServiceRxModuleSpace implements RxModuleContract {
 
 	@Import
 	private LockingContract locking;
+
+	@Override
+	public void configureModels(ModelConfigurations configurations) {
+		access.protectSystemAccess(configuration().getAuthAccessId());
+	}
 
 	@Override
 	public void configurePlatform(RxPlatformConfigurator configurator) {

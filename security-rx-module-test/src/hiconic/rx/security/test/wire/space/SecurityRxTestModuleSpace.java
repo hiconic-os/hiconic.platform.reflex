@@ -13,8 +13,11 @@
 // ============================================================================
 package hiconic.rx.security.test.wire.space;
 
+import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
+import hiconic.rx.access.module.api.AccessContract;
+import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.security.model.test.SecurityTestRequest;
@@ -22,6 +25,13 @@ import hiconic.rx.security.test.processing.SecurityTestProcessor;
 
 @Managed
 public class SecurityRxTestModuleSpace implements RxModuleContract {
+	@Import
+	private AccessContract access;
+
+	@Override
+	public void configureModels(ModelConfigurations configurations) {
+		access.protectSystemAccess("main-access");
+	}
 
 	@Override
 	public void configureMainServiceDomain(ServiceDomainConfiguration configuration) {

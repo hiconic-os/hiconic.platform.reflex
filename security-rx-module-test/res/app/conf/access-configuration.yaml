@@ -1,6 +1,11 @@
 accesses:
   - !hiconic.rx.access.smood.model.configuration.SmoodAccess
     accessId: main-access
-    displayName: Security Test Access
+    displayName: System Access
+    dataModelNames:
+      - hiconic.platform.reflex:hibernate-test-model
+  - !hiconic.rx.access.smood.model.configuration.SmoodAccess
+    accessId: business-access
+    displayName: Business Access
     dataModelNames:
       - hiconic.platform.reflex:hibernate-test-model

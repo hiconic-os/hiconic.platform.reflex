@@ -59,21 +59,29 @@ public class SecurityTest extends AbstractRxTest {
 	@Test
 	public void securityFeatureProtectsConfiguredAccessModels() {
 		AccessContract access = resolveExportContract(AccessContract.class);
-		var model = access.accessDomains().byId("main-access").configuredDataModel();
+		var systemModel = access.accessDomains().byId("main-access").configuredDataModel();
+		var businessModel = access.accessDomains().byId("business-access").configuredDataModel();
 
-		Assertions.assertThat(model.systemCmdResolver().getMetaData().meta(InterceptAccessWith.T).list())
+		Assertions.assertThat(systemModel.systemCmdResolver().getMetaData().meta(InterceptAccessWith.T).list())
 				.extracting(md -> md.getAssociate().getClass().getName())
 				.containsExactly(SecurityAspect.class.getName());
+		Assertions.assertThat(businessModel.systemCmdResolver().getMetaData().meta(InterceptAccessWith.T).list()).isEmpty();
 
 		var systemSession = access.systemSessionFactory().newSession("main-access");
 		Person person = systemSession.create(Person.T);
 		person.setName("Secured");
 		systemSession.commit();
+		var businessSystemSession = access.systemSessionFactory().newSession("business-access");
+		Person businessPerson = businessSystemSession.create(Person.T);
+		businessPerson.setName("Visible");
+		businessSystemSession.commit();
 
 		Assertions.assertThatThrownBy(() -> runWithRoles(Set.of("regular-user"), () -> access.contextSessionFactory()
 				.newSession("main-access").query().entities(EntityQueryBuilder.from(Person.T).done()).list()))
 				.hasMessageContaining("not visible");
 		Assertions.assertThat(runWithRoles(Set.of("admin"), () -> access.contextSessionFactory().newSession("main-access")
+				.query().entities(EntityQueryBuilder.from(Person.T).done()).list())).hasSize(1);
+		Assertions.assertThat(runWithRoles(Set.of("regular-user"), () -> access.contextSessionFactory().newSession("business-access")
 				.query().entities(EntityQueryBuilder.from(Person.T).done()).list())).hasSize(1);
 	}
 

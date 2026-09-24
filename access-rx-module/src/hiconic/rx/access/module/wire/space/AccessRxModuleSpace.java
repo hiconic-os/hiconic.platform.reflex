@@ -130,7 +130,6 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		dataModel.addModel(configuredResourceModel);
 		for (String dataModelName : access.getDataModelNames())
 			dataModel.addModelByName(dataModelName);
-		configureModelSecurity(dataModel);
 
 		AccessServiceModelConfiguration serviceModel = accessModelConfigurations().serviceModelConfiguration(accessId);
 		serviceModel.addModel(configuredAccessApiModel);
@@ -142,7 +141,9 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 			serviceModel.addModelByName(serviceModelName);
 	}
 
-	private void configureModelSecurity(AccessDataModelConfiguration dataModel) {
+	@Override
+	public void protectSystemAccess(String accessId) {
+		AccessDataModelConfiguration dataModel = accessModelConfigurations().dataModelConfiguration(accessId);
 		dataModel.configureModel(editor -> {
 			if (!auth.roleAuthorization().securityActive())
 				return;
