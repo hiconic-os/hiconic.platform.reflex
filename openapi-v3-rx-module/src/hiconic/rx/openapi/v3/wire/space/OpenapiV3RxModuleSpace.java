@@ -87,7 +87,7 @@ public class OpenapiV3RxModuleSpace implements RxModuleContract {
 	@Override
 	public void onDeploy() {
 		webServer.addServlet("openapi-servlet", "/openapi/ui/*", openapiUiServlet());
-		webServer.addFilterMapping(AuthFilters.strictAuthFilter, "/openapi/ui/*", DispatcherType.REQUEST);
+		webServer.addFilterMapping(AuthFilters.strictUiAuthFilter, "/openapi/ui/*", DispatcherType.REQUEST);
 	}
 
 	@Managed

@@ -14,6 +14,7 @@
 package hiconic.rx.security.web.api;
 
 public interface WebSecurityConstants {
+	public static String ACCESS_DENIED_PATH = "/_rx/security/access-denied";
 
 	public static String REQUEST_PARAM_USER = "user";
 	public static String REQUEST_PARAM_PASSWORD = "password";

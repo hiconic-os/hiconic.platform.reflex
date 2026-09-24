@@ -9,9 +9,15 @@ import hiconic.rx.web.server.api.FilterSymbol;
  */
 public enum AuthFilters implements FilterSymbol {
 
-	// TODO explain what these filters are supposed to do
+	/** Requires authentication and returns a reasoned HTTP failure. */
 	strictAuthFilter,
+	/** Requires authentication and applies browser UI navigation on failure. */
+	strictUiAuthFilter,
+	/** Establishes authentication context without rejecting an anonymous request. */
 	lenientAuthFilter,
-	strictAdminAuthFilter;
+	/** Requires an administrative role and returns a reasoned HTTP failure. */
+	strictAdminAuthFilter,
+	/** Requires an administrative role and applies browser UI navigation on failure. */
+	strictAdminUiAuthFilter;
 
 }

@@ -22,6 +22,7 @@ import hiconic.rx.security.web.api.AuthFilters;
 import hiconic.rx.security.web.api.CookieHandler;
 import hiconic.rx.security.web.api.LoginFlowExtension;
 import hiconic.rx.security.web.api.WebSecurityConfigurationContract;
+import hiconic.rx.security.web.api.WebSecurityConstants;
 import hiconic.rx.security.web.api.WebSecurityContract;
 import hiconic.rx.security.web.api.WebSecurityExtensionContract;
 import hiconic.rx.security.web.api.WebSecurityRequestContextContributor;
@@ -32,10 +33,14 @@ import hiconic.rx.security.web.processing.credentials.extractor.ExistingSessionF
 import hiconic.rx.security.web.processing.credentials.extractor.ExistingSessionFromHeaderParameterProvider;
 import hiconic.rx.security.web.processing.credentials.extractor.ExistingSessionFromRequestParameterProvider;
 import hiconic.rx.security.web.processing.credentials.extractor.JwtCredentialsProvider;
+import hiconic.rx.security.web.processing.servlet.AccessDeniedRxServlet;
 import hiconic.rx.security.web.processing.servlet.AuthRxFilter;
 import hiconic.rx.security.web.processing.servlet.AuthRxServlet;
 import hiconic.rx.security.web.processing.servlet.LoginRxServlet;
 import hiconic.rx.security.web.processing.servlet.LogoutRxServlet;
+import hiconic.rx.security.web.processing.servlet.ReasonedSecurityFailureResponse;
+import hiconic.rx.security.web.processing.servlet.SecurityFailureResponse;
+import hiconic.rx.security.web.processing.servlet.UiSecurityFailureResponse;
 import hiconic.rx.security.web.processing.WebAuthorizationServiceProcessor;
 import hiconic.rx.webapi.model.meta.HttpRequestMethod;
 import hiconic.rx.webapi.model.meta.RequestMapping;
@@ -83,9 +88,12 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 	@Override
 	public void onDeploy() {
 		webServer.addFilter(AuthFilters.strictAuthFilter, authFilterStrict());
+		webServer.addFilter(AuthFilters.strictUiAuthFilter, authFilterUiStrict());
 		webServer.addFilter(AuthFilters.lenientAuthFilter, authFilterLenient());
 		webServer.addFilter(AuthFilters.strictAdminAuthFilter, authFilterAdminStrict());
+		webServer.addFilter(AuthFilters.strictAdminUiAuthFilter, authFilterAdminUiStrict());
 		webServer.bindAuthenticationContextDelegate(authFilterLenient());
+		webServer.addServlet("access-denied-servlet", WebSecurityConstants.ACCESS_DENIED_PATH, accessDeniedServlet());
 
 		if (configurationManager().loginServletEnabled()) {
 			webServer.addServlet("login-servlet", "login", loginServlet());
@@ -95,6 +103,11 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 		webServer.addServlet("logout-servlet", "logout", logoutServlet());
 		// TODO explain why lenient filter?
 		webServer.addFilterMapping(AuthFilters.lenientAuthFilter, "/logout/*", DispatcherType.REQUEST);
+	}
+
+	@Managed
+	private AccessDeniedRxServlet accessDeniedServlet() {
+		return new AccessDeniedRxServlet();
 	}
 
 	private RequestMapping webAuthMapping(String path, HttpRequestMethod method) {
@@ -148,6 +161,16 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 	private AuthRxFilter authFilterStrict() {
 		AuthRxFilter bean = new AuthRxFilter();
 		bean.setStrict(true);
+		bean.setSecurityFailureResponse(reasonedSecurityFailureResponse());
+		configureAuthFilter(bean);
+		return bean;
+	}
+
+	@Managed
+	private AuthRxFilter authFilterUiStrict() {
+		AuthRxFilter bean = new AuthRxFilter();
+		bean.setStrict(true);
+		bean.setSecurityFailureResponse(uiSecurityFailureResponse());
 		configureAuthFilter(bean);
 		return bean;
 	}
@@ -160,6 +183,19 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 		AuthRxFilter bean = new AuthRxFilter();
 		bean.setStrict(true);
 		bean.setGrantedRoles(securityConfig.getAdminRoles());
+		bean.setSecurityFailureResponse(reasonedSecurityFailureResponse());
+		configureAuthFilter(bean);
+		return bean;
+	}
+
+	@Managed
+	private AuthRxFilter authFilterAdminUiStrict() {
+		SecurityConfiguration securityConfig = platform.configuration().readConfig(SecurityConfiguration.T).get();
+
+		AuthRxFilter bean = new AuthRxFilter();
+		bean.setStrict(true);
+		bean.setGrantedRoles(securityConfig.getAdminRoles());
+		bean.setSecurityFailureResponse(uiSecurityFailureResponse());
 		configureAuthFilter(bean);
 		return bean;
 	}
@@ -178,7 +214,6 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 		// if (logger.isDebugEnabled()) {
 		// authFilter.setThreadRenamer(runtime.threadRenamer());
 		// }
-		authFilter.setThrowExceptionOnAuthFailure(true);
 		authFilter.setEntryPointProvider(http.openUserSessionConfigurationProvider()::findEntryPoint);
 		authFilter.setRequestContextContributors(requestContextContributors());
 
@@ -188,9 +223,20 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 		authFilter.addWebCredentialProvider("jwt", jwtCredentialsProvider());
 		authFilter.addWebCredentialProvider("header-parameter", existingSessionFromHeaderParameterProvider());
 
+	}
+
+	@Managed
+	private ReasonedSecurityFailureResponse reasonedSecurityFailureResponse() {
+		return new ReasonedSecurityFailureResponse();
+	}
+
+	@Managed
+	private SecurityFailureResponse uiSecurityFailureResponse() {
 		String loginPath = defaultLoginPath();
-		if (!StringTools.isBlank(loginPath))
-			authFilter.setRelativeLoginPath(loginPath);
+		if (StringTools.isBlank(loginPath))
+			return reasonedSecurityFailureResponse();
+
+		return new UiSecurityFailureResponse(loginPath, WebSecurityConstants.ACCESS_DENIED_PATH);
 	}
 
 	@Override

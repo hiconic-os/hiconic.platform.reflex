@@ -3,7 +3,6 @@ package hiconic.rx.security.web.processing.servlet;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,13 +14,8 @@ import java.util.function.Function;
 import com.braintribe.cfg.Configurable;
 import com.braintribe.cfg.InitializationAware;
 import com.braintribe.cfg.Required;
-import com.braintribe.codec.Codec;
-import com.braintribe.codec.string.MapCodec;
-import com.braintribe.codec.string.UrlEscapeCodec;
 import com.braintribe.common.attribute.AttributeContext;
 import com.braintribe.common.attribute.AttributeContextBuilder;
-import com.braintribe.exception.HttpException;
-import com.braintribe.exception.LogPreferences;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.gm.model.reason.Reasons;
@@ -33,7 +27,6 @@ import com.braintribe.gm.model.security.reason.InvalidCredentials;
 import com.braintribe.gm.model.security.reason.MissingCredentials;
 import com.braintribe.gm.model.security.reason.SecurityReason;
 import com.braintribe.logging.Logger;
-import com.braintribe.logging.Logger.LogLevel;
 import com.braintribe.logging.ThreadRenamer;
 import com.braintribe.model.generic.eval.EvalContext;
 import com.braintribe.model.generic.eval.Evaluator;
@@ -48,15 +41,12 @@ import com.braintribe.model.securityservice.OpenUserSession;
 import com.braintribe.model.securityservice.OpenUserSessionResponse;
 import com.braintribe.model.securityservice.credentials.Credentials;
 import com.braintribe.model.service.api.ServiceRequest;
-import com.braintribe.model.service.api.result.Unsatisfied;
 import com.braintribe.model.usersession.UserSession;
 import com.braintribe.utils.CollectionTools;
 import com.braintribe.utils.collection.impl.AttributeContexts;
 import com.braintribe.utils.lcd.Lazy;
 
 import dev.hiconic.servlet.api.HttpFilter;
-import dev.hiconic.servlet.impl.util.ServletTools;
-import hiconic.rx.security.web.api.WebSecurityConstants;
 import hiconic.rx.security.web.api.WebSecurityRequestContextContributor;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -96,8 +86,6 @@ public class AuthRxFilter implements HttpFilter, InitializationAware {
 
 	private final Logger log = Logger.getLogger(AuthRxFilter.class);
 
-	private String relativeLoginPath = "/login";
-	private Codec<Map<String, String>, String> urlParamCodec;
 	private boolean strict = true;
 	private Set<String> grantedRoles = Collections.emptySet();
 	private Evaluator<ServiceRequest> requestEvaluator;
@@ -110,7 +98,7 @@ public class AuthRxFilter implements HttpFilter, InitializationAware {
 		this.requestContextContributors = contributors;
 	}
 
-	private boolean throwExceptionOnAuthFailure = false;
+	private SecurityFailureResponse securityFailureResponse;
 	
 	private Function<HttpServletRequest, OpenUserSessionEntryPoint> entryPointProvider = r -> null;
 
@@ -127,8 +115,8 @@ public class AuthRxFilter implements HttpFilter, InitializationAware {
 	}
 
 	@Configurable
-	public void setThrowExceptionOnAuthFailure(boolean throwExceptionOnAuthFailure) {
-		this.throwExceptionOnAuthFailure = throwExceptionOnAuthFailure;
+	public void setSecurityFailureResponse(SecurityFailureResponse securityFailureResponse) {
+		this.securityFailureResponse = Objects.requireNonNull(securityFailureResponse, "securityFailureResponse must not be null");
 	}
 
 	@Configurable
@@ -141,29 +129,12 @@ public class AuthRxFilter implements HttpFilter, InitializationAware {
 		this.strict = strict;
 	}
 
-	@Configurable
-	public void setRelativeLoginPath(String relativeLoginPath) {
-		this.relativeLoginPath = relativeLoginPath;
-	}
-
-	public void setUrlParamCodec(Codec<Map<String, String>, String> urlParamCodec) {
-		this.urlParamCodec = urlParamCodec;
-	}
-
-	public Codec<Map<String, String>, String> getUrlParamCodec() {
-		if (urlParamCodec == null) {
-			MapCodec<String, String> mapCodec = new MapCodec<>();
-			mapCodec.setEscapeCodec(new UrlEscapeCodec());
-			mapCodec.setDelimiter("&");
-			this.urlParamCodec = mapCodec;
-		}
-		return urlParamCodec;
-	}
-
 	@Override
 	public void postConstruct() {
 		if (!strict && !grantedRoles.isEmpty())
 			throw new IllegalStateException("If grantedRoles is not empty strict must be true");
+		if (strict && securityFailureResponse == null)
+			throw new IllegalStateException("A strict AuthRxFilter requires a securityFailureResponse");
 	}
 
 	private class StatefulAuthFilter {
@@ -238,51 +209,10 @@ public class AuthRxFilter implements HttpFilter, InitializationAware {
 			}
 		}
 
-		private void respondOnAuthenticationFailure(Reason whyUnsatisfied) throws IOException {
+		private void respondOnAuthenticationFailure(Reason whyUnsatisfied) throws IOException, ServletException {
 			Reason authFailure = maskWithAuthenticationFailureIfNecessary(whyUnsatisfied);
-
-			String message = authFailure.stringify();
-
-			if (shouldSendRedirectOnAuthFailure(request)) {
-				sendLoginRedirect(message);
-			} else if (throwExceptionOnAuthFailure) {
-				throwHttpException(authFailure, message);
-			} else {
-				sendUnauthorized(message);
-			}
-		}
-
-		private void sendUnauthorized(String message) throws IOException {
-			log.debug(message);
-			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-			response.getWriter().print(message);
-		}
-
-		private void throwHttpException(Reason authFailure, String message) {
-			int statusCode = authFailure instanceof Forbidden ? HttpServletResponse.SC_FORBIDDEN : HttpServletResponse.SC_UNAUTHORIZED;
-
-			HttpException httpException = new HttpException(statusCode, message);
-			httpException.setLogPreferences(new LogPreferences(LogLevel.INFO, false, LogLevel.TRACE));
-			httpException.withPayload(Unsatisfied.from(Maybe.empty(authFailure)));
-
-			throw httpException;
-		}
-
-		private void sendLoginRedirect(String message) throws IOException {
-			log.debug(message);
-
-			String contextUrl = getContextUrl(request);
-
-			String continueUrl = contextUrl + request.getServletPath();
-
-			if (request.getPathInfo() != null)
-				continueUrl += request.getPathInfo();
-
-			if (request.getQueryString() != null) {
-				continueUrl += "?" + request.getQueryString();
-			}
-
-			response.sendRedirect(buildLoginPath(request, message, continueUrl));
+			log.debug(authFailure.stringify());
+			securityFailureResponse.respond(request, response, authFailure);
 		}
 
 		private AuthenticationFailure wrapWithAuthenticationFailureIfNecessary(Reason whyUnsatisfied) {
@@ -297,14 +227,6 @@ public class AuthRxFilter implements HttpFilter, InitializationAware {
 				return whyUnsatisfied;
 
 			return Reasons.build(AuthenticationFailure.T).text("Authentication failed.").toReason();
-		}
-
-		private String getContextUrl(HttpServletRequest request) {
-			return ServletTools.getServletContextUrlProxyAware(request);
-		}
-
-		private boolean shouldSendRedirectOnAuthFailure(HttpServletRequest request) {
-			return relativeLoginPath != null && ServletTools.getAcceptedMimeTypes(request).contains("text/html");
 		}
 
 		/* private Maybe<UserSession> checkAccessGranted(UserSession session) { if (session != null) { boolean grantedByRoles =
@@ -344,25 +266,6 @@ public class AuthRxFilter implements HttpFilter, InitializationAware {
 				return Maybe.complete(session);
 
 			return Reasons.build(Forbidden.T).text("Insufficient priviledges to access endpoint").toMaybe(session);
-		}
-
-		private String buildLoginPath(HttpServletRequest request, String message, String continuePath) {
-			String servicesPath = getContextUrl(request);
-
-			Map<String, String> params = new HashMap<>();
-			if (message != null) {
-				params.put(WebSecurityConstants.REQUEST_PARAM_MESSAGE, message);
-			}
-			if (continuePath != null) {
-				params.put(WebSecurityConstants.REQUEST_PARAM_CONTINUE, continuePath);
-			}
-
-			String path = servicesPath + relativeLoginPath;
-			if (params.size() > 0)
-				path += "?" + getUrlParamCodec().encode(params);
-
-			return path;
-
 		}
 
 		private Maybe<Credentials> findCredentials(HttpServletRequest request) {

@@ -85,7 +85,7 @@ public class WebappsSpace implements WireSpace {
 		webServer.addFilterMapping(AuthFilters.strictAuthFilter, "/user-image/*", DispatcherType.REQUEST);
 
 		webServer.addServlet("about-servlet", "about", aboutServlet());
-		webServer.addFilterMapping(AuthFilters.strictAdminAuthFilter, "/about/*", DispatcherType.REQUEST);
+		webServer.addFilterMapping(AuthFilters.strictAdminUiAuthFilter, "/about/*", DispatcherType.REQUEST);
 
 		// NOTE "/" (3rd arg) is important, empty string would mean tribefire-explorer/symbolTranslation/ works, but without ending "/" it doesn't
 		webServer.addServlet("tribefire-explorer/symbolTranslation", "SymbolTranslationServlet", "/", symbolTranslationServlet());
