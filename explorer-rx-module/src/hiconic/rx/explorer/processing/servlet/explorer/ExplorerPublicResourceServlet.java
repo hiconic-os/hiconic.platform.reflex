@@ -23,6 +23,7 @@ import com.braintribe.model.workbench.WorkbenchConfiguration;
 
 import hiconic.rx.explorer.model.configuration.ExplorerConfiguration;
 import hiconic.rx.explorer.model.configuration.ModelEnvironmentConfiguration;
+import hiconic.rx.module.api.resource.RxPackagedResourceResolver;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -38,15 +39,21 @@ public class ExplorerPublicResourceServlet extends HttpServlet {
 
 	private static final long serialVersionUID = 1L;
 	private static final Logger log = Logger.getLogger(ExplorerPublicResourceServlet.class);
-	private static final String DEFAULT_LOGO = "/HICONIC-RESOURCES/www/explorer/webpages/hiconic-logo.svg";
+	private static final String DEFAULT_LOGO = "explorer-webpages/hiconic-logo.svg";
 
 	private PersistenceGmSessionFactory sessionFactory;
+	private RxPackagedResourceResolver packagedResources;
 	private final Map<String, String> workbenchAccessIds = new HashMap<>();
 	private String defaultDataAccessId;
 
 	@Required
 	public void setSessionFactory(PersistenceGmSessionFactory sessionFactory) {
 		this.sessionFactory = sessionFactory;
+	}
+
+	@Required
+	public void setPackagedResources(RxPackagedResourceResolver packagedResources) {
+		this.packagedResources = packagedResources;
 	}
 
 	@Required
@@ -137,14 +144,12 @@ public class ExplorerPublicResourceServlet extends HttpServlet {
 	}
 
 	private void writeDefaultLogo(HttpServletResponse response) throws IOException {
-		try (InputStream in = ExplorerPublicResourceServlet.class.getResourceAsStream(DEFAULT_LOGO)) {
-			if (in == null) {
-				response.sendError(HttpServletResponse.SC_NOT_FOUND);
-				return;
-			}
+		// Resolved before anything is written, so a missing default fails as a logged error rather than as a quiet 404.
+		var handle = packagedResources.resource(DEFAULT_LOGO).asHandle();
 
-			response.setContentType("image/svg+xml");
-			response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+		response.setContentType("image/svg+xml");
+		response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+		try (InputStream in = handle.asStream()) {
 			in.transferTo(response.getOutputStream());
 		}
 	}

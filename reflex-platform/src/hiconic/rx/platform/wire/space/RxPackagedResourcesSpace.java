@@ -27,10 +27,11 @@ public class RxPackagedResourcesSpace implements RxPackagedResourcesContract {
 	@Import
 	private RxPlatformConfigContract config;
 
+	/** The empty root exposes every indexed resource at the path its artifact declared. No folder is reserved by the platform. */
 	@Override
 	@Managed
 	public RxIndexedPackagedResourceResolver resolver() {
-		return new RxIndexedPackagedResourceResolver(config.classpathIndex(), CLASSPATH_ROOT);
+		return new RxIndexedPackagedResourceResolver(config.classpathIndex(), "");
 	}
 
 }

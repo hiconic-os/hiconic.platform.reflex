@@ -71,7 +71,12 @@ public interface WebServerContract extends RxExportContract {
 	 */
 	List<WebAppNavigationEntry> webAppNavigation();
 
-	/** Maps a subtree of indexed packaged public resources below the default endpoint base path. */
+	/**
+	 * Maps a subtree of the indexed packaged resources below the default endpoint base path.
+	 * <p>
+	 * {@code resourcePathPrefix} is a full indexed resource path, so a module names the folder it owns. Everything below it is served
+	 * unauthenticated, under {@code path}.
+	 */
 	void addPackagedWebResources(String name, String path, String resourcePathPrefix);
 
 	/**

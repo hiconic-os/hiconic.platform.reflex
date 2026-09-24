@@ -29,6 +29,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
@@ -62,13 +63,18 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 
 	private final ClasspathIndex classpathIndex;
 	private final String classpathRoot;
-	private final Map<String, IndexedResource> resources;
+	private final Map<String, List<IndexedResource>> resources;
 	private final Map<ArtifactPathKey, CachedResource> resourcesByArtifactPath;
 	private final RxPackagedResourceInventory inventory;
 
+	/**
+	 * @param classpathRoot
+	 *            the folder the resolved paths are relative to, or empty for every indexed resource. The platform wires the empty root, so a
+	 *            resource is addressed by the very path its artifact declared.
+	 */
 	public RxIndexedPackagedResourceResolver(ClasspathIndex classpathIndex, String classpathRoot) {
 		this.classpathIndex = classpathIndex;
-		this.classpathRoot = requireRoot(classpathRoot);
+		this.classpathRoot = normalizeRoot(classpathRoot);
 		this.resources = indexResources(classpathIndex);
 		this.resourcesByArtifactPath = indexByArtifactPath(classpathIndex);
 		this.inventory = new Inventory(resources.keySet());
@@ -81,15 +87,27 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 	 */
 	@Override
 	public RxPackagedResourceResolver below(String folder) {
-		return new RxIndexedPackagedResourceResolver(classpathIndex, classpathRoot + normalizeDirectoryPath(folder) + "/");
+		String directory = normalizeDirectoryPath(folder);
+		if (directory.isEmpty())
+			return this;
+
+		return new RxIndexedPackagedResourceResolver(classpathIndex, classpathRoot + directory + "/");
 	}
 
 	@Override
 	public RxPackagedResourceBuilder resource(String relativePath) {
 		String path = normalizeResourcePath(relativePath);
-		IndexedResource resource = resources.get(path);
-		if (resource == null)
+		List<IndexedResource> candidates = resources.get(path);
+		if (candidates == null)
 			throw new IllegalArgumentException("No indexed packaged resource found at: " + classpathRoot + path);
+
+		// Without a root every artifact shares one path space, so the same path may come from more than one of them.
+		if (candidates.size() > 1)
+			throw new IllegalArgumentException("Ambiguous packaged resource path [" + classpathRoot + path + "], declared by: "
+					+ candidates.stream().map(c -> c.artifact).sorted().collect(Collectors.joining(", "))
+					+ ". Address it with its artifact instead.");
+
+		IndexedResource resource = candidates.get(0);
 
 		// The artifact and the full artifact relative path, so that the produced source says where the file is without any further context.
 		return new Builder(resource.artifactRelativePath, resource.artifact, resource.cachedResource);
@@ -137,18 +155,20 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 		}
 	}
 
-	private Map<String, IndexedResource> indexResources(ClasspathIndex classpathIndex) {
-		Map<String, IndexedResource> result = new LinkedHashMap<>();
+	private Map<String, List<IndexedResource>> indexResources(ClasspathIndex classpathIndex) {
+		Map<String, List<IndexedResource>> result = new LinkedHashMap<>();
 		for (ClasspathEntry entry : classpathIndex.forPrefix(classpathRoot)) {
 			String artifactRelativePath = normalizeResourcePath(entry.path);
 			String path = normalizeResourcePath(entry.path.substring(classpathRoot.length()));
 
-			IndexedResource indexed = new IndexedResource(entry.origin, artifactRelativePath, new CachedResource(artifactRelativePath, entry.url));
-			IndexedResource previous = result.putIfAbsent(path, indexed);
-			if (previous != null && !previous.cachedResource.url.equals(entry.url))
-				throw new IllegalStateException("Duplicate packaged resource path '" + path + "' below " + classpathRoot + ": "
-						+ previous.cachedResource.url + " and " + entry.url);
+			List<IndexedResource> candidates = result.computeIfAbsent(path, k -> new ArrayList<>(1));
+			// The same file reachable twice is one resource; the same path from two artifacts is two.
+			if (candidates.stream().anyMatch(c -> c.cachedResource.url.equals(entry.url)))
+				continue;
+
+			candidates.add(new IndexedResource(entry.origin, artifactRelativePath, new CachedResource(artifactRelativePath, entry.url)));
 		}
+		result.replaceAll((path, candidates) -> List.copyOf(candidates));
 		return Map.copyOf(result);
 	}
 
@@ -174,10 +194,13 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 		return artifact;
 	}
 
-	private static String requireRoot(String root) {
+	/** An empty root is the normal case: the resolver then sees every indexed resource, at the path its artifact declared. */
+	private static String normalizeRoot(String root) {
 		if (root == null || root.isBlank())
-			throw new IllegalArgumentException("Classpath root must not be empty");
-		return root.endsWith("/") ? root : root + "/";
+			return "";
+
+		String normalized = normalizeDirectoryPath(root);
+		return normalized.isEmpty() ? "" : normalized + "/";
 	}
 
 	public static String normalizeResourcePath(String path) {

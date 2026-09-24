@@ -32,7 +32,6 @@ application/
   packaged-resources/              # complete indexed-resource mirror
     <artifact-slot>/
       HICONIC-CONF/...
-      HICONIC-RESOURCES/...
       ...
     index.properties               # runtime inventory
     index.json                     # provenance, digest and disposition
@@ -49,12 +48,12 @@ application/
 ```
 
 `packaged-resources/` contains every indexed resource byte-for-byte at its
-canonical classpath-relative path, grouped by artifact. It is both the
+classpath-relative path, grouped by artifact. It is both the
 source/provenance view and the filesystem replacement which makes safe eviction
 of explicitly marked pure-resource JARs possible. Unstructured indexed
 resources such as icons and templates remain here and are served directly.
 
-`effective-conf/compiled/` contains one canonical result per configuration key
+`effective-conf/compiled/` contains one result per configuration key
 where the corresponding assembler supports such a representation. A
 configuration key consists at least of configuration kind, modeled type and
 use case.
@@ -206,7 +205,7 @@ normalization, not a prerequisite for closure validation.
 
 The written result is parsed again and compared semantically with the
 assembled entity. It is then serialized again and must produce byte-identical
-canonical YAML. This round trip is part of validation.
+YAML. This round trip is part of validation.
 
 ## Configuration assembler SPI
 
@@ -277,7 +276,7 @@ script when the processing dependency is present. The runtime reader combines
 the general packaged-resource source with the direct effective configuration
 slots, replacing rather than supplementing raw configuration fragments.
 
-Configuration type discovery initially maps the canonical kebab-case filename
+Configuration type discovery initially maps the kebab-case filename
 to application entity short names:
 
 - no matching type leaves an explicitly reported residual;
@@ -363,7 +362,7 @@ The hardened increment provides:
 - explicit use-case identity and ambiguity detection;
 - undeclared-import and property-cycle failures;
 - explicit separation of deployment imports and platform-supplied variables;
-- canonical effective YAML and a separate compilation protocol;
+- effective YAML and a separate compilation protocol;
 - placeholder-preserving parse/serialize stability checks;
 - residual configuration materialization with artifact provenance;
 - a thin application-classpath command-line launcher;

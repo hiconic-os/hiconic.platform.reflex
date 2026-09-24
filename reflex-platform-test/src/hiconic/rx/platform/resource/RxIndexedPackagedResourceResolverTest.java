@@ -35,14 +35,13 @@ import com.braintribe.model.resource.Resource;
 import com.braintribe.model.resource.source.PackagedSource;
 
 import hiconic.rx.module.api.resource.RxPackagedResourceResolver;
-import hiconic.rx.module.api.wire.RxPackagedResourcesContract;
 import hiconic.rx.platform.processing.resource.RxIndexedPackagedResourceResolver;
 
 public class RxIndexedPackagedResourceResolverTest {
 
 	@Test
 	public void cachesMetadataButReturnsIndependentResourcesAndStreams() throws Exception {
-		var resolver = webResolver();
+		var resolver = scopedResolver();
 		Resource plain = resolver.resource("assets/hello.txt").asResource();
 		assertThat(plain.getMimeType()).isNull();
 		assertThat(plain.getMd5()).isNull();
@@ -66,19 +65,20 @@ public class RxIndexedPackagedResourceResolverTest {
 
 	@Test
 	public void inventoriesLogicalDirectoriesPerFolder() {
-		var webResolver = webResolver();
-		assertThat(webResolver.inventory().resourcePaths()).containsExactlyInAnyOrder("assets/hello.txt", "assets/nested/second.txt");
-		assertThat(webResolver.inventory().list("assets")).extracting(entry -> entry.name() + ":" + entry.directory())
+		var scoped = scopedResolver();
+		assertThat(scoped.inventory().resourcePaths())
+				.containsExactlyInAnyOrder("test/hello.txt", "assets/hello.txt", "assets/nested/second.txt");
+		assertThat(scoped.inventory().list("assets")).extracting(entry -> entry.name() + ":" + entry.directory())
 				.containsExactly("hello.txt:false", "nested:true");
 
 		var rootResolver = rootResolver();
-		assertThat(rootResolver.inventory().resourcePaths()).contains("test/hello.txt").doesNotContain("assets/hello.txt");
+		assertThat(rootResolver.inventory().resourcePaths()).contains("test-resources/test/hello.txt").doesNotContain("test/hello.txt");
 	}
 
 	@Test
 	public void buildsModeledReferencesThatArePersistableAndReadableAtOnce() throws Exception {
 		var resolver = rootResolver();
-		Resource resource = resolver.resource("test/hello.txt").withMimeType().asResource();
+		Resource resource = resolver.resource("test-resources/test/hello.txt").withMimeType().asResource();
 
 		assertThat(resource.isTransient()).isFalse();
 		assertThat(resource.getMimeType()).isEqualTo("text/plain");
@@ -87,7 +87,7 @@ public class RxIndexedPackagedResourceResolverTest {
 		// A source always carries the artifact and the full artifact relative path, so that it says where the file is without any further context.
 		PackagedSource source = (PackagedSource) resource.getResourceSource();
 		assertThat(source.getArtifact()).isEqualTo("reflex-platform-test");
-		assertThat(source.getPath()).isEqualTo("HICONIC-RESOURCES/test/hello.txt");
+		assertThat(source.getPath()).isEqualTo("test-resources/test/hello.txt");
 
 		// The very same Resource can be read without a session, because the resolver attached a reader to the address.
 		try (var in = resource.openStream()) {
@@ -99,7 +99,7 @@ public class RxIndexedPackagedResourceResolverTest {
 	@Test
 	public void addressWithoutReaderIsNotStreamableByItself() {
 		var resolver = rootResolver();
-		Resource resource = resolver.resource("test/hello.txt").asResource();
+		Resource resource = resolver.resource("test-resources/test/hello.txt").asResource();
 
 		PackagedSource source = (PackagedSource) resource.getResourceSource();
 		source.setInputStreamProvider(null);
@@ -110,11 +110,11 @@ public class RxIndexedPackagedResourceResolverTest {
 	@Test
 	public void resolvesAnyIndexedResourceByArtifactAndFullArtifactRelativePath() throws Exception {
 		var resolver = rootResolver();
-		Resource resource = resolver.resource("reflex-platform-test", "HICONIC-RESOURCES/www/assets/hello.txt").asResource();
+		Resource resource = resolver.resource("reflex-platform-test", "test-resources/assets/hello.txt").asResource();
 
 		PackagedSource source = (PackagedSource) resource.getResourceSource();
 		assertThat(source.getArtifact()).isEqualTo("reflex-platform-test");
-		assertThat(source.getPath()).isEqualTo("HICONIC-RESOURCES/www/assets/hello.txt");
+		assertThat(source.getPath()).isEqualTo("test-resources/assets/hello.txt");
 		try (var in = resolver.resource(source).asHandle().asStream()) {
 			assertThat(new String(in.readAllBytes(), StandardCharsets.UTF_8)).isEqualTo("public hello");
 		}
@@ -127,7 +127,7 @@ public class RxIndexedPackagedResourceResolverTest {
 		PackagedResourceValueDescriptorExperts.register(registry, resolver);
 		var context = new StandardValueDescriptorEvaluationContext(registry) //
 				.withAspect(ValueDescriptorSourceContext.class,
-						new ValueDescriptorSourceContext("reflex-platform-test", "HICONIC-RESOURCES/www/config.yaml"));
+						new ValueDescriptorSourceContext("reflex-platform-test", "test-resources/config.yaml"));
 
 		PackagedResourceText importText = PackagedResourceText.T.create();
 		importText.setPath("./assets/hello.txt");
@@ -141,23 +141,23 @@ public class RxIndexedPackagedResourceResolverTest {
 		Resource resource = context.<Resource> evaluate(packagedResource).get();
 		PackagedSource source = (PackagedSource) resource.getResourceSource();
 		assertThat(source.getArtifact()).isEqualTo("reflex-platform-test");
-		assertThat(source.getPath()).isEqualTo("HICONIC-RESOURCES/www/assets/hello.txt");
+		assertThat(source.getPath()).isEqualTo("test-resources/assets/hello.txt");
 	}
 
 	@Test
 	public void rejectsMissingAndUnsafePaths() {
-		var resolver = webResolver();
+		var resolver = scopedResolver();
 		assertThat(resolver.inventory().contains("../assets/hello.txt")).isFalse();
 		assertThatThrownBy(() -> resolver.resource("missing.txt")).isInstanceOf(IllegalArgumentException.class);
 		assertThatThrownBy(() -> resolver.resource("../assets/hello.txt")).isInstanceOf(IllegalArgumentException.class);
 	}
 
 	private RxIndexedPackagedResourceResolver rootResolver() {
-		return new RxIndexedPackagedResourceResolver(new ClasspathIndex(getClass().getClassLoader()), RxPackagedResourcesContract.CLASSPATH_ROOT);
+		return new RxIndexedPackagedResourceResolver(new ClasspathIndex(getClass().getClassLoader()), "");
 	}
 
-	/** The web folder is nothing but a folder below the one root. */
-	private RxPackagedResourceResolver webResolver() {
-		return rootResolver().below("www");
+	/** A resolver scoped to one folder. The folder has no meaning to the platform; it is simply the one this test owns. */
+	private RxPackagedResourceResolver scopedResolver() {
+		return rootResolver().below("test-resources");
 	}
 }

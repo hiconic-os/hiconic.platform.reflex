@@ -72,7 +72,7 @@ public class WebappsSpace implements WireSpace {
 
 	public void registerWebapps() {
 		webServer.addWebAppRuntimeConfiguration(EXPLORER_WEB_APP_PATH, this::clientRuntimeProperties);
-		webServer.addPackagedWebResources("explorer-webpages", "webpages", "explorer/webpages");
+		webServer.addPackagedWebResources("explorer-webpages", "webpages", "explorer-webpages");
 
 		webServer.addServlet("alive-servlet", "/", aliveServlet());
 
@@ -120,6 +120,7 @@ public class WebappsSpace implements WireSpace {
 		ExplorerPublicResourceServlet bean = new ExplorerPublicResourceServlet();
 		bean.setSessionFactory(access.systemSessionFactory());
 		bean.setConfiguration(platform.configuration().readConfig(ExplorerConfiguration.T).get());
+		bean.setPackagedResources(platform.packagedResources().resolver());
 		return bean;
 	}
 

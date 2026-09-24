@@ -46,7 +46,6 @@ import hiconic.platform.reflex.web_server.processing.DelegatingAuthenticationCon
 import hiconic.platform.reflex.web_server.processing.DefaultRxServlet;
 import hiconic.platform.reflex.web_server.processing.InstanceEndpointConfigurator;
 import hiconic.platform.reflex.web_server.processing.PackagedWebResourceServlet;
-import hiconic.rx.module.api.resource.RxPackagedResourceResolver;
 import hiconic.platform.reflex.web_server.processing.ReflexAccessLogReceiver;
 import hiconic.platform.reflex.web_server.processing.RequestMetaLoggingHandler;
 import hiconic.platform.reflex.web_server.processing.RoleAuthorizationFilter;
@@ -120,7 +119,6 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	public void onLoaded(WireContextConfiguration configuration) {
 		platform.application().logManager().setLogLevel("io.undertow.request.error-response", System.Logger.Level.INFO);
 		registerPushTransports();
-		registerPackagedWebResources();
 		registerLogLevelServlet();
 		undertowServer().start();
 
@@ -162,30 +160,6 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 		bean.setEvaluator(platform.serviceProcessing().systemEvaluator());
 		bean.setProcessingInstanceId(platform.application().instanceId());
 		bean.setPushContract(push);
-		return bean;
-	}
-
-	/**
-	 * The folder of the packaged resources that this module serves. Everything below it is delivered unauthenticated, by path, so nothing may be put
-	 * there that is not meant for anonymous download.
-	 */
-	// TODO make this configurable
-	private static final String WEB_FOLDER = "www";
-
-	@Managed
-	private RxPackagedResourceResolver webResources() {
-		return platform.packagedResources().resolver().below(WEB_FOLDER);
-	}
-
-	private void registerPackagedWebResources() {
-		// TODO make configurable
-		addServlet("/", "packaged-web-resources", "/res/*", packagedWebResourceServlet());
-	}
-
-	@Managed
-	private PackagedWebResourceServlet packagedWebResourceServlet() {
-		PackagedWebResourceServlet bean = new PackagedWebResourceServlet();
-		bean.setResources(webResources());
 		return bean;
 	}
 
@@ -327,7 +301,8 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	@Override
 	public void addPackagedWebResources(String name, String path, String resourcePathPrefix) {
 		PackagedWebResourceServlet servlet = new PackagedWebResourceServlet();
-		servlet.setResources(webResources());
+		// The prefix is a full indexed resource path. A module names the folder it owns, rather than a folder below a reserved one.
+		servlet.setResources(platform.packagedResources().resolver());
 		servlet.setResourcePathPrefix(resourcePathPrefix);
 		String mapping = URLUtils.normalizeSlashes("/" + path + "/*");
 		addServlet(name, mapping, servlet);

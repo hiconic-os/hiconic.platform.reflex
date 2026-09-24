@@ -1,2 +1,2 @@
 HICONIC-CONF
-HICONIC-RESOURCES
+test-resources

@@ -213,7 +213,7 @@ public class RxPropertyResolverTest {
 		modeledConfiguration.setConfigFolder(configFolder);
 		modeledConfiguration.setExternalReasonedPropertyLookup(resolver::resolvePlaceholderReasoned);
 		modeledConfiguration.setValueDescriptorExpressionCodec(RxConfigurationValueDescriptorExperts.expressionCodec());
-		var resources = new RxIndexedPackagedResourceResolver(new ClasspathIndex(getClass().getClassLoader()), "HICONIC-RESOURCES");
+		var resources = new RxIndexedPackagedResourceResolver(new ClasspathIndex(getClass().getClassLoader()), "");
 		modeledConfiguration.setValueDescriptorExpertConfigurer(
 				registry -> RxConfigurationValueDescriptorExperts.register(registry, resources, resolver));
 

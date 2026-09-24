@@ -44,7 +44,7 @@ public class RxConfigurationSpaceTest {
 	@Test
 	public void resolvesCanonicalIndexedResource() throws Exception {
 		var index = new ClasspathIndex(getClass().getClassLoader());
-		var resource = RxConfigurationSpace.resolveIndexedClasspathResource(index, "/HICONIC-RESOURCES/test/hello.txt");
+		var resource = RxConfigurationSpace.resolveIndexedClasspathResource(index, "/test-resources/test/hello.txt");
 
 		try (var in = resource.asStream()) {
 			assertThat(new String(in.readAllBytes(), StandardCharsets.UTF_8)).isEqualTo("private hello");
@@ -66,7 +66,7 @@ public class RxConfigurationSpaceTest {
 	@Test
 	public void evaluatesRelativePackagedResourcesThroughModeledConfiguration() {
 		var index = new ClasspathIndex(getClass().getClassLoader());
-		var resolver = new RxIndexedPackagedResourceResolver(index, "HICONIC-RESOURCES");
+		var resolver = new RxIndexedPackagedResourceResolver(index, "");
 		var configuration = new ModeledYamlConfiguration();
 		configuration.setClasspathIndex(index);
 		configuration.setClasspathConfPath("HICONIC-CONF");
@@ -79,7 +79,7 @@ public class RxConfigurationSpaceTest {
 		assertThat(loaded.getText()).isEqualTo("public hello");
 		PackagedSource source = (PackagedSource) loaded.getResource().getResourceSource();
 		assertThat(source.getArtifact()).isEqualTo("reflex-platform-test");
-		assertThat(source.getPath()).isEqualTo("HICONIC-RESOURCES/www/assets/hello.txt");
+		assertThat(source.getPath()).isEqualTo("test-resources/assets/hello.txt");
 		loaded.getResource().setCreator("configuration-curator");
 		loaded.getResource().setTags(Set.of("branding", "stable"));
 
@@ -94,7 +94,7 @@ public class RxConfigurationSpaceTest {
 		StringWriter writer = new StringWriter();
 		new YamlMarshaller().marshall(writer, loaded, options);
 		assertThat(writer.toString())
-				.contains("resourceSource: \"${packagedSource('../HICONIC-RESOURCES/www/assets/hello.txt')}\"")
+				.contains("resourceSource: \"${packagedSource('../test-resources/assets/hello.txt')}\"")
 				.contains("creator: \"configuration-curator\"")
 				.contains("branding")
 				.doesNotContain("resource: \"${packagedResource(");
@@ -110,7 +110,7 @@ public class RxConfigurationSpaceTest {
 		assertThat(roundtripped.getResource().getTags()).containsExactlyInAnyOrder("branding", "stable");
 		PackagedSource roundtrippedSource = (PackagedSource) roundtripped.getResource().getResourceSource();
 		assertThat(roundtrippedSource.getArtifact()).isEqualTo("reflex-platform-test");
-		assertThat(roundtrippedSource.getPath()).isEqualTo("HICONIC-RESOURCES/www/assets/hello.txt");
+		assertThat(roundtrippedSource.getPath()).isEqualTo("test-resources/assets/hello.txt");
 
 		var compactOptions = GmSerializationOptions.deriveDefaults()
 				.inferredRootType(ResourceExpressionConfiguration.T)
@@ -123,7 +123,7 @@ public class RxConfigurationSpaceTest {
 		StringWriter compactWriter = new StringWriter();
 		new YamlMarshaller().marshall(compactWriter, loaded, compactOptions);
 		assertThat(compactWriter.toString())
-				.contains("resource: \"${packagedResource('../HICONIC-RESOURCES/www/assets/hello.txt')}\"")
+				.contains("resource: \"${packagedResource('../test-resources/assets/hello.txt')}\"")
 				.doesNotContain("configuration-curator");
 	}
 }

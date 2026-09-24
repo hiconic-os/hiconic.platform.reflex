@@ -1,2 +1,2 @@
-text: ${packagedResourceText('../HICONIC-RESOURCES/www/assets/hello.txt')}
-resource: ${packagedResource('../HICONIC-RESOURCES/www/assets/hello.txt')}
+text: ${packagedResourceText('../test-resources/assets/hello.txt')}
+resource: ${packagedResource('../test-resources/assets/hello.txt')}
