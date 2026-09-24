@@ -300,12 +300,17 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 
 	@Override
 	public void addPackagedWebResources(String name, String path, String resourcePathPrefix) {
+		addPackagedWebResources(defaultEndpointsBasePath(), name, path, resourcePathPrefix);
+	}
+
+	@Override
+	public void addPackagedWebResources(String basePath, String name, String path, String resourcePathPrefix) {
 		PackagedWebResourceServlet servlet = new PackagedWebResourceServlet();
 		// The prefix is a full indexed resource path. A module names the folder it owns, rather than a folder below a reserved one.
 		servlet.setResources(platform.packagedResources().resolver());
 		servlet.setResourcePathPrefix(resourcePathPrefix);
 		String mapping = URLUtils.normalizeSlashes("/" + path + "/*");
-		addServlet(name, mapping, servlet);
+		addServlet(basePath, name, mapping, servlet);
 	}
 
 	private void addStaticFileResource(PathHandler pathHandler, String path, String rootDir, String... welcomeFiles) {

@@ -80,6 +80,12 @@ public interface WebServerContract extends RxExportContract {
 	void addPackagedWebResources(String name, String path, String resourcePathPrefix);
 
 	/**
+	 * The same, below an explicit base path rather than the default endpoint base path. Use it when the URL is fixed from outside, for instance
+	 * because configuration data or a client already names it.
+	 */
+	void addPackagedWebResources(String basePath, String name, String path, String resourcePathPrefix);
+
+	/**
 	 * URL with which the server can be reached from the outside. It is called public as it can be the URL of the proxy that propagates the request to
 	 * the server behind it.
 	 * <p>

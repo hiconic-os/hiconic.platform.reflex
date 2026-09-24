@@ -24,10 +24,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Streams files of the web folder of the packaged resources, without exposing their classpath or packaging backing.
+ * Streams the indexed packaged resources below one configured path prefix, without exposing their classpath or packaging backing.
  * <p>
- * Everything this servlet can reach is served unauthenticated, by path. That is a property of this servlet, not of the folder: the platform attaches
- * no meaning to a folder, this module does.
+ * Everything this servlet can reach is served unauthenticated, by path. That is a property of this registration, not of the folder: the platform
+ * attaches no meaning to a folder, the module that maps it does.
  */
 public class PackagedWebResourceServlet extends HttpServlet {
 
