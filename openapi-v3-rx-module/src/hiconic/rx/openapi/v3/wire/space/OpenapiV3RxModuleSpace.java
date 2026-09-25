@@ -1,12 +1,14 @@
 package hiconic.rx.openapi.v3.wire.space;
 
 import com.braintribe.gm._ServiceApiModel_;
+import com.braintribe.model.accessapi.ManipulationResponse;
 import com.braintribe.model.generic.reflection.Property;
 import com.braintribe.model.meta.data.prompt.Hidden;
 import com.braintribe.model.meta.selector.UseCaseSelector;
 import com.braintribe.model.openapi.v3_0.api.OpenapiEntitiesRequest;
 import com.braintribe.model.openapi.v3_0.api.OpenapiPropertiesRequest;
 import com.braintribe.model.openapi.v3_0.api.OpenapiServicesRequest;
+import com.braintribe.model.query.EntityQueryResult;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
@@ -61,6 +63,10 @@ public class OpenapiV3RxModuleSpace implements RxModuleContract {
 		ModelConfiguration modelConfiguration = configurations.bySymbol(AbstractOpenapiProcessor.basicOpenapiProcessingModelRef);
 		modelConfiguration.addModel(_ServiceApiModel_.reflection);
 		modelConfiguration.addModel(ApiV1DdraEndpoint.T.getModel());
+		// The CRUD processors register standard responses for these two types, so the model of the standard components must declare them.
+		modelConfiguration.addModel(EntityQueryResult.T.getModel());
+		modelConfiguration.addModel(ManipulationResponse.T.getModel());
+
 		modelConfiguration.configureModel(editor -> {
 			UseCaseSelector simpleOpenapi = UseCaseSelector.T.create();
 			simpleOpenapi.setUseCase("openapi:simple");
