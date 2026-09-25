@@ -15,14 +15,18 @@ import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.check.api.CheckContract;
 import hiconic.rx.check.api.CheckServiceDomain;
+import hiconic.rx.check.model.api.request.AuthorizedCheckRequest;
 import hiconic.rx.check.model.api.request.CheckRequest;
+import hiconic.rx.check.model.api.request.RunVitalityChecks;
 import hiconic.rx.check.processing.BasicCheckProcessorRegistry;
 import hiconic.rx.check.processing.CheckResponseHtmlMarshaller;
 import hiconic.rx.check.processing.CheckRxProcessor;
 import hiconic.rx.module.api.config.RxPlatformConfigurator;
+import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
+import hiconic.rx.webapi.model.meta.ResponseMimeType;
 
 /**
  * This module's javadoc is yet to be written.
@@ -37,9 +41,12 @@ public class CheckRxModuleSpace implements RxModuleContract, CheckContract {
 	// ##. . . . . . . . Marshaller . . . . . . . . ##
 	// ###############################################
 
+	/** Mime type of the {@link CheckResponseHtmlMarshaller}, i.e. of the rendered check result page. */
+	private static final String CHECK_RESPONSE_HTML = "text/html;spec=check-response";
+
 	@Override
 	public void configurePlatform(RxPlatformConfigurator configurator) {
-		configurator.marshallerRegistry().registerMarshaller("text/html;spec=check-response", checkResultToHtmlMarshaller());
+		configurator.marshallerRegistry().registerMarshaller(CHECK_RESPONSE_HTML, checkResultToHtmlMarshaller());
 	}
 
 	@Managed
@@ -54,8 +61,21 @@ public class CheckRxModuleSpace implements RxModuleContract, CheckContract {
 
 	@Override
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
-		configurations.byId(CheckServiceDomain.check) //
-				.bindRequest(CheckRequest.T, this::checkRxProcessor);
+		ServiceDomainConfiguration checkSd = configurations.byId(CheckServiceDomain.check);
+		checkSd.bindRequest(CheckRequest.T, this::checkRxProcessor);
+
+		/* Every request that returns a CheckResponse is rendered as HTML by default. RunHealthChecks is left out on
+		 * purpose: it returns a map of results and stays JSON, like in CX. */
+		checkSd.configureModel(editor -> {
+			editor.onEntityType(AuthorizedCheckRequest.T).addMetaData(checkResponseHtmlMimeType());
+			editor.onEntityType(RunVitalityChecks.T).addMetaData(checkResponseHtmlMimeType());
+		});
+	}
+
+	private ResponseMimeType checkResponseHtmlMimeType() {
+		ResponseMimeType bean = ResponseMimeType.T.create();
+		bean.setMimeType(CHECK_RESPONSE_HTML);
+		return bean;
 	}
 
 	@Managed
@@ -114,45 +134,3 @@ public class CheckRxModuleSpace implements RxModuleContract, CheckContract {
 	}
 
 }
-
-/* From: WebApiServerInitializer
- * 
- * registry.create("/healthz", RunHealthChecks.T, DdraUrlMethod.GET, null, "application/json", ACCESS_ID_CORTEX, Sets.set(DDRA_MAPPING_TAG_CHECKS),
- * configureReachabilityAndHighOutputPrettiness);
- * 
- * 
- * registry.create("/checkVitality", RunVitalityChecks.T, DdraUrlMethod.GET, null, "text/html;spec=check-response", ACCESS_ID_CORTEX,
- * Sets.set(DDRA_MAPPING_TAG_CHECKS), configureReachabilityAndHighOutputPrettiness);
- * 
- * 
- * HomePage : Runtime / Checks
- * 
- * registry.create("/check", RunChecks.T, DdraUrlMethod.GET, null, "text/html;spec=check-response", ACCESS_ID_CORTEX,
- * Sets.set(DDRA_MAPPING_TAG_CHECKS), configureReachabilityAndHighOutputPrettiness);
- * 
- * 
- * HomePage : Runtime / Health
- * 
- * 
- * registry.create("/checkDistributed", RunDistributedChecks.T, DdraUrlMethod.GET, null, "text/html;spec=check-response",
- * ACCESS_ID_CORTEX, Sets.set(DDRA_MAPPING_TAG_CHECKS), configureReachabilityAndHighOutputPrettiness);
- * 
- * 
- * registry.create("/checkAimed", RunAimedChecks.T, DdraUrlMethod.GET, null, "text/html;spec=check-response", ACCESS_ID_CORTEX,
- * Sets.set(DDRA_MAPPING_TAG_CHECKS), configureReachabilityAndHighOutputPrettiness);
- * 
- * 
- * 
- * HomePage : Runtime / Health
- * 
- * 
- * RunDistributedChecks run = session.create(RunDistributedChecks.T, "b9265418-8e97-4424-9e0a-32153bf0d715");
- * run.setAggregateBy(Lists.list(CrAggregationKind.node));
- * 
- * StaticPrototyping p = session.create(StaticPrototyping.T, "6d453267-7891-41a2-a649-31392e2b00d3"); p.setPrototype(run);
- * 
- * Consumer<DdraMapping> configureReachabilityAndHighOutputPrettinessAndRequestPrototype = configureReachabilityAndHighOutputPrettiness .andThen(m ->
- * { m.setRequestPrototyping(p); });
- * 
- * registry.create("/checkPlatform", RunDistributedChecks.T, DdraUrlMethod.GET, null, "text/html;spec=check-response", ACCESS_ID_CORTEX,
- * Sets.set(DDRA_MAPPING_TAG_CHECKS), configureReachabilityAndHighOutputPrettinessAndRequestPrototype); */

@@ -15,6 +15,11 @@
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
         <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>web-api-mapping-meta-data-model</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
             <groupId>com.braintribe.execution</groupId>
             <artifactId>execution</artifactId>
             <version>${V.com.braintribe.execution}</version>

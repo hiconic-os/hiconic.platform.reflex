@@ -161,7 +161,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 	public void setMdResolverProvider(Function<String, CmdResolver> mdResolverProvider) {
 		this.mdResolverProvider = mdResolverProvider;
 	}
-	
+
 	@Override
 	protected Logger getLogger() {
 		return logger;
@@ -208,7 +208,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 		Collection<String> mappedMethods = mappingOralce.getMethods(getPathInfo(context));
 
 		if (mappedMethods.isEmpty()) {
-			if (!decodePathAndFillContext(context))
+			if (decodePathAndFillContext(context) == null)
 				return;
 
 			mappedMethods = Arrays.asList("GET", "POST");
@@ -226,7 +226,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 		return apiV1EndpointContext;
 	}
 
-	@Override	
+	@Override
 	protected boolean fillContext(ApiV1EndpointContext context) throws IOException {
 		if ("OPTIONS".equals(context.getRequest().getMethod())) {
 			handleOptions(context);
@@ -244,13 +244,13 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 			context.setEndpoint(restServletUtils.createDefaultEndpoint(null));
 			Collection<String> allowedMethods = mappingOralce.getMethods(getPathInfo(context));
 			if (allowedMethods.isEmpty()) {
-				if (!decodePathAndFillContext(context))
+				if (decodePathAndFillContext(context) == null)
 					return false;
 				allowedMethods = Arrays.asList("GET", "POST");
 			}
 			DdraEndpointsUtils.setAllowHeader(context, allowedMethods);
-			writeInvalidArgument(context, "HTTP method '" + context.getRequest().getMethod() + "' is not allowed for '"
-					+ getPathInfo(context) + "'", 405);
+			writeInvalidArgument(context, "HTTP method '" + context.getRequest().getMethod() + "' is not allowed for '" + getPathInfo(context) + "'",
+					405);
 			return false;
 		}
 		context.setEndpoint(restServletUtils.createDefaultEndpoint(mapping));
@@ -279,8 +279,13 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 				return false;
 			}
 
-			if (!decodePathAndFillContext(context))
+			EntityType<? extends ServiceRequest> requestType = decodePathAndFillContext(context);
+			if (requestType == null)
 				return false;
+
+			applyImplicitMapping(context, requestType);
+			// In case something relevant was configured , such as response mime-type, we want to override the originally set Endpoint
+			context.setEndpoint(restServletUtils.createDefaultEndpoint(context.getMapping()));
 		}
 
 		return true;
@@ -349,9 +354,9 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 
 		ServiceRequest service = null;
 		MultipartFormat requestMultipartFormat = context.getRequestMultipartFormat();
-		
+
 		InputStream requestIn = request.getInputStream();
-		
+
 		if (requestMultipartFormat.getSubFormat() == MultipartSubFormat.formData) {
 			String boundary = requestMultipartFormat.getParameter("boundary");
 
@@ -361,12 +366,12 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 			}
 
 			Maybe<ServiceRequest> serviceMaybe = parseMultipartRequest(boundary, context);
-			
+
 			if (serviceMaybe.isUnsatisfied()) {
 				writeUnsatisfied(context, serviceMaybe, 400);
 				return;
 			}
-			
+
 			service = serviceMaybe.get();
 
 		} else {
@@ -403,15 +408,18 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 				try (InputStream in = requestIn) {
 					// Unmarshall the request from the body
 					Maybe<?> maybeService = inMarshaller.unmarshallReasoned(in, options);
-					
+
 					if (maybeService.isUnsatisfied()) {
-						Maybe<Object> maybe = Reasons.build(InvalidArgument.T).text("Invalid HTTP request body").cause(maybeService.whyUnsatisfied()).toMaybe();
-						Integer statusCode = maybeService.isUnsatisfiedBy(ParseError.T)? 400: 500;
-						
+						Maybe<Object> maybe = Reasons.build(InvalidArgument.T) //
+								.text("Invalid HTTP request body") //
+								.cause(maybeService.whyUnsatisfied()) //
+								.toMaybe();
+						Integer statusCode = maybeService.isUnsatisfiedBy(ParseError.T) ? 400 : 500;
+
 						writeUnsatisfied(context, maybe, statusCode);
 						return;
 					}
-					
+
 					service = (ServiceRequest) maybeService.get();
 				}
 			}
@@ -466,11 +474,11 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 							.build();
 
 					Maybe<?> serviceMaybe = marshaller.unmarshallReasoned(in, options);
-					
+
 					if (serviceMaybe.isUnsatisfied()) {
 						return serviceMaybe.whyUnsatisfied().asMaybe();
 					}
-					
+
 					service = (ServiceRequest) serviceMaybe.get();
 				}
 
@@ -535,7 +543,8 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 						resourceSource = createEmptyTransientSource(resource);
 					} else if (!(resourceSource instanceof TransientSource)) {
 						return Reasons.build(InvalidArgument.T) //
-								.text("Cannot assign binary multipart data to resource part '" + partName + "' because it already has a non-transient source") //
+								.text("Cannot assign binary multipart data to resource part '" + partName
+										+ "' because it already has a non-transient source") //
 								.toMaybe();
 					}
 
@@ -570,7 +579,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 		resource.setResourceSource(result);
 		return result;
 	}
-	
+
 	private void processRequestAndWriteResponse(ApiV1EndpointContext context, ServiceRequest service) throws IOException {
 
 		ApiV1DdraEndpoint endpoint = context.getEndpoint();
@@ -698,7 +707,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 		}
 		return result;
 	}
-	
+
 	private void writeUnsatisfied(ApiV1EndpointContext context, Maybe<?> maybe, Integer httpStatusCode) throws IOException {
 		Reason reason = maybe.whyUnsatisfied();
 
@@ -728,7 +737,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 
 		// status code handling
 		if (!context.getResponse().isCommitted()) {
-			
+
 			if (httpStatusCode == null) {
 				Optional<HttpStatusCode> statusOptional = reasonMdResolver == null ? Optional.empty()
 						: Optional.ofNullable(reasonMdResolver.meta(HttpStatusCode.T).exclusive());
@@ -801,7 +810,8 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 				resource.writeToStream(responseOut);
 			}
 		} else {
-			try (@SuppressWarnings("unused") OutputStream responseOut = context.openResponseOutputStream()) {
+			try (@SuppressWarnings("unused")
+			OutputStream responseOut = context.openResponseOutputStream()) {
 				// Just open and close the stream, assuming that this means sending an empty response
 			}
 		}
@@ -816,15 +826,24 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 		return mapping;
 	}
 
-	// Only called when no mapping is found 
-	private boolean decodePathAndFillContext(ApiV1EndpointContext context) throws IOException {
+	/**
+	 * A request addressed by the generic <code>/${domain}/${requestType}</code> path is mapped by no meta data, but the meta data of its type still
+	 * configures it, e.g. the mime type that selects the response marshaller.
+	 */
+	private void applyImplicitMapping(ApiV1EndpointContext context, EntityType<? extends ServiceRequest> requestType) {
+		HttpRequestMethod method = HttpRequestMethod.valueOf(context.getRequest().getMethod().toUpperCase());
+		SingleDdraMapping mapping = mappingOralce.getImplicitMapping(context.getServiceDomain(), requestType, method);
+		context.setMapping(mapping);
+	}
+
+	private EntityType<? extends ServiceRequest> decodePathAndFillContext(ApiV1EndpointContext context) throws IOException {
 		// No mapping found. Identify type and domain from Path
 		DdraBaseUrlPathParameters pathParameters = DdraBaseUrlPathParameters.T.create();
 		try {
 			URL_CODEC.decode(() -> pathParameters, getPathInfo(context));
 		} catch (Exception e) {
 			writeInvalidArgument(context, "Invalid Web API request path: " + parserMessage(e), 400);
-			return false;
+			return null;
 		}
 
 		String serviceDomain = pathParameters.getServiceDomain();
@@ -843,32 +862,32 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 
 		context.setServiceDomain(serviceDomain);
 		if (!checkServiceDomain(context))
-			return false;
+			return null;
 
 		// get the type signature from the pathInfo
 		String typeSignature = pathParameters.getTypeSignature();
 		if (StringUtils.isBlank(typeSignature)) {
 			if (requestMethodMayHaveBody(context.getRequest().getMethod()))
-				return true;
+				return ServiceRequest.T;
 			writeNotFound(context, "No implicit or explicit mapping found for '" + getPathInfo(context) + "'", 404);
-			return false;
+			return null;
 		}
-		
+
 		// get the entity type from the type signature
 		ModelOracle modelOracle = mdResolverProvider.apply(serviceDomain).getModelOracle();
 		EntityType<? extends ServiceRequest> entityType = restServletUtils.resolveTypeFromSignature(typeSignature, modelOracle);
 		if (entityType == null) {
 			writeNotFound(context, "Cannot find service request type '" + typeSignature + "'", 404);
-			return false;
+			return null;
 		}
 
 		if (!ServiceRequest.T.isAssignableFrom(entityType)) {
 			writeInvalidArgument(context, "Type '" + typeSignature + "' is not a ServiceRequest", 400);
-			return false;
+			return null;
 		}
 
 		context.setServiceRequestType(entityType);
-		return true;
+		return entityType;
 	}
 
 	private static boolean requestMethodMayHaveBody(String method) {
@@ -922,8 +941,8 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 	private boolean checkServiceDomain(ApiV1EndpointContext context) throws IOException {
 		String serviceDomain = context.getServiceDomain();
 		if (!domainAvailabilityChecker.test(serviceDomain)) {
-			writeNotFound(context, "No service domain or mapping found for '" + serviceDomain + "' and HTTP method '"
-					+ context.getRequest().getMethod() + "'", 404);
+			writeNotFound(context,
+					"No service domain or mapping found for '" + serviceDomain + "' and HTTP method '" + context.getRequest().getMethod() + "'", 404);
 			return false;
 		}
 		return true;
@@ -943,7 +962,6 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 	public void setRestServletUtils(ApiV1RestServletUtils restServletUtils) {
 		this.restServletUtils = restServletUtils;
 	}
-
 
 	@Required
 	public void setDomainAvailability(Predicate<String> domainAvailabilityChecker) {

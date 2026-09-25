@@ -21,7 +21,11 @@ import com.braintribe.model.generic.reflection.EntityTypes;
 import com.braintribe.model.service.api.ServiceRequest;
 
 import hiconic.rx.check.model.api.response.CheckResponse;
+import hiconic.rx.check.model.aspect.CheckCoverage;
 
+/**
+ * Run {@link CheckCoverage#vitality} checks UNAUTHORIZED.
+ */
 public interface RunVitalityChecks extends HasAggregateBy, CheckRequest {
 
 	EntityType<RunVitalityChecks> T = EntityTypes.T(RunVitalityChecks.class);

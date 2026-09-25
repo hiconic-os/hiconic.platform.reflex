@@ -16,7 +16,6 @@ import com.braintribe.model.folder.Folder;
 import com.braintribe.model.processing.query.fluent.EntityQueryBuilder;
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSession;
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSessionFactory;
-import com.braintribe.model.query.EntityQuery;
 import com.braintribe.model.resource.Icon;
 import com.braintribe.model.resource.Resource;
 import com.braintribe.model.workbench.WorkbenchConfiguration;

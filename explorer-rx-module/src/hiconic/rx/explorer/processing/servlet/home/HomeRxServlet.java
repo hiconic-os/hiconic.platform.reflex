@@ -34,6 +34,12 @@ import com.braintribe.utils.lcd.NullSafe;
 
 import hiconic.rx.access.module.api.AccessDomain;
 import hiconic.rx.access.module.api.AccessDomains;
+import hiconic.rx.check.api.CheckServiceDomain;
+import hiconic.rx.check.model.api.request.RunDistributedChecks;
+import hiconic.rx.check.model.api.response.CheckResponse;
+import hiconic.rx.check.model.api.response.CrAggregationKind;
+import hiconic.rx.check.model.aspect.CheckCoverage;
+import hiconic.rx.check.model.result.CheckStatus;
 import hiconic.rx.explorer.home.model.Home;
 import hiconic.rx.explorer.home.model.Link;
 import hiconic.rx.explorer.home.model.LinkCollection;
@@ -86,12 +92,8 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 
 	/* Relative Paths */
 	private String relativeAboutPath = "about";
-	private String relativeDeploymentSummaryPath = "deployment-summary";
 
-	// TODO user proper URLs for RunChecks and and RunDistributedChecks with HTML marshalling
-	// TODO register HTML marshaller
-	private final String relativePlatformBaseChecksPath = "api/v1/checkPlatform";
-	private final String relativePlatformChecksPath = "api/v1/check";
+	private String webApiPath = "api";
 	private String relativeSignInPath = "login";
 
 	/* Static Links */
@@ -102,9 +104,7 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 	private String defaultAuthAccessId = "auth";
 	private String defaultUserSessionAccessId = "user-sessions";
 	private String defaultUserStatisticsAccessId = "user-statistics";
-	private String defaultUserSetupAccessId = "setup";
 
-	@SuppressWarnings("unused")
 	private Evaluator<ServiceRequest> systemServiceRequestEvaluator;
 
 	@Override
@@ -124,7 +124,6 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 	public void setDefaultAuthAccessId(String defaultAuthAccessId) { this.defaultAuthAccessId = defaultAuthAccessId; }
 	public void setDefaultUserSessionAccessId(String defaultUserSessionAccessId) { this.defaultUserSessionAccessId = defaultUserSessionAccessId; }
 	public void setDefaultUserStatisticsAccessId(String defaultUserStatisticsAccessId) { this.defaultUserStatisticsAccessId = defaultUserStatisticsAccessId; }
-	public void setDefaultUserSetupAccessId(String defaultUserSetupAccessId) { this.defaultUserSetupAccessId = defaultUserSetupAccessId; }
 
 	/* Application Links */
 	@Required public void setApplicationName(String applicationName) { this.applicationName = applicationName; }
@@ -134,8 +133,9 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 
 	/* Relative servlet paths */
 	public void setRelativeAboutPath(String aboutUrl) { this.relativeAboutPath = aboutUrl; }
-	public void setRelativeDeploymentSummaryPath(String deploymentSummaryUrl) { this.relativeDeploymentSummaryPath = deploymentSummaryUrl; }
 	public void setRelativeSignInPath(String relativeSignInPath) { this.relativeSignInPath = relativeSignInPath; }
+	/** Path of the web-api servlet, relative to the web server's default endpoints base path, e.g. <tt>api/v1</tt>. */
+	@Required public void setWebApiPath(String webApiPath) { this.webApiPath = webApiPath; }
 	public void setOnlineCompanyImageUrl(String onlineCompanyImageUrl) { this.onlineCompanyImageUrl = onlineCompanyImageUrl; }
 	public void setCompanyUrl(String companyUrl) { this.onlineCompanyUrl = companyUrl; }
 	public void setOnlineCompanyUrl(String onlineCompanyUrl) { this.onlineCompanyUrl = onlineCompanyUrl; }
@@ -353,13 +353,11 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 		runtimeStatus.setDisplayName("Runtime");
 		runtimeStatus.setIconRef("./webpages/images/cortex/runtime.png");
 
-		String masterStatus = getPlatformVitalityStatus();
-
 		runtimeStatus.getNestedLinks().add(createLink("About", "./home?selectedTab=ABOUT&selectedTabPath=" + relativeAboutPath, "_self", null));
-		runtimeStatus.getNestedLinks().add(createLink("Health" + masterStatus,
-				"./home?selectedTab=HEALTH&selectedTabPath=" + urlEncode(relativePlatformBaseChecksPath), "_self", null));
 		runtimeStatus.getNestedLinks()
-				.add(createLink("Checks", "./home?selectedTab=HEALTH&selectedTabPath=" + urlEncode(relativePlatformChecksPath), "_self", null));
+				.add(createLink("Health", "./home?selectedTab=HEALTH&selectedTabPath=" + urlEncode(allChecksPath()), "_self", null));
+		runtimeStatus.getNestedLinks().add(createLink("Vitality" + getVitalityStatus(),
+				"./home?selectedTab=VITALITY&selectedTabPath=" + urlEncode(vitalityChecksPath()), "_self", null));
 		administrationGroup.getLinks().add(runtimeStatus);
 		// administrationGroup.getLinks().add(createLink("Logfiles",
 		// "./home?selectedTab=LOGS&selectedTabPath="+relativeLogPath, "_self", null,
@@ -380,25 +378,52 @@ public class HomeRxServlet extends BasicTemplateBasedServlet {
 							"tfControlCenter-statistics", null));
 	}
 
-	private String getPlatformVitalityStatus() {
-		// TODO platform vitality status
-		return "&nbsp;&#x2714;";
-		// RunChecks run = RunChecks.T.create();
-		// run.setCoverage(Collections.singleton(CheckCoverage.vitality));
-		// run.setIsPlatformRelevant(true);
-		//
-		// CheckResponse response = run.eval(systemServiceRequestEvaluator).get();
-		//
-		// CheckStatus status = response.getStatus();
-		// switch (status) {
-		// case ok:
-		// return "&nbsp;&#x2714;";
-		// case warn:
-		// return "&nbsp;&#x26a0;";
-		// case fail:
-		// default:
-		// return "&nbsp;&#x2716;";
-		// }
+	/** All checks of all nodes, aggregated per node - the page behind the "Health" link. */
+	private String allChecksPath() {
+		return distributedChecksPath() + "?aggregateBy=" + CrAggregationKind.node.name();
+	}
+
+	/**
+	 * The vitality checks of all nodes, aggregated per node - the page behind the "Vitality" link. Same content the
+	 * status glyph next to that link is computed from, only the checks that tell whether a node is alive.
+	 */
+	private String vitalityChecksPath() {
+		return distributedChecksPath() //
+				+ "?coverage=" + CheckCoverage.vitality.name() //
+				+ "&aggregateBy=" + CrAggregationKind.node.name();
+	}
+
+	/** Generic web-api path of {@link RunDistributedChecks}, e.g. <tt>api/v1/check/RunDistributedChecks</tt>. */
+	private String distributedChecksPath() {
+		return webApiPath + "/" + CheckServiceDomain.check.name() + "/" + RunDistributedChecks.T.getShortName();
+	}
+
+	private String getVitalityStatus() {
+		CheckStatus status = getVitalityCheckStatus();
+
+		switch (status) {
+			case ok:
+				return "&nbsp;&#x2714;";
+			case warn:
+				return "&nbsp;&#x26a0;";
+			case fail:
+			default:
+				return "&nbsp;&#x2716;";
+		}
+	}
+
+	private CheckStatus getVitalityCheckStatus() {
+		try {
+			RunDistributedChecks run = RunDistributedChecks.T.create();
+			run.setCoverage(Collections.singleton(CheckCoverage.vitality));
+
+			CheckResponse response = run.eval(systemServiceRequestEvaluator).get();
+			return response.getStatus();
+
+		} catch (Exception e) {
+			logger.warn(() -> "Error while running the vitality checks for the home page.", e);
+			return CheckStatus.fail;
+		}
 	}
 
 	private boolean accessExists(String acccessId) {

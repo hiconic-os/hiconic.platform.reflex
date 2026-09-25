@@ -44,6 +44,7 @@ import hiconic.rx.module.api.wire.RxServiceProcessingContract;
 import hiconic.rx.security.api.SecurityContract;
 import hiconic.rx.security.web.api.AuthFilters;
 import hiconic.rx.security.web.api.WebSecurityContract;
+import hiconic.rx.web.ddra.endpoints.api.WebApiServerContract;
 import hiconic.rx.web.server.api.WebServerContract;
 import jakarta.servlet.DispatcherType;
 
@@ -72,6 +73,7 @@ public class WebappsSpace implements WireSpace {
 	@Import private SecurityContract security;
 	@Import private WebServerContract webServer;
 	@Import private WebSecurityContract webSecurity;
+	@Import private WebApiServerContract webApiServer;
 	// @formatter:on
 
 	public void registerWebapps() {
@@ -155,6 +157,8 @@ public class WebappsSpace implements WireSpace {
 		bean.setAccessDomains(access.accessDomains());
 		bean.setGrantedRoles(platform.auth().roleAuthorization().adminRoles());
 		bean.setWebAppNavigationProvider(webServer::webAppNavigation);
+		bean.setWebApiPath(webApiServer.servletPath());
+		bean.setSystemRequestEvaluator(serviceProcessing.systemEvaluator());
 		bean.setConfiguredApplicationLinks(configuration.getApplicationLinks());
 
 		bean.addAccessLinkConfigurer(openApiLandingPageLinkConfigurer());

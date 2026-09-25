@@ -86,6 +86,7 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 
 	private final Lazy<Map<PathAndMethod, SingleDdraMapping>> mappings = new Lazy<>(() -> new MappingIndexer().buildMappings());
 	private final Map<PathAndMethod, SingleDdraMapping> explicitMappings = new ConcurrentHashMap<>();
+	private final Map<DomainTypeAndMethod, SingleDdraMapping> implicitMappings = new ConcurrentHashMap<>();
 
 	private final CloningContext cloningContext;
 
@@ -138,6 +139,16 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 		return java.util.stream.Stream.concat(explicitMappings.values().stream(), mappings.get().values().stream()) //
 				.filter(m -> java.util.Objects.equals(m.getServiceDomain(), serviceDomain)) //
 				.toList();
+	}
+
+	@Override
+	public SingleDdraMapping getImplicitMapping(String serviceDomain, EntityType<? extends ServiceRequest> requestType, HttpRequestMethod method) {
+		ServiceDomain domain = serviceDomains.byId(serviceDomain);
+		if (domain == null)
+			return null;
+
+		DomainTypeAndMethod key = new DomainTypeAndMethod(serviceDomain, requestType.getTypeSignature(), method);
+		return implicitMappings.computeIfAbsent(key, k -> new MappingIndexer().buildImplicitMapping(domain, requestType, method));
 	}
 
 	@Override
@@ -271,6 +282,18 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 			return s.replace(":", "-") //
 					.replace("/", "-") //
 			;
+		}
+
+		/** Builds the mapping of the generic path, which is configured by the request type's meta data alone. */
+		private SingleDdraMappingImpl buildImplicitMapping(ServiceDomain _serviceDomain, EntityType<?> _requestType, HttpRequestMethod method) {
+			serviceDomain = _serviceDomain;
+			cmdResolver = serviceDomain.systemCmdResolver();
+			requestType = _requestType;
+			requestMdResolver = cmdResolver.getMetaData().entityType(requestType);
+			mappingMds = new MappingMds();
+			pathInfo = null;
+
+			return createMappingFromMd(method);
 		}
 
 		private SingleDdraMappingImpl createMappingFromMd(HttpRequestMethod method) {
@@ -581,6 +604,9 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 	}
 
 	private static record PathAndMethod(String path, HttpRequestMethod method) {
+	}
+
+	private static record DomainTypeAndMethod(String serviceDomain, String typeSignature, HttpRequestMethod method) {
 	}
 
 	private static record TypeAtDepth(EntityType<?> type, int depth) {
