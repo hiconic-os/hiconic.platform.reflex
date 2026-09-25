@@ -41,6 +41,7 @@ import com.braintribe.console.ConsoleOutputs;
 import com.braintribe.config.configurator.ClasspathConfigurator;
 import com.braintribe.config.configurator.ConfiguratorContext;
 import com.braintribe.gm.config.yaml.index.ClasspathIndex;
+import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.gm.model.reason.ReasonException;
 import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
 import com.braintribe.logging.level.LogLevelSetup;
@@ -218,16 +219,33 @@ public class RxPlatform implements AutoCloseable {
 				System.err.println(msg);
 			}
 			catch (Exception e) {
-				String msg = "Error while starting application";
-				// Handle errors during configuration
-				logger.log(Level.ERROR, msg, e);
+				Reason reason = reasonFrom(e);
+				if (reason != null) {
+					String msg = "Error while starting application:\n" + reason.stringify(true);
+					logger.log(Level.ERROR, msg, e);
+					System.err.println(msg);
+				} else {
+					String msg = "Error while starting application";
+					logger.log(Level.ERROR, msg, e);
 
-				System.err.println(msg);
-				e.printStackTrace(System.err);
+					System.err.println(msg);
+					e.printStackTrace(System.err);
+				}
 			}
 		} finally {
 			ProcessStandardStreams.restore();
 		}
+	}
+
+	static Reason reasonFrom(Throwable throwable) {
+		for (Throwable cause = throwable; cause != null; cause = cause.getCause()) {
+			if (cause instanceof UnsatisfiedMaybeTunneling tunneling)
+				return tunneling.whyUnsatisfied();
+			if (cause instanceof ReasonException reasonException)
+				return reasonException.getReason();
+		}
+
+		return null;
 	}
 
 	private void start() {

@@ -20,9 +20,14 @@ import java.nio.file.Path;
 
 import org.junit.Test;
 
+import com.braintribe.common.artifact.ArtifactReflection;
+import com.braintribe.gm.model.reason.Maybe;
+import com.braintribe.gm.model.reason.Reason;
+import com.braintribe.gm.model.reason.ReasonException;
+import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
+import com.braintribe.gm.model.reason.essential.IoError;
 import com.braintribe.wire.api.Wire;
 import com.braintribe.wire.api.context.WireContext;
-import com.braintribe.common.artifact.ArtifactReflection;
 
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.platform.loading.samples.api.ApiContract;
@@ -66,6 +71,27 @@ public class RxModuleLoadingTest {
 		assertThat(reflection.groupId()).isEqualTo("example.group");
 		assertThat(reflection.artifactId()).isEqualTo("some-rx-module");
 		assertThat(reflection.version()).isEqualTo("1.2.3-rc");
+	}
+
+	@Test
+	public void preservesTunneledReasonThroughWrappedException() {
+		Reason reason = IoError.create("listener address already in use");
+		RuntimeException wrapped = new RuntimeException(new UnsatisfiedMaybeTunneling(Maybe.empty(reason)));
+
+		assertThat(RxModuleLoader.tunneledReason(wrapped)).isSameAs(reason);
+	}
+
+	@Test
+	public void preservesReasonFromReasonException() {
+		Reason reason = IoError.create("listener address already in use");
+		RuntimeException wrapped = new RuntimeException(new ReasonException(reason));
+
+		assertThat(RxModuleLoader.tunneledReason(wrapped)).isSameAs(reason);
+	}
+
+	@Test
+	public void ignoresOrdinaryException() {
+		assertThat(RxModuleLoader.tunneledReason(new IllegalStateException("unexpected"))).isNull();
 	}
 
 }

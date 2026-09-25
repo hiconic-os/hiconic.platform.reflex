@@ -35,10 +35,11 @@ import java.util.concurrent.ExecutorService;
 import com.braintribe.cfg.LifecycleAware;
 import com.braintribe.cfg.Required;
 import com.braintribe.gm.model.reason.Maybe;
-import com.braintribe.gm.model.reason.config.ConfigurationError;
+import com.braintribe.gm.model.reason.Reason;
+import com.braintribe.gm.model.reason.ReasonException;
+import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
 import com.braintribe.gm.model.reason.essential.InternalError;
 import com.braintribe.logging.Logger;
-import com.braintribe.utils.lcd.Lazy;
 import com.braintribe.wire.api.Wire;
 import com.braintribe.wire.api.context.WireContext;
 import com.braintribe.wire.api.context.WireContextBuilder;
@@ -146,9 +147,6 @@ public class RxModuleLoader implements LifecycleAware, PlatformReflectionContrac
 	private Maybe<List<LoadedModule>> loadWireModuleContexts(RxModuleAnalysis analysis) {
 		var contexts = new ArrayList<LoadedModule>(analysis.nodes.size());
 
-		var lazyError = new Lazy<ConfigurationError>( //
-				() -> ConfigurationError.create("Error while loading rx-module wire contexts"));
-
 		var importResolver = new RxExportResolver(analysis.exports);
 
 		resolverConfigurator.addResolver(importResolver);
@@ -158,13 +156,10 @@ public class RxModuleLoader implements LifecycleAware, PlatformReflectionContrac
 			var maybeLoadedModule = loadWireContextForModule(node);
 
 			if (maybeLoadedModule.isUnsatisfied())
-				lazyError.get().getReasons().add(maybeLoadedModule.whyUnsatisfied());
-			else
-				contexts.add(maybeLoadedModule.get());
-		}
+				return maybeLoadedModule.whyUnsatisfied().asMaybe();
 
-		if (lazyError.isInitialized())
-			return lazyError.get().asMaybe();
+			contexts.add(maybeLoadedModule.get());
+		}
 
 		return Maybe.complete(contexts);
 	}
@@ -200,11 +195,26 @@ public class RxModuleLoader implements LifecycleAware, PlatformReflectionContrac
 			return Maybe.complete(new LoadedModule(wireContext, node.module, moduleReflection));
 
 		} catch (Exception e) {
+			Reason reason = tunneledReason(e);
+			if (reason != null)
+				return reason.asMaybe();
+
 			String tracebackId = UUID.randomUUID().toString();
 			String msg = "Error while loading module " + rxModule.moduleName() + " (tracebackId=" + tracebackId + ")";
 			logger.error(msg, e);
 			return InternalError.create(msg).asMaybe();
 		}
+	}
+
+	static Reason tunneledReason(Throwable throwable) {
+		for (Throwable cause = throwable; cause != null; cause = cause.getCause()) {
+			if (cause instanceof UnsatisfiedMaybeTunneling tunneling)
+				return tunneling.whyUnsatisfied();
+			if (cause instanceof ReasonException reasonException)
+				return reasonException.getReason();
+		}
+
+		return null;
 	}
 
 	private static void printWireModule(String wireModule) {
