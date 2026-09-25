@@ -32,6 +32,8 @@ public interface WebServerConfiguration extends GenericEntity {
 	String coreTreads = "coreThreads";
 	String ioTreads = "ioThreads";
 	String maxConnections = "maxConnections";
+	String byteBufferSizeBytes = "byteBufferSizeBytes";
+	String directByteBuffers = "directByteBuffers";
 	String maxRequestSizeBytes = "maxRequestSizeBytes";
 	String maxMultipartRequestSizeBytes = "maxMultipartRequestSizeBytes";
 	String maxTransportRequestSizeBytes = "maxTransportRequestSizeBytes";
@@ -81,6 +83,18 @@ public interface WebServerConfiguration extends GenericEntity {
 			+ "the active connection count falls below the limit.")
 	Integer getMaxConnections();
 	void setMaxConnections(Integer maxConnections);
+
+	@Description("Size in bytes of the buffer pool shared by Undertow HTTP and WebSocket processing. A null or omitted "
+			+ "value intentionally selects Undertow's memory-sensitive default: 512 bytes below 64 MiB maximum JVM heap, "
+			+ "1024 bytes below 128 MiB, and 16364 bytes otherwise. An explicitly configured value must be greater than zero.")
+	Integer getByteBufferSizeBytes();
+	void setByteBufferSizeBytes(Integer byteBufferSizeBytes);
+
+	@Description("Whether the buffer pool shared by Undertow HTTP and WebSocket processing uses direct buffers. A null or "
+			+ "omitted value intentionally selects Undertow's memory-sensitive default: heap buffers below 64 MiB maximum "
+			+ "JVM heap and direct buffers otherwise. This property can be overridden independently of byteBufferSizeBytes.")
+	Boolean getDirectByteBuffers();
+	void setDirectByteBuffers(Boolean directByteBuffers);
 
 	@Description("Maximum HTTP request entity size in bytes. If omitted, Undertow's default applies. Use -1 for no limit.")
 	Long getMaxRequestSizeBytes();

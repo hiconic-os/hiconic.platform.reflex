@@ -71,6 +71,8 @@ import io.undertow.Undertow;
 import io.undertow.Undertow.Builder;
 import io.undertow.Undertow.ListenerInfo;
 import io.undertow.UndertowOptions;
+import io.undertow.connector.ByteBufferPool;
+import io.undertow.server.DefaultByteBufferPool;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.handlers.PathHandler;
 import io.undertow.server.handlers.accesslog.AccessLogHandler;
@@ -540,6 +542,7 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 
 		Builder builder = Undertow.builder() //
 				.addHttpListener(configuration.getPort(), "0.0.0.0") //
+				.setByteBufferPool(byteBufferPool()) //
 				.setHandler(rootHandler());
 
 		if (configuration.getAccessLogEnabled())
@@ -689,8 +692,39 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	@Managed
 	// basePath works as a cache key here, as the method is @Managed
 	private WebSocketDeploymentInfo wsDeploymentInfo(@SuppressWarnings("unused") /* DO NOT DELETE!!! */ String basePath) {
-		WebSocketDeploymentInfo bean = new WebSocketDeploymentInfo();
+		WebSocketDeploymentInfo bean = new WebSocketDeploymentInfo().setBuffers(byteBufferPool());
 		return bean;
+	}
+
+	@Managed
+	private ByteBufferPool byteBufferPool() {
+		WebServerConfiguration configuration = configuration();
+		long maxMemory = Runtime.getRuntime().maxMemory();
+
+		Integer configuredBufferSize = configuration.getByteBufferSizeBytes();
+		int bufferSize = configuredBufferSize != null ? configuredBufferSize : defaultByteBufferSize(maxMemory);
+		if (bufferSize <= 0)
+			UnsatisfiedMaybeTunneling.tunnel(InvalidArgument.create(WebServerConfiguration.T.getShortName() + "."
+					+ WebServerConfiguration.byteBufferSizeBytes + " must be greater than zero. Value: " + bufferSize));
+
+		Boolean configuredDirectBuffers = configuration.getDirectByteBuffers();
+		boolean directBuffers = configuredDirectBuffers != null ? configuredDirectBuffers : defaultDirectByteBuffers(maxMemory);
+
+		// These pool limits match Undertow's own internally-created default pool. Supplying it explicitly lets
+		// the HTTP server and all WebSocket deployments share the same pool.
+		return new DefaultByteBufferPool(directBuffers, bufferSize, -1, 4);
+	}
+
+	static int defaultByteBufferSize(long maxMemory) {
+		if (maxMemory < 64L * 1024 * 1024)
+			return 512;
+		if (maxMemory < 128L * 1024 * 1024)
+			return 1024;
+		return 16 * 1024 - 20;
+	}
+
+	static boolean defaultDirectByteBuffers(long maxMemory) {
+		return maxMemory >= 64L * 1024 * 1024;
 	}
 
 	// UNUSED
