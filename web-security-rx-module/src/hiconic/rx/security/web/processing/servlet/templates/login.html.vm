@@ -12,6 +12,8 @@
 
 <script>
 
+var busyRevealTimer;
+
 function bindForm() {
  var form = document.getElementById("signinForm");
  form.addEventListener("submit", function (event) {
@@ -50,13 +52,13 @@ function login(action) {
 	request.onreadystatechange = function () {
 		
 		if(request.readyState == 4) {
-			setBusy(false);
 			var interventionState = request.getResponseHeader("X-Hiconic-Login-Intervention-State");
 			if (interventionState == "RETRY_AUTHENTICATION") {
 				login();
 				return;
 			}
 			if (interventionState) {
+				setBusy(false);
 				renderIntervention(request, interventionState);
 				return;
 			}
@@ -71,6 +73,7 @@ function login(action) {
 				
 				window.location = redirectLocation; // redirect to landing page
 			} else {
+				setBusy(false);
 				var failureMessage = "Could not sign in";
 				try {
 					var failure = JSON.parse(request.responseText);
@@ -125,8 +128,29 @@ function renderMessage(title, message, action, actionLabel) {
 }
 
 function setBusy(busy) {
+	var form = document.getElementById("signinForm");
+	var mask = document.getElementById("loginBusyMask");
+	clearTimeout(busyRevealTimer);
+
+	form.classList.toggle("loginFormBusy", busy);
+	form.setAttribute("aria-busy", busy ? "true" : "false");
 	document.getElementById("signInButton").disabled = busy;
 	document.getElementById("loginAction").disabled = busy;
+	document.getElementById("input_user").readOnly = busy;
+	document.getElementById("input_password").readOnly = busy;
+	#if($offerStaySigned)
+	document.getElementById("staySigned").disabled = busy;
+	#end
+
+	if (busy) {
+		busyRevealTimer = setTimeout(function () {
+			mask.classList.add("loginBusyMaskVisible");
+			mask.setAttribute("aria-hidden", "false");
+		}, 150);
+	} else {
+		mask.classList.remove("loginBusyMaskVisible");
+		mask.setAttribute("aria-hidden", "true");
+	}
 }
 
 </script>
@@ -140,6 +164,12 @@ function setBusy(busy) {
 	
 	
 	<form id="signinForm" class="loginForm" accept-charset="UTF-8">
+			<div id="loginBusyMask" class="loginBusyMask" aria-hidden="true">
+				<div class="loginBusyIndicator" role="status" aria-live="polite">
+					<span class="loginBusySpinner" aria-hidden="true"></span>
+					<span>Signing in&hellip;</span>
+				</div>
+			</div>
 			<div>				
 				<input id="input_user" type="text" name="user" placeholder="Username" autofocus>
 			</div>

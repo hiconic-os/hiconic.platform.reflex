@@ -54,10 +54,63 @@ div.loginContent {
 }
 
 form.loginForm {
+	position: relative;
 	width: 210px;
 	margin: 20px auto 0 auto;
 	padding: 50px;
 	background-color: rgba(0,0,0,0.05);
+}
+form.loginForm.loginFormBusy {
+	cursor: wait;
+}
+form.loginForm .loginBusyMask {
+	position: absolute;
+	inset: 0;
+	z-index: 10;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin: 0;
+	background: rgba(255, 255, 255, 0.86);
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transition: opacity 180ms ease, visibility 0s linear 180ms;
+}
+form.loginForm.loginFormBusy .loginBusyMask {
+	pointer-events: auto;
+}
+form.loginForm .loginBusyMask.loginBusyMaskVisible {
+	opacity: 1;
+	visibility: visible;
+	transition: opacity 180ms ease;
+}
+form.loginForm .loginBusyIndicator {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+	margin: 0;
+	color: #666;
+}
+form.loginForm .loginBusySpinner {
+	width: 28px;
+	height: 28px;
+	border: 3px solid rgba(255, 165, 0, 0.25);
+	border-top-color: #ffa500;
+	border-radius: 50%;
+	animation: loginBusySpin 700ms linear infinite;
+}
+@keyframes loginBusySpin {
+	to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+	form.loginForm .loginBusyMask {
+		transition-duration: 1ms;
+	}
+	form.loginForm .loginBusySpinner {
+		animation-duration: 1400ms;
+	}
 }
 *.loginContent div {
 	margin-bottom: 15px;
