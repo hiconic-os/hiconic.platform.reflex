@@ -17,6 +17,7 @@ import java.util.List;
 
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.annotation.Abstract;
+import com.braintribe.model.generic.annotation.Initializer;
 import com.braintribe.model.generic.annotation.meta.Mandatory;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
@@ -32,6 +33,14 @@ public interface Access extends GenericEntity {
 	/** Optional human-readable name used by reflective user interfaces. */
 	String getDisplayName();
 	void setDisplayName(String displayName);
+
+	/**
+	 * Marks an access as platform-internal. System accesses are hidden from and inaccessible to
+	 * non-admin users while remaining available to administrators and the internal system user.
+	 */
+	@Initializer("false")
+	boolean getSystemAccess();
+	void setSystemAccess(boolean systemAccess);
 
 	List<String> getDataModelNames();
 	void setDataModelNames(List<String> dataModelNames);

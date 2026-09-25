@@ -139,10 +139,16 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 			serviceModel.configureModel(editor -> editor.onEntityType(ResourceSource.T).addMetaData(StoreWith.create(resourceStorageId)));
 		for (String serviceModelName : access.getServiceModelNames())
 			serviceModel.addModelByName(serviceModelName);
+
+		if (access.getSystemAccess())
+			protectSystemAccess(accessId);
 	}
 
 	@Override
 	public void protectSystemAccess(String accessId) {
+		if (!protectedSystemAccesses().add(accessId))
+			return;
+
 		AccessDataModelConfiguration dataModel = accessModelConfigurations().dataModelConfiguration(accessId);
 		dataModel.configureModel(editor -> {
 			if (!auth.roleAuthorization().securityActive())
@@ -161,6 +167,11 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		});
 		dataModel.bindDefaultAspect(MODEL_SECURITY_ASPECT_ID, () -> auth.roleAuthorization().securityActive())
 				.bind(this::modelSecurityAspect);
+	}
+
+	@Managed
+	private Set<String> protectedSystemAccesses() {
+		return new HashSet<>();
 	}
 
 	private Set<String> adminAndInternalRoles() {
