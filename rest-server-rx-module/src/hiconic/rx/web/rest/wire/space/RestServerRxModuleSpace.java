@@ -18,10 +18,13 @@ import java.util.Map;
 
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
+import com.braintribe.wire.api.context.WireContext;
 
 import hiconic.rx.access.module.api.AccessContract;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
+import hiconic.rx.security.web.api.AuthFilters;
+import hiconic.rx.security.web.api.WebSecurityContract;
 import hiconic.rx.web.rest.servlet.DdraEndpointsExceptionHandler;
 import hiconic.rx.web.rest.servlet.RestHandlerKey;
 import hiconic.rx.web.rest.servlet.RestV2Server;
@@ -39,6 +42,7 @@ import hiconic.rx.web.rest.servlet.handlers.RestV2PostPropertiesHandler;
 import hiconic.rx.web.rest.servlet.handlers.RestV2PutEntitiesHandler;
 import hiconic.rx.web.rest.servlet.handlers.RestV2PutPropertiesHandler;
 import hiconic.rx.web.server.api.WebServerContract;
+import jakarta.servlet.DispatcherType;
 
 /**
  * This module's javadoc is yet to be written.
@@ -47,6 +51,10 @@ import hiconic.rx.web.server.api.WebServerContract;
 public class RestServerRxModuleSpace implements RxModuleContract {
 
 	private static final String DEFAULT_MIME_TYPE = "application/json";
+	private static final String REST_V2_SERVLET_PATTERN = "/rest/v2/*";
+
+	@Import
+	private WireContext<?> wireContext;
 
 	@Import
 	private RxPlatformContract platform;
@@ -62,7 +70,10 @@ public class RestServerRxModuleSpace implements RxModuleContract {
 
 	@Override
 	public void onDeploy() {
-		webServer.addServlet("rest", "/rest/*", server());
+		webServer.addServlet("rest-v2", REST_V2_SERVLET_PATTERN, server());
+
+		if (wireContext.findContract(WebSecurityContract.class) != null)
+			webServer.addFilterMapping(AuthFilters.lenientAuthFilter, REST_V2_SERVLET_PATTERN, DispatcherType.REQUEST);
 	}
 
 	@Managed

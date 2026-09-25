@@ -20,6 +20,7 @@ import static com.braintribe.console.ConsoleOutputs.text;
 import static com.braintribe.utils.lcd.CollectionTools2.newConcurrentSet;
 
 import java.io.File;
+import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +33,8 @@ import com.braintribe.gm.logging.level.LogLevelApplicationResolver;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
+import com.braintribe.gm.model.reason.essential.IoError;
+import com.braintribe.logging.Logger;
 import com.braintribe.logging.level.servlet.LogLevelServlet;
 import com.braintribe.model.service.api.InstanceId;
 import com.braintribe.provider.Box;
@@ -94,6 +97,7 @@ import jakarta.websocket.server.ServerEndpointConfig;
  */
 @Managed
 public class WebServerRxModuleSpace implements RxModuleContract, WebServerContract {
+	private static final Logger logger = Logger.getLogger(WebServerRxModuleSpace.class);
 
 	@Import
 	private RxPlatformContract platform;
@@ -120,7 +124,7 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 		platform.application().logManager().setLogLevel("io.undertow.request.error-response", System.Logger.Level.INFO);
 		registerPushTransports();
 		registerLogLevelServlet();
-		undertowServer().start();
+		startWebServer();
 
 		WebServerConfiguration config = configuration();
 		println( //
@@ -141,6 +145,40 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 					) //
 			);
 		}
+	}
+
+	private void startWebServer() {
+		try {
+			undertowServer().start();
+		} catch (RuntimeException e) {
+			BindException bindException = findCause(e, BindException.class);
+			if (bindException == null)
+				throw e;
+
+			String endpoints = configuredListenerEndpoints();
+			String message = "Could not start web server because a configured listener address is already in use: " + endpoints;
+			logger.error(message, e);
+			UnsatisfiedMaybeTunneling.tunnel(IoError.create(message));
+		}
+	}
+
+	private String configuredListenerEndpoints() {
+		WebServerConfiguration config = configuration();
+		String endpoints = "http://0.0.0.0:" + config.getPort();
+
+		SslConfig sslConfig = sslConfigBox().value;
+		if (sslConfig != null)
+			endpoints += ", https://0.0.0.0:" + sslConfig.port();
+
+		return endpoints;
+	}
+
+	private static <T extends Throwable> T findCause(Throwable throwable, Class<T> causeType) {
+		for (Throwable cause = throwable; cause != null; cause = cause.getCause())
+			if (causeType.isInstance(cause))
+				return causeType.cast(cause);
+
+		return null;
 	}
 
 	private void registerPushTransports() {

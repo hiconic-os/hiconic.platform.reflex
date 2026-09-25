@@ -42,7 +42,7 @@ public class RestTest extends AbstractRxTest {
 		generateData();
 		
 		HttpClient httpClient = HttpClient.newBuilder().build();
-		URI uri = URI.create("http://localhost:" + getPort() + "/rest/entities/main-access/Person");
+		URI uri = URI.create("http://localhost:" + getPort() + "/rest/v2/entities/main-access/Person");
 		HttpRequest request = HttpRequest.newBuilder(uri).GET().build();
 		HttpResponse<String> response = httpClient.send(request, BodyHandlers.ofString());
 		

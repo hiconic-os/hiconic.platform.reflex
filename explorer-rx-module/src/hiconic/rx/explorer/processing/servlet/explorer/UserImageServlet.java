@@ -9,10 +9,7 @@ import java.util.Date;
 
 import com.braintribe.cfg.Required;
 import com.braintribe.common.lcd.Numbers;
-import com.braintribe.model.processing.query.fluent.EntityQueryBuilder;
 import com.braintribe.model.processing.service.common.context.UserSessionAspect;
-import com.braintribe.model.processing.session.api.persistence.PersistenceGmSession;
-import com.braintribe.model.processing.session.api.persistence.PersistenceGmSessionFactory;
 import com.braintribe.model.resource.Icon;
 import com.braintribe.model.resource.Resource;
 import com.braintribe.model.user.User;
@@ -20,6 +17,7 @@ import com.braintribe.model.usersession.UserSession;
 import com.braintribe.utils.collection.impl.AttributeContexts;
 import com.braintribe.utils.lcd.StringTools;
 
+import hiconic.rx.security.api.UserService;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -30,12 +28,12 @@ public class UserImageServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final long CACHE_SECONDS = Numbers.SECONDS_PER_HOUR;
 
-	private PersistenceGmSessionFactory sessionFactory;
+	private UserService userService;
 	private String defaultUserImageUrl;
 
 	@Required
-	public void setSessionFactory(PersistenceGmSessionFactory sessionFactory) {
-		this.sessionFactory = sessionFactory;
+	public void setUserService(UserService userService) {
+		this.userService = userService;
 	}
 
 	@Required
@@ -71,9 +69,7 @@ public class UserImageServlet extends HttpServlet {
 				: userSession == null || userSession.getUser() == null ? null : userSession.getUser().getName();
 
 		if (!StringTools.isBlank(userName)) {
-			PersistenceGmSession authSession = sessionFactory.newSession("auth");
-			User persistentUser = authSession.query().entities(EntityQueryBuilder.from(User.T) //
-					.where().property(User.name).eq(userName).done()).first();
+			User persistentUser = userService.findUser(User.name, userName);
 			if (persistentUser != null)
 				return persistentUser;
 		}

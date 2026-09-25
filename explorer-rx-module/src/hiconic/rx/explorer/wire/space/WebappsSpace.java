@@ -38,8 +38,10 @@ import hiconic.rx.explorer.processing.servlet.explorer.ExplorerPublicResourceSer
 import hiconic.rx.explorer.processing.servlet.explorer.UserImageServlet;
 import hiconic.rx.explorer.processing.servlet.home.HomeRxServlet;
 import hiconic.rx.explorer.processing.servlet.home.OpenApiLandingPageLinkConfigurer;
+import hiconic.rx.explorer.processing.servlet.not_found.NotFoundRxServlet;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.module.api.wire.RxServiceProcessingContract;
+import hiconic.rx.security.api.SecurityContract;
 import hiconic.rx.security.web.api.AuthFilters;
 import hiconic.rx.security.web.api.WebSecurityContract;
 import hiconic.rx.web.server.api.WebServerContract;
@@ -51,6 +53,7 @@ import jakarta.servlet.DispatcherType;
 @Managed
 public class WebappsSpace implements WireSpace {
 	private static final String EXPLORER_WEB_APP_PATH = "tribefire-explorer";
+	private static final String NOT_FOUND_PATH = "/_rx/not-found";
 
 	private static final Map<String, String> OPTIONAL_CLIENT_PROPERTIES = Map.of(
 			"websocketUrl", "TRIBEFIRE_WEBSOCKET_URL",
@@ -66,6 +69,7 @@ public class WebappsSpace implements WireSpace {
 	@Import private RxServiceProcessingContract serviceProcessing;
 
 	@Import private AccessContract access;
+	@Import private SecurityContract security;
 	@Import private WebServerContract webServer;
 	@Import private WebSecurityContract webSecurity;
 	// @formatter:on
@@ -74,6 +78,7 @@ public class WebappsSpace implements WireSpace {
 		webServer.addWebAppRuntimeConfiguration(EXPLORER_WEB_APP_PATH, this::clientRuntimeProperties);
 		webServer.addPackagedWebResources("explorer-webpages", "webpages", "explorer-webpages");
 
+		webServer.addServlet("not-found-servlet", NOT_FOUND_PATH, notFoundServlet());
 		webServer.addServlet("alive-servlet", "/", aliveServlet());
 
 		webServer.addServlet("home-servlet", "home", homeServlet());
@@ -107,6 +112,14 @@ public class WebappsSpace implements WireSpace {
 		AliveServlet bean = new AliveServlet();
 		// possibly make it configurable, used to be "TRIBEFIRE_LANDING_PAGE_URL"
 		bean.setHomeRelativePath(webServer.resolveDefaultEndpointPath("home"));
+		bean.setNotFoundRelativePath(NOT_FOUND_PATH);
+		return bean;
+	}
+
+	@Managed
+	private NotFoundRxServlet notFoundServlet() {
+		NotFoundRxServlet bean = new NotFoundRxServlet();
+		bean.setHomeRelativePath(webServer.resolveDefaultEndpointPath("home"));
 		return bean;
 	}
 
@@ -127,7 +140,7 @@ public class WebappsSpace implements WireSpace {
 	@Managed
 	private UserImageServlet userImageServlet() {
 		UserImageServlet bean = new UserImageServlet();
-		bean.setSessionFactory(access.contextSessionFactory());
+		bean.setUserService(security.userService());
 		bean.setDefaultUserImageUrl("/" + webServer.resolveDefaultEndpointPath("webpages/logo-user-default.png"));
 		return bean;
 	}

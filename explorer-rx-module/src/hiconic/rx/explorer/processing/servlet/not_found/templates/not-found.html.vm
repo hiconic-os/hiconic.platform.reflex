@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page not found</title>
+<style>
+html, body { height: 100%; }
+body { margin: 0; background: #f5f5f5; color: #333; font-family: Arial, sans-serif; }
+main { min-height: 100%; display: grid; place-items: center; padding: 24px; box-sizing: border-box; }
+section { width: min(520px, 100%); padding: 40px; box-sizing: border-box; background: #fff; border-top: 4px solid #ef6c00; box-shadow: 0 2px 12px rgba(0,0,0,.12); text-align: center; }
+h1 { margin: 0 0 16px; font-size: 28px; font-weight: 500; }
+p { margin: 0 0 28px; line-height: 1.5; }
+a { display: inline-block; border-radius: 2px; padding: 10px 20px; color: #fff; background: #ef6c00; text-decoration: none; }
+a:hover { background: #d95f00; }
+</style>
+</head>
+<body>
+<main>
+<section>
+<h1>Page not found</h1>
+<p>The requested page does not exist.</p>
+<a href="$homeRelativePath">Go to home</a>
+</section>
+</main>
+</body>
+</html>

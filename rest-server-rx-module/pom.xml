@@ -35,6 +35,11 @@
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
         <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>web-security-module-api</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
+        <dependency>
             <groupId>com.braintribe.gm</groupId>
             <artifactId>query-model-processing</artifactId>
             <version>${V.com.braintribe.gm}</version>
