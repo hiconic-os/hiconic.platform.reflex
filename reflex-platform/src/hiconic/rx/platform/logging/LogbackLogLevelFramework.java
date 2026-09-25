@@ -23,6 +23,7 @@ public class LogbackLogLevelFramework implements LogLevelFramework {
 	public static final String LEVEL_WARN = "WARN";
 	public static final String LEVEL_ERROR = "ERROR";
 	public static final String LEVEL_FATAL = "FATAL";
+	public static final String LEVEL_OFF = "OFF";
 
 	@Override
 	public Map<String, String> getConfiguredLogLevels() {
@@ -99,6 +100,8 @@ public class LogbackLogLevelFramework implements LogLevelFramework {
 			case LEVEL_ERROR:
 			case LEVEL_FATAL:
 				return Level.ERROR;
+			case LEVEL_OFF:
+				return Level.OFF;
 			default:
 				throw new IllegalArgumentException("Unsupported log level: " + levelName);
 		}
@@ -107,6 +110,9 @@ public class LogbackLogLevelFramework implements LogLevelFramework {
 	public static String fromLogbackLevel(Level logbackLevel) {
 		if (logbackLevel == null) {
 			return null;
+		}
+		if (logbackLevel == Level.OFF) {
+			return LEVEL_OFF;
 		}
 
 		if (logbackLevel.isGreaterOrEqual(Level.ERROR)) {
