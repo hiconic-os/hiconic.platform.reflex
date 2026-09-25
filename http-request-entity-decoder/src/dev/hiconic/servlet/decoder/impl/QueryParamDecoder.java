@@ -29,6 +29,9 @@ import java.util.stream.Stream;
 
 import com.braintribe.common.lcd.Pair;
 import com.braintribe.exception.HttpException;
+import com.braintribe.gm.model.reason.Reasons;
+import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
+import com.braintribe.gm.model.reason.essential.InvalidArgument;
 import com.braintribe.model.generic.GMF;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.reflection.EnhancableCustomType;
@@ -88,10 +91,30 @@ public class QueryParamDecoder implements DecoderTargetRegistry {
 		try {
 			_decode(key, value);
 		} catch (HttpException e) {
-			throw new HttpException(HttpServletResponse.SC_BAD_REQUEST, "Error while parsing query parameter '" + key + "=" + value + "'.", e);
+			throw invalidParameter(key, e);
 		} catch (Exception e) {
-			throw new IllegalStateException("Error while parsing query parameter '" + key + "=" + value + "'.", e);
+			throw invalidParameter(key, e);
 		}
+	}
+
+	private static UnsatisfiedMaybeTunneling invalidParameter(String key, Exception cause) {
+		String parserMessage = parserMessage(cause);
+		String message = "Invalid value for request parameter '" + key + "'";
+		if (parserMessage != null && !parserMessage.isBlank())
+			message += ": " + parserMessage;
+
+		return new UnsatisfiedMaybeTunneling(Reasons.build(InvalidArgument.T) //
+				.text(message) //
+				.toMaybe());
+	}
+
+	private static String parserMessage(Throwable throwable) {
+		String result = null;
+		for (Throwable current = throwable; current != null && current != current.getCause(); current = current.getCause()) {
+			if (current.getMessage() != null && !current.getMessage().isBlank())
+				result = current.getMessage();
+		}
+		return result;
 	}
 	
 	/**

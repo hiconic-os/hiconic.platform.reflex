@@ -163,7 +163,7 @@ public abstract class AbstractDdraRestServlet<Context extends DdraEndpointContex
 	 * TODO: This method seems to exist for the sole purpose of being able to stop the time the "filling" needs. See if we
 	 * can solve this another way...
 	 */
-	protected abstract boolean fillContext(Context context);
+	protected abstract boolean fillContext(Context context) throws IOException;
 
 	protected void handle(Context context) throws IOException {
 		switch (context.getRequest().getMethod()) {
