@@ -180,7 +180,9 @@ public class AccessBasedUserService implements UserService {
 
 	private Reason reconcileUsersInternal(List<User> users, String provisioningGroup, boolean reconcileCredentials, boolean authoritative) {
 		PersistenceGmSession session = newSession();
-		Group markerGroup = provisioningGroup == null || provisioningGroup.isBlank() ? null : ensureGroup(provisioningGroup, session);
+		Map<String, Role> rolesByName = indexRoles(session);
+		Map<String, Group> groupsByName = indexGroups(session);
+		Group markerGroup = provisioningGroup == null || provisioningGroup.isBlank() ? null : ensureGroup(provisioningGroup, session, groupsByName);
 
 		for (User user : users) {
 			String username = user.getName();
@@ -199,14 +201,14 @@ public class AccessBasedUserService implements UserService {
 			if ((created || reconcileCredentials) && user.getPassword() != null)
 				actualUser.setPassword(passwordHashing.hash(user.getPassword()));
 
-			Set<Role> desiredRoles = ensureRoles(user.getRoles(), session);
+			Set<Role> desiredRoles = ensureRoles(user.getRoles(), session, rolesByName);
 			Set<String> desiredRoleNames = toRoleNames(desiredRoles);
 
 			// Provisioned roles are authoritative. Runtime role changes must be reflected back into the source.
 			actualUser.getRoles().removeIf(r -> !desiredRoleNames.contains(r.getName()));
 			actualUser.getRoles().addAll(desiredRoles);
 
-			Set<Group> desiredGroups = ensureGroups(user.getGroups(), session);
+			Set<Group> desiredGroups = ensureGroups(user.getGroups(), session, groupsByName);
 			if (markerGroup != null)
 				desiredGroups.add(markerGroup);
 			reconcileGroups(actualUser, desiredGroups, authoritative);
@@ -221,45 +223,53 @@ public class AccessBasedUserService implements UserService {
 		return roles.stream().map(Role::getName).collect(Collectors.toSet());
 	}
 
-	private Set<Role> ensureRoles(Set<Role> roles, PersistenceGmSession session) {
+	private Map<String, Role> indexRoles(PersistenceGmSession session) {
+		List<Role> roles = session.query().entities(EntityQueryBuilder.from(Role.T).done()).list();
+		return roles.stream()
+				.filter(role -> role.getName() != null)
+				.collect(Collectors.toMap(Role::getName, Function.identity(), this::preferExisting));
+	}
+
+	private Map<String, Group> indexGroups(PersistenceGmSession session) {
+		List<Group> groups = session.query().entities(EntityQueryBuilder.from(Group.T).done()).list();
+		return groups.stream()
+				.filter(group -> group.getName() != null)
+				.collect(Collectors.toMap(Group::getName, Function.identity(), this::preferExisting));
+	}
+
+	private Set<Role> ensureRoles(Set<Role> roles, PersistenceGmSession session, Map<String, Role> rolesByName) {
 		if (roles == null || roles.isEmpty())
 			return new HashSet<>();
 
-		Set<String> roleNames = roles.stream().map(Role::getName).filter(n -> n != null).collect(Collectors.toSet());
-
-		List<Role> existingRoles = session.query().entities(EntityQueryBuilder.from(Role.T).where().property(Role.name).in(roleNames).done()).list();
-		Map<String, Role> nameToRole = existingRoles.stream()
-				.collect(Collectors.toMap(Role::getName, Function.identity(), this::preferExisting));
-
-		Set<Role> result = new HashSet<>(nameToRole.values());
+		Set<Role> result = new HashSet<>();
 		for (Role role : roles) {
-			if (!nameToRole.containsKey(role.getName())) {
+			Role actualRole = rolesByName.get(role.getName());
+			if (actualRole == null) {
 				Role newRole = session.create(Role.T);
 				copySimplePropsAndLocalizedStrings(role, newRole, true);
-
-				result.add(newRole);
+				actualRole = newRole;
+				rolesByName.put(role.getName(), actualRole);
 			}
+			result.add(actualRole);
 		}
 
 		return result;
 	}
 
-	private Set<Group> ensureGroups(Set<Group> groups, PersistenceGmSession session) {
+	private Set<Group> ensureGroups(Set<Group> groups, PersistenceGmSession session, Map<String, Group> groupsByName) {
 		if (groups == null || groups.isEmpty())
 			return new HashSet<>();
 
-		Set<String> groupNames = groups.stream().map(Group::getName).filter(n -> n != null).collect(Collectors.toSet());
-		List<Group> existingGroups = session.query().entities(EntityQueryBuilder.from(Group.T).where().property(Group.name).in(groupNames).done()).list();
-		Map<String, Group> nameToGroup = existingGroups.stream()
-				.collect(Collectors.toMap(Group::getName, Function.identity(), this::preferExisting));
-		Set<Group> result = new HashSet<>(nameToGroup.values());
-
+		Set<Group> result = new HashSet<>();
 		for (Group group : groups) {
-			if (!nameToGroup.containsKey(group.getName())) {
+			Group actualGroup = groupsByName.get(group.getName());
+			if (actualGroup == null) {
 				Group newGroup = session.create(Group.T);
 				copySimplePropsAndLocalizedStrings(group, newGroup, true);
-				result.add(newGroup);
+				actualGroup = newGroup;
+				groupsByName.put(group.getName(), actualGroup);
 			}
+			result.add(actualGroup);
 		}
 
 		return result;
@@ -270,11 +280,12 @@ public class AccessBasedUserService implements UserService {
 		return first;
 	}
 
-	private Group ensureGroup(String groupName, PersistenceGmSession session) {
-		Group group = session.query().entities(EntityQueryBuilder.from(Group.T).where().property(Group.name).eq(groupName).done()).first();
+	private Group ensureGroup(String groupName, PersistenceGmSession session, Map<String, Group> groupsByName) {
+		Group group = groupsByName.get(groupName);
 		if (group == null) {
 			group = session.create(Group.T);
 			group.setName(groupName);
+			groupsByName.put(groupName, group);
 		}
 		return group;
 	}
