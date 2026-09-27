@@ -222,20 +222,50 @@ public class WsServer extends Endpoint
 	public void onError(Session session, Throwable thr) {
 		WsRegistrationEntry entry = sessionRegistry.findEntry(session);
 		if (entry == null) {
-			logger.warn("An error was reported for a notregistered websocket session. Ignored.");
+			String sessionDescription = describeWebsocketSession(session, null);
+			if (isExpectedDisconnect(thr))
+				logger.debug(() -> "WebSocket error could not be associated with an active registration (" + sessionDescription
+						+ "). This is expected when the session was already closed or failed before registration.", thr);
+			else
+				logger.warn(() -> "Unexpected WebSocket error reported for an unregistered session (" + sessionDescription + ").", thr);
+
+			if (session != null && session.isOpen())
+				close(session, null);
 			return;
 		}
 		WsClientInfo info = entry.getClientInfo();
-		// EOFException occurs when client harshly closes the connection
-		if (thr instanceof EOFException || thr instanceof IOException) {
-			logger.trace(() -> "A 'java.io.EOFException' or 'java.io.IOException' occurred on websocket session for client: " + info.getClientId()
-					+ " with session: " + info.getSessionId() + ". Hint: probbably caused by harsh close of connection by websocket client.");
-			logger.trace(() -> "Exception details:", thr);
-		} else {
-			logger.warn(() -> "An error occurred on websocket session for client: " + info.getClientId() + " with session: " + info.getSessionId(),
-					thr);
-		}
+		String sessionDescription = describeWebsocketSession(session, info.getClientId());
+		if (isExpectedDisconnect(thr))
+			logger.trace(() -> "WebSocket connection was interrupted by the client (" + sessionDescription + ").", thr);
+		else
+			logger.warn(() -> "Unexpected WebSocket error (" + sessionDescription + ").", thr);
 		onClose(session, null);
+	}
+
+	private boolean isExpectedDisconnect(Throwable throwable) {
+		return throwable instanceof EOFException || throwable instanceof IOException;
+	}
+
+	private String describeWebsocketSession(Session session, String registeredClientId) {
+		if (session == null)
+			return "websocketSessionId=<unavailable>, clientId=<unavailable>, open=false";
+
+		String clientId = registeredClientId;
+		if (clientId == null) {
+			List<String> clientIds = session.getRequestParameterMap().get("clientId");
+			if (clientIds != null && !clientIds.isEmpty())
+				clientId = clientIds.get(0);
+		}
+
+		return "websocketSessionId=" + sanitizeLogValue(session.getId()) + ", clientId=" + sanitizeLogValue(clientId) + ", open=" + session.isOpen();
+	}
+
+	private String sanitizeLogValue(String value) {
+		if (value == null)
+			return "<unavailable>";
+
+		String sanitized = value.replace('\r', '_').replace('\n', '_');
+		return sanitized.length() <= 128 ? sanitized : sanitized.substring(0, 128) + "...";
 	}
 
 	/**
