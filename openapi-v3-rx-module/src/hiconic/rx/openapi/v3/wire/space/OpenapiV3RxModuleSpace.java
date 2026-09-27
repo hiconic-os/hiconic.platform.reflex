@@ -21,6 +21,8 @@ import hiconic.rx.module.api.wire.RxConfigurationContract;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.module.api.wire.RxServiceProcessingContract;
+import hiconic.rx.openapi.v3.processing.model.OpenapiModelProjectionRegistry;
+import hiconic.rx.openapi.v3.processing.model.OpenapiServiceModelEnrichment;
 import hiconic.rx.openapi.v3.processing.processor.export.AbstractOpenapiProcessor;
 import hiconic.rx.openapi.v3.processing.processor.export.ApiV1OpenapiProcessor;
 import hiconic.rx.openapi.v3.processing.processor.export.EntityOpenapiProcessor;
@@ -80,6 +82,14 @@ public class OpenapiV3RxModuleSpace implements RxModuleContract {
 			for (Property property : ApiV1DdraEndpoint.T.getDeclaredProperties())
 				editor.onEntityType(ApiV1DdraEndpoint.T).addPropertyMetaData(property, hiddenInSimpleOpenapi);
 		});
+
+		configureDefaultServiceModelEnrichment(configurations);
+	}
+
+	private void configureDefaultServiceModelEnrichment(ModelConfigurations configurations) {
+		ModelConfiguration enrichment = configurations.bySymbol(AbstractOpenapiProcessor.defaultOpenapiServiceModelEnrichmentRef);
+		enrichment.addModel(_ServiceApiModel_.reflection);
+		enrichment.configureModel(OpenapiServiceModelEnrichment::configure);
 	}
 
 	@Override
@@ -116,6 +126,7 @@ public class OpenapiV3RxModuleSpace implements RxModuleContract {
 		bean.setWebApiMappingOracle(webApiServer.mappingOracle());
 		bean.setWebApiServletPath(webApiServer.servletPath());
 		bean.setConfiguredModels(configuration.configuredModels());
+		bean.setModelProjections(modelProjections());
 		bean.setServiceDomains(serviceProcessing.serviceDomains());
 
 		return bean;
@@ -126,6 +137,7 @@ public class OpenapiV3RxModuleSpace implements RxModuleContract {
 		EntityOpenapiProcessor bean = new EntityOpenapiProcessor();
 		bean.setPublicUrl(webServer.publicUrl());
 		bean.setConfiguredModels(configuration.configuredModels());
+		bean.setModelProjections(modelProjections());
 		bean.setAccessDomains(access.accessDomains());
 
 		return bean;
@@ -136,8 +148,18 @@ public class OpenapiV3RxModuleSpace implements RxModuleContract {
 		PropertyOpenapiProcessor bean = new PropertyOpenapiProcessor();
 		bean.setPublicUrl(webServer.publicUrl());
 		bean.setConfiguredModels(configuration.configuredModels());
+		bean.setModelProjections(modelProjections());
 		bean.setAccessDomains(access.accessDomains());
 
+		return bean;
+	}
+
+	@Managed
+	private OpenapiModelProjectionRegistry modelProjections() {
+		OpenapiModelProjectionRegistry bean = new OpenapiModelProjectionRegistry();
+		bean.setDefaultEnrichment(configuration.configuredModels()
+				.byReference(AbstractOpenapiProcessor.defaultOpenapiServiceModelEnrichmentRef));
+		bean.setSystemAttributeContextSupplier(platform.auth().systemAttributeContextSupplier());
 		return bean;
 	}
 

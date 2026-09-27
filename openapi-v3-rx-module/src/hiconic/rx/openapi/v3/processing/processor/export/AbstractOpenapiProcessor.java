@@ -102,6 +102,7 @@ import hiconic.platform.reflex._OpenapiV3RxModule_;
 import hiconic.rx.module.api.service.ConfiguredModel;
 import hiconic.rx.module.api.service.ConfiguredModels;
 import hiconic.rx.module.api.service.ModelSymbol;
+import hiconic.rx.openapi.v3.processing.model.OpenapiModelProjectionRegistry;
 import hiconic.rx.openapi.v3.processing.processor.export.attributes.CurrentSessionIdAttribute;
 import hiconic.rx.openapi.v3.processing.processor.export.attributes.ReflectSubtypesAttribute;
 import hiconic.rx.openapi.v3.processing.processor.export.attributes.ReflectSupertypesAttribute;
@@ -115,6 +116,8 @@ import hiconic.rx.webapi.endpoints.v2.RestV2Endpoint;
 public abstract class AbstractOpenapiProcessor<R extends OpenapiRequest> implements ServiceProcessor<R, OpenApi> {
 
 	public static ModelSymbol basicOpenapiProcessingModelRef = ModelSymbol.of(_OpenapiV3RxModule_.groupId + ":basic-openapi-processing-model");
+	public static ModelSymbol defaultOpenapiServiceModelEnrichmentRef =
+			ModelSymbol.of(_OpenapiV3RxModule_.groupId + ":default-openapi-service-model-enrichment");
 	
 	protected static final OpenapiMimeType[] ALL_MIME_TYPES = new OpenapiMimeType[] { APPLICATION_JSON, ALL };
 
@@ -129,6 +132,7 @@ public abstract class AbstractOpenapiProcessor<R extends OpenapiRequest> impleme
 	protected OpenapiContext standardComponentsContext;
 
 	protected ConfiguredModels configuredModels;
+	protected OpenapiModelProjectionRegistry modelProjections;
 	private String publicUrl;
 
 	private OpenapiResponse standardResponse400;
@@ -138,6 +142,7 @@ public abstract class AbstractOpenapiProcessor<R extends OpenapiRequest> impleme
 
 	// @formatter:off
 	@Required public void setConfiguredModels(ConfiguredModels configuredModels) { this.configuredModels = configuredModels; }
+	@Required public void setModelProjections(OpenapiModelProjectionRegistry modelProjections) { this.modelProjections = modelProjections; }
 	@Required public void setPublicUrl(String publicUrl) { this.publicUrl = publicUrl; }
 	// @formatter:on
 	

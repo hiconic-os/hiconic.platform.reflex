@@ -80,6 +80,16 @@
             <version>${V.com.braintribe.gm}</version>
         </dependency>
         <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>model-oracle</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>cascading-meta-data</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
+        <dependency>
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>web-api-server-module-api</artifactId>
             <version>${V.hiconic.platform.reflex}</version>

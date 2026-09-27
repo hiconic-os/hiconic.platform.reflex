@@ -449,7 +449,7 @@ public class ApiV1OpenapiProcessor extends AbstractOpenapiProcessor<OpenapiServi
 
 	@Override
 	protected ConfiguredModel getConfiguredModel(ServiceRequestContext requestContext, OpenapiServicesRequest request) {
-		return requireServiceDomain(request.getServiceDomain()).configuredModel();
+		return modelProjections.acquire(requireServiceDomain(request.getServiceDomain()).configuredModel());
 	}
 
 	private ServiceDomain requireServiceDomain(String domainId) {
