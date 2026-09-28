@@ -20,7 +20,6 @@ import static com.braintribe.utils.lcd.CollectionTools2.newSet;
 import static java.util.Collections.emptySet;
 
 import java.util.ArrayDeque;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
@@ -47,6 +46,7 @@ import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.utils.lcd.Lazy;
 import com.braintribe.utils.lcd.StringTools;
 
+import hiconic.rx.model.service.processing.md.ProcessWith;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.service.ServiceDomains;
 import hiconic.rx.web.ddra.endpoints.api.WebApiMappingBuilder;
@@ -54,7 +54,6 @@ import hiconic.rx.web.ddra.endpoints.api.WebApiMappingRegistry;
 import hiconic.rx.web.ddra.endpoints.api.v1.SingleDdraMapping;
 import hiconic.rx.web.ddra.endpoints.api.v1.SingleDdraMappingImpl;
 import hiconic.rx.web.ddra.endpoints.api.v1.WebApiMappingOracle;
-import hiconic.rx.model.service.processing.md.ProcessWith;
 import hiconic.rx.webapi.endpoints.OutputPrettiness;
 import hiconic.rx.webapi.endpoints.TypeExplicitness;
 import hiconic.rx.webapi.model.meta.BooleanOverride;
@@ -62,8 +61,8 @@ import hiconic.rx.webapi.model.meta.HideSerializedRequest;
 import hiconic.rx.webapi.model.meta.HttpRequestMethod;
 import hiconic.rx.webapi.model.meta.RequestDecodingLenience;
 import hiconic.rx.webapi.model.meta.RequestEvaluateWithSession;
-import hiconic.rx.webapi.model.meta.RequestMethod;
 import hiconic.rx.webapi.model.meta.RequestMapping;
+import hiconic.rx.webapi.model.meta.RequestMethod;
 import hiconic.rx.webapi.model.meta.RequestPath;
 import hiconic.rx.webapi.model.meta.RequestPathPrefix;
 import hiconic.rx.webapi.model.meta.RequestSection;
@@ -254,13 +253,17 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 			for (EntityType<?> _requestType : requestTypes) {
 				requestType = _requestType;
 				requestMdResolver = cmdResolver.getMetaData().entityType(requestType);
-				for (MappingMds resolvedMapping : resolveMappingMds()) {
+
+				List<MappingMds> mappingMdsList = resolveMappingMds();
+				for (MappingMds resolvedMapping : mappingMdsList) {
 					mappingMds = resolvedMapping;
 					if (!mappingMds.hasMappings())
 						continue;
 
 					pathInfo = pathInfo();
-					for (HttpRequestMethod method : mappingMds.methods()) {
+
+					Set<HttpRequestMethod> methods = mappingMds.methods();
+					for (HttpRequestMethod method : methods) {
 						PathAndMethod key = getKey(pathInfo, method);
 						SingleDdraMappingImpl singleMapping = createMappingFromMd(method);
 						SingleDdraMapping previous = result.putIfAbsent(key, singleMapping);
@@ -544,13 +547,14 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 			return result;
 		}
 
-		public List<HttpRequestMethod> methods() {
+		// Set, because methods (i.e. the resolved List<RequestMethod>), could contain duplicates (from super-types).
+		public Set<HttpRequestMethod> methods() {
 			if (completeMapping != null)
-				return List.of(completeMapping.getMethod());
+				return Set.of(completeMapping.getMethod());
 			if (!isEmpty(methods))
-				return methods.stream().map(RequestMethod::getMethod).collect(Collectors.toList());
+				return methods.stream().map(RequestMethod::getMethod).collect(Collectors.toSet());
 			else
-				return Arrays.asList(HttpRequestMethod.GET, HttpRequestMethod.POST);
+				return Set.of(HttpRequestMethod.GET, HttpRequestMethod.POST);
 		}
 
 		public boolean hasMappings() {
