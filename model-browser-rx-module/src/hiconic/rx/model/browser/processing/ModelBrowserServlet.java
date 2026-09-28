@@ -33,6 +33,8 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.commons.text.StringEscapeUtils;
+
 import com.braintribe.common.lcd.Pair;
 import com.braintribe.model.bvd.time.Now;
 import com.braintribe.model.generic.value.EnumReference;
@@ -901,11 +903,7 @@ public class ModelBrowserServlet extends HttpServlet {
 	}
 
 	private static String html(String value) {
-		return value.replace("&", "&amp;") //
-				.replace("<", "&lt;") //
-				.replace(">", "&gt;") //
-				.replace("\"", "&quot;") //
-				.replace("'", "&#39;");
+		return StringEscapeUtils.escapeHtml4(value);
 	}
 
 }

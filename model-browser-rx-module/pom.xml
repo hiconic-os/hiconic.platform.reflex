@@ -43,5 +43,10 @@
 			<artifactId>platform-api</artifactId>
 			<version>${V.com.braintribe.common}</version>
 		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-text</artifactId>
+			<version>${V.commons-text}</version>
+		</dependency>
 	</dependencies>
 </project>
