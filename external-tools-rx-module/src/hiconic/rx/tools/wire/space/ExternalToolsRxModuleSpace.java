@@ -53,8 +53,10 @@ public class ExternalToolsRxModuleSpace implements RxModuleContract, ExternalToo
 		Path root = Paths.get(requireText(configuration.getFileSystemRoot(), "fileSystemRoot"));
 
 		StandardToolExecutionEnvironment environment = new StandardToolExecutionEnvironment(commandExecution(), root, backendName);
-		for (ExternalToolMapping mapping : safe(configuration.getTools()))
-			register(environment, root, backend, mapping);
+		if (configuration.getEnabled()) {
+			for (ExternalToolMapping mapping : safe(configuration.getTools()))
+				register(environment, root, backend, mapping);
+		}
 		return environment;
 	}
 

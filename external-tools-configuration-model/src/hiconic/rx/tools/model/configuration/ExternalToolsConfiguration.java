@@ -2,6 +2,7 @@ package hiconic.rx.tools.model.configuration;
 
 import java.util.List;
 
+import com.braintribe.model.generic.annotation.Initializer;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
@@ -9,6 +10,11 @@ import com.braintribe.model.generic.reflection.EntityTypes;
 public interface ExternalToolsConfiguration extends GenericEntity {
 
 	EntityType<ExternalToolsConfiguration> T = EntityTypes.T(ExternalToolsConfiguration.class);
+
+	/** Controls whether configured tool mappings are registered. This can be disabled for runtimes which intentionally provide no external tools. */
+	@Initializer("true")
+	boolean getEnabled();
+	void setEnabled(boolean enabled);
 
 	String getFileSystemRoot();
 	void setFileSystemRoot(String fileSystemRoot);
