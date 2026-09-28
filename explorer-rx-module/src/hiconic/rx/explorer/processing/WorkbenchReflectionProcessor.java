@@ -1,11 +1,9 @@
 package hiconic.rx.explorer.processing;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import com.braintribe.cfg.Required;
@@ -37,9 +35,8 @@ import com.braintribe.utils.collection.impl.AttributeContexts;
 
 import hiconic.rx.access.module.api.AccessDomain;
 import hiconic.rx.access.module.api.AccessDomains;
-import hiconic.rx.explorer.model.configuration.ExplorerConfiguration;
-import hiconic.rx.explorer.model.configuration.ModelEnvironmentConfiguration;
 import hiconic.rx.module.api.service.ConfiguredModel;
+import hiconic.rx.workbench.api.WorkbenchContract;
 
 /** Explorer-specific composition of data, service and workbench model environments. */
 public class WorkbenchReflectionProcessor implements ReasonedServiceProcessor<GetModelAndWorkbenchEnvironment, ModelEnvironment> {
@@ -50,7 +47,7 @@ public class WorkbenchReflectionProcessor implements ReasonedServiceProcessor<Ge
 
 	private AccessDomains accesses;
 	private PersistenceGmSessionFactory sessionFactory;
-	private final Map<String, String> workbenchAccessIds = new HashMap<>();
+	private WorkbenchContract workbenches;
 
 	@Required
 	public void setAccesses(AccessDomains accesses) {
@@ -63,12 +60,8 @@ public class WorkbenchReflectionProcessor implements ReasonedServiceProcessor<Ge
 	}
 
 	@Required
-	public void setConfiguration(ExplorerConfiguration configuration) {
-		for (ModelEnvironmentConfiguration environment : configuration.getModelEnvironments()) {
-			String previous = workbenchAccessIds.put(environment.getDataAccessId(), environment.getWorkbenchAccessId());
-			if (previous != null)
-				throw new IllegalStateException("Multiple Explorer model environments configured for access: " + environment.getDataAccessId());
-		}
+	public void setWorkbenches(WorkbenchContract workbenches) {
+		this.workbenches = workbenches;
 	}
 
 	@Override
@@ -92,7 +85,7 @@ public class WorkbenchReflectionProcessor implements ReasonedServiceProcessor<Ge
 		result.setServiceModel(serviceModel.modelOracle().getGmMetaModel());
 		result.setServiceModelName(serviceModel.name());
 
-		String workbenchAccessId = workbenchAccessIds.get(accessId);
+		String workbenchAccessId = workbenches.workbenchAccessId(accessId);
 		if (StringTools.isBlank(workbenchAccessId))
 			return Maybe.complete(result);
 

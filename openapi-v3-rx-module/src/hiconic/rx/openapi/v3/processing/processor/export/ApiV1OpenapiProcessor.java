@@ -277,7 +277,7 @@ public class ApiV1OpenapiProcessor extends AbstractOpenapiProcessor<OpenapiServi
 		OpenapiOperation operation = createOperation(context, responseType, isAuthorizedRequest, potentialReasonTypes);
 
 		EntityMdResolver requestTypeMdResolver = requestResolvingContext.getMetaData().entityType(requestType);
-		String requestEntityDescription = description(requestTypeMdResolver).atEntity();
+		String requestEntityDescription = resolveEntityDescription(requestTypeMdResolver, context);
 		String requestEntityName = MetadataUtils.name(requestTypeMdResolver).atEntity();
 
 		String description = "Mapped endpoint for <b>" + requestType.getTypeSignature() + "</b><br>";

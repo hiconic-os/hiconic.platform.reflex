@@ -24,7 +24,6 @@ import com.braintribe.model.service.api.InstanceId;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 import com.braintribe.wire.api.context.WireContext;
-import com.braintribe.wire.api.context.WireContextConfiguration;
 
 import hiconic.rx.module.api.config.RxPlatformConfigurator;
 import hiconic.rx.module.api.log.RxLogManager;
@@ -88,7 +87,7 @@ public class RxPlatformSpace extends CoreServicesSpace implements ExtendedRxPlat
 	// ######################################
 
 	@Override
-	public void onLoaded(WireContextConfiguration configuration) {
+	public void startApplication() {
 		application.stateManager().setState(RxApplicationState.starting);
 		configureModules();
 		application.stateManager().setState(RxApplicationState.started);

@@ -16,6 +16,10 @@ package hiconic.rx.platform.loading;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.junit.Test;
 
 import hiconic.rx.module.api.wire.RxExportContract;
@@ -26,6 +30,7 @@ import hiconic.rx.platform.loading.samples.api.ApiDeeperContract;
 import hiconic.rx.platform.loading.samples.cycle_a.CycleAModule;
 import hiconic.rx.platform.loading.samples.cycle_b.CycleBModule;
 import hiconic.rx.platform.loading.samples.exporter.ExportingModule;
+import hiconic.rx.platform.loading.samples.exporter.ExporterSpace;
 import hiconic.rx.platform.loading.samples.importer.ImportingModule;
 
 /**
@@ -40,6 +45,20 @@ public class RxModuleAnalyzerTest {
 		analyze(ExportingModule.INSTANCE, ImportingModule.INSTANCE);
 
 		assertDependency(ImportingModule.INSTANCE, ExportingModule.INSTANCE, ApiContract.class, ApiDeeperContract.class);
+	}
+
+	@Test
+	public void explicitDependencyWithoutExportContract() throws Exception {
+		analysis = RxModuleAnalyzer.analyze(new LoadedRxModules( //
+				List.of(ExportingModule.INSTANCE, ExplicitModule.INSTANCE), //
+				Map.of(ExplicitModule.INSTANCE, Set.of(ExportingModule.INSTANCE))));
+
+		assertThat(analysis.nodes.get(ExplicitModule.INSTANCE).dependencies) //
+				.contains(analysis.nodes.get(ExportingModule.INSTANCE));
+	}
+
+	private enum ExplicitModule implements RxModule<ExporterSpace> {
+		INSTANCE
 	}
 
 	@Test(expected = IllegalStateException.class)

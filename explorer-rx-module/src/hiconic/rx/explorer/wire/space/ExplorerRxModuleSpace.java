@@ -23,6 +23,7 @@ import hiconic.rx.access.module.api.AccessContract;
 import hiconic.rx.access.module.api.PersistenceServiceDomain;
 import hiconic.rx.access.module.api.AccessServiceDomain;
 import hiconic.rx.explorer.model.configuration.ExplorerConfiguration;
+import hiconic.rx.explorer.model.configuration.ModelEnvironmentConfiguration;
 import hiconic.rx.explorer.processing.ExplorerServiceDomain;
 import hiconic.rx.explorer.processing.WorkbenchReflectionProcessor;
 import hiconic.rx.explorer.processing.bapi.AvailableAccessesProcessor;
@@ -35,6 +36,7 @@ import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.reflection.model.api.PlatformReflectionRequest;
+import hiconic.rx.workbench.api.WorkbenchContract;
 
 /**
  * Module that brings support for tribefire-explorer
@@ -46,10 +48,12 @@ public class ExplorerRxModuleSpace implements RxModuleContract {
 	@Import private RxPlatformContract platform;
 
 	@Import private AccessContract access;
+	@Import private WorkbenchContract workbenches;
 
 	@Import private ChecksSpace checks;
 	@Import private CortexSpace cortex;
 	@Import private PlatformReflectionSpace platformReflection;
+	@Import private SystemWorkbenchesSpace systemWorkbenches;
 	@Import private SystemToolsSpace systemTools;
 	@Import private WebappsSpace webapps;
 	
@@ -58,10 +62,12 @@ public class ExplorerRxModuleSpace implements RxModuleContract {
 	@Override
 	public void configureModels(ModelConfigurations configurations) {
 		cortex.configureCortexAccessModels();
+		systemWorkbenches.configureModels();
 	}
 
 	@Override
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
+		configureWorkbenchAssociations();
 		ServiceDomainConfiguration accessesSd = configurations.byId(AccessServiceDomain.accesses);
 		accessesSd.setDisplayName("Accesses");
 		accessesSd.bindRequest(AvailableAccessesRequest.T, this::availableAccessesProcessor);
@@ -80,6 +86,13 @@ public class ExplorerRxModuleSpace implements RxModuleContract {
 				.addMetaData(modelEnvironmentMapping()));
 
 		cortex.registerCortexAccess();
+		systemWorkbenches.deployAccesses();
+	}
+
+	private void configureWorkbenchAssociations() {
+		ExplorerConfiguration configuration = platform.configuration().readConfig(ExplorerConfiguration.T).get();
+		for (ModelEnvironmentConfiguration environment : configuration.getModelEnvironments())
+			workbenches.associateWorkbench(environment.getDataAccessId(), environment.getWorkbenchAccessId());
 	}
 
 	private RequestMapping availableAccessesMapping() {
@@ -107,7 +120,7 @@ public class ExplorerRxModuleSpace implements RxModuleContract {
 		WorkbenchReflectionProcessor bean = new WorkbenchReflectionProcessor();
 		bean.setAccesses(access.accessDomains());
 		bean.setSessionFactory(access.systemSessionFactory());
-		bean.setConfiguration(platform.configuration().readConfig(ExplorerConfiguration.T).get());
+		bean.setWorkbenches(workbenches);
 		return bean;
 	}
 
@@ -126,6 +139,7 @@ public class ExplorerRxModuleSpace implements RxModuleContract {
 
 	@Override
 	public void onDeploy() {
+		systemWorkbenches.registerWorkbenches();
 		webapps.registerWebapps();
 		checks.registerChecks();
 	}

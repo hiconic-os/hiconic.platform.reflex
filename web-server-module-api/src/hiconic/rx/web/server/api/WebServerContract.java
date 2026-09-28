@@ -45,6 +45,9 @@ public interface WebServerContract extends RxExportContract {
 
 	void addStaticFileResource(String path, String rootDir, String... welcomeFiles);
 
+	/** Registers an exact server-relative redirect without claiming the surrounding path subtree. */
+	void addRedirect(String path, String targetPath);
+
 	/**
 	 * Exposes deployment-specific client configuration at
 	 * {@code <webAppPath>/runtime-config.json} in the root web context. Every configuration contains the canonical

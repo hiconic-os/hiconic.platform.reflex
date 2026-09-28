@@ -103,6 +103,8 @@ import hiconic.rx.module.api.service.ConfiguredModel;
 import hiconic.rx.module.api.service.ConfiguredModels;
 import hiconic.rx.module.api.service.ModelSymbol;
 import hiconic.rx.openapi.v3.processing.model.OpenapiModelProjectionRegistry;
+import hiconic.rx.openapi.v3.processing.OpenapiDescriptionResolverRegistryImpl;
+import hiconic.rx.openapi.v3.processing.OpenapiDescriptionResolverRegistryImpl.ResolverEntry;
 import hiconic.rx.openapi.v3.processing.processor.export.attributes.CurrentSessionIdAttribute;
 import hiconic.rx.openapi.v3.processing.processor.export.attributes.ReflectSubtypesAttribute;
 import hiconic.rx.openapi.v3.processing.processor.export.attributes.ReflectSupertypesAttribute;
@@ -112,6 +114,7 @@ import hiconic.rx.webapi.common.MetadataUtils;
 import hiconic.rx.webapi.common.TypeTraversal;
 import hiconic.rx.webapi.common.TypeTraversalResult;
 import hiconic.rx.webapi.endpoints.v2.RestV2Endpoint;
+import tribefire.extension.webapi.openapi_v3.api.OpenapiDescriptionResolver;
 
 public abstract class AbstractOpenapiProcessor<R extends OpenapiRequest> implements ServiceProcessor<R, OpenApi> {
 
@@ -134,6 +137,7 @@ public abstract class AbstractOpenapiProcessor<R extends OpenapiRequest> impleme
 	protected ConfiguredModels configuredModels;
 	protected OpenapiModelProjectionRegistry modelProjections;
 	private String publicUrl;
+	private OpenapiDescriptionResolverRegistryImpl descriptionResolverRegistry;
 
 	private OpenapiResponse standardResponse400;
 	private OpenapiResponse standardResponse401;
@@ -144,6 +148,7 @@ public abstract class AbstractOpenapiProcessor<R extends OpenapiRequest> impleme
 	@Required public void setConfiguredModels(ConfiguredModels configuredModels) { this.configuredModels = configuredModels; }
 	@Required public void setModelProjections(OpenapiModelProjectionRegistry modelProjections) { this.modelProjections = modelProjections; }
 	@Required public void setPublicUrl(String publicUrl) { this.publicUrl = publicUrl; }
+	public void setDescriptionResolverRegistry(OpenapiDescriptionResolverRegistryImpl descriptionResolverRegistry) { this.descriptionResolverRegistry = descriptionResolverRegistry; }
 	// @formatter:on
 	
 	private OpenApi createNewApi(String title, String basePath, String documentVersion) {
@@ -586,7 +591,7 @@ public abstract class AbstractOpenapiProcessor<R extends OpenapiRequest> impleme
 
 		schema.setTitle(title);
 		schema.setType(OpenapiType.OBJECT);
-		schema.setDescription(description(entityMdResolver).atEntity());
+		schema.setDescription(resolveEntityDescription(entityMdResolver, context));
 
 		if (reflectTypeHierarchy(context))
 			context.getEntityTypeOracle(entityType) //
@@ -605,13 +610,40 @@ public abstract class AbstractOpenapiProcessor<R extends OpenapiRequest> impleme
 
 	}
 
+	protected String resolveEntityDescription(EntityMdResolver entityMdResolver, OpenapiContext context) {
+		DescriptionBuilder descriptionBuilder = new DescriptionBuilder();
+		descriptionBuilder.add(description(entityMdResolver).atEntity());
+		if (descriptionResolverRegistry != null) {
+			ModelMdResolver modelMdResolver = context.getMetaData();
+			for (ResolverEntry entry : descriptionResolverRegistry.getResolvers()) {
+				OpenapiDescriptionResolver resolver = entry.resolver();
+				resolver.resolveEntityDescription(modelMdResolver, entityMdResolver, descriptionBuilder);
+			}
+		}
+		return descriptionBuilder.asString();
+	}
+
+	private String resolvePropertyDescription(EntityMdResolver entityMdResolver, Property property, OpenapiContext context) {
+		DescriptionBuilder descriptionBuilder = new DescriptionBuilder();
+		descriptionBuilder.add(description(entityMdResolver).atProperty(property));
+		if (descriptionResolverRegistry != null) {
+			ModelMdResolver modelMdResolver = context.getMetaData();
+			PropertyMdResolver propertyMdResolver = entityMdResolver.property(property);
+			for (ResolverEntry entry : descriptionResolverRegistry.getResolvers()) {
+				OpenapiDescriptionResolver resolver = entry.resolver();
+				resolver.resolvePropertyDescription(modelMdResolver, propertyMdResolver, descriptionBuilder);
+			}
+		}
+		return descriptionBuilder.asString();
+	}
+
 	private void fillPropertySchema(EntityMdResolver entityMdResolver, Property property, OpenapiSchema schema, OpenapiContext context) {
 		fillPropertySchema(entityMdResolver, property, property.getName(), schema, context);
 	}
 
 	private void fillPropertySchema(EntityMdResolver entityMdResolver, Property property, String propertyName, OpenapiSchema schema,
 			OpenapiContext context) {
-		String description = description(entityMdResolver).atProperty(property);
+		String description = resolvePropertyDescription(entityMdResolver, property, context);
 		OpenapiSchema basicPropertySchema = getPropertySchema(property, context, description, entityMdResolver);
 
 		schema.getProperties().put(propertyName, basicPropertySchema);
@@ -742,7 +774,7 @@ public abstract class AbstractOpenapiProcessor<R extends OpenapiRequest> impleme
 
 		EntityMdResolver entityMdResolver = context.getMetaData().entityType(entityType);
 
-		String description = description(entityMdResolver).atProperty(property);
+		String description = resolvePropertyDescription(entityMdResolver, property, context);
 
 		parameter.setDescription(description);
 		parameter.setRequired(isMandatory(entityMdResolver).atProperty(property));

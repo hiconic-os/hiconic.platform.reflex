@@ -1,0 +1,114 @@
+body {
+    font-family: Roboto;
+    padding: 0px;
+    margin: 0px;
+}
+
+table {
+    border-collapse: collapse;
+}
+
+table.header td,th {
+    padding:0;
+    padding-top: 0.2cm;
+    padding-bottom: 0.2cm;
+}
+
+table.property-table {
+    font-size: 0.35cm;
+}
+table.property-table tr:first-child {
+    border-bottom: 1px solid lightgray;
+}
+
+table.property-table tr:nth-child(n+2) {
+    border-top: 1px solid lightgray;
+}
+
+table.property-table td,th {
+    border: 1px solid lightgray;
+}
+
+tr.spacer-row {
+    height:0.5cm;
+}
+
+th {
+    text-align: left;
+    /*border: 1px solid lightgray;*/
+    padding: 0.2cm;
+    font-weight: normal;
+    color: gray;
+    background-color: #f0f0f0;
+}
+
+td {
+    /*border-right: 1px solid lightgray;*/
+    padding: 0.2cm;
+}
+
+div.header {
+    background-color: lightgray;
+    padding:0.2cm;
+}
+
+div.view {
+    padding:0.5cm;
+}
+
+a {
+    text-decoration: none;
+    color: #045fa5;
+    /* text-shadow: 0.1cm 0.1cm 0.3cm #555555;*/
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+
+
+table.header {
+    border: none;
+}
+
+table.header td:nth-child(2) {
+    max-width: 20cm;
+}
+
+table.header td.property-name {
+    vertical-align: top;
+    text-align: left;
+    color: gray;
+    padding-right: 0.5cm;
+}
+td.property-value {
+    width:20cm;
+}
+
+.main-subject {
+    font-size: 0.75cm;
+}
+
+span.base-type {
+    color: darkmagenta;
+}
+
+span.collection-type {
+    color: darkmagenta;
+}
+
+span.minor-text {
+    color: gray;
+}
+
+
+td.property-col {
+    /*font-weight: bold;*/
+    /*text-align: right;*/
+}
+
+input {
+    border: 1px solid lightgray;
+    padding: 0.2cm;
+}

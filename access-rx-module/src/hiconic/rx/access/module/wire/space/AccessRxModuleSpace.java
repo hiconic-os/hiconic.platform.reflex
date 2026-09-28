@@ -140,8 +140,6 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		for (String serviceModelName : access.getServiceModelNames())
 			serviceModel.addModelByName(serviceModelName);
 
-		if (access.getSystemAccess())
-			protectSystemAccess(accessId);
 	}
 
 	@Override

@@ -8,6 +8,10 @@ public class ApplicationStateGateHandler implements HttpHandler {
 
 	private static final String LIVENESS_PATH = "/livez";
 	private static final String READINESS_PATH = "/readyz";
+	private static final HttpHandler UNAVAILABLE_HANDLER = exchange -> {
+		exchange.setStatusCode(503);
+		exchange.getResponseSender().send("application unavailable");
+	};
 
 	private final BlockingHolder<HttpHandler> standardHandler = new BlockingHolder<>();
 	private final RxApplicationStateManager stateManager;
@@ -55,6 +59,11 @@ public class ApplicationStateGateHandler implements HttpHandler {
 	
 	public void setStandardHandler(HttpHandler standardHandler) {
 		this.standardHandler.accept(standardHandler);
+	}
+
+	/** Releases requests which arrived while the application was starting so Undertow can terminate cleanly. */
+	public void initiateShutdown() {
+		standardHandler.accept(UNAVAILABLE_HANDLER);
 	}
 	
 	public void handleLivez(HttpServerExchange exchange) throws Exception {

@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.braintribe.wire.api.annotation.Import;
@@ -34,14 +35,20 @@ import hiconic.rx.platform.loading.RxModuleAnalysis.RxExportEntry;
 public class RxModuleAnalyzer {
 
 	private final List<RxModule<?>> rxModules;
+	private final Map<RxModule<?>, Set<RxModule<?>>> declaredDependencies;
 	private final RxModuleAnalysis analysis = new RxModuleAnalysis();
 
 	public static RxModuleAnalysis analyze(List<RxModule<?>> rxModules) {
-		return new RxModuleAnalyzer(rxModules).analyze();
+		return new RxModuleAnalyzer(rxModules, Map.of()).analyze();
 	}
 
-	private RxModuleAnalyzer(List<RxModule<?>> rxModules) {
+	/* package */ static RxModuleAnalysis analyze(LoadedRxModules rxModules) {
+		return new RxModuleAnalyzer(rxModules.modules(), rxModules.declaredDependencies()).analyze();
+	}
+
+	private RxModuleAnalyzer(List<RxModule<?>> rxModules, Map<RxModule<?>, Set<RxModule<?>>> declaredDependencies) {
 		this.rxModules = rxModules;
+		this.declaredDependencies = declaredDependencies;
 	}
 
 	private RxModuleAnalysis analyze() {
@@ -59,9 +66,20 @@ public class RxModuleAnalyzer {
 
 	// TODO find all missing imports
 	private void determineDependencies() {
-		for (RxModuleNode node : analysis.nodes.values())
+		for (RxModuleNode node : analysis.nodes.values()) {
+			for (RxModule<?> dependency : declaredDependencies.getOrDefault(node.module, Set.of()))
+				determineDeclaredDependency(node, dependency);
 			for (Class<? extends RxExportContract> importedContract : node.imports)
 				determineDependency(node, importedContract);
+		}
+	}
+
+	private void determineDeclaredDependency(RxModuleNode node, RxModule<?> dependency) {
+		RxModuleNode dependencyNode = analysis.nodes.get(dependency);
+		if (dependencyNode == null)
+			throw new IllegalStateException("Module " + node.module.getClass().getName() + " depends on absent module "
+					+ dependency.getClass().getName());
+		node.dependencies.add(dependencyNode);
 	}
 
 	private void determineDependency(RxModuleNode node, Class<? extends RxExportContract> importedContract) {

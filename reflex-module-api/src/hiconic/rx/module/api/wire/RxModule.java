@@ -13,6 +13,8 @@
 // ============================================================================
 package hiconic.rx.module.api.wire;
 
+import java.util.List;
+
 import com.braintribe.wire.api.context.WireContextBuilder;
 import com.braintribe.wire.api.module.WireTerminalModule;
 import com.braintribe.wire.api.tools.Generics;
@@ -21,6 +23,14 @@ import com.braintribe.wire.api.tools.Generics;
  * @see RxModuleContract
  */
 public interface RxModule<M extends RxModuleContract> extends WireTerminalModule<RxModuleContract> {
+
+	/**
+	 * Declares mandatory RX module dependencies. They determine activation and initialization order but do not merge the
+	 * independently managed module Wire contexts.
+	 */
+	default List<RxModule<?>> moduleDependencies() {
+		return List.of();
+	}
 
 	/**
 	 * Binds {@link RxExportContract}s to the actual space.

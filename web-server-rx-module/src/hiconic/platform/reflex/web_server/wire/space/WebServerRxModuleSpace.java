@@ -100,6 +100,7 @@ import jakarta.websocket.server.ServerEndpointConfig;
 @Managed
 public class WebServerRxModuleSpace implements RxModuleContract, WebServerContract {
 	private static final Logger logger = Logger.getLogger(WebServerRxModuleSpace.class);
+	private volatile boolean webServerStarted;
 
 	@Import
 	private RxPlatformContract platform;
@@ -150,9 +151,13 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	}
 
 	private void startWebServer() {
+		Undertow server = undertowServer();
 		try {
-			undertowServer().start();
+			server.start();
+			webServerStarted = true;
 		} catch (RuntimeException e) {
+			stopAfterFailedStart(server, e);
+
 			BindException bindException = findCause(e, BindException.class);
 			if (bindException == null)
 				throw e;
@@ -162,6 +167,26 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 			logger.error(message, e);
 			UnsatisfiedMaybeTunneling.tunnel(IoError.create(message));
 		}
+	}
+
+	private void stopAfterFailedStart(Undertow server, RuntimeException startupFailure) {
+		try {
+			applicationStateGateHandler().initiateShutdown();
+			server.stop();
+		} catch (RuntimeException cleanupFailure) {
+			startupFailure.addSuppressed(cleanupFailure);
+			logger.error("Could not fully roll back partially started web server", cleanupFailure);
+		}
+	}
+
+	@Override
+	public void onApplicationShutdown() {
+		if (!webServerStarted)
+			return;
+
+		webServerStarted = false;
+		applicationStateGateHandler().initiateShutdown();
+		undertowServer().stop();
 	}
 
 	private String configuredListenerEndpoints() {
@@ -295,6 +320,13 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	@Override
 	public void addStaticFileResource(String path, String rootDir, String... welcomeFiles) {
 		addStaticFileResource(applicationHandler(), path, rootDir, welcomeFiles);
+	}
+
+	@Override
+	public void addRedirect(String path, String targetPath) {
+		String normalizedPath = URLUtils.normalizeSlashes("/" + path);
+		String normalizedTargetPath = URLUtils.normalizeSlashes("/" + targetPath);
+		applicationHandler().addExactPath(normalizedPath, Handlers.redirect(normalizedTargetPath));
 	}
 
 	@Override

@@ -35,6 +35,8 @@ public interface ExtendedRxPlatformContract extends RxPlatformContract {
 
 	RxResourcesStorages resourceStorages();
 
+	void startApplication();
+
 	void onApplicationShutdown();
 
 }

@@ -133,7 +133,7 @@ public class WorkbenchInitializers {
 				KnownWorkenchPerspective.headerBar, //
 				KnownWorkenchPerspective.globalActionBar, //
 				KnownWorkenchPerspective.tabActionBar) //
-				.forEach(perspective -> perspectiveRoots.put(perspective.toString(), ensurePerspective(session, perspective.toString())));
+				.forEach(perspective -> perspectiveRoots.put(perspective.toString(), ensurePerspectiveRoot(session, perspective.toString())));
 
 		// These names are part of the Explorer/Workbench protocol.  They are not
 		// application customization: the client uses them as slots for its built-in
@@ -197,17 +197,24 @@ public class WorkbenchInitializers {
 		}
 	}
 
-	private Folder ensurePerspective(PersistenceGmSession session, String name) {
-		WorkbenchPerspective existing = session.query().entities(EntityQueryBuilder.from(WorkbenchPerspective.T).where().property("name").eq(name).done())
-				.first();
-		if (existing != null && !existing.getFolders().isEmpty())
-			return existing.getFolders().get(0);
+	private Folder ensurePerspectiveRoot(PersistenceGmSession session, String name) {
+		WorkbenchPerspective perspective = ensurePerspective(session, name);
+		Folder existingRoot = perspective.getFolders().stream()
+				.filter(folder -> name.equals(folder.getName()))
+				.findFirst()
+				.orElse(null);
+		if (existingRoot != null)
+			return existingRoot;
 
 		Folder root = session.create(Folder.T).initFolder(name, displayName(name));
-		WorkbenchPerspective perspective = existing != null ? existing
-				: session.create(WorkbenchPerspective.T).initWorkbenchPerspective(name, displayName(name));
-		perspective.getFolders().add(root);
+		perspective.getFolders().add(0, root);
 		return root;
+	}
+
+	private WorkbenchPerspective ensurePerspective(PersistenceGmSession session, String name) {
+		WorkbenchPerspective existing = session.query().entities(EntityQueryBuilder.from(WorkbenchPerspective.T).where().property("name").eq(name).done())
+				.first();
+		return existing != null ? existing : session.create(WorkbenchPerspective.T).initWorkbenchPerspective(name, displayName(name));
 	}
 
 	private String displayName(String name) {

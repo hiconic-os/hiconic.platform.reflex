@@ -46,6 +46,7 @@ import hiconic.rx.security.web.api.AuthFilters;
 import hiconic.rx.security.web.api.WebSecurityContract;
 import hiconic.rx.web.ddra.endpoints.api.WebApiServerContract;
 import hiconic.rx.web.server.api.WebServerContract;
+import hiconic.rx.workbench.api.WorkbenchContract;
 import jakarta.servlet.DispatcherType;
 
 /**
@@ -70,6 +71,7 @@ public class WebappsSpace implements WireSpace {
 	@Import private RxServiceProcessingContract serviceProcessing;
 
 	@Import private AccessContract access;
+	@Import private WorkbenchContract workbenches;
 	@Import private SecurityContract security;
 	@Import private WebServerContract webServer;
 	@Import private WebSecurityContract webSecurity;
@@ -77,6 +79,8 @@ public class WebappsSpace implements WireSpace {
 	// @formatter:on
 
 	public void registerWebapps() {
+		if (!webServer.resolveDefaultEndpointPath("").isEmpty())
+			webServer.addRedirect("/", webServer.resolveDefaultEndpointPath("home"));
 		webServer.addWebAppRuntimeConfiguration(EXPLORER_WEB_APP_PATH, this::clientRuntimeProperties);
 		webServer.addPackagedWebResources("explorer-webpages", "webpages", "explorer-webpages");
 
@@ -135,6 +139,7 @@ public class WebappsSpace implements WireSpace {
 		ExplorerPublicResourceServlet bean = new ExplorerPublicResourceServlet();
 		bean.setSessionFactory(access.systemSessionFactory());
 		bean.setConfiguration(platform.configuration().readConfig(ExplorerConfiguration.T).get());
+		bean.setWorkbenches(workbenches);
 		bean.setPackagedResources(platform.packagedResources().resolver());
 		return bean;
 	}

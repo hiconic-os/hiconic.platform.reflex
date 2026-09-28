@@ -6,8 +6,6 @@ package hiconic.rx.explorer.processing.servlet.explorer;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
 
 import com.braintribe.cfg.Required;
 import com.braintribe.logging.Logger;
@@ -21,8 +19,8 @@ import com.braintribe.model.resource.Resource;
 import com.braintribe.model.workbench.WorkbenchConfiguration;
 
 import hiconic.rx.explorer.model.configuration.ExplorerConfiguration;
-import hiconic.rx.explorer.model.configuration.ModelEnvironmentConfiguration;
 import hiconic.rx.module.api.resource.RxPackagedResourceResolver;
+import hiconic.rx.workbench.api.WorkbenchContract;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -42,7 +40,7 @@ public class ExplorerPublicResourceServlet extends HttpServlet {
 
 	private PersistenceGmSessionFactory sessionFactory;
 	private RxPackagedResourceResolver packagedResources;
-	private final Map<String, String> workbenchAccessIds = new HashMap<>();
+	private WorkbenchContract workbenches;
 	private String defaultDataAccessId;
 
 	@Required
@@ -58,8 +56,11 @@ public class ExplorerPublicResourceServlet extends HttpServlet {
 	@Required
 	public void setConfiguration(ExplorerConfiguration configuration) {
 		defaultDataAccessId = configuration.getDefaultDataAccessId();
-		for (ModelEnvironmentConfiguration environment : configuration.getModelEnvironments())
-			workbenchAccessIds.put(environment.getDataAccessId(), environment.getWorkbenchAccessId());
+	}
+
+	@Required
+	public void setWorkbenches(WorkbenchContract workbenches) {
+		this.workbenches = workbenches;
 	}
 
 	@Override
@@ -156,7 +157,7 @@ public class ExplorerPublicResourceServlet extends HttpServlet {
 	private PersistenceGmSession workbenchSession(String accessId) {
 		if (accessId == null || accessId.isBlank())
 			accessId = defaultDataAccessId;
-		String workbenchAccessId = workbenchAccessIds.get(accessId);
+		String workbenchAccessId = workbenches.workbenchAccessId(accessId);
 		return workbenchAccessId == null ? null : sessionFactory.newSession(workbenchAccessId);
 	}
 

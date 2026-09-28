@@ -260,35 +260,62 @@ public class RxPlatform implements AutoCloseable {
 		));
 
 		wireContext = Wire.context(new RxPlatformWireModule(args, applicationProperties, systemProperties, classpathIndex, propertyResolver));
-		platformContract = wireContext.contract(ExtendedRxPlatformContract.class);
 
-		long upTime = System.currentTimeMillis();
-		long startupDuration = upTime - startTime;
+		try {
+			platformContract = wireContext.contract(ExtendedRxPlatformContract.class);
+			platformContract.startApplication();
 
-		double startupDurationInS = startupDuration / 1000D;
+			long upTime = System.currentTimeMillis();
+			long startupDuration = upTime - startTime;
 
-		String formattedStartupDuration = String.format("%.3f", startupDurationInS);
+			double startupDurationInS = startupDuration / 1000D;
 
-		ConsoleOutputs.println(sequence( //
-				text("Application Loaded "), //
-				green("Successfully"), //
-				text(" in "), //
-				cyan(formattedStartupDuration + "s") //
-		));
+			String formattedStartupDuration = String.format("%.3f", startupDurationInS);
 
-		String domainIds = platformContract.serviceProcessing().serviceDomains().list().stream() //
-				.map(RxPlatform::formatServiceDomain) //
-				.sorted() //
-				.collect(Collectors.joining("\n\t"));
-		ConsoleOutputs.println(sequence( //
-				text("Service Domains:\n\t"), //
-				cyan(domainIds)) //
-		);
+			ConsoleOutputs.println(sequence( //
+					text("Application Loaded "), //
+					green("Successfully"), //
+					text(" in "), //
+					cyan(formattedStartupDuration + "s") //
+			));
 
-		eagerLoading();
+			String domainIds = platformContract.serviceProcessing().serviceDomains().list().stream() //
+					.map(RxPlatform::formatServiceDomain) //
+					.sorted() //
+					.collect(Collectors.joining("\n\t"));
+			ConsoleOutputs.println(sequence( //
+					text("Service Domains:\n\t"), //
+					cyan(domainIds)) //
+			);
 
-		logger.log(Level.INFO, "Application loaded");
+			eagerLoading();
 
+			logger.log(Level.INFO, "Application loaded");
+
+		} catch (RuntimeException | Error e) {
+			closeAfterFailedStart(e);
+			throw e;
+		}
+
+	}
+
+	private void closeAfterFailedStart(Throwable startupFailure) {
+		try {
+			if (platformContract != null)
+				platformContract.onApplicationShutdown();
+		} catch (Throwable cleanupFailure) {
+			startupFailure.addSuppressed(cleanupFailure);
+		}
+
+		try {
+			if (wireContext != null)
+				wireContext.close();
+		} catch (Throwable cleanupFailure) {
+			startupFailure.addSuppressed(cleanupFailure);
+		} finally {
+			platformContract = null;
+			wireContext = null;
+		}
 	}
 
 	private static String formatServiceDomain(ServiceDomain domain) {
@@ -301,8 +328,15 @@ public class RxPlatform implements AutoCloseable {
 
 	@Override
 	public void close() {
-		platformContract.onApplicationShutdown();
-		wireContext.close();
+		try {
+			if (platformContract != null)
+				platformContract.onApplicationShutdown();
+		} finally {
+			if (wireContext != null)
+				wireContext.close();
+			platformContract = null;
+			wireContext = null;
+		}
 	}
 
 	private void setupLogging() {

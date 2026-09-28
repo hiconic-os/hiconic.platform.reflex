@@ -68,7 +68,7 @@ public class RxModuleLoader implements LifecycleAware, PlatformReflectionContrac
 	
 	record LoadedModule(WireContext<RxModuleContract> wireContext, WireModule module, ModuleReflectionContract reflection) {}
 	
-	private List<LoadedModule> loadedModules;
+	private List<LoadedModule> loadedModules = List.of();
 	private RxContractSpaceResolverConfigurator resolverConfigurator;
 	private RxPropertyResolver propertyResolver;
 	private final PropertyLookupContractResolver propertyLookupContractResolver = new PropertyLookupContractResolver();
@@ -104,7 +104,7 @@ public class RxModuleLoader implements LifecycleAware, PlatformReflectionContrac
 
 	@Override
 	public List<ModuleReflectionContract> modules() {
-		return loadedModules == null ? List.of() : loadedModules.stream().map(LoadedModule::reflection).toList();
+		return loadedModules.stream().map(LoadedModule::reflection).toList();
 	}
 
 	@Override
@@ -130,7 +130,7 @@ public class RxModuleLoader implements LifecycleAware, PlatformReflectionContrac
 	}
 
 	private void loadModules() {
-		Maybe<List<RxModule<?>>> maybeRxModules = WireModuleLoader.loadWireModules();
+		Maybe<LoadedRxModules> maybeRxModules = WireModuleLoader.loadWireModules();
 
 		RxModuleAnalysis rxAnalysis = RxModuleAnalyzer.analyze(maybeRxModules.get());
 
@@ -140,8 +140,19 @@ public class RxModuleLoader implements LifecycleAware, PlatformReflectionContrac
 	}
 
 	private void closeWireModuleContexts() {
-		for (LoadedModule module : loadedModules)
-			module.wireContext().close();
+		closeWireModuleContexts(loadedModules);
+		loadedModules = List.of();
+	}
+
+	private void closeWireModuleContexts(List<LoadedModule> modules) {
+		for (int i = modules.size() - 1; i >= 0; i--) {
+			LoadedModule module = modules.get(i);
+			try {
+				module.wireContext().close();
+			} catch (Exception e) {
+				logger.error("Error while closing module context: " + module.module.getClass().getName(), e);
+			}
+		}
 	}
 
 	private Maybe<List<LoadedModule>> loadWireModuleContexts(RxModuleAnalysis analysis) {
@@ -155,8 +166,10 @@ public class RxModuleLoader implements LifecycleAware, PlatformReflectionContrac
 		for (RxModuleNode node : nodesSortedDependenciesFirst(analysis)) {
 			var maybeLoadedModule = loadWireContextForModule(node);
 
-			if (maybeLoadedModule.isUnsatisfied())
+			if (maybeLoadedModule.isUnsatisfied()) {
+				closeWireModuleContexts(contexts);
 				return maybeLoadedModule.whyUnsatisfied().asMaybe();
+			}
 
 			contexts.add(maybeLoadedModule.get());
 		}

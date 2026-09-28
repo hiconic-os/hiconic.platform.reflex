@@ -44,5 +44,10 @@ limitations under the License.
             <artifactId>reflex-test-commons</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>workbench-rx-module</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
     </dependencies>
 </project>
