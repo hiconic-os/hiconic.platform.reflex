@@ -173,7 +173,9 @@ public class ConfigurationImportDeclarationsTest {
 				List.of(SampleConfiguration.T))
 				.assemble();
 
-		assertThat(assemblyMaybe.isSatisfied()).isTrue();
+		assertThat(assemblyMaybe.isSatisfied())
+				.withFailMessage(() -> assemblyMaybe.whyUnsatisfied().stringify())
+				.isTrue();
 		ConfigurationAssembly assembly = assemblyMaybe.get();
 		assertThat(assembly.keys()).hasSize(1);
 		SampleConfiguration configuration = (SampleConfiguration) assembly.configurations().values().iterator().next();
@@ -210,6 +212,50 @@ public class ConfigurationImportDeclarationsTest {
 				.containsExactly("base");
 		assertThat(output.resolve("compiled/properties.yaml")).content().contains("DB_DEFAULT_URL");
 		assertThat(protocol).exists();
+	}
+
+	@Test
+	public void resolvesPackagedResourceExpressionsWithoutTreatingThemAsImports() throws Exception {
+		Path root = temporaryFolder.newFolder("packaged-resources").toPath();
+		artifact(root, "resources", Map.of(
+				"HICONIC-CONF/sample-configuration.yaml", """
+						endpoint: "${packagedResourceText('./endpoint.txt')}"
+						""",
+				"HICONIC-CONF/endpoint.txt", "https://example.org/service"));
+
+		var assemblyMaybe = new ModeledConfigurationAssembler(
+				new ClasspathIndex(root),
+				temporaryFolder.newFolder("empty-conf"),
+				"HICONIC-CONF",
+				List.of(SampleConfiguration.T))
+				.assemble();
+
+		assertThat(assemblyMaybe.isSatisfied()).isTrue();
+		SampleConfiguration configuration = (SampleConfiguration) assemblyMaybe.get().configurations().values().iterator().next();
+		assertThat(configuration.getEndpoint()).isEqualTo("https://example.org/service");
+		assertThat(assemblyMaybe.get().report().getUndeclaredVariables()).isEmpty();
+	}
+
+	@Test
+	public void preservesEncryptedPackagedResourceExpressionsWithoutTreatingThemAsImports() throws Exception {
+		Path root = temporaryFolder.newFolder("encrypted-packaged-resources").toPath();
+		artifact(root, "resources", Map.of(
+				"HICONIC-CONF/sample-configuration.yaml", """
+						endpoint: "${decrypt(packagedResourceText('./endpoint.encrypted'))}"
+						""",
+				"HICONIC-CONF/endpoint.encrypted", "encrypted-value"));
+
+		var assemblyMaybe = new ModeledConfigurationAssembler(
+				new ClasspathIndex(root),
+				temporaryFolder.newFolder("empty-conf"),
+				"HICONIC-CONF",
+				List.of(SampleConfiguration.T))
+				.assemble();
+
+		assertThat(assemblyMaybe.isSatisfied())
+				.withFailMessage(() -> assemblyMaybe.whyUnsatisfied().stringify())
+				.isTrue();
+		assertThat(assemblyMaybe.get().report().getUndeclaredVariables()).isEmpty();
 	}
 
 	@Test

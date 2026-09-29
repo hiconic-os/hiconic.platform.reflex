@@ -36,13 +36,18 @@ import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.config.ConfigurationError;
+import com.braintribe.gm.model.reason.essential.NotFound;
 import com.braintribe.model.generic.GMF;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.Model;
 import com.braintribe.model.meta.GmMetaModel;
+import com.braintribe.model.processing.resource.packaged.PackagedResourceValueDescriptorExperts;
 
+import hiconic.rx.platform.conf.RxConfigurationValueDescriptorExperts;
 import hiconic.rx.platform.loading.RxPropertiesLoader;
+import hiconic.rx.platform.model.configuration.vd.Decrypt;
+import hiconic.rx.platform.processing.resource.RxIndexedPackagedResourceResolver;
 
 /**
  * Builds and validates the static, modeled configuration closure of an application.
@@ -103,6 +108,15 @@ public final class ModeledConfigurationAssembler {
 		loader.setClasspathConfPath(classpathConfPath);
 		loader.setConfigFolder(configFolder);
 		loader.setExternalReasonedPropertyLookup(symbolicProperties::resolveKnown);
+		loader.setValueDescriptorExpressionCodec(RxConfigurationValueDescriptorExperts.expressionCodec());
+		var packagedResources = new RxIndexedPackagedResourceResolver(classpathIndex, "");
+		loader.setValueDescriptorExpertConfigurer(registry -> {
+			PackagedResourceValueDescriptorExperts.register(registry, packagedResources);
+			registry.register(Decrypt.T,
+					(context, descriptor) -> Reasons.build(NotFound.T)
+							.text("Encrypted configuration values are resolved only at runtime")
+							.toMaybe());
+		});
 
 		Map<ConfigurationKey, GenericEntity> configurations = new LinkedHashMap<>();
 		Set<String> unresolvedAliases = new LinkedHashSet<>();
