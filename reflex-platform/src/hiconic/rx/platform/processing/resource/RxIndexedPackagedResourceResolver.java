@@ -166,7 +166,7 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 			if (candidates.stream().anyMatch(c -> c.cachedResource.url.equals(entry.url)))
 				continue;
 
-			candidates.add(new IndexedResource(entry.origin, artifactRelativePath, new CachedResource(artifactRelativePath, entry.url)));
+			candidates.add(new IndexedResource(entry.artifactId, artifactRelativePath, new CachedResource(artifactRelativePath, entry.url)));
 		}
 		result.replaceAll((path, candidates) -> List.copyOf(candidates));
 		return Map.copyOf(result);
@@ -175,10 +175,10 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 	private Map<ArtifactPathKey, CachedResource> indexByArtifactPath(ClasspathIndex classpathIndex) {
 		Map<ArtifactPathKey, CachedResource> result = new LinkedHashMap<>();
 		for (ClasspathEntry entry : classpathIndex.forPrefix("")) {
-			if (entry.origin == null || entry.origin.isBlank())
+			if (entry.artifactId == null || entry.artifactId.isBlank())
 				continue;
 			String path = normalizeResourcePath(entry.path);
-			ArtifactPathKey key = new ArtifactPathKey(normalizeArtifact(entry.origin), path);
+			ArtifactPathKey key = new ArtifactPathKey(normalizeArtifact(entry.artifactId), path);
 			CachedResource previous = result.putIfAbsent(key, new CachedResource(path, entry.url));
 			if (previous != null && !previous.url.equals(entry.url))
 				throw new IllegalStateException("Duplicate indexed packaged resource '" + key + "': " + previous.url + " and " + entry.url);

@@ -144,7 +144,7 @@ public final class ConfigurationImportDeclarations {
 	}
 
 	private static DeclarationSource source(ClasspathEntry entry) {
-		String origin = entry.origin.isBlank() ? entry.url.toString() : entry.origin;
+		String origin = entry.artifactId.isBlank() ? entry.url.toString() : entry.artifactId;
 		return new DeclarationSource(origin, entry);
 	}
 

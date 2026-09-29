@@ -99,7 +99,7 @@ public final class ConfigurationAssemblyWriter {
 
 	private static List<String> copyResidualResources(ConfigurationAssembly assembly, ClasspathIndex sourceIndex, Path effectiveDirectory)
 			throws IOException {
-		Map<String, String> slotsByOrigin = new LinkedHashMap<>();
+		Map<String, String> slotsByArtifactId = new LinkedHashMap<>();
 		Set<String> usedSlots = new HashSet<>();
 		Map<Path, ClasspathEntry> targets = new LinkedHashMap<>();
 		List<String> residual = new java.util.ArrayList<>();
@@ -109,8 +109,8 @@ public final class ConfigurationAssemblyWriter {
 			if (relative.isEmpty() || assembly.consumedResources().contains(relative))
 				continue;
 
-			String origin = entry.origin.isBlank() ? "classpath" : entry.origin;
-			String slot = slotsByOrigin.computeIfAbsent(origin, key -> uniqueSlot(key, usedSlots));
+			String artifactId = entry.artifactId.isBlank() ? "classpath" : entry.artifactId;
+			String slot = slotsByArtifactId.computeIfAbsent(artifactId, key -> uniqueSlot(key, usedSlots));
 			Path target = effectiveDirectory.resolve(slot).resolve(relative).normalize();
 			if (!target.startsWith(effectiveDirectory.resolve(slot).normalize()))
 				throw new IOException("Residual configuration resource escapes its slot: " + entry.path);
@@ -118,7 +118,7 @@ public final class ConfigurationAssemblyWriter {
 			ClasspathEntry previous = targets.putIfAbsent(target, entry);
 			if (previous != null)
 				throw new IOException("Residual configuration collision at " + target + " between "
-						+ previous.origin + " and " + entry.origin);
+						+ previous.artifactId + " and " + entry.artifactId);
 
 			Files.createDirectories(target.getParent());
 			try (InputStream in = entry.url.openStream()) {
@@ -130,8 +130,8 @@ public final class ConfigurationAssemblyWriter {
 		return residual.stream().sorted().toList();
 	}
 
-	private static String uniqueSlot(String origin, Set<String> usedSlots) {
-		String base = sanitizeSlot(origin);
+	private static String uniqueSlot(String artifactId, Set<String> usedSlots) {
+		String base = sanitizeSlot(artifactId);
 		String candidate = base;
 		int suffix = 2;
 		while (!usedSlots.add(candidate))

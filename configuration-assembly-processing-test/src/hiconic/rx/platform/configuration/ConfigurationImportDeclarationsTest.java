@@ -208,7 +208,7 @@ public class ConfigurationImportDeclarationsTest {
 				ClasspathIndex.filesystemSource(root, "", List.of("HICONIC-CONF/")),
 				ClasspathIndex.filesystemSlots(output, "HICONIC-CONF")));
 		assertThat(runtimeIndex.forPrefix("HICONIC-CONF/sample-configuration/logo.svg"))
-				.extracting(entry -> entry.origin)
+				.extracting(entry -> entry.artifactId)
 				.containsExactly("base");
 		assertThat(output.resolve("compiled/properties.yaml")).content().contains("DB_DEFAULT_URL");
 		assertThat(protocol).exists();

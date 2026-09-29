@@ -80,8 +80,8 @@ public class RxConfigurationSpace implements RxConfigurationContract {
 		if (entries.isEmpty())
 			throw new IllegalArgumentException("Indexed classpath resource not found: " + normalizedPath);
 		if (entries.size() > 1)
-			throw new IllegalArgumentException("Indexed classpath resource is ambiguous: " + normalizedPath + " (origins: "
-					+ entries.stream().map(entry -> entry.origin).toList() + ")");
+			throw new IllegalArgumentException("Indexed classpath resource is ambiguous: " + normalizedPath + " (artifacts: "
+					+ entries.stream().map(entry -> entry.artifactId).toList() + ")");
 
 		return new RxUrlResourcesBuilder(entries.get(0).url);
 	}
