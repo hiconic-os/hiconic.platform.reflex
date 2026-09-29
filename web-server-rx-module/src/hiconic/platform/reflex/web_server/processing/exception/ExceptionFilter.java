@@ -47,9 +47,6 @@ public class ExceptionFilter implements Filter {
 			filterChain.doFilter(request, response);
 		}
 		catch(Throwable t) {
-
-			t.printStackTrace();
-			
 			String tracebackId = UUID.randomUUID().toString();
 
 			ExceptionHandlingContext context = new ExceptionHandlingContext(tracebackId, request, response, t);
