@@ -114,7 +114,7 @@ import hiconic.rx.webapi.common.MetadataUtils;
 import hiconic.rx.webapi.common.TypeTraversal;
 import hiconic.rx.webapi.common.TypeTraversalResult;
 import hiconic.rx.webapi.endpoints.v2.RestV2Endpoint;
-import tribefire.extension.webapi.openapi_v3.api.OpenapiDescriptionResolver;
+import hiconic.rx.openapi.v3.api.OpenapiDescriptionResolver;
 
 public abstract class AbstractOpenapiProcessor<R extends OpenapiRequest> implements ServiceProcessor<R, OpenApi> {
 

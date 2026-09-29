@@ -188,6 +188,7 @@ public class RxPlatform implements AutoCloseable {
 	public static void main(String[] args) {
 		ProcessStandardStreams.initialize();
 		ProcessStandardStreams.redirectConfigured();
+		int exitCode = 0;
 		try {
 			try (@SuppressWarnings("unused") RxPlatform platform = new RxPlatform(args)) {
 				Object monitor = new Object();
@@ -208,33 +209,23 @@ public class RxPlatform implements AutoCloseable {
 					logger.log(Level.ERROR, "Unexpected interruption", e);
 				}
 			}
-			catch (UnsatisfiedMaybeTunneling e) {
-				String msg = "Error while starting application:\n" + e.getMaybe().whyUnsatisfied().stringify(true);
-				logger.log(Level.ERROR, msg, e);
-				System.err.println(msg);
-			}
-			catch (ReasonException e) {
-				String msg = "Error while starting application:\n" + e.getReason().stringify(true);
-				logger.log(Level.ERROR, msg, e);
-				System.err.println(msg);
-			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				Reason reason = reasonFrom(e);
 				if (reason != null) {
 					String msg = "Error while starting application:\n" + reason.stringify(true);
 					logger.log(Level.ERROR, msg, e);
-					System.err.println(msg);
 				} else {
 					String msg = "Error while starting application";
 					logger.log(Level.ERROR, msg, e);
-
-					System.err.println(msg);
-					e.printStackTrace(System.err);
 				}
+				exitCode = 1;
 			}
 		} finally {
 			ProcessStandardStreams.restore();
 		}
+
+		if (exitCode != 0)
+			System.exit(exitCode);
 	}
 
 	static Reason reasonFrom(Throwable throwable) {

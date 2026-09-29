@@ -3,8 +3,8 @@ package hiconic.rx.openapi.v3.processing;
 import java.util.ArrayList;
 import java.util.List;
 
-import tribefire.extension.webapi.openapi_v3.api.OpenapiDescriptionResolver;
-import tribefire.extension.webapi.openapi_v3.api.OpenapiDescriptionResolverRegistry;
+import hiconic.rx.openapi.v3.api.OpenapiDescriptionResolver;
+import hiconic.rx.openapi.v3.api.OpenapiDescriptionResolverRegistry;
 
 public class OpenapiDescriptionResolverRegistryImpl implements OpenapiDescriptionResolverRegistry {
 

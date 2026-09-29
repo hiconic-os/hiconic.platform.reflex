@@ -15,9 +15,9 @@
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
         <dependency>
-            <groupId>tribefire.extension.web-api</groupId>
-            <artifactId>openapi-v3-module-api</artifactId>
-            <version>[1.0,1.1)</version>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>meta-model-api</artifactId>
+            <version>${V.com.braintribe.gm}</version>
         </dependency>
     </dependencies>
 </project>
