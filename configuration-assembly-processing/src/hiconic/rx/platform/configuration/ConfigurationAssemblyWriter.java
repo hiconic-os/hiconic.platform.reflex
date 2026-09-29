@@ -190,7 +190,6 @@ public final class ConfigurationAssemblyWriter {
 		GmSerializationOptions options = GmSerializationOptions.deriveDefaults()
 				.inferredRootType(type)
 				.outputPrettiness(OutputPrettiness.high)
-				.set(PlaceholderSupport.class, true)
 				.build();
 		StringWriter writer = new StringWriter();
 		new YamlMarshaller().marshall(writer, properties, options);

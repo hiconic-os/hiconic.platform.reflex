@@ -18,6 +18,7 @@ import static com.braintribe.testing.junit.assertions.assertj.core.api.Assertion
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -26,10 +27,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import com.braintribe.codec.marshaller.yaml.YamlMarshaller;
 import com.braintribe.gm.config.assembly.model.ConfigurationAssemblyReport;
 import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 
+import hiconic.rx.platform.conf.RxPropertyResolver;
 import hiconic.rx.platform.configuration.model.SampleConfiguration;
+import hiconic.rx.platform.loading.RxPropertiesLoader;
 
 public class ConfigurationImportDeclarationsTest {
 
@@ -210,7 +214,22 @@ public class ConfigurationImportDeclarationsTest {
 		assertThat(runtimeIndex.forPrefix("HICONIC-CONF/sample-configuration/logo.svg"))
 				.extracting(entry -> entry.artifactId)
 				.containsExactly("base");
-		assertThat(output.resolve("compiled/properties.yaml")).content().contains("DB_DEFAULT_URL");
+		Path compiledProperties = output.resolve("compiled/properties.yaml");
+		assertThat(compiledProperties).content()
+				.contains("DB_DEFAULT_URL")
+				.contains("jdbc:postgresql://${DB_DEFAULT_HOST}:${DB_DEFAULT_PORT}/${DB_DEFAULT_NAME}")
+				.doesNotContain("$${DB_DEFAULT_HOST}");
+
+		var runtimePropertiesMaybe = RxPropertiesLoader.load(compiledProperties.toFile(), new YamlMarshaller());
+		assertThat(runtimePropertiesMaybe.isSatisfied()).isTrue();
+		Map<String, String> runtimeProperties = new LinkedHashMap<>(runtimePropertiesMaybe.get());
+		runtimeProperties.put("DB_DEFAULT_HOST", "database.internal");
+
+		RxPropertyResolver runtimeResolver = new RxPropertyResolver();
+		runtimeResolver.setManagedPropertiesOnly(true);
+		runtimeResolver.setRawProperties(runtimeProperties);
+		assertThat(runtimeResolver.resolve("DB_DEFAULT_URL"))
+				.isEqualTo("jdbc:postgresql://database.internal:5432/proventem");
 		assertThat(protocol).exists();
 	}
 
