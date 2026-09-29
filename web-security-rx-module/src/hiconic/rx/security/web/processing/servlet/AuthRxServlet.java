@@ -157,6 +157,7 @@ public class AuthRxServlet extends HttpServlet {
 				Reason whyUnsatisfied = sessionMaybe.whyUnsatisfied();
 
 				if (!sessionMaybe.isUnsatisfiedAny(SecurityReason.T, InvalidArgument.T)) {
+					logAuthenticationFailure("LOGIN_PROCESSING_REJECTED", authRequest.getUser(), req, openUserSession.getEntryPoint());
 					String logToken = UUID.randomUUID().toString();
 					log.warn(logToken + ": " + whyUnsatisfied.stringify());
 					whyUnsatisfied = Reasons.build(InternalError.T).text("Please check the log files and search for error ID: " + logToken)
@@ -173,9 +174,22 @@ public class AuthRxServlet extends HttpServlet {
 
 			cookieHandler.ensureCookie(req, resp, sessionId, authRequest.getStaySignedIn());
 
+		} catch (RuntimeException e) {
+			logAuthenticationFailure("LOGIN_PROCESSING_ERROR", authRequest.getUser(), req, openUserSession.getEntryPoint());
+			throw e;
 		} finally {
 			AttributeContexts.pop();
 		}
+	}
+
+	private void logAuthenticationFailure(String reason, String user, HttpServletRequest request, String entryPoint) {
+		String requestor = getRemoteAddressResolver().getRemoteIpLenient(request);
+		log.info("Security authentication failure [reason=" + safeAuditValue(reason) + ", identity=user:" + safeAuditValue(user)
+				+ ", requestor=" + safeAuditValue(requestor) + ", entryPoint=" + safeAuditValue(entryPoint) + "]");
+	}
+
+	private static String safeAuditValue(String value) {
+		return value == null ? "<none>" : value.replace('\r', '_').replace('\n', '_');
 	}
 
 	private void writeFailure(HttpServletResponse response, Reason reason) throws IOException {
