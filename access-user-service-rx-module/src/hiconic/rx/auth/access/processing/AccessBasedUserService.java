@@ -199,7 +199,8 @@ public class AccessBasedUserService implements UserService {
 
 			copySimplePropsAndLocalizedStrings(user, actualUser, created || authoritative);
 			if ((created || reconcileCredentials) && user.getPassword() != null)
-				actualUser.setPassword(passwordHashing.hash(user.getPassword()));
+				// Persistent password encoding is owned by the auth access' crypting aspect. Hashing here as well would encode twice.
+				actualUser.setPassword(user.getPassword());
 
 			Set<Role> desiredRoles = ensureRoles(user.getRoles(), session, rolesByName);
 			Set<String> desiredRoleNames = toRoleNames(desiredRoles);

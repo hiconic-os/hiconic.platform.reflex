@@ -20,8 +20,11 @@ import java.util.HashSet;
 import java.util.Set;
 
 import com.braintribe.exception.Exceptions;
+import com.braintribe.crypto.Cryptor;
 import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
 import com.braintribe.model.generic.reflection.EntityType;
+import com.braintribe.model.meta.data.crypto.PropertyCrypting;
+import com.braintribe.model.processing.crypto.provider.CryptorProvider;
 import com.braintribe.model.processing.securityservice.api.UserSessionScoping;
 import com.braintribe.model.processing.securityservice.commons.provider.StaticUserSessionHolder;
 import com.braintribe.model.processing.securityservice.commons.scope.StandardUserSessionScoping;
@@ -78,6 +81,9 @@ public class SecurityRxModuleSpace implements RxModuleContract, SecurityContract
 
 	@Import
 	private CredentialProcessorsSpace credentialProcessors;
+
+	@Import
+	private CryptoSpace crypto;
 
 	@Import
 	private UserServicesSpace userServices;
@@ -168,6 +174,11 @@ public class SecurityRxModuleSpace implements RxModuleContract, SecurityContract
 	@Override
 	public PasswordHashing passwordHashing() {
 		return credentialProcessors.passwordHashing();
+	}
+
+	@Override
+	public CryptorProvider<Cryptor, PropertyCrypting> cryptorProvider() {
+		return crypto.cryptorProvider();
 	}
 
 	@Override

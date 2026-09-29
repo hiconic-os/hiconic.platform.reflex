@@ -2,6 +2,9 @@ package hiconic.rx.auth.access.space;
 
 import static com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling.getOrTunnel;
 
+import com.braintribe.model.crypto.configuration.hashing.HashingConfiguration;
+import com.braintribe.model.meta.data.crypto.PropertyCrypting;
+import com.braintribe.model.processing.aspect.crypto.CryptoAspect;
 import com.braintribe.model.user.Group;
 import com.braintribe.model.user.Role;
 import com.braintribe.model.user.User;
@@ -10,6 +13,7 @@ import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.access.model.configuration.AccessConfiguration;
 import hiconic.rx.access.module.api.AccessContract;
+import hiconic.rx.access.module.api.AccessDataModelConfiguration;
 import hiconic.rx.auth.access.model.configuration.AccessUserServiceConfiguration;
 import hiconic.rx.auth.access.processing.AccessBasedUserService;
 import hiconic.rx.db.module.api.DatabaseContract;
@@ -51,7 +55,13 @@ public class AccessUserServiceRxModuleSpace implements RxModuleContract {
 
 	@Override
 	public void configureModels(ModelConfigurations configurations) {
-		access.protectSystemAccess(configuration().getAuthAccessId());
+		String authAccessId = configuration().getAuthAccessId();
+		access.protectSystemAccess(authAccessId);
+
+		AccessDataModelConfiguration dataModel = access.accessModelConfigurations().dataModelConfiguration(authAccessId);
+		dataModel.configureModel(editor -> editor.onEntityType(User.T)
+				.addPropertyMetaData(User.password, userPasswordPropertyCrypting()));
+		dataModel.bindAspect("password-crypting").bind(this::cryptoAspect);
 	}
 
 	@Override
@@ -69,6 +79,29 @@ public class AccessUserServiceRxModuleSpace implements RxModuleContract {
 		bean.setProvisioningLocking(locking.locking());
 		bean.setNodeId(platform.application().nodeId());
 
+		return bean;
+	}
+
+	@Managed
+	private CryptoAspect cryptoAspect() {
+		CryptoAspect bean = new CryptoAspect();
+		bean.setCryptorProvider(security.cryptorProvider());
+		return bean;
+	}
+
+	@Managed
+	private PropertyCrypting userPasswordPropertyCrypting() {
+		PropertyCrypting bean = PropertyCrypting.T.create();
+		bean.setCryptoConfiguration(userPasswordHashingConfiguration());
+		return bean;
+	}
+
+	@Managed
+	private HashingConfiguration userPasswordHashingConfiguration() {
+		HashingConfiguration bean = HashingConfiguration.T.create();
+		bean.setAlgorithm("SHA-256");
+		bean.setEnableRandomSalt(true);
+		bean.setRandomSaltSize(16);
 		return bean;
 	}
 

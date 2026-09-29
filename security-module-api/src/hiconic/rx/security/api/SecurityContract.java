@@ -15,6 +15,9 @@ package hiconic.rx.security.api;
 
 import java.util.Set;
 
+import com.braintribe.crypto.Cryptor;
+import com.braintribe.model.meta.data.crypto.PropertyCrypting;
+import com.braintribe.model.processing.crypto.provider.CryptorProvider;
 import com.braintribe.model.processing.securityservice.api.UserSessionScoping;
 
 import hiconic.rx.module.api.wire.RxExportContract;
@@ -27,6 +30,8 @@ public interface SecurityContract extends RxExportContract {
 	UserService userService();
 
 	PasswordHashing passwordHashing();
+
+	CryptorProvider<Cryptor, PropertyCrypting> cryptorProvider();
 
 	UserSessionInvalidation userSessionInvalidation();
 
