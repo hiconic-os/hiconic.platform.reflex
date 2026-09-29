@@ -28,6 +28,8 @@ import com.braintribe.model.securityservice.credentials.UserPasswordCredentials;
 import com.braintribe.utils.encryption.Cryptor;
 import com.braintribe.utils.lcd.StringTools;
 
+import hiconic.rx.security.audit.SecurityAudit;
+
 /**
  * <p>
  * This experts validates whether the provided password ({@link UserPasswordCredentials#getPassword()}) matches the
@@ -50,12 +52,13 @@ public class UserPasswordCredentialsAuthenticationServiceProcessor extends Passw
 	protected Maybe<AuthenticateCredentialsResponse> authenticateCredentials(ServiceRequestContext context, AuthenticateCredentials request,
 			UserPasswordCredentials credentials) {
 
-		Reason reason = validateCredentialsAndDecrypt(credentials);
+		Reason reason = validateCredentialsAndDecrypt(context, credentials);
 
-		if (reason != null)
+		if (reason != null) {
 			return reason.asMaybe();
+		}
 
-		return authenticate(credentials.getUserIdentification(), credentials.getPassword()) //
+		return authenticate(context, credentials.getUserIdentification(), credentials.getPassword()) //
 				.map(this::buildAuthenticatedUserFrom);
 	}
 
@@ -68,23 +71,28 @@ public class UserPasswordCredentialsAuthenticationServiceProcessor extends Passw
 	 * @throws InvalidCredentialsException
 	 *             If the given credentials are invalid
 	 */
-	private Reason validateCredentialsAndDecrypt(UserPasswordCredentials credentials) throws InvalidCredentialsException {
+	private Reason validateCredentialsAndDecrypt(ServiceRequestContext context, UserPasswordCredentials credentials) throws InvalidCredentialsException {
 
 		Reason identificationReason = validateUserIdentification(credentials.getUserIdentification());
 
-		if (identificationReason != null)
+		if (identificationReason != null) {
+			SecurityAudit.authenticationFailed("INVALID_USER_IDENTIFICATION", credentials.getUserIdentification(), context);
 			return identificationReason;
+		}
 
 		String password = credentials.getPassword();
 		if (password == null) {
 			log.debug(() -> "Password is null in the given credentials: [ " + credentials + " ]");
+			SecurityAudit.authenticationFailed("MISSING_PASSWORD", credentials.getUserIdentification(), context);
 			return Reasons.build(InvalidCredentials.T).text("Invalid credentials").toReason();
 		}
 
 		if (credentials.getPasswordIsEncrypted()) {
-			if (decryptSecret == null)
+			if (decryptSecret == null) {
+				SecurityAudit.authenticationFailed("ENCRYPTED_PASSWORD_UNSUPPORTED", credentials.getUserIdentification(), context);
 				return Reasons.build(InvalidCredentials.T).text("Invalid credentials")
 						.cause(Reasons.build(UnsupportedOperation.T).text("Credential password decryption not supported").toReason()).toReason();
+			}
 
 			String encryptedPassword = password;
 			if (password.startsWith("${decrypt(") && password.endsWith(")}")) {
@@ -104,6 +112,7 @@ public class UserPasswordCredentialsAuthenticationServiceProcessor extends Passw
 				credentials.setPassword(decryptedPassword);
 			} catch (Exception e) {
 				log.debug(() -> "Error while trying to decrypt password " + StringTools.simpleObfuscatePassword(password), e);
+				SecurityAudit.authenticationFailed("ENCRYPTED_PASSWORD_DECRYPTION_FAILED", credentials.getUserIdentification(), context);
 				return Reasons.build(InvalidCredentials.T).text("Invalid credentials").toReason();
 			}
 		}

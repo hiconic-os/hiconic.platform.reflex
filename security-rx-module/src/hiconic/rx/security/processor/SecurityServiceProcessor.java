@@ -72,6 +72,7 @@ import com.braintribe.utils.lcd.Lazy;
 import hiconic.rx.security.api.UserService;
 import hiconic.rx.security.api.UserSessionAccessVerificationExpert;
 import hiconic.rx.security.api.UserSessionOpeningVerificationExpert;
+import hiconic.rx.security.audit.SecurityAudit;
 
 public class SecurityServiceProcessor extends AbstractDispatchingServiceProcessor<SecurityRequest, Object> {
 
@@ -201,8 +202,11 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 
 	private Maybe<OpenUserSessionResponse> openUserSession(ServiceRequestContext requestContext, OpenUserSession openUserSession) {
 		Maybe<ValidationResult> validationResultMaybe = validate(requestContext, openUserSession);
-		if (validationResultMaybe.isUnsatisfied())
+		if (validationResultMaybe.isUnsatisfied()) {
+			SecurityAudit.sessionOpeningFailed("SESSION_REQUEST_INVALID", openUserSession.getCredentials(), requestContext,
+					openUserSession.getEntryPoint());
 			return validationResultMaybe.propagateReason();
+		}
 
 		ValidationResult validationResult = validationResultMaybe.get();
 		Credentials credentials = openUserSession.getCredentials();
@@ -220,8 +224,11 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 			if (acquiredUserSessionMaybe.isSatisfied()) {
 				UserSession userSession = acquiredUserSessionMaybe.get();
 				Reason authorizationFailure = checkAuthorization(validationResult.entryPoint(), userSession.getEffectiveRoles());
-				if (authorizationFailure != null)
+				if (authorizationFailure != null) {
+					SecurityAudit.sessionOpeningFailed("ENTRY_POINT_FORBIDDEN", credentials, requestContext,
+							entryPointName(validationResult.entryPoint()));
 					return authorizationFailure.asMaybe();
+				}
 
 				return validateUserSession(requestContext, userSession).map(s -> createResponseFrom(s, true));
 			}
@@ -230,6 +237,8 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 			// blocking
 			if (acquiredUserSessionMaybe.isUnsatisfiedBy(InvalidCredentials.T)) {
 				// In this case the credentials are blocked via the acquiration mechanism and a reauthentication is not possible
+				SecurityAudit.sessionOpeningFailed("CREDENTIALS_BLOCKED", credentials, requestContext,
+						entryPointName(validationResult.entryPoint()));
 				return acquiredUserSessionMaybe.whyUnsatisfied().asMaybe();
 
 			} else if (!acquiredUserSessionMaybe.isUnsatisfiedBy(SessionNotFound.T)) {
@@ -243,28 +252,42 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 
 		Maybe<? extends AuthenticateCredentialsResponse> maybe = authenticateCredentials.eval(evaluator).getReasoned();
 
-		if (maybe.isUnsatisfied())
+		if (maybe.isUnsatisfied()) {
+			if (!maybe.isUnsatisfiedBy(InvalidCredentials.T))
+				SecurityAudit.sessionOpeningFailed("AUTHENTICATION_PROCESSING_REJECTED", credentials, requestContext,
+						entryPointName(validationResult.entryPoint()));
 			return Maybe.empty(maybe.whyUnsatisfied());
+		}
 
 		AuthenticateCredentialsResponse authenticatedCredentialsResponse = maybe.get();
 		if (authenticatedCredentialsResponse instanceof AuthenticatedUserSession authenticatedUserSession) {
 			UserSession userSession = authenticatedUserSession.getUserSession();
 			Reason authorizationFailure = checkAuthorization(validationResult.entryPoint(), userSession.getEffectiveRoles());
-			if (authorizationFailure != null)
+			if (authorizationFailure != null) {
+				SecurityAudit.sessionOpeningFailed("ENTRY_POINT_FORBIDDEN", credentials, requestContext,
+						entryPointName(validationResult.entryPoint()));
 				return authorizationFailure.asMaybe();
+			}
 
 			return validateUserSession(requestContext, userSession).map(s -> createResponseFrom(s, true));
 		}
 
 		Set<String> effectiveRoles = Roles.authenticatedCredentialsEffectiveRoles(authenticatedCredentialsResponse);
 		Reason authorizationFailure = checkAuthorization(validationResult.entryPoint(), effectiveRoles);
-		if (authorizationFailure != null)
+		if (authorizationFailure != null) {
+			SecurityAudit.sessionOpeningFailed("ENTRY_POINT_FORBIDDEN", credentials, requestContext,
+					entryPointName(validationResult.entryPoint()));
 			return authorizationFailure.asMaybe();
+		}
 
 		if (authenticatedCredentialsResponse instanceof AuthenticatedUser authenticatedUser) {
-			Reason verificationFailure = verifyUserSessionOpening(requestContext, validationResult.entryPoint(), authenticatedUser.getUser(), effectiveRoles);
-			if (verificationFailure != null)
+			Reason verificationFailure = verifyUserSessionOpening(requestContext, validationResult.entryPoint(), authenticatedUser.getUser(), effectiveRoles,
+					credentials);
+			if (verificationFailure != null) {
+				SecurityAudit.sessionOpeningFailed("SESSION_OPENING_REJECTED", credentials, requestContext,
+						entryPointName(validationResult.entryPoint()));
 				return verificationFailure.asMaybe();
+			}
 		}
 
 		return buildUserSession(requestContext, openUserSession, validationResult.entryPoint(), authenticatedCredentialsResponse, acquirationKey) //
@@ -272,14 +295,24 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 	}
 
 	private Reason verifyUserSessionOpening(ServiceRequestContext context, OpenUserSessionEntryPoint entryPoint, User user,
-			Set<String> effectiveRoles) {
+			Set<String> effectiveRoles, Credentials credentials) {
 		String entryPointName = entryPoint == null ? null : entryPoint.getName();
 		for (UserSessionOpeningVerificationExpert expert : userSessionOpeningVerificationExperts) {
-			Reason reason = expert.verifyUserSessionOpening(context, entryPointName, user, effectiveRoles);
+			Reason reason;
+			try {
+				reason = expert.verifyUserSessionOpening(context, entryPointName, user, effectiveRoles);
+			} catch (RuntimeException e) {
+				SecurityAudit.sessionOpeningFailed("SESSION_OPENING_VERIFICATION_ERROR", credentials, context, entryPointName);
+				throw e;
+			}
 			if (reason != null)
 				return reason;
 		}
 		return null;
+	}
+
+	private static String entryPointName(OpenUserSessionEntryPoint entryPoint) {
+		return entryPoint == null ? null : entryPoint.getName();
 	}
 
 	private record ValidationResult(OpenUserSessionEntryPoint entryPoint) {

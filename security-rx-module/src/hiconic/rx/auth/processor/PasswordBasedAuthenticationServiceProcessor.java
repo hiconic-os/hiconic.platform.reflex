@@ -29,10 +29,13 @@ import com.braintribe.model.meta.data.crypto.PropertyCrypting;
 import com.braintribe.model.processing.crypto.provider.CryptorProvider;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.securityservice.api.exceptions.SecurityServiceError;
+import com.braintribe.model.processing.service.api.ServiceRequestContext;
 import com.braintribe.model.securityservice.credentials.Credentials;
 import com.braintribe.model.securityservice.credentials.UserPasswordCredentials;
 import com.braintribe.model.securityservice.credentials.identification.UserIdentification;
 import com.braintribe.model.user.User;
+
+import hiconic.rx.security.audit.SecurityAudit;
 
 /**
  * <p>
@@ -104,9 +107,10 @@ public abstract class PasswordBasedAuthenticationServiceProcessor<T extends User
 	}
 
 
-	protected Maybe<User> authenticate(UserIdentification userIdentification, String password) {
+	protected Maybe<User> authenticate(ServiceRequestContext context, UserIdentification userIdentification, String password) {
 
 		if (password == null) {
+			SecurityAudit.authenticationFailed("MISSING_PASSWORD", userIdentification, context);
 			return Reasons.build(InvalidArgument.T).text("Missing password").toMaybe();
 		}
 
@@ -119,6 +123,7 @@ public abstract class PasswordBasedAuthenticationServiceProcessor<T extends User
 
 			if (userMaybe.isUnsatisfiedBy(NotFound.T)) {
 				log.debug("Authentication failure caused by: " + userMaybe.whyUnsatisfied().stringify());
+				SecurityAudit.authenticationFailed("USER_NOT_FOUND_OR_PASSWORD_MISMATCH", userIdentification, context);
 				return Reasons.build(InvalidCredentials.T).text("Invalid Credentials").toMaybe();
 			}
 
@@ -129,6 +134,7 @@ public abstract class PasswordBasedAuthenticationServiceProcessor<T extends User
 
 		if (userMaybe.isUnsatisfiedBy(NotFound.T)) {
 			log.debug("Authentication failure caused by: " + userMaybe.whyUnsatisfied().stringify());
+			SecurityAudit.authenticationFailed("USER_NOT_FOUND", userIdentification, context);
 			return Reasons.build(InvalidCredentials.T).text("Invalid Credentials").toMaybe();
 		}
 
@@ -136,6 +142,7 @@ public abstract class PasswordBasedAuthenticationServiceProcessor<T extends User
 
 		if (user.getPassword() == null) {
 			log.debug("Authentication failure caused by null password on user: " + user.getId());
+			SecurityAudit.authenticationFailed("STORED_PASSWORD_MISSING", userIdentification, context);
 
 			return Reasons.build(InvalidCredentials.T).text("Invalid Credentials").toMaybe();
 		}
@@ -146,12 +153,14 @@ public abstract class PasswordBasedAuthenticationServiceProcessor<T extends User
 			passwordMatches = userPasswordCryptor.is(password).equals(user.getPassword());
 		} catch (Exception e) {
 			// TODO: really internal or wrong password still?
+			SecurityAudit.authenticationFailed("PASSWORD_VERIFICATION_ERROR", userIdentification, context);
 			log.error("Password cryptor failure", e);
 			return InternalError.from(e, "Internal Error").asMaybe();
 		}
 
 		if (!passwordMatches) {
 			log.debug("Authentication failure by password mismatch for user: " + user.getId());
+			SecurityAudit.authenticationFailed("PASSWORD_MISMATCH", userIdentification, context);
 			return Reasons.build(InvalidCredentials.T).text("Invalid Credentials").toMaybe();
 		}
 
