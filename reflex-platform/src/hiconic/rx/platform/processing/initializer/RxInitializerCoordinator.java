@@ -27,8 +27,11 @@ import hiconic.rx.initializer.api.InitializerBackend;
 /** Collects initializer registrations independently of the backend selected by the assembled application. */
 public class RxInitializerCoordinator implements InitializerRegistry {
 
-	private record TaskEntry(InitializerFingerprintResolver fingerprintResolver, InitializerTask task) {}
-	private record OrderEntry(String runsFirstName, String runsLaterName) {}
+	private record TaskEntry(InitializerFingerprintResolver fingerprintResolver, InitializerTask task) {
+	}
+
+	private record OrderEntry(String runsFirstName, String runsLaterName) {
+	}
 
 	private final Map<String, TaskEntry> tasks = new LinkedHashMap<>();
 	private final Set<OrderEntry> orders = new LinkedHashSet<>();

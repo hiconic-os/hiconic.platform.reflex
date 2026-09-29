@@ -72,7 +72,7 @@ import hiconic.rx.resource.model.configuration.ResourceStorageConfiguration;
 @Managed
 public class CoreRxPlatformModuleSpace implements RxModuleContract, PushContract, InitializerContract, InitializerBackendContract {
 
-	private static final String INITIALIZER_USE_CASE = "platform-initializers";
+	private static final String INITIALIZER_USE_CASE = "rx-platform-initializers";
 
 	private static ModelSymbol internalDomainDefaultingApiModelSymbol = ModelSymbol.of("internal-domain-defaulting-api-model");
 	
