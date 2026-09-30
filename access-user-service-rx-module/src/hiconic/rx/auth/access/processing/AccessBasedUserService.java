@@ -2,9 +2,11 @@ package hiconic.rx.auth.access.processing;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -143,6 +145,9 @@ public class AccessBasedUserService implements UserService {
 	}
 
 	private Reason reconcileUsersLocked(List<User> users, String provisioningGroup, String reconciliationRevision, boolean deleteVanishedUsers) {
+		log.info("Reconciling " + users.size() + " user(s) [group=" + provisioningGroup + ", revision=" + reconciliationRevision
+				+ ", deleteVanishedUsers=" + deleteVanishedUsers + "]");
+
 		if (deleteVanishedUsers && (provisioningGroup == null || provisioningGroup.isBlank()))
 			return Reasons.build(ConfigurationError.T).text("Cannot delete vanished users without a provisioning group").toReason();
 
@@ -156,8 +161,10 @@ public class AccessBasedUserService implements UserService {
 
 		reconcileVanishedUsers(provisioningGroup, users.stream().map(User::getName).collect(Collectors.toSet()), deleteVanishedUsers);
 
-		if (reconciliationRevision == null || reconciliationRevision.isBlank())
+		if (reconciliationRevision == null || reconciliationRevision.isBlank()) {
+			log.info("Credential reconciliation is disabled because no revision was configured [group=" + provisioningGroup + "]");
 			return null;
+		}
 
 		GmDbInitializerManager manager = new GmDbInitializerManager();
 		manager.setUseCase("user-provisioning");
@@ -167,13 +174,21 @@ public class AccessBasedUserService implements UserService {
 		manager.setLocking(provisioningLocking);
 
 		String taskName = "credentials:" + provisioningGroup;
+		AtomicBoolean credentialsReconciled = new AtomicBoolean();
 		manager.registerInitializer(taskName, oldFingerprint -> reconciliationRevision, () -> {
+			credentialsReconciled.set(true);
+			log.info("Applying credential reconciliation [group=" + provisioningGroup + ", revision=" + reconciliationRevision + "]");
 			Reason credentialError = reconcileUsersInternal(users, provisioningGroup, true, true);
 			if (credentialError != null)
 				return credentialError.asMaybe();
+			log.info("Applied credential reconciliation for " + users.size() + " user(s) [group=" + provisioningGroup + ", revision="
+					+ reconciliationRevision + "]");
 			return Maybe.complete("Reconciled credentials for " + users.size() + " user(s)");
 		});
 		manager.runInitializers();
+		if (!credentialsReconciled.get())
+			log.info("Skipped credential reconciliation because the revision is unchanged [group=" + provisioningGroup + ", revision="
+					+ reconciliationRevision + "]");
 
 		return null;
 	}
@@ -183,12 +198,18 @@ public class AccessBasedUserService implements UserService {
 		Map<String, Role> rolesByName = indexRoles(session);
 		Map<String, Group> groupsByName = indexGroups(session);
 		Group markerGroup = provisioningGroup == null || provisioningGroup.isBlank() ? null : ensureGroup(provisioningGroup, session, groupsByName);
+		Map<String, String> expectedPasswords = new LinkedHashMap<>();
+		List<String> reconciliationResults = new ArrayList<>();
 
 		for (User user : users) {
 			String username = user.getName();
 
 			EntityQuery query = EntityQueryBuilder.from(User.T).where().property(User.name).eq(username).tc(everythingExceptGroupUsersTc).done();
-			User actualUser = session.query().entities(query).first();
+			List<User> matchingUsers = session.query().entities(query).list();
+			if (matchingUsers.size() > 1)
+				log.warn("Multiple persisted users have provisioning identity '" + username + "'; updating the first of " + matchingUsers.size()
+						+ " matches");
+			User actualUser = matchingUsers.isEmpty() ? null : matchingUsers.get(0);
 			boolean created = actualUser == null;
 
 			if (created) {
@@ -198,9 +219,12 @@ public class AccessBasedUserService implements UserService {
 			}
 
 			copySimplePropsAndLocalizedStrings(user, actualUser, created || authoritative);
-			if ((created || reconcileCredentials) && user.getPassword() != null)
+			boolean credentialUpdated = (created || reconcileCredentials) && user.getPassword() != null;
+			if (credentialUpdated) {
 				// Persistent password encoding is owned by the auth access' crypting aspect. Hashing here as well would encode twice.
 				actualUser.setPassword(user.getPassword());
+				expectedPasswords.put(username, user.getPassword());
+			}
 
 			Set<Role> desiredRoles = ensureRoles(user.getRoles(), session, rolesByName);
 			Set<String> desiredRoleNames = toRoleNames(desiredRoles);
@@ -213,11 +237,45 @@ public class AccessBasedUserService implements UserService {
 			if (markerGroup != null)
 				desiredGroups.add(markerGroup);
 			reconcileGroups(actualUser, desiredGroups, authoritative);
+
+			reconciliationResults.add("User provisioning action [group=" + provisioningGroup + ", user=" + username + ", created=" + created
+					+ ", credentialUpdated=" + credentialUpdated + ", authoritative=" + authoritative + "]");
 		}
 
 		session.commit();
+		reconciliationResults.forEach(message -> log.info(message));
+		verifyPersistedCredentials(provisioningGroup, expectedPasswords);
 
 		return null;
+	}
+
+	private void verifyPersistedCredentials(String provisioningGroup, Map<String, String> expectedPasswords) {
+		if (expectedPasswords.isEmpty())
+			return;
+
+		PersistenceGmSession verificationSession = newSession();
+		for (Map.Entry<String, String> entry : expectedPasswords.entrySet()) {
+			String username = entry.getKey();
+			EntityQuery query = EntityQueryBuilder.from(User.T).where().property(User.name).eq(username).done();
+			List<User> matchingUsers = verificationSession.queryDetached().entities(query).list();
+			if (matchingUsers.size() != 1) {
+				log.warn("Cannot unambiguously verify provisioned credentials [group=" + provisioningGroup + ", user=" + username + ", matches="
+						+ matchingUsers.size() + "]");
+				continue;
+			}
+
+			try {
+				boolean matches = passwordHashing.matches(entry.getValue(), matchingUsers.get(0).getPassword());
+				if (matches)
+					log.info("Verified persisted credentials [group=" + provisioningGroup + ", user=" + username + ", matches=true]");
+				else
+					log.warn("Persisted credentials do not match the provisioned password [group=" + provisioningGroup + ", user=" + username
+							+ ", matches=false]");
+			} catch (RuntimeException e) {
+				log.warn("Could not verify persisted credentials [group=" + provisioningGroup + ", user=" + username + ", error="
+						+ e.getClass().getSimpleName() + ": " + e.getMessage() + "]");
+			}
+		}
 	}
 
 	private Set<String> toRoleNames(Set<Role> roles) {
