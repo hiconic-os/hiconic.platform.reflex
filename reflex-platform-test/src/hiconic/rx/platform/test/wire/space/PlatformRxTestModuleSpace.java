@@ -1,7 +1,11 @@
 // ============================================================================
 package hiconic.rx.platform.test.wire.space;
 
+import java.util.List;
+
 import com.braintribe.gm._BasicResourceModel_;
+import com.braintribe.model.service.api.ServiceRequest;
+import com.braintribe.model.util.meta.NewMetaModelGeneration;
 import com.braintribe.model.processing.service.api.ServiceAroundProcessor;
 import com.braintribe.model.service.api.MulticastRequest;
 import com.braintribe.model.service.api.result.MulticastResponse;
@@ -15,6 +19,8 @@ import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.platform.test.PlatformTestDomains;
+import hiconic.rx.platform.service.SystemUserAttributesTest;
+import hiconic.rx.platform.service.model.CheckSystemUserAttributes;
 import hiconic.rx.platform.test.wire.contract.PlatformTestContract;
 
 @Managed
@@ -33,6 +39,12 @@ public class PlatformRxTestModuleSpace implements RxModuleContract, PlatformTest
 		sd.bindInterceptor("first-test-interceptor").forType(GetResourcePayload.T).bind(this::forwardingInterceptor);
 		sd.bindInterceptor("second-test-interceptor").forType(GetResourcePayload.T).bind(this::forwardingInterceptor);
 		sd.orderInterceptors("first-test-interceptor", "second-test-interceptor");
+
+		configurations.internal().addModel(new NewMetaModelGeneration().buildMetaModel(
+				"hiconic.platform.reflex:system-user-attributes-test-model", List.of(CheckSystemUserAttributes.T),
+				List.of(ServiceRequest.T.getModel().getMetaModel())));
+		configurations.internal().bindRequest(CheckSystemUserAttributes.T,
+				() -> (context, request) -> SystemUserAttributesTest.checkAttributes(context, platform.auth().systemUserSession()));
 
 		// A module-provided multicast processor must unambiguously override the platform's single-instance fallback.
 		configurations.internal().bindRequest(MulticastRequest.T, () -> (context, request) -> MulticastResponse.T.create());

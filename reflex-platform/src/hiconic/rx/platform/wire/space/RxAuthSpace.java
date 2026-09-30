@@ -9,6 +9,13 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 import com.braintribe.common.attribute.AttributeContext;
+import com.braintribe.common.attribute.AttributeContextBuilder;
+import com.braintribe.common.attribute.common.UserInfo;
+import com.braintribe.common.attribute.common.UserInfoAttribute;
+import com.braintribe.model.processing.securityservice.api.attributes.LenientAuthenticationFailure;
+import com.braintribe.model.processing.service.api.aspect.IsAuthorizedAspect;
+import com.braintribe.model.processing.service.api.aspect.RequestorSessionIdAspect;
+import com.braintribe.model.processing.service.api.aspect.RequestorUserNameAspect;
 import com.braintribe.model.processing.service.common.context.UserSessionAspect;
 import com.braintribe.model.user.Role;
 import com.braintribe.model.user.User;
@@ -76,7 +83,19 @@ public class RxAuthSpace implements RxAuthContract {
 	@Override
 	@Managed
 	public Supplier<AttributeContext> systemAttributeContextSupplier() {
-		return () -> AttributeContexts.derivePeek().set(UserSessionAspect.class, systemUserSession()).build();
+		return () -> {
+			UserSession userSession = systemUserSession();
+			// Keep all identity attributes aligned when switching sessions, as in ContextualizedAuthorization.
+			AttributeContextBuilder builder = AttributeContexts.derivePeek();
+			builder.set(UserSessionAspect.class, userSession);
+			builder.set(IsAuthorizedAspect.class, true);
+			builder.set(RequestorSessionIdAspect.class, userSession.getSessionId());
+			String userName = userSession.getUser().getName();
+			builder.set(RequestorUserNameAspect.class, userName);
+			builder.set(UserInfoAttribute.class, UserInfo.of(userName, userSession.getEffectiveRoles()));
+			builder.set(LenientAuthenticationFailure.class, null);
+			return builder.build();
+		};
 	}
 
 	@Override
