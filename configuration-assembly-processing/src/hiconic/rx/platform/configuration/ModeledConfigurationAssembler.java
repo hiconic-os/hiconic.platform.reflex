@@ -19,6 +19,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -34,17 +35,30 @@ import com.braintribe.gm.config.yaml.api.PartiallyResolvedConfiguration;
 import com.braintribe.gm.config.yaml.index.ClasspathEntry;
 import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 import com.braintribe.gm.model.reason.Maybe;
+import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.config.ConfigurationError;
+import com.braintribe.gm.model.reason.config.PropertyNotFound;
 import com.braintribe.gm.model.reason.essential.NotFound;
+import com.braintribe.model.bvd.resource.PackagedResource;
+import com.braintribe.model.bvd.resource.PackagedResourceText;
+import com.braintribe.model.bvd.resource.PackagedSource;
+import com.braintribe.model.bvd.resource.ResourceText;
 import com.braintribe.model.generic.GMF;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.Model;
+import com.braintribe.model.generic.reflection.Property;
+import com.braintribe.model.generic.reflection.VdHolder;
+import com.braintribe.model.generic.value.ValueDescriptor;
 import com.braintribe.model.meta.GmMetaModel;
-import com.braintribe.model.processing.resource.packaged.PackagedResourceValueDescriptorExperts;
+import com.braintribe.model.processing.vde.reasoned.api.ValueDescriptorEvaluationPolicy;
+import com.braintribe.model.processing.vde.reasoned.api.ValueDescriptorEvaluationContext;
+import com.braintribe.model.processing.vde.reasoned.api.ValueDescriptorSourceContext;
 
+import hiconic.rx.module.api.common.RxPlatform;
 import hiconic.rx.platform.conf.RxConfigurationValueDescriptorExperts;
+import hiconic.rx.platform.conf.RxPropertyResolver;
 import hiconic.rx.platform.loading.RxPropertiesLoader;
 import hiconic.rx.platform.model.configuration.vd.Decrypt;
 import hiconic.rx.platform.processing.resource.RxIndexedPackagedResourceResolver;
@@ -107,16 +121,18 @@ public final class ModeledConfigurationAssembler {
 		loader.setClasspathIndex(classpathIndex);
 		loader.setClasspathConfPath(classpathConfPath);
 		loader.setConfigFolder(configFolder);
+		loader.setConfigFolderArtifact("pipeline");
 		loader.setExternalReasonedPropertyLookup(symbolicProperties::resolveKnown);
 		loader.setValueDescriptorExpressionCodec(RxConfigurationValueDescriptorExperts.expressionCodec());
 		var packagedResources = new RxIndexedPackagedResourceResolver(classpathIndex, "");
-		loader.setValueDescriptorExpertConfigurer(registry -> {
-			PackagedResourceValueDescriptorExperts.register(registry, packagedResources);
-			registry.register(Decrypt.T,
-					(context, descriptor) -> Reasons.build(NotFound.T)
-							.text("Encrypted configuration values are resolved only at runtime")
-							.toMaybe());
-		});
+		RxPropertyResolver buildProperties = new RxPropertyResolver();
+		buildProperties.setManagedPropertiesOnly(true);
+		buildProperties.setRawProperties(symbolicProperties.resolvedProperties());
+		loader.setValueDescriptorExpertConfigurer(
+				registry -> RxConfigurationValueDescriptorExperts.register(registry, packagedResources, buildProperties));
+		loader.setValueDescriptorContextConfigurer(context -> context.withAspect(ValueDescriptorEvaluationPolicy.class,
+				ModeledConfigurationAssembler::buildTimeDeferralReason));
+		loader.setPartiallyLoadedConfigurationProcessor(ModeledConfigurationAssembler::preservePackagedResourceOrigin);
 
 		Map<ConfigurationKey, GenericEntity> configurations = new LinkedHashMap<>();
 		Set<String> unresolvedAliases = new LinkedHashSet<>();
@@ -149,6 +165,59 @@ public final class ModeledConfigurationAssembler {
 			return Maybe.incomplete(assembly, errors.get());
 
 		return Maybe.complete(assembly);
+	}
+
+	private static Reason buildTimeDeferralReason(ValueDescriptorEvaluationContext context, ValueDescriptor descriptor) {
+		if (Decrypt.T.isInstance(descriptor))
+			return PropertyNotFound.create(RxPlatform.PROPERTY_DECRYPT_SECRET);
+
+		if (PackagedSource.T.isInstance(descriptor)
+				|| PackagedResource.T.isInstance(descriptor)
+				|| PackagedResourceText.T.isInstance(descriptor)
+				|| ResourceText.T.isInstance(descriptor))
+			return NotFound.create("Packaged resources are resolved at application runtime");
+
+		return null;
+	}
+
+	private static void preservePackagedResourceOrigin(GenericEntity configuration, ValueDescriptorSourceContext source) {
+		if (source == null || source.artifact() == null || source.artifact().isBlank())
+			return;
+
+		preservePackagedResourceOrigin(configuration, source.artifact(), new IdentityHashMap<>());
+	}
+
+	private static void preservePackagedResourceOrigin(Object value, String artifact, IdentityHashMap<Object, Boolean> visited) {
+		if (value == null || visited.put(value, Boolean.TRUE) != null)
+			return;
+
+		if (VdHolder.isVdHolder(value)) {
+			preservePackagedResourceOrigin(((VdHolder) value).vd, artifact, visited);
+			return;
+		}
+
+		if (value instanceof PackagedSource descriptor && blank(descriptor.getArtifact()))
+			descriptor.setArtifact(artifact);
+		else if (value instanceof PackagedResource descriptor && blank(descriptor.getArtifact()))
+			descriptor.setArtifact(artifact);
+		else if (value instanceof PackagedResourceText descriptor && blank(descriptor.getArtifact()))
+			descriptor.setArtifact(artifact);
+
+		if (value instanceof GenericEntity entity) {
+			for (Property property : entity.entityType().getProperties())
+				preservePackagedResourceOrigin(property.getDirect(entity), artifact, visited);
+		} else if (value instanceof Map<?, ?> map) {
+			map.forEach((key, entryValue) -> {
+				preservePackagedResourceOrigin(key, artifact, visited);
+				preservePackagedResourceOrigin(entryValue, artifact, visited);
+			});
+		} else if (value instanceof Collection<?> collection) {
+			collection.forEach(element -> preservePackagedResourceOrigin(element, artifact, visited));
+		}
+	}
+
+	private static boolean blank(String value) {
+		return value == null || value.isBlank();
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })

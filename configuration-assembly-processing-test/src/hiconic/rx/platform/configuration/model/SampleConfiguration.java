@@ -13,9 +13,13 @@
 // ============================================================================
 package hiconic.rx.platform.configuration.model;
 
+import java.util.Map;
+
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
+import com.braintribe.model.resource.Resource;
+import com.braintribe.model.resource.source.ResourceSource;
 
 public interface SampleConfiguration extends GenericEntity {
 
@@ -26,4 +30,13 @@ public interface SampleConfiguration extends GenericEntity {
 
 	String getLabel();
 	void setLabel(String label);
+
+	Map<String, String> getHeaders();
+	void setHeaders(Map<String, String> headers);
+
+	Resource getResource();
+	void setResource(Resource resource);
+
+	ResourceSource getSource();
+	void setSource(ResourceSource source);
 }

@@ -13,6 +13,11 @@
 // ============================================================================
 package hiconic.rx.platform.wire.space;
 
+import java.io.File;
+
+import com.braintribe.gm.config.assembly.model.PackagedResourceIndex;
+import com.braintribe.gm.config.yaml.YamlConfigurations;
+
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
@@ -31,7 +36,12 @@ public class RxPackagedResourcesSpace implements RxPackagedResourcesContract {
 	@Override
 	@Managed
 	public RxIndexedPackagedResourceResolver resolver() {
-		return new RxIndexedPackagedResourceResolver(config.classpathIndex(), "");
+		File indexFile = new File(config.appDir(), "packaged-resource-index.yaml");
+		if (!indexFile.isFile())
+			return new RxIndexedPackagedResourceResolver(config.classpathIndex(), "");
+
+		PackagedResourceIndex index = YamlConfigurations.read(PackagedResourceIndex.T).from(indexFile).get();
+		return new RxIndexedPackagedResourceResolver(config.classpathIndex(), "", index, new File(config.appDir(), "conf").toPath());
 	}
 
 }

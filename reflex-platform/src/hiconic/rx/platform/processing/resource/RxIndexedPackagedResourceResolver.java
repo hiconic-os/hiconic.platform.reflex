@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.net.URL;
+import java.nio.file.Path;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -37,6 +38,9 @@ import javax.imageio.stream.ImageInputStream;
 
 import com.braintribe.gm.config.yaml.index.ClasspathEntry;
 import com.braintribe.gm.config.yaml.index.ClasspathIndex;
+import com.braintribe.gm.config.assembly.model.ArtifactResourceSection;
+import com.braintribe.gm.config.assembly.model.MaterializedResource;
+import com.braintribe.gm.config.assembly.model.PackagedResourceIndex;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.essential.NotFound;
 import com.braintribe.mimetype.PlatformMimeTypeDetector;
@@ -66,6 +70,8 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 	private final Map<String, List<IndexedResource>> resources;
 	private final Map<ArtifactPathKey, CachedResource> resourcesByArtifactPath;
 	private final RxPackagedResourceInventory inventory;
+	private final PackagedResourceIndex materializedIndex;
+	private final Path materializedRoot;
 
 	/**
 	 * @param classpathRoot
@@ -73,10 +79,18 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 	 *            resource is addressed by the very path its artifact declared.
 	 */
 	public RxIndexedPackagedResourceResolver(ClasspathIndex classpathIndex, String classpathRoot) {
+		this(classpathIndex, classpathRoot, null, null);
+	}
+
+	/** Adds the integral application's materialized resources to the ordinary development/classpath resource space. */
+	public RxIndexedPackagedResourceResolver(ClasspathIndex classpathIndex, String classpathRoot,
+			PackagedResourceIndex materializedIndex, Path materializedRoot) {
 		this.classpathIndex = classpathIndex;
 		this.classpathRoot = normalizeRoot(classpathRoot);
-		this.resources = indexResources(classpathIndex);
-		this.resourcesByArtifactPath = indexByArtifactPath(classpathIndex);
+		this.materializedIndex = materializedIndex;
+		this.materializedRoot = materializedRoot;
+		this.resources = indexResources(classpathIndex, materializedIndex, materializedRoot);
+		this.resourcesByArtifactPath = indexByArtifactPath(classpathIndex, materializedIndex, materializedRoot);
 		this.inventory = new Inventory(resources.keySet());
 	}
 
@@ -91,7 +105,7 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 		if (directory.isEmpty())
 			return this;
 
-		return new RxIndexedPackagedResourceResolver(classpathIndex, classpathRoot + directory + "/");
+		return new RxIndexedPackagedResourceResolver(classpathIndex, classpathRoot + directory + "/", materializedIndex, materializedRoot);
 	}
 
 	@Override
@@ -118,6 +132,12 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 		String normalizedArtifact = normalizeArtifact(artifact);
 		String normalizedPath = normalizeResourcePath(artifactRelativePath);
 		CachedResource resource = resourcesByArtifactPath.get(new ArtifactPathKey(normalizedArtifact, normalizedPath));
+		if (resource == null && materializedIndex != null) {
+			String visiblePath = normalizedPath.startsWith(classpathRoot) ? normalizedPath.substring(classpathRoot.length()) : normalizedPath;
+			List<IndexedResource> candidates = resources.get(visiblePath);
+			if (candidates != null && candidates.size() == 1)
+				resource = candidates.get(0).cachedResource;
+		}
 		if (resource == null)
 			throw new IllegalArgumentException("No indexed packaged resource found at " + normalizedArtifact + ":" + normalizedPath);
 		return new Builder(normalizedPath, normalizedArtifact, resource);
@@ -155,7 +175,8 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 		}
 	}
 
-	private Map<String, List<IndexedResource>> indexResources(ClasspathIndex classpathIndex) {
+	private Map<String, List<IndexedResource>> indexResources(ClasspathIndex classpathIndex, PackagedResourceIndex materializedIndex,
+			Path materializedRoot) {
 		Map<String, List<IndexedResource>> result = new LinkedHashMap<>();
 		for (ClasspathEntry entry : classpathIndex.forPrefix(classpathRoot)) {
 			String artifactRelativePath = normalizeResourcePath(entry.path);
@@ -168,11 +189,20 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 
 			candidates.add(new IndexedResource(entry.artifactId, artifactRelativePath, new CachedResource(artifactRelativePath, entry.url)));
 		}
+		forEachMaterialized(materializedIndex, materializedRoot, (artifact, logicalPath, url) -> {
+			if (!logicalPath.startsWith(classpathRoot))
+				return;
+			String path = normalizeResourcePath(logicalPath.substring(classpathRoot.length()));
+			List<IndexedResource> candidates = result.computeIfAbsent(path, k -> new ArrayList<>(1));
+			candidates.removeIf(candidate -> candidate.artifact.equals(artifact));
+			candidates.add(new IndexedResource(artifact, logicalPath, new CachedResource(logicalPath, url)));
+		});
 		result.replaceAll((path, candidates) -> List.copyOf(candidates));
 		return Map.copyOf(result);
 	}
 
-	private Map<ArtifactPathKey, CachedResource> indexByArtifactPath(ClasspathIndex classpathIndex) {
+	private Map<ArtifactPathKey, CachedResource> indexByArtifactPath(ClasspathIndex classpathIndex, PackagedResourceIndex materializedIndex,
+			Path materializedRoot) {
 		Map<ArtifactPathKey, CachedResource> result = new LinkedHashMap<>();
 		for (ClasspathEntry entry : classpathIndex.forPrefix("")) {
 			if (entry.artifactId == null || entry.artifactId.isBlank())
@@ -183,7 +213,42 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 			if (previous != null && !previous.url.equals(entry.url))
 				throw new IllegalStateException("Duplicate indexed packaged resource '" + key + "': " + previous.url + " and " + entry.url);
 		}
+		forEachMaterialized(materializedIndex, materializedRoot, (artifact, logicalPath, url) ->
+				result.put(new ArtifactPathKey(normalizeArtifact(artifact), normalizeResourcePath(logicalPath)),
+						new CachedResource(logicalPath, url)));
 		return Map.copyOf(result);
+	}
+
+	private static void forEachMaterialized(PackagedResourceIndex index, Path root, MaterializedConsumer consumer) {
+		if (index == null)
+			return;
+		if (root == null)
+			throw new IllegalArgumentException("A materialized resource index requires its conf directory");
+		index.getArtifacts().forEach((artifact, section) -> {
+			for (MaterializedResource resource : section.getResources()) {
+				String physical = resource.getMaterializedAs();
+				if (physical == null || physical.isBlank())
+					physical = naturalMaterializedPath(resource.getPath());
+				Path file = root.resolve(physical).normalize();
+				if (!file.startsWith(root.normalize()) || !java.nio.file.Files.isRegularFile(file))
+					throw new IllegalStateException("Indexed materialized resource does not exist: " + file);
+				try {
+					consumer.accept(artifact, normalizeResourcePath(resource.getPath()), file.toUri().toURL());
+				} catch (IOException e) {
+					throw new UncheckedIOException(e);
+				}
+			}
+		});
+	}
+
+	private static String naturalMaterializedPath(String logicalPath) {
+		String prefix = "HICONIC-CONF/";
+		return logicalPath.startsWith(prefix) ? logicalPath.substring(prefix.length()) : logicalPath;
+	}
+
+	@FunctionalInterface
+	private interface MaterializedConsumer {
+		void accept(String artifact, String logicalPath, URL url);
 	}
 
 	private static String normalizeArtifact(String artifact) {

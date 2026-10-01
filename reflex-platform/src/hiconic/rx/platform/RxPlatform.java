@@ -25,9 +25,11 @@ import java.lang.System.Logger.Level;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -40,6 +42,9 @@ import com.braintribe.console.ConsoleConfiguration;
 import com.braintribe.console.ConsoleOutputs;
 import com.braintribe.config.configurator.ClasspathConfigurator;
 import com.braintribe.config.configurator.ConfiguratorContext;
+import com.braintribe.gm.config.assembly.model.MaterializedResource;
+import com.braintribe.gm.config.assembly.model.PackagedResourceIndex;
+import com.braintribe.gm.config.yaml.YamlConfigurations;
 import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.gm.model.reason.ReasonException;
@@ -146,18 +151,25 @@ public class RxPlatform implements AutoCloseable {
 		String resourcesDir = systemProperties.packagedResourcesDir();
 		if (resourcesDir == null || resourcesDir.isBlank())
 			resourcesDir = systemProperties.classpathResourcesDir();
-		if (resourcesDir == null || resourcesDir.isBlank())
-			return new ClasspathIndex();
 
 		List<ClasspathIndex.FilesystemSource> sources = new ArrayList<>();
+		Path integralResourceIndex = systemProperties.appDir().toPath().resolve("packaged-resource-index.yaml");
 		Path effectiveConfDir = systemProperties.appDir().toPath().resolve("effective-conf");
 
-		if (Files.isDirectory(effectiveConfDir)) {
+		if (Files.isRegularFile(integralResourceIndex)) {
+			// The integral conf plus its resource index is the complete productive resource space. A packaged-resources folder may optionally remain
+			// as a diagnostic snapshot, but must never affect runtime behavior.
+			addIntegralConfigurationSources(sources, integralResourceIndex);
+		} else if (Files.isDirectory(effectiveConfDir)) {
+			if (resourcesDir == null || resourcesDir.isBlank())
+				return new ClasspathIndex();
 			sources.add(ClasspathIndex.filesystemSource(new File(resourcesDir).toPath(), "",
 					List.of(RxConfigurationConstants.CLASSPATH_CONF_PATH)));
 			sources.add(ClasspathIndex.filesystemSlots(effectiveConfDir, RxConfigurationConstants.CLASSPATH_CONF_PATH));
 
 		} else {
+			if (resourcesDir == null || resourcesDir.isBlank())
+				return new ClasspathIndex();
 			sources.add(ClasspathIndex.filesystemSource(new File(resourcesDir).toPath(), ""));
 
 			// Compatibility with the first filesystem projection generation.
@@ -167,6 +179,27 @@ public class RxPlatform implements AutoCloseable {
 		}
 
 		return new ClasspathIndex(sources);
+	}
+
+	private void addIntegralConfigurationSources(List<ClasspathIndex.FilesystemSource> sources, Path indexFile) {
+		Path conf = systemProperties.appDir().toPath().resolve("conf");
+		PackagedResourceIndex index = YamlConfigurations.read(PackagedResourceIndex.T).from(indexFile.toFile()).get();
+		List<ClasspathIndex.FilesystemMapping> mappings = new ArrayList<>();
+		Set<String> materializedPaths = new LinkedHashSet<>();
+		index.getArtifacts().forEach((artifact, section) -> {
+			for (MaterializedResource resource : section.getResources()) {
+				String materialized = resource.getMaterializedAs();
+				if (materialized == null || materialized.isBlank())
+					materialized = resource.getPath().startsWith(RxConfigurationConstants.CLASSPATH_CONF_PATH)
+							? resource.getPath().substring(RxConfigurationConstants.CLASSPATH_CONF_PATH.length())
+							: resource.getPath();
+				mappings.add(new ClasspathIndex.FilesystemMapping(resource.getPath(), materialized, artifact));
+				materializedPaths.add(materialized);
+			}
+		});
+		sources.add(ClasspathIndex.filesystemTree(conf, RxConfigurationConstants.CLASSPATH_CONF_PATH, "compiled", materializedPaths));
+		if (!mappings.isEmpty())
+			sources.add(ClasspathIndex.filesystemMappings(conf, mappings));
 	}
 
 	public static Function<String, String> defaultSystemPropertyLookup() {
@@ -340,7 +373,7 @@ public class RxPlatform implements AutoCloseable {
 		// Assume SLF4J is bound to logback in the current environment
 		LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
 
-		File confDir = new File(systemProperties.appDir(), "conf");
+		File confDir = configurationOverlayDir();
 
 		try {
 			new LayeredLogbackConfiguration(classpathIndex, RxConfigurationConstants.CLASSPATH_CONF_PATH, confDir).configure(context);
@@ -356,7 +389,7 @@ public class RxPlatform implements AutoCloseable {
 	}
 
 	private void setupLogLevels() {
-		File confDir = new File(systemProperties.appDir(), "conf");
+		File confDir = configurationOverlayDir();
 
 		LogLevelSetup setup = new LogLevelSetup();
 		setup.setConfDir(confDir);
@@ -371,7 +404,7 @@ public class RxPlatform implements AutoCloseable {
 
 	private RxPropertyResolver createPropertyResolver() {
 		RxPropertyResolver resolver = new RxPropertyResolver();
-		File confDir = new File(systemProperties.appDir(), "conf");
+		File confDir = configurationOverlayDir();
 		Map<String, String> rawProperties = UnsatisfiedMaybeTunneling.getOrTunnel(
 				RxPropertiesLoader.loadLayered(confDir, RxConfigurationConstants.CLASSPATH_CONF_PATH, "properties", new YamlMarshaller(), classpathIndex));
 		rawProperties = new LinkedHashMap<>(rawProperties);
@@ -388,6 +421,11 @@ public class RxPlatform implements AutoCloseable {
 
 		resolver.setRawProperties(rawProperties);
 		return resolver;
+	}
+
+	private File configurationOverlayDir() {
+		File appDir = systemProperties.appDir();
+		return new File(appDir, new File(appDir, "packaged-resource-index.yaml").isFile() ? "conf-additions" : "conf");
 	}
 	
 	private void eagerLoading() {

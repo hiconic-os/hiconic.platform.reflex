@@ -170,8 +170,8 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 
 	private File confFolder = null;
 	private File packagedResourcesFolder;
-	private File effectiveConfFolder;
 	private File configurationCompilationFile;
+	private File configurationMergeReportFile;
 	private File dataFolder;
 
 	private StreamPipeFactory streamPipeFactory;
@@ -858,17 +858,18 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 		try {
 			ConfigurationFolder hd = ConfigurationFolder.T.create();
 
-			if (confFolder != null || packagedResourcesFolder != null || effectiveConfFolder != null
-					|| configurationCompilationFile != null) {
+			if (confFolder != null || packagedResourcesFolder != null || configurationCompilationFile != null
+					|| configurationMergeReportFile != null) {
 
 				String filename = "conf-" + now(fileDateTimeFormatter) + ".zip";
 
 				Map<String, File> map = new LinkedHashMap<>();
 				addFolderFiles(map, confFolder, "");
 				addFolderFiles(map, packagedResourcesFolder, "packaged-resources/");
-				addFolderFiles(map, effectiveConfFolder, "effective-conf/");
 				if (configurationCompilationFile != null && configurationCompilationFile.isFile())
 					map.put("configuration-compilation.yaml", configurationCompilationFile);
+				if (configurationMergeReportFile != null && configurationMergeReportFile.isFile())
+					map.put("configuration-merge-report.yaml", configurationMergeReportFile);
 
 				if (!map.isEmpty()) {
 					Resource callResource = Resource
@@ -1554,12 +1555,12 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 		this.packagedResourcesFolder = packagedResourcesFolder;
 	}
 	@Configurable
-	public void setEffectiveConfFolder(File effectiveConfFolder) {
-		this.effectiveConfFolder = effectiveConfFolder;
-	}
-	@Configurable
 	public void setConfigurationCompilationFile(File configurationCompilationFile) {
 		this.configurationCompilationFile = configurationCompilationFile;
+	}
+	@Configurable
+	public void setConfigurationMergeReportFile(File configurationMergeReportFile) {
+		this.configurationMergeReportFile = configurationMergeReportFile;
 	}
 	@Configurable
 	public void setDatabaseFolder(File databaseFolder) {

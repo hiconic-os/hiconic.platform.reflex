@@ -171,8 +171,7 @@ public class RxPropertyResolver implements PropertyResolver {
 	public Maybe<String> decryptReasoned(String encryptedValue) {
 		Maybe<String> maybeSecret = resolveReasoned(RxPlatform.PROPERTY_DECRYPT_SECRET);
 		if (maybeSecret.isUnsatisfied())
-			return Reasons.build(ConfigurationError.T).text("Could not resolve decryption secret")
-					.cause(maybeSecret.whyUnsatisfied()).toMaybe();
+			return maybeSecret;
 
 		try {
 			return Maybe.complete(Cryptor.decrypt(maybeSecret.get(), null, null, null, encryptedValue));

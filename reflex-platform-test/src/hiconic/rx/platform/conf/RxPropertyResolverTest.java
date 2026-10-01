@@ -17,6 +17,7 @@ import com.braintribe.gm.config.yaml.ModeledYamlConfiguration;
 import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 import com.braintribe.gm.config.yaml.PropertyResolutions;
 import com.braintribe.gm.model.reason.Maybe;
+import com.braintribe.gm.model.reason.config.ConfigurationError;
 import com.braintribe.gm.model.reason.config.PropertyNotFound;
 import com.braintribe.gm.model.reason.config.UnresolvedProperty;
 import com.braintribe.utils.encryption.Cryptor;
@@ -239,6 +240,11 @@ public class RxPropertyResolverTest {
 		rawProperties.put("password", "${decrypt('someEncryptedValue')}");
 		Maybe<String> result = resolver.resolveReasoned("password");
 		assertThat(result.isUnsatisfied()).isTrue();
+		assertThat((Object) result.whyUnsatisfied()).isInstanceOf(UnresolvedProperty.class);
+		assertThat(result.whyUnsatisfied().stringify()).contains("RX_DECRYPT_SECRET");
+
+		Maybe<String> directResult = resolver.decryptReasoned("someEncryptedValue");
+		assertThat((Object) directResult.whyUnsatisfied()).isInstanceOf(PropertyNotFound.class);
 	}
 
 	@Test
@@ -249,6 +255,11 @@ public class RxPropertyResolverTest {
 
 		Maybe<String> result = resolver.resolveReasoned("password");
 		assertThat(result.isUnsatisfied()).isTrue();
+		assertThat((Object) result.whyUnsatisfied()).isInstanceOf(UnresolvedProperty.class);
+		assertThat(result.whyUnsatisfied().stringify()).contains("Wrong decryption secret");
+
+		Maybe<String> directResult = resolver.decryptReasoned(encrypted);
+		assertThat((Object) directResult.whyUnsatisfied()).isInstanceOf(ConfigurationError.class);
 	}
 
 	// --- unsupported operation ---

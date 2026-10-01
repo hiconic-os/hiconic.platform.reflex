@@ -37,12 +37,36 @@ public class ConfigurationAssemblyMainTest {
 				artifact.count=0
 				""");
 		Files.createDirectories(application.resolve("conf"));
+		Files.writeString(application.resolve("packaged-solutions.txt"), "org.one:annotations#1.0\norg.two:annotations#2.0\n");
 
 		int status = ConfigurationAssemblyMain.run(new String[] { "--application-dir", application.toString() });
 
 		assertThat(status).isZero();
-		assertThat(application.resolve("effective-conf/compiled")).isDirectory();
+		assertThat(application.resolve("conf")).isDirectory();
+		assertThat(application.resolve("packaged-resources")).doesNotExist();
+		assertThat(application.resolve("packaged-resource-index.yaml")).isRegularFile();
 		assertThat(application.resolve("configuration-compilation.yaml")).isRegularFile();
+	}
+
+	@Test
+	public void retainsTheOriginalResourceMirrorOnlyWhenExplicitlyRequestedForDiagnostics() throws Exception {
+		Path application = temporaryFolder.newFolder("diagnostic-application").toPath();
+		Path packagedResources = application.resolve("packaged-resources");
+		Files.createDirectories(packagedResources);
+		Files.writeString(packagedResources.resolve("index.properties"), """
+				formatVersion=1
+				artifact.count=0
+				""");
+		Files.createDirectories(application.resolve("conf"));
+
+		int status = ConfigurationAssemblyMain.run(new String[] {
+				"--application-dir", application.toString(),
+				"--include-packaged-resource-diagnostics", "true"
+		});
+
+		assertThat(status).isZero();
+		assertThat(packagedResources).isDirectory();
+		assertThat(packagedResources.resolve("index.properties")).isRegularFile();
 	}
 
 	@Test
@@ -51,6 +75,10 @@ public class ConfigurationAssemblyMainTest {
 		assertThat(ConfigurationAssemblyMain.run(new String[] {
 				"--application-dir", temporaryFolder.getRoot().getAbsolutePath(),
 				"--unknown", "value"
+		})).isEqualTo(2);
+		assertThat(ConfigurationAssemblyMain.run(new String[] {
+				"--application-dir", temporaryFolder.getRoot().getAbsolutePath(),
+				"--include-packaged-resource-diagnostics", "sometimes"
 		})).isEqualTo(2);
 	}
 }

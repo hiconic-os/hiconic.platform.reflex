@@ -82,7 +82,8 @@ public class RxApplicationFilesSpace implements RxApplicationFilesContract {
 	@Override
 	@Managed
 	public Path confPath() {
-		return resolvePath(appPath(), "conf");
+		Path app = appPath();
+		return resolvePath(app, app.resolve("packaged-resource-index.yaml").toFile().isFile() ? "conf-additions" : "conf");
 	}
 
 	@Override

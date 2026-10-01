@@ -115,6 +115,8 @@ public class RxConfigurationSpace implements RxConfigurationContract {
 	private ModeledYamlConfiguration modeledConfiguration() {
 		ModeledYamlConfiguration bean = new ModeledYamlConfiguration();
 		bean.setConfigFolder(applicationFiles.confPath().toFile());
+		if (new java.io.File(platformConfig.appDir(), "packaged-resource-index.yaml").isFile())
+			bean.setConfigFolderArtifact("compiled");
 		bean.setClasspathConfPath(RxConfigurationConstants.CLASSPATH_CONF_PATH);
 		bean.setClasspathIndex(platformConfig.classpathIndex());
 		bean.setExternalReasonedPropertyLookup(propertyResolver()::resolvePlaceholderReasoned);

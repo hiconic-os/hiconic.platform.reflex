@@ -19,9 +19,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
+import com.braintribe.gm.config.assembly.model.ArtifactResourceSection;
+import com.braintribe.gm.config.assembly.model.MaterializedResource;
+import com.braintribe.gm.config.assembly.model.PackagedResourceIndex;
 import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.model.bvd.resource.PackagedResource;
@@ -38,6 +47,9 @@ import hiconic.rx.module.api.resource.RxPackagedResourceResolver;
 import hiconic.rx.platform.processing.resource.RxIndexedPackagedResourceResolver;
 
 public class RxIndexedPackagedResourceResolverTest {
+
+	@Rule
+	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
 	@Test
 	public void cachesMetadataButReturnsIndependentResourcesAndStreams() throws Exception {
@@ -142,6 +154,73 @@ public class RxIndexedPackagedResourceResolverTest {
 		PackagedSource source = (PackagedSource) resource.getResourceSource();
 		assertThat(source.getArtifact()).isEqualTo("reflex-platform-test");
 		assertThat(source.getPath()).isEqualTo("test-resources/assets/hello.txt");
+	}
+
+	@Test
+	public void explicitArtifactStillKeepsSiblingPathRelativeToTheConfiguration() {
+		var resolver = rootResolver();
+		var registry = new ValueDescriptorExpertRegistry();
+		PackagedResourceValueDescriptorExperts.register(registry, resolver);
+		var context = new StandardValueDescriptorEvaluationContext(registry).withAspect(ValueDescriptorSourceContext.class,
+				new ValueDescriptorSourceContext("irrelevant-owner", "test-resources/config.yaml"));
+
+		PackagedResourceText text = PackagedResourceText.T.create();
+		text.setArtifact("reflex-platform-test");
+		text.setPath("./assets/hello.txt");
+
+		assertThat(context.<String> evaluate(text).get()).isEqualTo("public hello");
+
+		PackagedResourceText absoluteText = PackagedResourceText.T.create();
+		absoluteText.setArtifact("reflex-platform-test");
+		absoluteText.setPath("/test-resources/assets/hello.txt");
+		assertThat(context.<String> evaluate(absoluteText).get()).isEqualTo("public hello");
+	}
+
+	@Test
+	public void readsUniqueAndRenamedMaterializedResourcesAsTextAndStream() throws Exception {
+		Path conf = temporaryFolder.newFolder("integral-conf").toPath();
+		Files.writeString(conf.resolve("unique.pem"), "unique content", StandardCharsets.UTF_8);
+		Files.writeString(conf.resolve("shared--artifact-b.txt"), "content from b", StandardCharsets.UTF_8);
+
+		PackagedResourceIndex index = PackagedResourceIndex.T.create();
+		index.setArtifacts(Map.of(
+				"group:artifact-a", section(resource("HICONIC-CONF/unique.pem", null)),
+				"group:artifact-b", section(resource("HICONIC-CONF/shared.txt", "shared--artifact-b.txt"))));
+		var resolver = new RxIndexedPackagedResourceResolver(new ClasspathIndex(), "", index, conf);
+
+		// Effective YAML without an artifact resolves through its synthetic compiled owner when the logical path is unique.
+		try (var in = resolver.openStream("compiled", "HICONIC-CONF/unique.pem").get()) {
+			assertThat(new String(in.readAllBytes(), StandardCharsets.UTF_8)).isEqualTo("unique content");
+		}
+		try (var in = resolver.resource("group:artifact-b", "HICONIC-CONF/shared.txt").asResource().openStream()) {
+			assertThat(new String(in.readAllBytes(), StandardCharsets.UTF_8)).isEqualTo("content from b");
+		}
+
+		var registry = new ValueDescriptorExpertRegistry();
+		PackagedResourceValueDescriptorExperts.register(registry, resolver);
+		var context = new StandardValueDescriptorEvaluationContext(registry).withAspect(ValueDescriptorSourceContext.class,
+				new ValueDescriptorSourceContext("compiled", "HICONIC-CONF/configuration.yaml"));
+		PackagedResourceText uniqueText = PackagedResourceText.T.create();
+		uniqueText.setPath("./unique.pem");
+		assertThat(context.<String> evaluate(uniqueText).get()).isEqualTo("unique content");
+
+		PackagedResourceText renamedText = PackagedResourceText.T.create();
+		renamedText.setArtifact("group:artifact-b");
+		renamedText.setPath("./shared.txt");
+		assertThat(context.<String> evaluate(renamedText).get()).isEqualTo("content from b");
+	}
+
+	private static ArtifactResourceSection section(MaterializedResource... resources) {
+		ArtifactResourceSection section = ArtifactResourceSection.T.create();
+		section.setResources(List.of(resources));
+		return section;
+	}
+
+	private static MaterializedResource resource(String path, String materializedAs) {
+		MaterializedResource resource = MaterializedResource.T.create();
+		resource.setPath(path);
+		resource.setMaterializedAs(materializedAs);
+		return resource;
 	}
 
 	@Test
