@@ -44,6 +44,8 @@ public interface WebServerConfiguration extends GenericEntity {
 	String accessLogEnabled = "accessLogEnabled";
 	String accessLogFormat = "accessLogFormat";
 	String pushSseEndpointPath = "pushSseEndpointPath";
+	String pushSseHeartbeatIntervalMillis = "pushSseHeartbeatIntervalMillis";
+	String pushSseReplayCapacity = "pushSseReplayCapacity";
 	String pushWebSocketEndpointPath = "pushWebSocketEndpointPath";
 
 	@Initializer("'localhost'")
@@ -148,6 +150,18 @@ public interface WebServerConfiguration extends GenericEntity {
 	@Initializer("'push/sse'")
 	String getPushSseEndpointPath();
 	void setPushSseEndpointPath(String pushSseEndpointPath);
+
+	@Description("Interval in milliseconds between SSE heartbeat events. Heartbeats keep otherwise idle connections alive across proxies. "
+			+ "A value of zero disables heartbeats.")
+	@Initializer("30000L")
+	long getPushSseHeartbeatIntervalMillis();
+	void setPushSseHeartbeatIntervalMillis(long pushSseHeartbeatIntervalMillis);
+
+	@Description("Maximum number of recent SSE push events retained per application instance for replay after a client reconnects. "
+			+ "A value of zero disables replay history.")
+	@Initializer("256")
+	int getPushSseReplayCapacity();
+	void setPushSseReplayCapacity(int pushSseReplayCapacity);
 
 	@Description("Path of the WebSocket transport endpoint for platform push, relative to defaultEndpointsBasePath. The value must not end with '/'.")
 	@Pattern(".*[^\\/]$")

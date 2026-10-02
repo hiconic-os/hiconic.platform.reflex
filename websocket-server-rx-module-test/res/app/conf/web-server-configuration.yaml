@@ -1,1 +1,3 @@
 port: 0
+pushSseHeartbeatIntervalMillis: 100
+pushSseReplayCapacity: 16

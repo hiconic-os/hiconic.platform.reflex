@@ -225,6 +225,8 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 		bean.setEvaluator(platform.serviceProcessing().systemEvaluator());
 		bean.setProcessingInstanceId(platform.application().instanceId());
 		bean.setPushContract(push);
+		bean.setHeartbeatIntervalMillis(configuration().getPushSseHeartbeatIntervalMillis());
+		bean.setReplayCapacity(configuration().getPushSseReplayCapacity());
 		return bean;
 	}
 

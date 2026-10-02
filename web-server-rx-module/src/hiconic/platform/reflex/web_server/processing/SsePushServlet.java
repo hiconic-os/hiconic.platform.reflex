@@ -11,11 +11,19 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 
@@ -56,10 +64,15 @@ public class SsePushServlet extends HttpServlet implements ServiceProcessor<Inte
 	private static final Logger log = Logger.getLogger(SsePushServlet.class);
 
 	private final Map<String, SseChannel> channels = new ConcurrentHashMap<>();
+	private final Object eventLock = new Object();
+	private final Deque<StoredPush> replayHistory = new ArrayDeque<>();
 	private MarshallerRegistry marshallerRegistry;
 	private Evaluator<ServiceRequest> evaluator;
 	private InstanceId processingInstanceId;
 	private PushContract push;
+	private long heartbeatIntervalMillis = 30_000L;
+	private int replayCapacity = 256;
+	private ScheduledExecutorService heartbeatExecutor;
 
 	@Required
 	public void setMarshallerRegistry(MarshallerRegistry marshallerRegistry) {
@@ -79,6 +92,42 @@ public class SsePushServlet extends HttpServlet implements ServiceProcessor<Inte
 	@Required
 	public void setPushContract(PushContract push) {
 		this.push = push;
+	}
+
+	public void setHeartbeatIntervalMillis(long heartbeatIntervalMillis) {
+		if (heartbeatIntervalMillis < 0)
+			throw new IllegalArgumentException("heartbeatIntervalMillis must not be negative");
+		this.heartbeatIntervalMillis = heartbeatIntervalMillis;
+	}
+
+	public void setReplayCapacity(int replayCapacity) {
+		if (replayCapacity < 0)
+			throw new IllegalArgumentException("replayCapacity must not be negative");
+		this.replayCapacity = replayCapacity;
+	}
+
+	@Override
+	public void init() throws ServletException {
+		super.init();
+		if (heartbeatIntervalMillis == 0)
+			return;
+		heartbeatExecutor = Executors.newSingleThreadScheduledExecutor(task -> {
+			Thread thread = new Thread(task, "rx-sse-heartbeat");
+			thread.setDaemon(true);
+			return thread;
+		});
+		heartbeatExecutor.scheduleAtFixedRate(this::sendHeartbeats, heartbeatIntervalMillis, heartbeatIntervalMillis,
+				TimeUnit.MILLISECONDS);
+	}
+
+	@Override
+	public void destroy() {
+		ScheduledExecutorService executor = heartbeatExecutor;
+		if (executor != null)
+			executor.shutdownNow();
+		for (SseChannel channel : List.copyOf(channels.values()))
+			channel.close();
+		super.destroy();
 	}
 
 	@Override
@@ -116,15 +165,19 @@ public class SsePushServlet extends HttpServlet implements ServiceProcessor<Inte
 		AsyncContext async = request.startAsync();
 		async.setTimeout(0L);
 		SseChannel channel = new SseChannel(UUID.randomUUID().toString(), clientId, sessionId, accept, userSession, async);
-		channels.put(channel.getChannelId(), channel);
 		async.addListener(channel);
-		push.registerChannel(channel);
-
-		channel.send("channel", channel.getChannelId());
+		String lastEventId = request.getHeader("Last-Event-ID");
+		int replayedEvents;
+		synchronized (eventLock) {
+			channels.put(channel.getChannelId(), channel);
+			push.registerChannel(channel);
+			channel.send("channel", null, channel.getChannelId());
+			replayedEvents = replay(channel, lastEventId);
+		}
 		boolean identifiedClient = clientId != null;
 		String payloadFormat = accept;
 		log.debug(() -> "Opened SSE channel (identifiedClient=" + identifiedClient + ", sessionSource=" + sessionSource
-				+ ", payloadFormat=" + payloadFormat + ", activeChannels=" + channels.size() + ")");
+				+ ", payloadFormat=" + payloadFormat + ", replayedEvents=" + replayedEvents + ", activeChannels=" + channels.size() + ")");
 	}
 
 	private UserSession validateSession(String sessionId, HttpServletResponse response) throws IOException {
@@ -144,13 +197,17 @@ public class SsePushServlet extends HttpServlet implements ServiceProcessor<Inte
 
 	@Override
 	public PushResponse process(ServiceRequestContext context, InternalPushRequest request) {
-		Predicate<SseChannel> predicate = channel -> matches(channel, request);
+		StoredPush storedPush;
 		Set<SseChannel> recipients;
-		if (request.getPushChannelId() == null)
-			recipients = Set.copyOf(channels.values().stream().filter(predicate).toList());
-		else {
-			SseChannel channel = channels.get(request.getPushChannelId());
-			recipients = channel != null && predicate.test(channel) ? Set.of(channel) : Set.of();
+		synchronized (eventLock) {
+			storedPush = remember(request);
+			Predicate<SseChannel> predicate = channel -> matches(channel, request);
+			if (request.getPushChannelId() == null)
+				recipients = Set.copyOf(channels.values().stream().filter(predicate).toList());
+			else {
+				SseChannel channel = channels.get(request.getPushChannelId());
+				recipients = channel != null && predicate.test(channel) ? Set.of(channel) : Set.of();
+			}
 		}
 
 		PushResponse response = PushResponse.T.create();
@@ -158,7 +215,7 @@ public class SsePushServlet extends HttpServlet implements ServiceProcessor<Inte
 		for (SseChannel channel : recipients) {
 			try {
 				String payload = payloads.computeIfAbsent(channel.accept, mimeType -> encode(request.getServiceRequest(), mimeType));
-				channel.send(null, payload);
+				channel.sendPush(storedPush, payload);
 				response.getResponseMessages().add(responseMessage(channel, "Pushed message to client", true));
 			} catch (Exception e) {
 				log.debug(() -> "Unable to push SSE message to client " + channel.clientId, e);
@@ -167,6 +224,50 @@ public class SsePushServlet extends HttpServlet implements ServiceProcessor<Inte
 			}
 		}
 		return response;
+	}
+
+	private StoredPush remember(InternalPushRequest request) {
+		StoredPush storedPush = new StoredPush(UUID.randomUUID().toString(), request);
+		if (replayCapacity == 0)
+			return storedPush;
+		replayHistory.addLast(storedPush);
+		while (replayHistory.size() > replayCapacity)
+			replayHistory.removeFirst();
+		return storedPush;
+	}
+
+	private int replay(SseChannel channel, String lastEventId) throws IOException {
+		if (lastEventId == null || lastEventId.isBlank() || replayHistory.isEmpty())
+			return 0;
+
+		List<StoredPush> candidates = new ArrayList<>(replayHistory);
+		int matchingIndex = -1;
+		for (int i = 0; i < candidates.size(); i++)
+			if (candidates.get(i).eventId().equals(lastEventId)) {
+				matchingIndex = i;
+				break;
+			}
+
+		int replayed = 0;
+		for (int i = matchingIndex + 1; i < candidates.size(); i++) {
+			StoredPush storedPush = candidates.get(i);
+			if (!matches(channel, storedPush.request()))
+				continue;
+			channel.sendPush(storedPush, encode(storedPush.request().getServiceRequest(), channel.accept));
+			replayed++;
+		}
+		return replayed;
+	}
+
+	private void sendHeartbeats() {
+		String data = "{\"serverTimeUtc\":\"" + Instant.now() + "\"}";
+		for (SseChannel channel : List.copyOf(channels.values()))
+			try {
+				channel.send("ping", null, data);
+			} catch (Exception e) {
+				log.debug(() -> "Unable to send SSE heartbeat to client " + channel.clientId, e);
+				channel.close();
+			}
 	}
 
 	private boolean matches(SseChannel channel, InternalPushRequest request) {
@@ -225,12 +326,18 @@ public class SsePushServlet extends HttpServlet implements ServiceProcessor<Inte
 			this.async = async;
 		}
 
-		private synchronized void send(String event, String data) throws IOException {
+		private synchronized void sendPush(StoredPush storedPush, String data) throws IOException {
+			send("PushRequest", storedPush.eventId(), data);
+		}
+
+		private synchronized void send(String event, String id, String data) throws IOException {
 			if (closed.get())
 				throw new IOException("SSE channel is closed");
 			PrintWriter writer = async.getResponse().getWriter();
 			if (event != null)
 				writer.append("event: ").append(event).append('\n');
+			if (id != null)
+				writer.append("id: ").append(id).append('\n');
 			for (String line : data.split("\\R", -1))
 				writer.append("data: ").append(line).append('\n');
 			writer.append('\n');
@@ -259,5 +366,8 @@ public class SsePushServlet extends HttpServlet implements ServiceProcessor<Inte
 		@Override public void onTimeout(AsyncEvent event) { close(); }
 		@Override public void onError(AsyncEvent event) { close(); }
 		@Override public void onStartAsync(AsyncEvent event) { /* no redispatch */ }
+	}
+
+	private record StoredPush(String eventId, InternalPushRequest request) {
 	}
 }

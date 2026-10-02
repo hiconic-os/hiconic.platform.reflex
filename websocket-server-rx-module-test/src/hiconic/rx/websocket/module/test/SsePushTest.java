@@ -71,8 +71,74 @@ public class SsePushTest extends AbstractRxTest {
 				Assertions.assertThat(message.getClientIdentification()).isEqualTo("sse-test");
 			});
 
-			Assertions.assertThat(readEvent(reader)).contains("ReverseText", "SSE payload");
+			String event = readNextEvent(reader, "PushRequest");
+			Assertions.assertThat(event).contains("event: PushRequest", "id: ", "ReverseText", "SSE payload");
 		}
+	}
+
+	@Test
+	public void sendsHeartbeatWhileConnectionIsIdle() throws Exception {
+		WebServerContract webServer = platform.getWireContext().contract(WebServerContract.class);
+		URI uri = URI.create("http://localhost:" + webServer.getEffectiveServerPort() + "/push/sse");
+
+		HttpRequest request = HttpRequest.newBuilder(uri).GET().build();
+		HttpResponse<InputStream> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofInputStream());
+		try (InputStream stream = response.body();
+				BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+			Assertions.assertThat(readEvent(reader)).contains("event: channel");
+			Assertions.assertThat(readNextEvent(reader, "ping")).contains("event: ping", "serverTimeUtc");
+		}
+	}
+
+	@Test
+	public void replaysEventsMissedDuringReconnect() throws Exception {
+		WebServerContract webServer = platform.getWireContext().contract(WebServerContract.class);
+		URI uri = URI.create("http://localhost:" + webServer.getEffectiveServerPort()
+				+ "/push/sse?clientId=sse-replay&accept=application/json");
+
+		String firstEventId;
+		HttpResponse<InputStream> firstResponse = HttpClient.newHttpClient().send(HttpRequest.newBuilder(uri).GET().build(),
+				HttpResponse.BodyHandlers.ofInputStream());
+		try (InputStream stream = firstResponse.body();
+				BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+			readEvent(reader);
+			push("sse-replay", "first replay payload");
+			firstEventId = eventId(readNextEvent(reader, "PushRequest"));
+		}
+
+		push("sse-replay", "missed replay payload");
+
+		HttpRequest reconnect = HttpRequest.newBuilder(uri).header("Last-Event-ID", firstEventId).GET().build();
+		HttpResponse<InputStream> secondResponse = HttpClient.newHttpClient().send(reconnect, HttpResponse.BodyHandlers.ofInputStream());
+		try (InputStream stream = secondResponse.body();
+				BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+			readEvent(reader);
+			Assertions.assertThat(readNextEvent(reader, "PushRequest")).contains("missed replay payload");
+		}
+	}
+
+	private PushResponse push(String clientIdPattern, String text) {
+		ReverseText payload = ReverseText.T.create();
+		payload.setText(text);
+		PushRequest push = PushRequest.T.create();
+		push.setClientIdPattern(clientIdPattern);
+		push.setServiceRequest(payload);
+		return push.eval(platformContract.serviceProcessing().systemEvaluator()).get();
+	}
+
+	private String readNextEvent(BufferedReader reader, String eventName) throws Exception {
+		while (true) {
+			String event = readEvent(reader);
+			if (event.contains("event: " + eventName + "\n"))
+				return event;
+		}
+	}
+
+	private String eventId(String event) {
+		for (String line : event.split("\\R"))
+			if (line.startsWith("id: "))
+				return line.substring(4);
+		throw new AssertionError("SSE event has no id: " + event);
 	}
 
 	private String readEvent(BufferedReader reader) throws Exception {
