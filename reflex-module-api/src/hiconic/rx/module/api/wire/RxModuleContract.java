@@ -129,7 +129,7 @@ public interface RxModuleContract extends WireSpace {
 	/**
 	 * Called when the platform application loaded and initialized all modules to allow module to deploy modeled configurations.
 	 * <p>
-	 * NOTE that model configuration is now longer allowed at this point.
+	 * NOTE that configuring models via {@link ModelConfiguration} is no longer allowed at this point.
 	 */
 	default void onDeploy() {
 		// implement if needed

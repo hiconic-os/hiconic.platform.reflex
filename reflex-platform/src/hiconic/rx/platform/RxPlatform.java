@@ -70,6 +70,7 @@ import hiconic.rx.platform.logging.LogbackLogLevelFramework;
 import hiconic.rx.platform.logging.ProcessStandardStreams;
 import hiconic.rx.platform.loading.RxModuleLoader;
 import hiconic.rx.platform.loading.RxPropertiesLoader;
+import hiconic.rx.platform.processing.resource.PackagedArtifact;
 import hiconic.rx.platform.wire.RxPlatformWireModule;
 import hiconic.rx.platform.wire.contract.ExtendedRxPlatformContract;
 
@@ -186,14 +187,16 @@ public class RxPlatform implements AutoCloseable {
 		PackagedResourceIndex index = YamlConfigurations.read(PackagedResourceIndex.T).from(indexFile.toFile()).get();
 		List<ClasspathIndex.FilesystemMapping> mappings = new ArrayList<>();
 		Set<String> materializedPaths = new LinkedHashSet<>();
-		index.getArtifacts().forEach((artifact, section) -> {
+		index.getArtifacts().forEach((coordinate, section) -> {
+			// The index names an artifact by its groupId:artifactId coordinate.
+			PackagedArtifact artifact = PackagedArtifact.parse(coordinate);
 			for (MaterializedResource resource : section.getResources()) {
 				String materialized = resource.getMaterializedAs();
 				if (materialized == null || materialized.isBlank())
 					materialized = resource.getPath().startsWith(RxConfigurationConstants.CLASSPATH_CONF_PATH)
 							? resource.getPath().substring(RxConfigurationConstants.CLASSPATH_CONF_PATH.length())
 							: resource.getPath();
-				mappings.add(new ClasspathIndex.FilesystemMapping(resource.getPath(), materialized, artifact));
+				mappings.add(new ClasspathIndex.FilesystemMapping(resource.getPath(), materialized, artifact.groupId(), artifact.artifactId()));
 				materializedPaths.add(materialized);
 			}
 		});

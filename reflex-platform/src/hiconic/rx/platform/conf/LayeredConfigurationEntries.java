@@ -144,6 +144,8 @@ public class LayeredConfigurationEntries {
 		private static final Comparator<Entry> comparator = Comparator.comparingInt((Entry e) -> e.priority) //
 				.thenComparing(e -> e.disambiguator) //
 				.thenComparing(e -> e.artifactId) //
+				// Only after the artifactId, so that knowing the groupId of one artifact but not of another cannot change their order.
+				.thenComparing(e -> e.groupId) //
 				.thenComparing(e -> e.source);
 
 		private final URL url;
@@ -151,23 +153,25 @@ public class LayeredConfigurationEntries {
 		private final String source;
 		private final String disambiguator;
 		private final int priority;
+		private final String groupId;
 		private final String artifactId;
 
-		private Entry(URL url, File file, String source, String disambiguator, int priority, String artifactId) {
+		private Entry(URL url, File file, String source, String disambiguator, int priority, String groupId, String artifactId) {
 			this.url = url;
 			this.file = file;
 			this.source = source;
 			this.disambiguator = disambiguator;
 			this.priority = priority;
+			this.groupId = groupId;
 			this.artifactId = artifactId;
 		}
 
-		private static Entry fromClasspath(ClasspathEntry classpathEntry, Variant variant) {
-			return new Entry(classpathEntry.url, null, classpathEntry.path, variant.disambiguator, variant.priority, artifactId(classpathEntry.url));
+		private static Entry fromClasspath(ClasspathEntry cpEntry, Variant variant) {
+			return new Entry(cpEntry.url, null, cpEntry.path, variant.disambiguator, variant.priority, cpEntry.groupId, cpEntry.artifactId);
 		}
 
 		private static Entry fromFile(File file, Variant variant) {
-			return new Entry(null, file, file.getAbsolutePath(), variant.disambiguator, variant.priority, "");
+			return new Entry(null, file, file.getAbsolutePath(), variant.disambiguator, variant.priority, "", "");
 		}
 
 		public URL url() {
@@ -189,18 +193,6 @@ public class LayeredConfigurationEntries {
 		@Override
 		public int compareTo(Entry other) {
 			return comparator.compare(this, other);
-		}
-
-		private static String artifactId(URL url) {
-			String path = url.toString();
-			int jarEnd = path.indexOf(".jar!");
-			if (jarEnd == -1)
-				return "";
-
-			int nameStart = path.lastIndexOf('/', jarEnd);
-			String jarName = path.substring(nameStart + 1, jarEnd);
-			int versionDash = jarName.lastIndexOf('-');
-			return versionDash == -1 ? jarName : jarName.substring(0, versionDash);
 		}
 	}
 }

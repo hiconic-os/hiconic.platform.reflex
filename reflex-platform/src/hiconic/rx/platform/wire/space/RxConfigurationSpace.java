@@ -67,14 +67,19 @@ public class RxConfigurationSpace implements RxConfigurationContract {
 	}
 
 	@Override
+	public <C extends GenericEntity> Maybe<C> readExplicitConfig(EntityType<C> configType) {
+		return modeledConfiguration().explicitConfigReasoned(configType);
+	}
+
+	@Override
 	public ResourceHandle indexedClasspathResource(String path) {
 		return resolveIndexedClasspathResource(platformConfig.classpathIndex(), path);
 	}
 
 	static ResourceHandle resolveIndexedClasspathResource(ClasspathIndex classpathIndex, String path) {
 		String normalizedPath = normalizeClasspathPath(path);
-		List<ClasspathEntry> entries = classpathIndex.forPrefix(normalizedPath).stream()
-				.filter(entry -> entry.path.equals(normalizedPath))
+		List<ClasspathEntry> entries = classpathIndex.forPrefix(normalizedPath).stream() //
+				.filter(entry -> entry.path.equals(normalizedPath)) //
 				.toList();
 
 		if (entries.isEmpty())

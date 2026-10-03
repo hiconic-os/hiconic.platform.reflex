@@ -26,9 +26,11 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -38,7 +40,6 @@ import javax.imageio.stream.ImageInputStream;
 
 import com.braintribe.gm.config.yaml.index.ClasspathEntry;
 import com.braintribe.gm.config.yaml.index.ClasspathIndex;
-import com.braintribe.gm.config.assembly.model.ArtifactResourceSection;
 import com.braintribe.gm.config.assembly.model.MaterializedResource;
 import com.braintribe.gm.config.assembly.model.PackagedResourceIndex;
 import com.braintribe.gm.model.reason.Maybe;
@@ -68,7 +69,10 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 	private final ClasspathIndex classpathIndex;
 	private final String classpathRoot;
 	private final Map<String, List<IndexedResource>> resources;
-	private final Map<ArtifactPathKey, CachedResource> resourcesByArtifactPath;
+	/** By artifactId and path. More than one entry means artifacts with the same artifactId from different groups. */
+	private final Map<ArtifactPathKey, List<GroupResource>> resourcesByArtifactPath;
+	/** The artifactIds that more than one known group contributes, so a source built for them must name the groupId. */
+	private final Set<String> ambiguousArtifactIds;
 	private final RxPackagedResourceInventory inventory;
 	private final PackagedResourceIndex materializedIndex;
 	private final Path materializedRoot;
@@ -91,6 +95,7 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 		this.materializedRoot = materializedRoot;
 		this.resources = indexResources(classpathIndex, materializedIndex, materializedRoot);
 		this.resourcesByArtifactPath = indexByArtifactPath(classpathIndex, materializedIndex, materializedRoot);
+		this.ambiguousArtifactIds = ambiguousArtifactIds(resourcesByArtifactPath);
 		this.inventory = new Inventory(resources.keySet());
 	}
 
@@ -118,20 +123,20 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 		// Without a root every artifact shares one path space, so the same path may come from more than one of them.
 		if (candidates.size() > 1)
 			throw new IllegalArgumentException("Ambiguous packaged resource path [" + classpathRoot + path + "], declared by: "
-					+ candidates.stream().map(c -> c.artifact).sorted().collect(Collectors.joining(", "))
+					+ candidates.stream().map(c -> c.artifact == null ? "" : c.artifact.qualified()).sorted().collect(Collectors.joining(", "))
 					+ ". Address it with its artifact instead.");
 
 		IndexedResource resource = candidates.get(0);
 
 		// The artifact and the full artifact relative path, so that the produced source says where the file is without any further context.
-		return new Builder(resource.artifactRelativePath, resource.artifact, resource.cachedResource);
+		return new Builder(resource.artifactRelativePath, sourceArtifact(resource.artifact), resource.cachedResource);
 	}
 
 	@Override
 	public RxPackagedResourceBuilder resource(String artifact, String artifactRelativePath) {
 		String normalizedArtifact = normalizeArtifact(artifact);
 		String normalizedPath = normalizeResourcePath(artifactRelativePath);
-		CachedResource resource = resourcesByArtifactPath.get(new ArtifactPathKey(normalizedArtifact, normalizedPath));
+		CachedResource resource = findByArtifact(PackagedArtifact.parse(normalizedArtifact), normalizedPath);
 		if (resource == null && materializedIndex != null) {
 			String visiblePath = normalizedPath.startsWith(classpathRoot) ? normalizedPath.substring(classpathRoot.length()) : normalizedPath;
 			List<IndexedResource> candidates = resources.get(visiblePath);
@@ -141,6 +146,45 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 		if (resource == null)
 			throw new IllegalArgumentException("No indexed packaged resource found at " + normalizedArtifact + ":" + normalizedPath);
 		return new Builder(normalizedPath, normalizedArtifact, resource);
+	}
+
+	/**
+	 * The resource of the given artifact. A plain artifactId matches any group, as long as only one group contributes the path. A
+	 * {@code groupId:artifactId} matches that group, or else an artifact whose groupId is not known.
+	 */
+	private CachedResource findByArtifact(PackagedArtifact artifact, String path) {
+		List<GroupResource> located = resourcesByArtifactPath.get(new ArtifactPathKey(artifact.artifactId(), path));
+		if (located == null)
+			return null;
+
+		if (artifact.hasGroupId()) {
+			GroupResource exact = byGroup(located, artifact.groupId());
+			GroupResource match = exact != null ? exact : byGroup(located, "");
+			return match == null ? null : match.resource;
+		}
+
+		if (located.size() == 1)
+			return located.get(0).resource;
+
+		throw new IllegalArgumentException("Ambiguous packaged resource [" + artifact.artifactId() + ":" + path + "], declared by: "
+				+ located.stream().map(l -> new PackagedArtifact(l.groupId, artifact.artifactId()).qualified()).sorted()
+						.collect(Collectors.joining(", "))
+				+ ". Address it as groupId:artifactId.");
+	}
+
+	private static GroupResource byGroup(List<GroupResource> located, String groupId) {
+		for (GroupResource groupResource : located)
+			if (groupResource.groupId.equals(groupId))
+				return groupResource;
+		return null;
+	}
+
+	/** The artifact a built source names: just the artifactId, unless another group contributes the same artifactId. */
+	private String sourceArtifact(PackagedArtifact artifact) {
+		if (artifact == null)
+			return "";
+
+		return ambiguousArtifactIds.contains(artifact.artifactId()) ? artifact.qualified() : artifact.artifactId();
 	}
 
 	@Override
@@ -187,36 +231,69 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 			if (candidates.stream().anyMatch(c -> c.cachedResource.url.equals(entry.url)))
 				continue;
 
-			candidates.add(new IndexedResource(entry.artifactId, artifactRelativePath, new CachedResource(artifactRelativePath, entry.url)));
+			candidates.add(new IndexedResource(artifactOf(entry), artifactRelativePath, new CachedResource(artifactRelativePath, entry.url)));
 		}
 		forEachMaterialized(materializedIndex, materializedRoot, (artifact, logicalPath, url) -> {
 			if (!logicalPath.startsWith(classpathRoot))
 				return;
 			String path = normalizeResourcePath(logicalPath.substring(classpathRoot.length()));
 			List<IndexedResource> candidates = result.computeIfAbsent(path, k -> new ArrayList<>(1));
-			candidates.removeIf(candidate -> candidate.artifact.equals(artifact));
+			candidates.removeIf(candidate -> Objects.equals(candidate.artifact, artifact));
 			candidates.add(new IndexedResource(artifact, logicalPath, new CachedResource(logicalPath, url)));
 		});
 		result.replaceAll((path, candidates) -> List.copyOf(candidates));
 		return Map.copyOf(result);
 	}
 
-	private Map<ArtifactPathKey, CachedResource> indexByArtifactPath(ClasspathIndex classpathIndex, PackagedResourceIndex materializedIndex,
+	private Map<ArtifactPathKey, List<GroupResource>> indexByArtifactPath(ClasspathIndex classpathIndex, PackagedResourceIndex materializedIndex,
 			Path materializedRoot) {
-		Map<ArtifactPathKey, CachedResource> result = new LinkedHashMap<>();
+		Map<ArtifactPathKey, List<GroupResource>> result = new LinkedHashMap<>();
 		for (ClasspathEntry entry : classpathIndex.forPrefix("")) {
-			if (entry.artifactId == null || entry.artifactId.isBlank())
+			PackagedArtifact artifact = artifactOf(entry);
+			if (artifact == null)
 				continue;
 			String path = normalizeResourcePath(entry.path);
-			ArtifactPathKey key = new ArtifactPathKey(normalizeArtifact(entry.artifactId), path);
-			CachedResource previous = result.putIfAbsent(key, new CachedResource(path, entry.url));
-			if (previous != null && !previous.url.equals(entry.url))
-				throw new IllegalStateException("Duplicate indexed packaged resource '" + key + "': " + previous.url + " and " + entry.url);
+			List<GroupResource> located = result.computeIfAbsent(new ArtifactPathKey(artifact.artifactId(), path), k -> new ArrayList<>(1));
+			GroupResource previous = byGroup(located, artifact.groupId());
+			if (previous == null)
+				located.add(new GroupResource(artifact.groupId(), new CachedResource(path, entry.url)));
+			else if (!previous.resource.url.equals(entry.url))
+				throw new IllegalStateException(
+						"Duplicate indexed packaged resource '" + artifact + ":" + path + "': " + previous.resource.url + " and " + entry.url);
 		}
-		forEachMaterialized(materializedIndex, materializedRoot, (artifact, logicalPath, url) ->
-				result.put(new ArtifactPathKey(normalizeArtifact(artifact), normalizeResourcePath(logicalPath)),
-						new CachedResource(logicalPath, url)));
+		forEachMaterialized(materializedIndex, materializedRoot, (artifact, logicalPath, url) -> {
+			List<GroupResource> located = result.computeIfAbsent(new ArtifactPathKey(artifact.artifactId(), logicalPath), k -> new ArrayList<>(1));
+			located.removeIf(groupResource -> groupResource.groupId.equals(artifact.groupId()));
+			located.add(new GroupResource(artifact.groupId(), new CachedResource(logicalPath, url)));
+		});
+		result.replaceAll((key, located) -> List.copyOf(located));
 		return Map.copyOf(result);
+	}
+
+	/**
+	 * An unknown groupId does not count as another group. It is typical for one artifact to be known with its groupId in one source, e.g. the
+	 * packaged resources, and without it in another, e.g. the effective configuration.
+	 */
+	private static Set<String> ambiguousArtifactIds(Map<ArtifactPathKey, List<GroupResource>> resourcesByArtifactPath) {
+		Map<String, Set<String>> groupIdsByArtifactId = new LinkedHashMap<>();
+		resourcesByArtifactPath.forEach((key, located) -> {
+			for (GroupResource groupResource : located)
+				if (!groupResource.groupId.isEmpty())
+					groupIdsByArtifactId.computeIfAbsent(key.artifact, k -> new HashSet<>()).add(groupResource.groupId);
+		});
+
+		return groupIdsByArtifactId.entrySet().stream() //
+				.filter(e -> e.getValue().size() > 1) //
+				.map(Map.Entry::getKey) //
+				.collect(Collectors.toUnmodifiableSet());
+	}
+
+	/** The artifact of a classpath entry, or null if the index does not know it. */
+	private static PackagedArtifact artifactOf(ClasspathEntry entry) {
+		if (entry.artifactId.isBlank())
+			return null;
+
+		return new PackagedArtifact(entry.groupId, normalizeArtifact(entry.artifactId));
 	}
 
 	private static void forEachMaterialized(PackagedResourceIndex index, Path root, MaterializedConsumer consumer) {
@@ -233,7 +310,8 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 				if (!file.startsWith(root.normalize()) || !java.nio.file.Files.isRegularFile(file))
 					throw new IllegalStateException("Indexed materialized resource does not exist: " + file);
 				try {
-					consumer.accept(artifact, normalizeResourcePath(resource.getPath()), file.toUri().toURL());
+					// The index names an artifact by its groupId:artifactId coordinate.
+					consumer.accept(PackagedArtifact.parse(artifact), normalizeResourcePath(resource.getPath()), file.toUri().toURL());
 				} catch (IOException e) {
 					throw new UncheckedIOException(e);
 				}
@@ -248,7 +326,7 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 
 	@FunctionalInterface
 	private interface MaterializedConsumer {
-		void accept(String artifact, String logicalPath, URL url);
+		void accept(PackagedArtifact artifact, String logicalPath, URL url);
 	}
 
 	private static String normalizeArtifact(String artifact) {
@@ -301,11 +379,12 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 
 	/** An entry of the root relative index: the file, plus where it really is. */
 	private static final class IndexedResource {
-		private final String artifact;
+		/** Null if the index does not know the artifact. */
+		private final PackagedArtifact artifact;
 		private final String artifactRelativePath;
 		private final CachedResource cachedResource;
 
-		private IndexedResource(String artifact, String artifactRelativePath, CachedResource cachedResource) {
+		private IndexedResource(PackagedArtifact artifact, String artifactRelativePath, CachedResource cachedResource) {
 			this.artifact = artifact;
 			this.artifactRelativePath = artifactRelativePath;
 			this.cachedResource = cachedResource;
@@ -347,6 +426,18 @@ public class RxIndexedPackagedResourceResolver implements RxPackagedResourceReso
 		}
 	}
 
+	/** The resource one group contributes under an artifactId and path. The groupId is empty if it is not known. */
+	private static final class GroupResource {
+		private final String groupId;
+		private final CachedResource resource;
+
+		private GroupResource(String groupId, CachedResource resource) {
+			this.groupId = groupId;
+			this.resource = resource;
+		}
+	}
+
+	/** An artifactId, never a groupId:artifactId coordinate, and a path. */
 	private static final class ArtifactPathKey {
 		private final String artifact;
 		private final String path;

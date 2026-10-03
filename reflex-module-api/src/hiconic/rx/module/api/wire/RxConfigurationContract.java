@@ -14,6 +14,7 @@
 package hiconic.rx.module.api.wire;
 
 import com.braintribe.gm.model.reason.Maybe;
+import com.braintribe.gm.model.reason.config.ExplicitConfigurationNotFound;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.resource.api.ResourceHandle;
@@ -35,12 +36,20 @@ public interface RxConfigurationContract extends WireSpace {
 	<C extends GenericEntity> Maybe<C> readConfig(EntityType<C> configType);
 
 	/**
+	 * Returns a configuration for the given type or a reason why the configuration could not be retrieved.
+	 * <p>
+	 * If an explicit configuration cannot be found an {@link ExplicitConfigurationNotFound} reason is returned, unlike {@link #readConfig}, which
+	 * returns a default instance.
+	 */
+	<C extends GenericEntity> Maybe<C> readExplicitConfig(EntityType<C> configType);
+
+	/**
 	 * Resolves an indexed classpath resource by its canonical path.
 	 * <p>
-	 * In an assembled application this transparently resolves against the filesystem mirror, while IDE launches continue to resolve against the
-	 * real classpath.
+	 * In an assembled application this transparently resolves against the filesystem mirror, while IDE launches continue to resolve against the real
+	 * classpath.
 	 */
 	ResourceHandle indexedClasspathResource(String path);
-	
+
 	PropertyResolver propertyResolver();
 }

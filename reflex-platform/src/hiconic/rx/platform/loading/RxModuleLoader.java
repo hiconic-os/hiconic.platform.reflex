@@ -53,7 +53,6 @@ import hiconic.rx.module.api.wire.EnvironmentPropertiesContract;
 import hiconic.rx.module.api.wire.ModuleReflectionContract;
 import hiconic.rx.module.api.wire.PlatformReflectionContract;
 import hiconic.rx.module.api.wire.RxContractSpaceResolverConfigurator;
-import hiconic.rx.module.api.wire.RxModule;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPropertiesContract;
 import hiconic.rx.module.api.wire.SystemPropertiesContract;

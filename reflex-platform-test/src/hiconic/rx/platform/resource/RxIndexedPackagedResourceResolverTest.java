@@ -210,6 +210,106 @@ public class RxIndexedPackagedResourceResolverTest {
 		assertThat(context.<String> evaluate(renamedText).get()).isEqualTo("content from b");
 	}
 
+	@Test
+	public void resolvesMaterializedResourceByPlainArtifactId() throws Exception {
+		Path conf = temporaryFolder.newFolder("integral-conf").toPath();
+		Files.writeString(conf.resolve("shared--artifact-b.txt"), "content from b", StandardCharsets.UTF_8);
+
+		PackagedResourceIndex index = PackagedResourceIndex.T.create();
+		index.setArtifacts(Map.of("group:artifact-b", section(resource("HICONIC-CONF/shared.txt", "shared--artifact-b.txt"))));
+		var resolver = new RxIndexedPackagedResourceResolver(new ClasspathIndex(), "", index, conf);
+
+		try (var in = resolver.resource("artifact-b", "HICONIC-CONF/shared.txt").asResource().openStream()) {
+			assertThat(new String(in.readAllBytes(), StandardCharsets.UTF_8)).isEqualTo("content from b");
+		}
+	}
+
+	/** Only one group contributes the artifactId, so the built source names just the artifactId, like on an ordinary classpath. */
+	@Test
+	public void buildsSourceWithPlainArtifactIdWhenUnambiguous() throws Exception {
+		Path conf = temporaryFolder.newFolder("integral-conf").toPath();
+		Files.writeString(conf.resolve("unique.pem"), "unique content", StandardCharsets.UTF_8);
+
+		PackagedResourceIndex index = PackagedResourceIndex.T.create();
+		index.setArtifacts(Map.of("group:artifact-a", section(resource("HICONIC-CONF/unique.pem", null))));
+		var resolver = new RxIndexedPackagedResourceResolver(new ClasspathIndex(), "", index, conf);
+
+		assertThat(resolver.resource("HICONIC-CONF/unique.pem").asSource().getArtifact()).isEqualTo("artifact-a");
+	}
+
+	@Test
+	public void requiresGroupIdWhenTwoGroupsContributeSameArtifactIdAndPath() throws Exception {
+		var resolver = resolverWithSameArtifactIdInTwoGroups();
+
+		assertThatThrownBy(() -> resolver.resource("configuration", "HICONIC-CONF/shared.txt")) //
+				.isInstanceOf(IllegalArgumentException.class) //
+				.hasMessageContaining("group.a:configuration") //
+				.hasMessageContaining("group.b:configuration") //
+				.hasMessageContaining("groupId:artifactId");
+
+		try (var in = resolver.resource("group.b:configuration", "HICONIC-CONF/shared.txt").asResource().openStream()) {
+			assertThat(new String(in.readAllBytes(), StandardCharsets.UTF_8)).isEqualTo("content from b");
+		}
+	}
+
+	/** A source built for an artifactId that two groups contribute names the groupId, so that it can be resolved again. */
+	@Test
+	public void buildsSourceWithGroupIdWhenArtifactIdIsAmbiguous() throws Exception {
+		var resolver = resolverWithSameArtifactIdInTwoGroups();
+
+		PackagedSource source = resolver.resource("HICONIC-CONF/only-a.txt").asSource();
+
+		assertThat(source.getArtifact()).isEqualTo("group.a:configuration");
+		try (var in = resolver.resource(source.getArtifact(), source.getPath()).asResource().openStream()) {
+			assertThat(new String(in.readAllBytes(), StandardCharsets.UTF_8)).isEqualTo("only in a");
+		}
+	}
+
+	/**
+	 * An assembled application knows the groupId of the packaged resources, but not of the effective configuration. That is one artifact, not two, so
+	 * the built source still names just the artifactId.
+	 */
+	@Test
+	public void buildsSourceWithPlainArtifactIdWhenOnlyOneSourceKnowsTheGroupId() throws Exception {
+		Path packagedResources = temporaryFolder.newFolder("packaged-resources").toPath();
+		Files.createDirectories(packagedResources.resolve("configuration-1.0/icons"));
+		Files.writeString(packagedResources.resolve("configuration-1.0/icons/logo.svg"), "<svg/>", StandardCharsets.UTF_8);
+		Files.writeString(packagedResources.resolve("index.properties"), """
+				formatVersion=1
+				artifact.count=1
+				artifact.0.folder=configuration-1.0
+				artifact.0.groupId=example
+				artifact.0.artifactId=configuration
+				artifact.0.resource.count=1
+				artifact.0.resource.0.path=icons/logo.svg
+				""", StandardCharsets.UTF_8);
+
+		Path effectiveConf = temporaryFolder.newFolder("effective-conf").toPath();
+		Files.createDirectories(effectiveConf.resolve("configuration"));
+		Files.writeString(effectiveConf.resolve("configuration/configuration.yaml"), "value: effective", StandardCharsets.UTF_8);
+
+		var index = new ClasspathIndex(List.of( //
+				ClasspathIndex.filesystemSource(packagedResources, ""), //
+				ClasspathIndex.filesystemSlots(effectiveConf, "HICONIC-CONF")));
+		var resolver = new RxIndexedPackagedResourceResolver(index, "");
+
+		assertThat(resolver.resource("icons/logo.svg").asSource().getArtifact()).isEqualTo("configuration");
+		assertThat(resolver.resource("HICONIC-CONF/configuration.yaml").asSource().getArtifact()).isEqualTo("configuration");
+	}
+
+	private RxIndexedPackagedResourceResolver resolverWithSameArtifactIdInTwoGroups() throws Exception {
+		Path conf = temporaryFolder.newFolder("integral-conf").toPath();
+		Files.writeString(conf.resolve("shared--a.txt"), "content from a", StandardCharsets.UTF_8);
+		Files.writeString(conf.resolve("shared--b.txt"), "content from b", StandardCharsets.UTF_8);
+		Files.writeString(conf.resolve("only-a.txt"), "only in a", StandardCharsets.UTF_8);
+
+		PackagedResourceIndex index = PackagedResourceIndex.T.create();
+		index.setArtifacts(Map.of(
+				"group.a:configuration", section(resource("HICONIC-CONF/shared.txt", "shared--a.txt"), resource("HICONIC-CONF/only-a.txt", null)),
+				"group.b:configuration", section(resource("HICONIC-CONF/shared.txt", "shared--b.txt"))));
+		return new RxIndexedPackagedResourceResolver(new ClasspathIndex(), "", index, conf);
+	}
+
 	private static ArtifactResourceSection section(MaterializedResource... resources) {
 		ArtifactResourceSection section = ArtifactResourceSection.T.create();
 		section.setResources(List.of(resources));
