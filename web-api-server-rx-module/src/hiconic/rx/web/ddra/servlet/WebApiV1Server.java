@@ -719,13 +719,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 	private void writeUnsatisfied(ApiV1EndpointContext context, Maybe<?> maybe, Integer httpStatusCode) throws IOException {
 		Reason reason = maybe.whyUnsatisfied();
 
-		EntityMdResolver reasonMdResolver = null;
-		if (httpStatusCode == null) {
-			String domainId = context.getServiceDomain();
-			CmdResolver cmdResolver = mdResolverProvider.apply(domainId);
-			if (cmdResolver != null)
-				reasonMdResolver = cmdResolver.getMetaData().lenient(true).entity(reason).useCase(DDRA_MD_USECASE);
-		}
+		EntityMdResolver reasonMdResolver = reasonMdResolver(context.getServiceDomain(), reason);
 
 		// logging
 		LogReason logReason = reasonMdResolver == null ? defaultLogging
@@ -757,6 +751,18 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 
 		// marshaling reason
 		writeResponse(context, Unsatisfied.from(maybe), Unsatisfied.T, true);
+	}
+
+	private EntityMdResolver reasonMdResolver(String domainId, Reason reason) {
+		CmdResolver cmdResolver = mdResolverProvider.apply(domainId);
+
+		// A missing/invalid domain cannot provide metadata of its own. Reason metadata is nevertheless
+		// available from the default domain and must still determine logging independently of an
+		// explicitly supplied HTTP status code.
+		if (cmdResolver == null && !defaultServiceDomain.equals(domainId))
+			cmdResolver = mdResolverProvider.apply(defaultServiceDomain);
+
+		return cmdResolver == null ? null : cmdResolver.getMetaData().lenient(true).entity(reason).useCase(DDRA_MD_USECASE);
 	}
 
 	private com.braintribe.logging.Logger.LogLevel translateLogLevel(LogLevel logLevel) {
