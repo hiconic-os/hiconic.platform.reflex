@@ -35,6 +35,7 @@ import hiconic.rx.webapi.model.meta.RequestMapping;
 import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
+import hiconic.rx.model.resources.api.ModelResourcesContract;
 import hiconic.rx.reflection.model.api.PlatformReflectionRequest;
 import hiconic.rx.workbench.api.WorkbenchContract;
 
@@ -49,6 +50,7 @@ public class ExplorerRxModuleSpace implements RxModuleContract {
 
 	@Import private AccessContract access;
 	@Import private WorkbenchContract workbenches;
+	@Import private ModelResourcesContract modelResources;
 
 	@Import private ChecksSpace checks;
 	@Import private CortexSpace cortex;
@@ -121,6 +123,7 @@ public class ExplorerRxModuleSpace implements RxModuleContract {
 		bean.setAccesses(access.accessDomains());
 		bean.setSessionFactory(access.systemSessionFactory());
 		bean.setWorkbenches(workbenches);
+		bean.setMetaModelAccessId(modelResources.accessId());
 		return bean;
 	}
 

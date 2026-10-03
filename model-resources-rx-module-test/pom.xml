@@ -1,0 +1,13 @@
+<!-- Licensed under the Apache License, Version 2.0 -->
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <parent><groupId>hiconic.platform.reflex</groupId><artifactId>parent</artifactId><version>[1.0,1.1)</version></parent>
+    <artifactId>model-resources-rx-module-test</artifactId>
+    <version>1.0.1</version>
+    <licenses><license><name>Apache License, Version 2.0</name><url>https://www.apache.org/licenses/LICENSE-2.0</url><distribution>repo</distribution></license></licenses>
+    <dependencies>
+        <dependency><groupId>hiconic.platform.reflex</groupId><artifactId>reflex-test-commons</artifactId><version>${V.hiconic.platform.reflex}</version></dependency>
+        <dependency><groupId>hiconic.platform.reflex</groupId><artifactId>model-resources-rx-module</artifactId><version>${V.hiconic.platform.reflex}</version></dependency>
+        <dependency><groupId>com.braintribe.gm</groupId><artifactId>resource-api-model</artifactId><version>${V.com.braintribe.gm}</version></dependency>
+    </dependencies>
+</project>

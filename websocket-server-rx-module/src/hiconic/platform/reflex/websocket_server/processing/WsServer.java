@@ -18,6 +18,7 @@ package hiconic.platform.reflex.websocket_server.processing;
 import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -77,6 +78,7 @@ public class WsServer extends Endpoint
 		implements ServiceProcessor<PushRequest, PushResponse>, MessageHandler.Whole<String>, InitializationAware {
 
 	private static final Logger logger = Logger.getLogger(WsServer.class);
+	static final int MAX_CLOSE_REASON_BYTES = 123;
 
 	// ############################## Configurable members ##############################
 
@@ -167,14 +169,14 @@ public class WsServer extends Endpoint
 	            e.printStackTrace();
 	        }
 		} catch (WsVerificationException ve) {
-			close(session, new CloseReason(CloseCodes.CANNOT_ACCEPT, ve.getMessage()));
+			close(session, closeReason(CloseCodes.CANNOT_ACCEPT, ve.getMessage()));
 			logger.trace(() -> "An attempt to establish a websocket connection was denied because of invalid client information: " + ve.getMessage(),
 					ve);
 			return;
 
 		} catch (Exception e) {
 			String sessionString = stringifySession(session);
-			close(session, new CloseReason(CloseCodes.CANNOT_ACCEPT, e.getMessage()));
+			close(session, closeReason(CloseCodes.CANNOT_ACCEPT, e.getMessage()));
 			logger.debug(() -> "An attempt to establish a websocket connection was denied because of an unexpected error: " + e.getMessage() + " ("
 					+ sessionString + ")", e);
 			return;
@@ -351,6 +353,32 @@ public class WsServer extends Endpoint
 			logger.error("Error closing session", e);
 
 		}
+	}
+
+	static CloseReason closeReason(CloseReason.CloseCode closeCode, String reason) {
+		return new CloseReason(closeCode, truncateCloseReason(reason));
+	}
+
+	static String truncateCloseReason(String reason) {
+		if (reason == null || reason.isEmpty())
+			return "";
+
+		if (reason.getBytes(StandardCharsets.UTF_8).length <= MAX_CLOSE_REASON_BYTES)
+			return reason;
+
+		StringBuilder result = new StringBuilder();
+		int byteCount = 0;
+		for (int offset = 0; offset < reason.length();) {
+			int codePoint = reason.codePointAt(offset);
+			String character = new String(Character.toChars(codePoint));
+			int characterBytes = character.getBytes(StandardCharsets.UTF_8).length;
+			if (byteCount + characterBytes > MAX_CLOSE_REASON_BYTES)
+				break;
+			result.append(character);
+			byteCount += characterBytes;
+			offset += Character.charCount(codePoint);
+		}
+		return result.toString();
 	}
 
 	/**

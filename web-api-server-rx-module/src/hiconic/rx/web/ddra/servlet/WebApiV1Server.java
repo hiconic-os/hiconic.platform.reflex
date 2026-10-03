@@ -39,9 +39,11 @@ import org.apache.commons.lang.StringUtils;
 import com.braintribe.cfg.Configurable;
 import com.braintribe.cfg.Required;
 import com.braintribe.codec.marshaller.api.CharsetOption;
+import com.braintribe.codec.marshaller.api.DecodingLenience;
 import com.braintribe.codec.marshaller.api.EntityVisitorOption;
 import com.braintribe.codec.marshaller.api.GmDeserializationOptions;
 import com.braintribe.codec.marshaller.api.Marshaller;
+import com.braintribe.codec.marshaller.api.options.attributes.DecodingLenienceOption;
 import com.braintribe.codec.marshaller.url.UrlEncodingMarshaller;
 import com.braintribe.exception.Exceptions;
 import com.braintribe.exception.HttpException;
@@ -342,13 +344,19 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 
 		HttpServletRequest request = context.getRequest();
 
-		GmDeserializationOptions options = GmDeserializationOptions.defaultOptions.derive() //
+		var optionsBuilder = GmDeserializationOptions.defaultOptions.derive() //
 				.setInferredRootType(serviceRequestType) //
 				.set(EntityVisitorOption.class, streamManagement.getMarshallingVisitor()) //
-				.set(CharsetOption.class, request.getCharacterEncoding()) //
-				.build();
+				.set(CharsetOption.class, request.getCharacterEncoding());
 
 		SingleDdraMapping mapping = context.getMapping();
+		if (mapping != null) {
+			Boolean decodingLenience = mapping.getDefaultDecodingLenience();
+			if (decodingLenience != null)
+				optionsBuilder.set(DecodingLenienceOption.class, new DecodingLenience(decodingLenience));
+		}
+
+		GmDeserializationOptions options = optionsBuilder.build();
 
 		ApiV1DdraEndpoint endpoint = context.getEndpoint();
 

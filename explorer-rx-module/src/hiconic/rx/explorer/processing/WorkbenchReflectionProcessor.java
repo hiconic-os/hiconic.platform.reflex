@@ -48,6 +48,7 @@ public class WorkbenchReflectionProcessor implements ReasonedServiceProcessor<Ge
 	private AccessDomains accesses;
 	private PersistenceGmSessionFactory sessionFactory;
 	private WorkbenchContract workbenches;
+	private String metaModelAccessId;
 
 	@Required
 	public void setAccesses(AccessDomains accesses) {
@@ -62,6 +63,11 @@ public class WorkbenchReflectionProcessor implements ReasonedServiceProcessor<Ge
 	@Required
 	public void setWorkbenches(WorkbenchContract workbenches) {
 		this.workbenches = workbenches;
+	}
+
+	@Required
+	public void setMetaModelAccessId(String metaModelAccessId) {
+		this.metaModelAccessId = metaModelAccessId;
 	}
 
 	@Override
@@ -84,6 +90,7 @@ public class WorkbenchReflectionProcessor implements ReasonedServiceProcessor<Ge
 		result.setDataModel(dataModel.modelOracle().getGmMetaModel());
 		result.setServiceModel(serviceModel.modelOracle().getGmMetaModel());
 		result.setServiceModelName(serviceModel.name());
+		result.setMetaModelAccessId(metaModelAccessId);
 
 		String workbenchAccessId = workbenches.workbenchAccessId(accessId);
 		if (StringTools.isBlank(workbenchAccessId))

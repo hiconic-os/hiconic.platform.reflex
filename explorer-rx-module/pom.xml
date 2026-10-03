@@ -60,6 +60,11 @@
             <artifactId>workbench-rx-module</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
+        <dependency>
+            <groupId>hiconic.platform.reflex</groupId>
+            <artifactId>model-resources-rx-module</artifactId>
+            <version>${V.hiconic.platform.reflex}</version>
+        </dependency>
         <!--Other-->
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
@@ -155,7 +160,7 @@
         </dependency>
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
-            <artifactId>check-rx-module</artifactId>
+            <artifactId>healthz-web-endpoint-rx-module</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
         <dependency>
