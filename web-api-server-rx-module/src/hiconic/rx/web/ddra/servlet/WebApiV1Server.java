@@ -756,9 +756,9 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 	private EntityMdResolver reasonMdResolver(String domainId, Reason reason) {
 		CmdResolver cmdResolver = mdResolverProvider.apply(domainId);
 
-		// A missing/invalid domain cannot provide metadata of its own. Reason metadata is nevertheless
-		// available from the default domain and must still determine logging independently of an
-		// explicitly supplied HTTP status code.
+		// A missing or invalid domain cannot provide metadata of its own. The default domain still
+		// provides the reason metadata used for logging, independently of an explicitly supplied HTTP
+		// status code.
 		if (cmdResolver == null && !defaultServiceDomain.equals(domainId))
 			cmdResolver = mdResolverProvider.apply(defaultServiceDomain);
 
