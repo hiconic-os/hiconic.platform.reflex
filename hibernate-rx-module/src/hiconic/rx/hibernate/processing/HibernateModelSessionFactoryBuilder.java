@@ -34,9 +34,11 @@ import org.hibernate.cfg.Environment;
 
 import com.braintribe.cfg.Configurable;
 import com.braintribe.logging.Logger;
+import com.braintribe.model.accessdeployment.hibernate.meta.DbUpdateStatement;
 import com.braintribe.model.accessdeployment.hibernate.meta.MappingVersion;
 import com.braintribe.model.generic.GMF;
 import com.braintribe.model.processing.deployment.hibernate.mapping.HbmXmlGeneratingService;
+import com.braintribe.model.processing.deployment.hibernate.schema.meta.DbUpdateStatementGenerator;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.lock.api.Locking;
 import com.braintribe.model.processing.deployment.hibernate.mapping.SourceDescriptor;
@@ -133,7 +135,7 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 			log.warn("No platform Locking is available; Hibernate schema update cannot be coordinated across nodes and will run unconditionally for ["
 					+ schemaIdentity() + "]");
 			properties.put(Environment.HBM2DDL_AUTO, "update");
-			SessionFactory result = configuration.buildSessionFactory();
+			SessionFactory result = buildWithDbUpdateStatements(configuration, mappings);
 			logTimings(schemaIdentity(), true, started, mappingsGenerated);
 			return result;
 		}
@@ -142,7 +144,9 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 		try (HibernateSchemaUpdateGate.Decision decision = new HibernateSchemaUpdateGate(dataSource, locking, schemaIdentity, physicalSchemaIdentity(),
 				mappings.fingerprint(), instanceId).decide()) {
 			properties.put(Environment.HBM2DDL_AUTO, decision.updateRequired() ? "update" : "none");
-			SessionFactory result = configuration.buildSessionFactory();
+			// The DbUpdateStatements are part of the fingerprint, thus they only run together with a schema update, under its lock.
+			SessionFactory result = decision.updateRequired() ? buildWithDbUpdateStatements(configuration, mappings)
+					: configuration.buildSessionFactory();
 			try {
 				decision.markSuccessful();
 				logTimings(schemaIdentity, decision.updateRequired(), started, mappingsGenerated);
@@ -151,6 +155,21 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 				result.close();
 				throw e;
 			}
+		}
+	}
+
+	/** Runs the "before" {@link DbUpdateStatement}s, builds the SessionFactory (incl. the schema update) and runs the "after" ones. */
+	private SessionFactory buildWithDbUpdateStatements(Configuration configuration, MappingBundle mappings) {
+		DbUpdateStatementRunner runner = new DbUpdateStatementRunner(dataSource, schemaIdentity());
+
+		runner.run(mappings.beforeStatements(), "before");
+		SessionFactory result = configuration.buildSessionFactory();
+		try {
+			runner.run(mappings.afterStatements(), "after");
+			return result;
+		} catch (RuntimeException e) {
+			result.close();
+			throw e;
 		}
 	}
 
@@ -182,6 +201,7 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 
 	private MappingBundle generateMappings(Configuration configuration, Integer mappingVersion) {
 		List<SourceDescriptor> mappings = new ArrayList<>();
+		List<SourceDescriptor> statementFiles = new ArrayList<>();
 		new HbmXmlGeneratingService() //
 				.mappingVersion(mappingVersion) //
 				.defaultSchema(hpConfiguration.getDefaultSchema()) //
@@ -205,6 +225,8 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 
 					if (sd.sourceRelativePath.endsWith(".hbm.xml"))
 						mappings.add(sd);
+					else if (isDbUpdateStatementFile(sd))
+						statementFiles.add(sd);
 				}).renderMappings();
 
 		for (SourceDescriptor sd : mappings) {
@@ -215,7 +237,26 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 			}
 		}
 
-		return new MappingBundle(HibernateSchemaUpdateGate.fingerprint(mappings));
+		List<SourceDescriptor> fingerprinted = new ArrayList<>(mappings);
+		fingerprinted.addAll(statementFiles);
+
+		return new MappingBundle( //
+				HibernateSchemaUpdateGate.fingerprint(fingerprinted), //
+				dbUpdateStatements(statementFiles, DbUpdateStatementGenerator.BEFORE_FILE_NAME), //
+				dbUpdateStatements(statementFiles, DbUpdateStatementGenerator.AFTER_FILE_NAME));
+	}
+
+	private static boolean isDbUpdateStatementFile(SourceDescriptor sd) {
+		return DbUpdateStatementGenerator.BEFORE_FILE_NAME.equals(sd.sourceRelativePath)
+				|| DbUpdateStatementGenerator.AFTER_FILE_NAME.equals(sd.sourceRelativePath);
+	}
+
+	private static List<DbUpdateStatement> dbUpdateStatements(List<SourceDescriptor> statementFiles, String fileName) {
+		return statementFiles.stream() //
+				.filter(sd -> fileName.equals(sd.sourceRelativePath)) //
+				.findFirst() //
+				.map(sd -> DbUpdateStatementGenerator.parseDbUpdateStatements(sd.sourceCode)) //
+				.orElse(List.of());
 	}
 
 	private void logTimings(String schemaIdentity, boolean schemaUpdate, long started, long mappingsGenerated) {
@@ -240,7 +281,7 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 		return value == null ? "" : value;
 	}
 
-	private record MappingBundle(String fingerprint) {
+	private record MappingBundle(String fingerprint, List<DbUpdateStatement> beforeStatements, List<DbUpdateStatement> afterStatements) {
 		// empty
 	}
 
