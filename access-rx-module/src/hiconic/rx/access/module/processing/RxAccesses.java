@@ -30,6 +30,7 @@ import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.processing.aop.api.aspect.AccessAspect;
 import com.braintribe.model.processing.core.expert.api.MutableDenotationMap;
 import com.braintribe.model.processing.core.expert.impl.PolymorphicDenotationMap;
+import com.braintribe.model.processing.meta.editor.ModelMetaDataEditor;
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSessionFactory;
 import com.braintribe.utils.lcd.Lazy;
 import com.braintribe.utils.lcd.NullSafe;
@@ -53,7 +54,6 @@ public class RxAccesses implements AccessDomains {
 	private final MutableDenotationMap<Access, AccessExpert<?>> experts = new PolymorphicDenotationMap<>(true);
 
 	private ConfiguredModels configuredModels;
-	private AccessModelConfigurations accessModelConfigurations;
 	private ServiceDomainConfigurations serviceDomainConfigurations;
 	private PersistenceGmSessionFactory systemSessionFactory;
 	private PersistenceGmSessionFactory contextSessionFactory;
@@ -79,17 +79,19 @@ public class RxAccesses implements AccessDomains {
 		this.contextSessionFactory = contextSessionFactory;
 	}
 
-	@Required
-	public void setAccessModelConfigurations(AccessModelConfigurations accessModelConfigurations) {
-		this.accessModelConfigurations = accessModelConfigurations;
-	}
-
 	public void initServiceDomainConfigurations(ServiceDomainConfigurations serviceDomainConfigurations) {
 		this.serviceDomainConfigurations = serviceDomainConfigurations;
 	}
 
 	public <A extends Access> void registerExpert(EntityType<A> accessType, AccessExpert<A> expert) {
 		experts.put(accessType, expert);
+	}
+
+	/** @see AccessExpert#configureDataModel(Access, ModelMetaDataEditor) */
+	public void applyModelConfigurationByAccessExpert(Access access, ModelMetaDataEditor editor) {
+		AccessExpert<Access> accessExpert = experts.find(access);
+		if (accessExpert != null)
+			accessExpert.configureDataModel(access, editor);
 	}
 
 	@Override

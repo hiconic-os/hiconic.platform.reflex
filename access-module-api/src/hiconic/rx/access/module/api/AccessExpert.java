@@ -15,10 +15,23 @@ package hiconic.rx.access.module.api;
 
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.model.access.IncrementalAccess;
+import com.braintribe.model.processing.meta.editor.ModelMetaDataEditor;
 
 import hiconic.rx.access.model.configuration.Access;
 import hiconic.rx.module.api.service.ConfiguredModel;
 
 public interface AccessExpert<A extends Access> {
+
+	/**
+	 * Configures the data model of given access with meta data specific to this kind of access.
+	 * <p>
+	 * Called when the configured models are finalized, i.e. after all modules have configured their models, so the expert must be registered
+	 * during the model configuration phase at the latest.
+	 */
+	default //
+	void configureDataModel(A access, ModelMetaDataEditor editor) {
+		// no specific configuration by default
+	}
+
 	Maybe<IncrementalAccess> deploy(A access, ConfiguredModel dataModel);
 }

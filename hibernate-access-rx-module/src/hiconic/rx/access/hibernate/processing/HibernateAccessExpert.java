@@ -23,8 +23,11 @@ import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.config.ConfigurationError;
 import com.braintribe.logging.Logger;
 import com.braintribe.model.access.IncrementalAccess;
+import com.braintribe.model.accessdeployment.hibernate.meta.PropertyMapping;
+import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.processing.IdGenerator;
 import com.braintribe.model.processing.core.expert.impl.ConfigurableGmExpertRegistry;
+import com.braintribe.model.processing.meta.editor.ModelMetaDataEditor;
 
 import hiconic.rx.access.hibernate.model.configuration.HibernateAccess;
 import hiconic.rx.access.module.api.AccessExpert;
@@ -48,6 +51,22 @@ public class HibernateAccessExpert implements AccessExpert<HibernateAccess> {
 	@Required
 	public void setDatabaseContract(DatabaseContract databaseContract) {
 		this.databaseContract = databaseContract;
+	}
+
+	/** Un-maps globalId/partition by default. The access fills the partition value with its accessId. */
+	@Override
+	public void configureDataModel(HibernateAccess access, ModelMetaDataEditor editor) {
+		editor.onEntityType(GenericEntity.T) //
+				.addPropertyMetaData(GenericEntity.globalId, unmappedProperty) //
+				.addPropertyMetaData(GenericEntity.partition, unmappedProperty);
+	}
+
+	private static final PropertyMapping unmappedProperty = unmappedProperty();
+
+	private static PropertyMapping unmappedProperty() {
+		PropertyMapping result = PropertyMapping.T.create();
+		result.setMapToDb(false);
+		return result;
 	}
 
 	@Override

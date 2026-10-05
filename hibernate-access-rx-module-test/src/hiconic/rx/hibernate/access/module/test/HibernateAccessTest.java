@@ -19,12 +19,15 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import org.assertj.core.api.Assertions;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.processing.session.api.persistence.PersistenceGmSession;
 import com.braintribe.model.processing.query.fluent.EntityQueryBuilder;
 
@@ -64,6 +67,60 @@ public class HibernateAccessTest extends AbstractRxTest {
 		Assertions.assertThat(p).isNotNull();
 		Assertions.assertThat(p.getName()).isEqualTo(name);
 		Assertions.assertThat(p.getLastName()).isEqualTo(lastName);
+	}
+
+	@Test
+	public void globalIdAndPartitionAreNotMapped() throws SQLException {
+		PersistenceGmSession session = newSession();
+		session.create(Person.T).setName("Unmapped");
+		session.commit();
+
+		DatabaseContract databases = resolveExportContract(DatabaseContract.class);
+		try (Connection connection = databases.dataSource("main-db").get().getConnection();
+				Statement statement = connection.createStatement()) {
+			List<String> personColumns = personColumns(statement);
+
+			Assertions.assertThat(personColumns).isNotEmpty();
+			Assertions.assertThat(personColumns).noneMatch(column -> column.contains("GLOBALID") || column.contains("PARTITION"));
+		}
+	}
+
+	@Test
+	public void partitionIsAccessId() {
+		PersistenceGmSession session = newSession();
+		Person person = session.create(Person.T);
+		person.setName("Partitioned");
+		session.commit();
+
+		Person loaded = newSession().query().entity(Person.T, person.getId()).require();
+		Assertions.assertThat(loaded.getPartition()).isEqualTo("main-access");
+
+		List<Person> byPartition = newSession().query().entities(EntityQueryBuilder.from(Person.T) //
+				.where() //
+				.conjunction() //
+				.property(GenericEntity.partition).eq("main-access") //
+				.property("name").eq("Partitioned") //
+				.close() //
+				.done()).list();
+		Assertions.assertThat(byPartition).hasSize(1);
+	}
+
+	/** Upper-case column names of the table mapped for {@link Person}, which is the only table with a LASTNAME column. */
+	private List<String> personColumns(Statement statement) throws SQLException {
+		String tableName;
+		try (ResultSet result = statement.executeQuery(
+				"SELECT TABLE_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'PUBLIC' AND UPPER(COLUMN_NAME) = 'LASTNAME'")) {
+			Assertions.assertThat(result.next()).as("Table with LASTNAME column exists").isTrue();
+			tableName = result.getString(1);
+		}
+
+		List<String> columns = new ArrayList<>();
+		try (ResultSet result = statement.executeQuery(
+				"SELECT UPPER(COLUMN_NAME) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'PUBLIC' AND TABLE_NAME = '" + tableName + "'")) {
+			while (result.next())
+				columns.add(result.getString(1));
+		}
+		return columns;
 	}
 
 	@Test

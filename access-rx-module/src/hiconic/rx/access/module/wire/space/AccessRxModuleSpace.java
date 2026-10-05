@@ -130,6 +130,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		dataModel.addModel(configuredResourceModel);
 		for (String dataModelName : access.getDataModelNames())
 			dataModel.addModelByName(dataModelName);
+		dataModel.configureModel(editor -> accesses().applyModelConfigurationByAccessExpert(access, editor));
 
 		AccessServiceModelConfiguration serviceModel = accessModelConfigurations().serviceModelConfiguration(accessId);
 		serviceModel.addModel(configuredAccessApiModel);
@@ -462,7 +463,6 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 		bean.setServiceDomains(platform.serviceProcessing().serviceDomains());
 		bean.setContextSessionFactory(contextSessionFactory());
 		bean.setSystemSessionFactory(systemSessionFactory());
-		bean.setAccessModelConfigurations(accessModelConfigurations());
 		return bean;
 	}
 

@@ -45,6 +45,11 @@ limitations under the License.
             <version>${V.tribefire.extension.hibernate}</version>
         </dependency>
         <dependency>
+            <groupId>tribefire.extension.hibernate</groupId>
+            <artifactId>hibernate-meta-data-model</artifactId>
+            <version>${V.tribefire.extension.hibernate}</version>
+        </dependency>
+        <dependency>
             <groupId>hiconic.platform.reflex</groupId>
             <artifactId>access-module-api</artifactId>
             <version>${V.hiconic.platform.reflex}</version>

@@ -21,6 +21,7 @@ import hiconic.rx.access.hibernate.processing.HibernateAccessExpert;
 import hiconic.rx.access.module.api.AccessExpertContract;
 import hiconic.rx.db.module.api.DatabaseContract;
 import hiconic.rx.hibernate.module.api.HibernateContract;
+import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 
@@ -42,8 +43,9 @@ public class HibernateAccessRxModuleSpace implements RxModuleContract {
 	@Import
 	private DatabaseContract database;
 	
+	/** Registers the expert already here, as it also configures the access data models, see {@link HibernateAccessExpert#configureDataModel}. */
 	@Override
-	public void onDeploy() {
+	public void configureModels(ModelConfigurations configurations) {
 		accessExpert.registerAccessExpert(HibernateAccess.T, hibernateAccessExpert());
 	}
 	
