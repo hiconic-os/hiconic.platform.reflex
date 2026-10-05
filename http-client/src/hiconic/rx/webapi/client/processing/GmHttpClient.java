@@ -279,9 +279,16 @@ public class GmHttpClient implements HttpClient {
 						InputStream in = new TeeInputStream(new ResponseEntityInputStream(httpResponse), pipeOut)) {
 
 					responseType = context.responseTypeForCode(code);
-					responseMarshaller = getMarshaller(context.produces());
+					boolean isSuccessfulNeutralResponse = responseType == Neutral.T && context.wasSuccessful(code);
+					responseMarshaller = isSuccessfulNeutralResponse ? null : getMarshaller(context.produces());
 
-					if (responseType != null && responseMarshaller != null) {
+					if (isSuccessfulNeutralResponse) {
+						// A neutral result explicitly declares that no response representation is expected. Some APIs acknowledge
+						// such commands with 200/201 and an empty body rather than 204. Do not feed that empty stream to a
+						// marshaller: an empty stream is correctly not valid JSON (or XML).
+						IOTools.consume(in);
+						responsePayload = Neutral.NEUTRAL;
+					} else if (responseType != null && responseMarshaller != null) {
 
 						String streamContentResponseResourceProperty = context.streamContentResponseResourceProperty();
 

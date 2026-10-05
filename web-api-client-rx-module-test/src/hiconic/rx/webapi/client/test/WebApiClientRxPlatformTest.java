@@ -1,6 +1,8 @@
 package hiconic.rx.webapi.client.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayInputStream;
@@ -16,21 +18,67 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Test;
 
 import com.braintribe.model.resource.Resource;
+import com.braintribe.model.service.api.result.Neutral;
 import com.sun.net.httpserver.HttpServer;
 
 import hiconic.rx.test.common.AbstractRxTest;
 import hiconic.rx.webapi.client.api.HttpClient;
+import hiconic.rx.webapi.client.api.HttpClientException;
 import hiconic.rx.webapi.client.api.HttpMultipartFormData;
 import hiconic.rx.webapi.client.api.HttpMultipartPart;
 import hiconic.rx.webapi.client.api.HttpMultipartPartKind;
 import hiconic.rx.webapi.client.api.HttpRequestContext;
 import hiconic.rx.webapi.client.api.HttpRequestContextBuilder;
+import hiconic.rx.webapi.client.api.HttpResponse;
 import hiconic.rx.webapi.client.api.WebApiClientContract;
 import hiconic.rx.module.api.service.ServiceProcessorRegistration;
 import hiconic.rx.webapi.client.model.configuration.HttpUsernamePasswordCredentials;
 import hiconic.rx.webapi.client.model.configuration.WebApiRemoteProcessor;
 
 public class WebApiClientRxPlatformTest extends AbstractRxTest {
+
+	@Test
+	public void acceptsEmptySuccessfulNeutralResponses() throws Exception {
+		for (int status : new int[] { 200, 201 }) {
+			HttpServer server = server(status, exchange -> {
+				// Intentionally empty: a neutral command has no response representation.
+			});
+			try {
+				HttpClient client = platformClient(server);
+				HttpRequestContext context = HttpRequestContextBuilder.instance(client)
+						.requestPath("/command")
+						.produces("application/json")
+						.addSuccessCodes(200, 201)
+						.defaultSuccessResponseType(Neutral.T)
+						.build();
+
+				HttpResponse response = client.sendRequest(context);
+				assertSame(Neutral.NEUTRAL, response.payload());
+			} finally {
+				server.stop(0);
+			}
+		}
+	}
+
+	@Test
+	public void rejectsEmptyJsonForConcreteResponseType() throws Exception {
+		HttpServer server = server(200, exchange -> {
+			// Intentionally empty: this is invalid for the declared concrete JSON response.
+		});
+		try {
+			HttpClient client = platformClient(server);
+			HttpRequestContext context = HttpRequestContextBuilder.instance(client)
+					.requestPath("/entity")
+					.produces("application/json")
+					.addSuccessCode(200)
+					.defaultSuccessResponseType(WebApiRemoteProcessor.T)
+					.build();
+
+			assertThrows(HttpClientException.class, () -> client.sendRequest(context));
+		} finally {
+			server.stop(0);
+		}
+	}
 
 	@Test
 	public void exposesConfiguredClientAsNamedRemoteProcessor() {
@@ -126,6 +174,10 @@ public class WebApiClientRxPlatformTest extends AbstractRxTest {
 	}
 
 	private HttpServer server(ExchangeConsumer consumer) throws Exception {
+		return server(204, consumer);
+	}
+
+	private HttpServer server(int responseStatus, ExchangeConsumer consumer) throws Exception {
 		HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
 		server.createContext("/", exchange -> {
 			try {
@@ -134,7 +186,7 @@ public class WebApiClientRxPlatformTest extends AbstractRxTest {
 				} catch (Exception e) {
 					throw new IOException(e);
 				}
-				exchange.sendResponseHeaders(204, -1);
+				exchange.sendResponseHeaders(responseStatus, -1);
 			} finally {
 				exchange.close();
 			}
