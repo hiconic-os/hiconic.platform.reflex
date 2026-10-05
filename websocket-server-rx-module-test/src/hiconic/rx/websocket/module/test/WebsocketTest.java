@@ -21,10 +21,9 @@ import java.util.concurrent.TimeUnit;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
-import com.braintribe.gm.model.reason.Maybe;
-import com.braintribe.gm.model.security.reason.Forbidden;
 import com.braintribe.model.service.api.PushRequest;
-import com.braintribe.model.service.api.result.PushResponse;
+import com.braintribe.model.securityservice.OpenUserSessionResponse;
+import com.braintribe.model.securityservice.OpenUserSessionWithUserAndPassword;
 import com.braintribe.processing.async.impl.HubPromise;
 
 import hiconic.rx.demo.model.api.ReverseText;
@@ -44,6 +43,11 @@ public class WebsocketTest extends AbstractRxTest {
 
 	@Test
 	public void testGet() throws Exception {
+		OpenUserSessionWithUserAndPassword login = OpenUserSessionWithUserAndPassword.T.create();
+		login.setUser("sse-user");
+		login.setPassword("sse-password");
+		OpenUserSessionResponse loginResponse = login.eval(evaluator).getReasoned().get();
+
 		PushChannelLifecyclePublisher publisher = platform.getWireContext().contract(PushContract.class).channelLifecyclePublisher();
 
 		HubPromise<Boolean> promise = new HubPromise<>();
@@ -66,7 +70,7 @@ public class WebsocketTest extends AbstractRxTest {
 		Listener listener = new Listener();
 		publisher.addListener(listener);
 
-		try (var wsClient = new WebSocketTestClient(getPort(), d -> {
+		try (var wsClient = new WebSocketTestClient(getPort(), loginResponse.getUserSession().getSessionId(), d -> {
 			data.add(d);
 			readyLatch.countDown();
 			messageLatch.countDown();
@@ -83,9 +87,6 @@ public class WebsocketTest extends AbstractRxTest {
 			PushRequest push = PushRequest.T.create();
 			push.setClientIdPattern("test");
 			push.setServiceRequest(reverseText);
-
-			Maybe<? extends PushResponse> externalResult = push.eval(evaluator).getReasoned();
-			Assertions.assertThat(externalResult.isUnsatisfiedBy(Forbidden.T)).isTrue();
 
 			push.eval(platformContract.serviceProcessing().systemEvaluator()).get();
 

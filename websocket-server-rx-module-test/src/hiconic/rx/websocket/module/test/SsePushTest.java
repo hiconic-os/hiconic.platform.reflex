@@ -21,8 +21,11 @@ import org.junit.Test;
 
 import com.braintribe.model.service.api.PushRequest;
 import com.braintribe.model.service.api.result.PushResponse;
+import com.braintribe.model.securityservice.OpenUserSessionResponse;
+import com.braintribe.model.securityservice.OpenUserSessionWithUserAndPassword;
 
 import hiconic.rx.demo.model.api.ReverseText;
+import hiconic.rx.security.web.api.WebSecurityConstants;
 import hiconic.rx.test.common.AbstractRxTest;
 import hiconic.rx.web.server.api.WebServerContract;
 
@@ -73,6 +76,43 @@ public class SsePushTest extends AbstractRxTest {
 
 			String event = readNextEvent(reader, "PushRequest");
 			Assertions.assertThat(event).contains("event: PushRequest", "id: ", "ReverseText", "SSE payload");
+		}
+	}
+
+	@Test
+	public void receivesRoleAddressedPushViaAuthenticatedSseConnection() throws Exception {
+		OpenUserSessionWithUserAndPassword login = OpenUserSessionWithUserAndPassword.T.create();
+		login.setUser("sse-user");
+		login.setPassword("sse-password");
+		OpenUserSessionResponse loginResponse = login.eval(evaluator).getReasoned().get();
+		String sessionId = loginResponse.getUserSession().getSessionId();
+		Assertions.assertThat(loginResponse.getUserSession().getEffectiveRoles()).contains("$user-sse-user");
+
+		WebServerContract webServer = platform.getWireContext().contract(WebServerContract.class);
+		URI uri = URI.create("http://localhost:" + webServer.getEffectiveServerPort()
+				+ "/push/sse?accept=application/json");
+		HttpRequest request = HttpRequest.newBuilder(uri)
+				.header("Cookie", WebSecurityConstants.COOKIE_SESSIONID + "=" + sessionId)
+				.GET()
+				.build();
+		HttpResponse<InputStream> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofInputStream());
+		Assertions.assertThat(response.statusCode()).isEqualTo(200);
+
+		try (InputStream stream = response.body();
+				BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+			Assertions.assertThat(readEvent(reader)).contains("event: channel");
+
+			ReverseText payload = ReverseText.T.create();
+			payload.setText("authenticated role payload");
+			PushRequest push = PushRequest.T.create();
+			push.setRolePattern("^\\$user-sse-user$");
+			push.setServiceRequest(payload);
+
+			PushResponse pushResponse = push.eval(platformContract.serviceProcessing().systemEvaluator()).get();
+			Assertions.assertThat(pushResponse.getResponseMessages()).singleElement().satisfies(message ->
+					Assertions.assertThat(message.getSuccessful()).isTrue());
+			Assertions.assertThat(readNextEvent(reader, "PushRequest"))
+					.contains("event: PushRequest", "ReverseText", "authenticated role payload");
 		}
 	}
 

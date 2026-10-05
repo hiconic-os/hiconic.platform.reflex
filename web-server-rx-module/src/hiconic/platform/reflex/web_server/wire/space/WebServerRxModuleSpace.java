@@ -125,6 +125,7 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	@Override
 	public void onLoaded(WireContextConfiguration configuration) {
 		platform.application().logManager().setLogLevel("io.undertow.request.error-response", System.Logger.Level.INFO);
+		registerAuthenticationContextFilter();
 		registerPushTransports();
 		registerLogLevelServlet();
 		startWebServer();
@@ -212,6 +213,7 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 		SsePushServlet sse = ssePushServlet();
 		push.addHandler(sse);
 		addServlet("sse-push", pushSseEndpointPath(), sse);
+		addFilterMapping(WebServerFilters.authenticationContext, pushSseEndpointPath(), DispatcherType.REQUEST);
 	}
 
 	private String pushSseEndpointPath() {
@@ -230,9 +232,12 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 		return bean;
 	}
 
+	private void registerAuthenticationContextFilter() {
+		addFilter(WebServerFilters.authenticationContext, authenticationContextFilter());
+	}
+
 	private void registerLogLevelServlet() {
 		addServlet("log-levels", "/log-levels", logLevelServlet());
-		addFilter(WebServerFilters.authenticationContext, authenticationContextFilter());
 		addFilterMapping(WebServerFilters.authenticationContext, "/log-levels", DispatcherType.REQUEST);
 		addFilterMapping(WebServerFilters.authenticationContext, "/log-levels/*", DispatcherType.REQUEST);
 		addFilter(LogLevelFilters.logLevelAdmin, logLevelAdminFilter());

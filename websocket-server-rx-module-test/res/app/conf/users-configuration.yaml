@@ -1,0 +1,4 @@
+users:
+- id: sse-user
+  name: sse-user
+  password: sse-password
