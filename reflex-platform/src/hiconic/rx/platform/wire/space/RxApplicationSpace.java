@@ -75,7 +75,7 @@ public class RxApplicationSpace implements RxApplicationContract {
 	}
 
 	private String appIdFromAppName() {
-		return applicationName().replace(" ", "-");
+		return applicationName().replaceAll("[^\\w\\d_]", "-");
 	}
 
 	@Override
