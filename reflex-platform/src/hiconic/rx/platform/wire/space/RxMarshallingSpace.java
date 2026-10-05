@@ -40,6 +40,14 @@ public class RxMarshallingSpace implements RxMarshallingContract {
 		bean.registerMarshaller("gm/bin", binMarshaller());
 		bean.registerMarshaller("application/x-www-form-urlencoded", urlEncodeingMarshaller());
 
+		bean.registerMarshaller("application/xml", xmlMarshaller());
+		bean.registerMarshaller("text/xml", xmlMarshaller());
+		bean.registerMarshaller("text/x-json", jsonMarshaller());
+		bean.registerMarshaller("gm/json", jsonMarshaller());
+		bean.registerMarshaller("text/x-yaml", yamlMarshaller());
+		bean.registerMarshaller("application/x-yaml", yamlMarshaller());
+		bean.registerMarshaller("application/gm", binMarshaller());
+
 		return bean;
 	}
 
