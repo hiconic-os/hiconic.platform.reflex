@@ -45,6 +45,12 @@ public interface SingleDdraMapping {
 
 	EntityType<? extends ServiceRequest> getRequestType();
 
+	/**
+	 * Creates the request the HTTP call is decoded into, if the call does not provide the whole request in its body, or null to use a new
+	 * instance of the {@link #getRequestType() request type}. Values from the URL and the form data are set on top of it.
+	 */
+	ServiceRequest createRequestPrototype();
+
 	Boolean getDefaultSaveLocally();
 
 	Boolean getDefaultDownloadResource();

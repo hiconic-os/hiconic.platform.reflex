@@ -4,10 +4,10 @@ package hiconic.rx.web.ddra.endpoints.api.v1;
 import static java.util.Collections.emptySet;
 
 import java.util.Set;
+import java.util.function.Supplier;
 
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.StandardCloningContext;
-//import com.braintribe.model.prototyping.api.PrototypingRequest;
 import com.braintribe.model.service.api.ServiceRequest;
 
 import hiconic.rx.webapi.endpoints.OutputPrettiness;
@@ -23,6 +23,7 @@ public class SingleDdraMappingImpl implements SingleDdraMapping {
 	public String pathInfo;
 	public HttpRequestMethod method;
 	public EntityType<? extends ServiceRequest> requestType;
+	public Supplier<? extends ServiceRequest> requestPrototype;
 
 	public ServiceRequest transformRequest;
 	public ApiV1DdraEndpoint endpointPrototype;
@@ -55,6 +56,7 @@ public class SingleDdraMappingImpl implements SingleDdraMapping {
 	@Override public String getPathInfo() { return pathInfo; }
 	@Override public HttpRequestMethod getMethod() { return method; }
 	@Override public EntityType<? extends ServiceRequest> getRequestType() { return requestType; }
+	@Override public ServiceRequest createRequestPrototype() { return requestPrototype == null ? null : requestPrototype.get(); }
 
 	@Override public Boolean getDefaultSaveLocally() { return defaultSaveLocally; }
 	@Override public Boolean getDefaultDownloadResource() { return defaultDownloadResource; }

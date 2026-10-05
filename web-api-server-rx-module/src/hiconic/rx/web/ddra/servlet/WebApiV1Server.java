@@ -298,7 +298,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 
 		ServiceRequest service = null;
 		if (serviceRequestType != null) {
-			service = createDefaultRequest(serviceRequestType);
+			service = createDefaultRequest(context, serviceRequestType);
 			if (!decodeQueryAndFillContext(service, context))
 				return;
 		} else {
@@ -391,7 +391,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 					UrlEncodingMarshaller.EntityTemplateFactory rootEntityFactory = l -> requestAssemblyPartNames.stream() //
 							.map(l::getSingleElement).filter(Objects::nonNull).findFirst() //
 							.map(a -> (GenericEntity) jsonMarshaller.unmarshall(new StringReader(a), options)) //
-							.orElseGet(() -> createDefaultRequest(serviceRequestType));
+							.orElseGet(() -> createDefaultRequest(context, serviceRequestType));
 
 					service = new UrlEncodingMarshaller(rootEntityFactory).create(parameters, serviceRequestType, options);
 				} catch (Exception e) {
@@ -435,7 +435,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 
 		if (service == null)
 			// If no body is provided at all the unmarshaller returns null. We supply a default in that case.
-			service = createDefaultRequest(serviceRequestType);
+			service = createDefaultRequest(context, serviceRequestType);
 
 		if (!decodeQueryAndFillContext(service, context))
 			return;
@@ -453,7 +453,15 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 		processRequestAndWriteResponse(context, service);
 	}
 
-	private ServiceRequest createDefaultRequest(EntityType<? extends ServiceRequest> serviceRequestType) {
+	/** The request prototype of the mapping (see {@link SingleDdraMapping#createRequestPrototype()}), or a new instance of the request type. */
+	private ServiceRequest createDefaultRequest(ApiV1EndpointContext context, EntityType<? extends ServiceRequest> serviceRequestType) {
+		SingleDdraMapping mapping = context.getMapping();
+		if (mapping != null) {
+			ServiceRequest prototype = mapping.createRequestPrototype();
+			if (prototype != null)
+				return prototype;
+		}
+
 		return serviceRequestType.create();
 	}
 
@@ -492,7 +500,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 
 				part = formDataReader.next();
 			} else {
-				service = createDefaultRequest(serviceRequestType);
+				service = createDefaultRequest(context, serviceRequestType);
 			}
 
 			restServletUtils.ensureServiceDomain(service, context);

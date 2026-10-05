@@ -14,6 +14,9 @@
 package hiconic.rx.web.ddra.endpoints.api;
 
 import java.util.Set;
+import java.util.function.Supplier;
+
+import com.braintribe.model.service.api.ServiceRequest;
 
 import hiconic.rx.webapi.endpoints.OutputPrettiness;
 import hiconic.rx.webapi.endpoints.TypeExplicitness;
@@ -25,6 +28,13 @@ public interface WebApiMappingBuilder {
 	 * Binds the mapping to a fixed service domain. If omitted, a {@code DomainRequest}'s {@code domainId} selects the domain at request time.
 	 */
 	WebApiMappingBuilder serviceDomain(String serviceDomain);
+
+	/**
+	 * Supplies the request the HTTP call is decoded into, instead of a new empty instance of the request type. Values from the URL and the form
+	 * data are set on top of it, so the prototype provides defaults the client does not have to send. The supplier is called for every call. It
+	 * is not used when the body of the call contains the whole request.
+	 */
+	WebApiMappingBuilder requestPrototype(Supplier<? extends ServiceRequest> prototype);
 
 	WebApiMappingBuilder responseProjection(String propertyPath);
 	WebApiMappingBuilder responseMimeType(String mimeType);

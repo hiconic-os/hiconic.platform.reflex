@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import com.braintribe.cfg.Required;
@@ -173,6 +174,7 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 		}
 
 		@Override public WebApiMappingBuilder serviceDomain(String value) { return configure(() -> mapping.serviceDomain = value); }
+		@Override public WebApiMappingBuilder requestPrototype(Supplier<? extends ServiceRequest> value) { return configure(() -> mapping.requestPrototype = value); }
 		@Override public WebApiMappingBuilder responseProjection(String value) { return configure(() -> mapping.defaultProjection = value); }
 		@Override public WebApiMappingBuilder responseMimeType(String value) { return configure(() -> mapping.defaultMimeType = value); }
 		@Override public WebApiMappingBuilder downloadResource(boolean value) { return configure(() -> mapping.defaultDownloadResource = value); }
