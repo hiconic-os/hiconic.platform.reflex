@@ -49,6 +49,12 @@ public interface WebServerContract extends RxExportContract {
 	void addRedirect(String path, String targetPath);
 
 	/**
+	 * Registers an exact server-relative internal forward without claiming the surrounding path subtree. The request method, body and query
+	 * parameters are preserved while the target is dispatched through the regular web-server routing and filters.
+	 */
+	void addForward(String path, String targetPath);
+
+	/**
 	 * Exposes deployment-specific client configuration at
 	 * {@code <webAppPath>/runtime-config.json} in the root web context. Every configuration contains the canonical
 	 * {@code servicesUrl}; further platform knowledge should normally be obtained through modeled services.

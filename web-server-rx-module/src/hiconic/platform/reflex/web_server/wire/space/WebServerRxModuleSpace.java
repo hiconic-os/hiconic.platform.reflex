@@ -71,6 +71,7 @@ import io.undertow.Undertow;
 import io.undertow.Undertow.Builder;
 import io.undertow.Undertow.ListenerInfo;
 import io.undertow.UndertowOptions;
+import io.undertow.attribute.RelativePathAttribute;
 import io.undertow.connector.ByteBufferPool;
 import io.undertow.server.DefaultByteBufferPool;
 import io.undertow.server.HttpHandler;
@@ -337,6 +338,23 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	}
 
 	@Override
+	public void addForward(String path, String targetPath) {
+		String normalizedPath = URLUtils.normalizeSlashes("/" + path);
+		String normalizedTargetPath = URLUtils.normalizeSlashes("/" + targetPath);
+
+		if (normalizedPath.equals(normalizedTargetPath))
+			throw new IllegalArgumentException("Cannot forward a path to itself: " + normalizedPath);
+
+		PathHandler dispatcher = applicationHandler();
+		dispatcher.addExactPath(normalizedPath, exchange -> {
+			// PathHandler has consumed the source path already. Reset that state before rewriting and dispatching the target.
+			exchange.setResolvedPath("");
+			RelativePathAttribute.INSTANCE.writeAttribute(exchange, normalizedTargetPath);
+			dispatcher.handleRequest(exchange);
+		});
+	}
+
+	@Override
 	public void addWebAppRuntimeConfiguration(String webAppPath, Supplier<? extends Map<String, ?>> properties) {
 		String normalizedWebAppPath = normalizeWebAppPath(webAppPath);
 		webAppRegistry().register(normalizedWebAppPath);
@@ -528,8 +546,21 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	}
 
 	private void configureApplicationHandler(PathHandler applicationHandler) {
+		addConfiguredRoutes();
 		addResourceHandlers(applicationHandler);
 		addEndpointsHandlers(applicationHandler);
+	}
+
+	private void addConfiguredRoutes() {
+		WebServerConfiguration configuration = configuration();
+
+		Map<String, String> redirects = configuration.getRedirects();
+		if (redirects != null)
+			redirects.forEach((path, targetPath) -> addRedirect(resolveDefaultEndpointPath(path), resolveDefaultEndpointPath(targetPath)));
+
+		Map<String, String> forwards = configuration.getForwards();
+		if (forwards != null)
+			forwards.forEach((path, targetPath) -> addForward(resolveDefaultEndpointPath(path), resolveDefaultEndpointPath(targetPath)));
 	}
 
 	@Managed

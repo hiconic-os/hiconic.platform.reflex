@@ -13,6 +13,8 @@
 // ============================================================================
 package hiconic.rx.web.server.model.config;
 
+import java.util.Map;
+
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.annotation.Initializer;
 import com.braintribe.model.generic.annotation.meta.Confidential;
@@ -47,6 +49,8 @@ public interface WebServerConfiguration extends GenericEntity {
 	String pushSseHeartbeatIntervalMillis = "pushSseHeartbeatIntervalMillis";
 	String pushSseReplayCapacity = "pushSseReplayCapacity";
 	String pushWebSocketEndpointPath = "pushWebSocketEndpointPath";
+	String redirects = "redirects";
+	String forwards = "forwards";
 
 	@Initializer("'localhost'")
 	String getHostName();
@@ -125,6 +129,14 @@ public interface WebServerConfiguration extends GenericEntity {
 	@Pattern(".*[^\\/]$")
 	String getDefaultEndpointsBasePath();
 	void setDefaultEndpointsBasePath(String defaultEndpointsBasePath);
+
+	@Description("Exact HTTP redirects relative to defaultEndpointsBasePath, mapped from source path to target path. Redirects use HTTP 302.")
+	Map<String, String> getRedirects();
+	void setRedirects(Map<String, String> redirects);
+
+	@Description("Exact internal forwards relative to defaultEndpointsBasePath, mapped from source path to target path. The request method, body and query parameters are preserved.")
+	Map<String, String> getForwards();
+	void setForwards(Map<String, String> forwards);
 
 	@Description("If true, the canonical /livez and /readyz endpoints are additionally exposed below defaultEndpointsBasePath. "
 			+ "The aliases are handled by the application-state gate before endpoint/servlet dispatch and therefore retain the canonical "

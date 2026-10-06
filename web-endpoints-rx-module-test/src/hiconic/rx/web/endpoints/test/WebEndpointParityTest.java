@@ -54,6 +54,30 @@ public class WebEndpointParityTest extends AbstractRxTest {
 		assertThat(response.body()).contains("isTrueid");
 	}
 
+	@Test
+	public void supportsContractBasedInternalForwards() throws Exception {
+		HttpResponse<String> response = postJson("/contract-forward", "{\"text\":\"abc\"}");
+
+		assertThat(response.statusCode()).isEqualTo(200);
+		assertThat(response.body()).contains("cba");
+	}
+
+	@Test
+	public void supportsConfiguredInternalForwards() throws Exception {
+		HttpResponse<String> response = get("/configured-forward?text=abc");
+
+		assertThat(response.statusCode()).isEqualTo(200);
+		assertThat(response.body()).contains("cba");
+	}
+
+	@Test
+	public void supportsConfiguredRedirects() throws Exception {
+		HttpResponse<String> response = get("/configured-redirect");
+
+		assertThat(response.statusCode()).isEqualTo(302);
+		assertThat(response.headers().firstValue("location")).contains("/healthz");
+	}
+
 	private HttpResponse<String> get(String path) throws Exception {
 		return httpClient.send(HttpRequest.newBuilder(uri(path)).GET().build(), HttpResponse.BodyHandlers.ofString());
 	}

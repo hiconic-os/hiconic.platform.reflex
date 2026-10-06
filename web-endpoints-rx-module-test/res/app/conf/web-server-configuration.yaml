@@ -1,1 +1,3 @@
 port: 0
+forwards: { configured-forward: api/query }
+redirects: { configured-redirect: healthz }

@@ -19,6 +19,7 @@ import com.braintribe.wire.api.annotation.Managed;
 import hiconic.rx.demo.model.api.ReverseText;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.web.ddra.endpoints.api.WebApiServerContract;
+import hiconic.rx.web.server.api.WebServerContract;
 import hiconic.rx.webapi.model.meta.HttpRequestMethod;
 
 @Managed
@@ -26,6 +27,9 @@ public class WebEndpointsRxModuleTestSpace implements RxModuleContract {
 
 	@Import
 	private WebApiServerContract webApiServer;
+
+	@Import
+	private WebServerContract webServer;
 
 	@Override
 	public void onDeploy() {
@@ -35,5 +39,8 @@ public class WebEndpointsRxModuleTestSpace implements RxModuleContract {
 		webApiServer.mappingRegistry().mapping("/strict", HttpRequestMethod.POST, ReverseText.T) //
 				.decodingLenience(false) //
 				.register();
+		webApiServer.mappingRegistry().mapping("/query", HttpRequestMethod.GET, ReverseText.T).register();
+
+		webServer.addForward("contract-forward", "api/lenient");
 	}
 }
