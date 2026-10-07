@@ -27,6 +27,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -85,6 +86,7 @@ import com.braintribe.model.generic.reflection.BaseType;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.GenericModelType;
 import com.braintribe.model.generic.reflection.Property;
+import com.braintribe.gm.model.reason.essential.ParseError;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.service.api.aspect.DomainIdAspect;
 import com.braintribe.model.resource.Resource;
@@ -115,6 +117,7 @@ import hiconic.rx.webapi.client.api.HttpMultipartPart;
 import hiconic.rx.webapi.client.api.HttpRequestContext;
 import hiconic.rx.webapi.client.api.HttpResponse;
 import hiconic.rx.webapi.client.api.HttpResponseBuilder;
+import hiconic.rx.webapi.client.api.HttpResponseMapping;
 
 public class GmHttpClient implements HttpClient {
 
@@ -268,7 +271,10 @@ public class GmHttpClient implements HttpClient {
 			Object responsePayload = null;
 			GenericModelType responseType = null;
 			int code = httpResponse.getStatusLine().getStatusCode();
+			HttpResponseMapping responseMapping = context.responseMappingForCode(code);
 			if (code == HttpURLConnection.HTTP_NO_CONTENT) {
+				if (responseMapping != null)
+					throw new HttpException(code, "Rest request responded with failure code: " + code);
 				responseBuilder.payload(Neutral.NEUTRAL);
 			} else {
 
@@ -280,7 +286,13 @@ public class GmHttpClient implements HttpClient {
 
 					responseType = context.responseTypeForCode(code);
 					boolean isSuccessfulNeutralResponse = responseType == Neutral.T && context.wasSuccessful(code);
-					responseMarshaller = isSuccessfulNeutralResponse ? null : getMarshaller(context.produces());
+					String responseMimeType = responseMapping != null ? responseMapping.bodyMimeType() : null;
+					if (responseMapping != null && StringTools.isBlank(responseMimeType)) {
+						Header contentType = httpResponse.getFirstHeader(HttpConstants.HTTP_HEADER_CONTENTTYPE);
+						responseMimeType = contentType != null ? contentType.getValue() : null;
+					}
+					if (StringTools.isBlank(responseMimeType)) responseMimeType = context.produces();
+					responseMarshaller = isSuccessfulNeutralResponse ? null : getMarshaller(responseMimeType);
 
 					if (isSuccessfulNeutralResponse) {
 						// A neutral result explicitly declares that no response representation is expected. Some APIs acknowledge
@@ -350,7 +362,17 @@ public class GmHttpClient implements HttpClient {
 											.set(DateLocaleOption.class, dateFormatting != null ? dateFormatting.getDefaultLocale() : null) //
 											.set(CmdResolverOption.class, findCmdResolver()).build();
 
-							responsePayload = responseMarshaller.unmarshall(in, options);
+							try {
+								responsePayload = responseMarshaller.unmarshall(in, options);
+							} catch (Exception e) {
+								if (responseMapping != null) {
+									HttpException failure = new HttpException(code, "Rest request responded with failure code: " + code);
+									failure.withPayload(ParseError.create("Could not decode the HTTP error response as "
+											+ responseType.getTypeSignature() + ": " + e.getMessage()));
+									throw failure;
+								}
+								throw e;
+							}
 							if (responsePayload == null && responseType.isEntity()) {
 								logger.debug("Got not payload from the client. Creating an empty " + responseType);
 								responsePayload = ((EntityType<?>) responseType).create();
@@ -362,7 +384,7 @@ public class GmHttpClient implements HttpClient {
 						responseBuilder.isGeneric();
 					}
 
-					if (!context.wasSuccessful(code) && context.throwExceptionOnErrorCode(code)) {
+					if (responseMapping != null) {
 						HttpException ex = new HttpException(code, "Rest request responded with failure code: " + code);
 						ex.withPayload(responsePayload);
 						throw ex;
@@ -725,8 +747,16 @@ public class GmHttpClient implements HttpClient {
 
 	private Marshaller getMarshaller(String mimeType) {
 		Objects.requireNonNull(mimeType, "RequestContext mimeType cannot be null.");
-		Marshaller marshaller = marshallerRegistry.getMarshaller(mimeType);
+		String normalizedMimeType = normalizeMimeType(mimeType);
+		Marshaller marshaller = marshallerRegistry.getMarshaller(normalizedMimeType);
+		if (marshaller == null && normalizedMimeType.endsWith("+json"))
+			marshaller = marshallerRegistry.getMarshaller("application/json");
 		return Objects.requireNonNull(marshaller, "No marshaller found for mime type: " + mimeType);
+	}
+
+	private static String normalizeMimeType(String mimeType) {
+		int parameterSeparator = mimeType.indexOf(';');
+		return (parameterSeparator < 0 ? mimeType : mimeType.substring(0, parameterSeparator)).trim().toLowerCase(Locale.ROOT);
 	}
 
 	private static BasicConfigurableMarshallerRegistry defaultMarshallerRegistry() {

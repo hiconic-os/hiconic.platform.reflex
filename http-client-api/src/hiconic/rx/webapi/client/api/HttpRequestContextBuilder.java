@@ -62,6 +62,8 @@ public interface HttpRequestContextBuilder extends HttpConstants {
 
 	HttpRequestContextBuilder addResponseType(Integer responseCode, GenericModelType responseType);
 
+	HttpRequestContextBuilder addResponseMapping(HttpResponseMapping responseMapping);
+
 	HttpRequestContextBuilder defaultSuccessResponseType(GenericModelType responseType);
 
 	HttpRequestContextBuilder defaultFailureResponseType(GenericModelType responseType);

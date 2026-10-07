@@ -4,6 +4,9 @@ com.braintribe.model.deployment.http.annotation.HttpDefaultFailureResponseType,h
 com.braintribe.model.deployment.http.annotation.HttpDefaultSuccessResponseType,hiconic.rx.webapi.client.model.meta.HttpDefaultSuccessResponseType,value,responseTypeSignature
 com.braintribe.model.deployment.http.annotation.HttpPath,hiconic.rx.webapi.client.model.meta.HttpPath,value,path
 com.braintribe.model.deployment.http.annotation.HttpProduces,hiconic.rx.webapi.client.model.meta.HttpProduces,mimeType,mimeType,responseCode,responseCode,responseType,responseTypeSignature,useOriginalStatusCode,useOriginalStatusCode
+com.braintribe.model.deployment.http.annotation.HttpStatusReasoning,hiconic.rx.webapi.client.model.meta.HttpStatusReasoning,status,statusCodeExpression,reasonType,reasonTypeSignature,useOriginalStatusCode,useOriginalStatusCode
+com.braintribe.model.deployment.http.annotation.HttpBodyReasoning,hiconic.rx.webapi.client.model.meta.HttpBodyReasoning,status,statusCodeExpression,reasonType,reasonTypeSignature,mimeType,mimeType,useOriginalStatusCode,useOriginalStatusCode
+com.braintribe.model.deployment.http.annotation.HttpBodyDetailReasoning,hiconic.rx.webapi.client.model.meta.HttpBodyDetailReasoning,status,statusCodeExpression,reasonType,reasonTypeSignature,mimeType,mimeType
 com.braintribe.model.deployment.http.annotation.HttpSuccessCodes,hiconic.rx.webapi.client.model.meta.HttpSuccessCodes,value,successCodes
 com.braintribe.model.deployment.http.annotation.HttpMultipartFormData,hiconic.rx.webapi.client.model.meta.HttpMultipartFormData,value,requestPartName,requestPartMimeType,requestPartMimeType
 com.braintribe.model.deployment.http.annotation.HttpConnect,hiconic.rx.webapi.client.model.meta.methods.HttpConnect

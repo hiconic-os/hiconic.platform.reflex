@@ -49,6 +49,9 @@ public interface HttpRequestContext {
 
 	Set<GenericModelType> responseTypes();
 	GenericModelType responseTypeForCode(int responseCode);
+	default HttpResponseMapping responseMappingForCode(@SuppressWarnings("unused") int responseCode) {
+		return null;
+	}
 
 	HttpDateFormatting dateFormatting();
 

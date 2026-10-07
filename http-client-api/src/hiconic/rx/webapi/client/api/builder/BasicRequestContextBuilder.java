@@ -37,6 +37,7 @@ import hiconic.rx.webapi.client.api.HttpMultipartFormData;
 import hiconic.rx.webapi.client.api.HttpParameter;
 import hiconic.rx.webapi.client.api.HttpRequestContext;
 import hiconic.rx.webapi.client.api.HttpRequestContextBuilder;
+import hiconic.rx.webapi.client.api.HttpResponseMapping;
 
 public class BasicRequestContextBuilder implements HttpRequestContextBuilder {
 
@@ -51,6 +52,7 @@ public class BasicRequestContextBuilder implements HttpRequestContextBuilder {
 	private HttpMultipartFormData multipartFormData;
 	private GenericModelType payloadType;
 	private final Map<Integer, GenericModelType> responseTypesByCode = new HashMap<>();
+	private final List<HttpResponseMapping> responseMappings = new ArrayList<>();
 	private final Map<Integer, Boolean> useOrgStatusCode = new HashMap<>();
 
 	private final List<HttpParameter> queryParameters = new ArrayList<>();
@@ -175,6 +177,15 @@ public class BasicRequestContextBuilder implements HttpRequestContextBuilder {
 	public HttpRequestContextBuilder addResponseType(Integer responseCode, GenericModelType responseType) {
 		this.responseTypesByCode.put(responseCode, responseType);
 		this.responseTypes.add(responseType);
+		return this;
+	}
+
+	@Override
+	public HttpRequestContextBuilder addResponseMapping(HttpResponseMapping responseMapping) {
+		this.responseMappings.add(responseMapping);
+		GenericModelType bodyType = responseMapping.bodyType();
+		if (bodyType != null)
+			this.responseTypes.add(bodyType);
 		return this;
 	}
 
@@ -336,11 +347,45 @@ public class BasicRequestContextBuilder implements HttpRequestContextBuilder {
 
 			@Override
 			public GenericModelType responseTypeForCode(int responseCode) {
+				HttpResponseMapping mapping = responseMappingForCode(responseCode);
+				if (mapping != null)
+					return mapping.bodyType();
 				GenericModelType responseType = responseTypesByCode.get(responseCode);
 				if (responseType == null) {
 					responseType = wasSuccessful(responseCode) ? defaultSuccessResponseType : defaultFailureResponseType;
 				}
 				return responseType;
+			}
+
+			@Override
+			public HttpResponseMapping responseMappingForCode(int responseCode) {
+				HttpResponseMapping explicitRoot = null;
+				HttpResponseMapping defaultRoot = null;
+				HttpResponseMapping explicitDetail = null;
+				HttpResponseMapping defaultDetail = null;
+				for (HttpResponseMapping candidate : responseMappings) {
+					if (!candidate.matches(responseCode))
+						continue;
+					boolean detail = candidate.kind() == HttpResponseMapping.Kind.BODY_DETAIL;
+					if (detail && candidate.defaultRule()) defaultDetail = better(defaultDetail, candidate, responseCode);
+					else if (detail) explicitDetail = better(explicitDetail, candidate, responseCode);
+					else if (candidate.defaultRule()) defaultRoot = better(defaultRoot, candidate, responseCode);
+					else explicitRoot = better(explicitRoot, candidate, responseCode);
+				}
+				HttpResponseMapping root = explicitRoot != null ? explicitRoot : defaultRoot;
+				if (root == null || root.defaultRule() && wasSuccessful(responseCode)) return null;
+				HttpResponseMapping detail = explicitDetail != null ? explicitDetail : defaultDetail;
+				return HttpResponseMapping.plan(root, detail);
+			}
+
+			private HttpResponseMapping better(HttpResponseMapping current, HttpResponseMapping candidate, int responseCode) {
+				if (current == null) return candidate;
+				if (candidate.metadataPrecedence() < current.metadataPrecedence()) return candidate;
+				if (candidate.metadataPrecedence() > current.metadataPrecedence()) return current;
+				int specificity = Integer.compare(candidate.specificity(responseCode), current.specificity(responseCode));
+				if (specificity > 0) return candidate;
+				if (specificity == 0 && candidate.semanticRank() > current.semanticRank()) return candidate;
+				return current;
 			}
 
 			@Override
@@ -374,6 +419,9 @@ public class BasicRequestContextBuilder implements HttpRequestContextBuilder {
 
 			@Override
 			public boolean throwExceptionOnErrorCode(int responseCode) {
+				HttpResponseMapping mapping = responseMappingForCode(responseCode);
+				if (mapping != null)
+					return mapping.useOriginalStatusCode();
 				return useOrgStatusCode.getOrDefault(responseCode, Boolean.FALSE);
 			}
 

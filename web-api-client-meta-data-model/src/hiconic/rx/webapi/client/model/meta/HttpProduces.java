@@ -28,7 +28,7 @@ public interface HttpProduces extends HasMimeType {
 	@Initializer("200")
 	int getResponseCode();
 	void setResponseCode(int responseCode);
-	
+
 	String getResponseTypeSignature();
 	void setResponseTypeSignature(String responseTypeSignature);
 	
