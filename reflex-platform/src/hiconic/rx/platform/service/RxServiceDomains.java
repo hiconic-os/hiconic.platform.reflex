@@ -17,6 +17,7 @@ import static com.braintribe.utils.lcd.CollectionTools2.acquireList;
 import static java.util.Collections.emptyList;
 
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,6 +35,7 @@ import com.braintribe.model.processing.service.common.ConfigurableDispatchingSer
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.utils.lcd.Lazy;
 
+import hiconic.rx.module.api.service.ModelSymbol;
 import hiconic.rx.module.api.service.ServiceDomain;
 import hiconic.rx.module.api.service.ServiceDomainSymbol;
 import hiconic.rx.module.api.service.ServiceDomains;
@@ -52,6 +54,7 @@ public class RxServiceDomains implements ServiceDomains {
 
 	private final Map<String, RxServiceDomain> domains = new ConcurrentHashMap<>();
 	private final Map<String, RxServiceDomain> aliases = new ConcurrentHashMap<>();
+	private final Map<String, ModelSymbol> modelsForAllDomains = new LinkedHashMap<>();
 	private final Lazy<Map<GmMetaModel, List<ServiceDomain>>> domainsByModel = new Lazy<>(this::indexGmModelToDomains);
 	private final Lazy<Map<EntityType<?>, List<ServiceDomain>>> domainsByReqType = new Lazy<>(this::indexReqTypeToDomains);
 
@@ -156,10 +159,16 @@ public class RxServiceDomains implements ServiceDomains {
 		return domains.computeIfAbsent(domainId, this::createServiceDomain);
 	}
 
-	private RxServiceDomain createServiceDomain(String domainId) {
-		RxConfiguredModel configuredModel = modelConfigurations.byName(ServiceDomains.serviceDomainModelName(domainId));
+	public synchronized void addModelToAllDomains(ModelSymbol modelReference) {
+		if (modelsForAllDomains.putIfAbsent(modelReference.name(), modelReference) == null)
+			domains.values().forEach(domain -> domain.addModel(modelReference));
+	}
 
-		return new RxServiceDomain(domainId, this, configuredModel, executorService, contextEvaluator, systemEvaluator, fallbackProcessor);
+	private synchronized RxServiceDomain createServiceDomain(String domainId) {
+		RxConfiguredModel configuredModel = modelConfigurations.byName(ServiceDomains.serviceDomainModelName(domainId));
+		RxServiceDomain domain = new RxServiceDomain(domainId, this, configuredModel, executorService, contextEvaluator, systemEvaluator, fallbackProcessor);
+		modelsForAllDomains.values().forEach(domain::addModel);
+		return domain;
 	}
 
 	public synchronized void registerAlias(String alias, RxServiceDomain domain) {

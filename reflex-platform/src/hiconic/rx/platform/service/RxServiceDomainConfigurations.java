@@ -15,6 +15,7 @@ package hiconic.rx.platform.service;
 
 import com.braintribe.cfg.Required;
 
+import hiconic.rx.module.api.service.ModelSymbol;
 import hiconic.rx.module.api.service.PlatformServiceDomains;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.module.api.service.ServiceDomainSymbol;
@@ -26,6 +27,11 @@ public class RxServiceDomainConfigurations implements ServiceDomainConfiguration
 	@Required
 	public void setServiceDomains(RxServiceDomains serviceDomains) {
 		this.serviceDomains = serviceDomains;
+	}
+
+	@Override
+	public void addModelToAllDomains(ModelSymbol modelReference) {
+		serviceDomains.addModelToAllDomains(modelReference);
 	}
 
 	@Override

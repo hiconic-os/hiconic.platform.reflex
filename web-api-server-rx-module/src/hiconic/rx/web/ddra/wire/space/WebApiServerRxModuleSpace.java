@@ -21,6 +21,16 @@ import java.util.List;
 import org.jboss.logging.Logger;
 
 import com.braintribe.gm._ResourceApiModel_;
+import com.braintribe.gm.model.reason.essential.AlreadyExists;
+import com.braintribe.gm.model.reason.essential.InternalError;
+import com.braintribe.gm.model.reason.essential.InvalidArgument;
+import com.braintribe.gm.model.reason.essential.NotFound;
+import com.braintribe.gm.model.reason.essential.ParseError;
+import com.braintribe.gm.model.reason.essential.UnsupportedOperation;
+import com.braintribe.gm.model.reason.meta.HttpStatusCode;
+import com.braintribe.gm.model.security.reason.AuthenticationFailure;
+import com.braintribe.gm.model.security.reason.Forbidden;
+import com.braintribe.gm.model.security.reason.SecurityReason;
 import com.braintribe.model.meta.data.prompt.Embedded;
 import com.braintribe.model.meta.selector.UseCaseSelector;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
@@ -37,8 +47,10 @@ import com.braintribe.wire.api.context.WireContext;
 import hiconic.rx.access.module.api.AccessModelSymbols;
 import hiconic.rx.module.api.service.ModelConfiguration;
 import hiconic.rx.module.api.service.ModelConfigurations;
+import hiconic.rx.module.api.service.ModelSymbol;
 import hiconic.rx.module.api.service.PlatformServiceDomains;
 import hiconic.rx.module.api.service.ServiceDomain;
+import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.module.api.wire.RxServiceProcessingContract;
@@ -56,12 +68,15 @@ import hiconic.rx.web.server.api.WebServerContract;
 import hiconic.rx.webapi.model.meta.HttpRequestMethod;
 import hiconic.rx.webapi.server.model.configuration.WebApiServerConfiguration;
 import jakarta.servlet.DispatcherType;
+import jakarta.servlet.http.HttpServletResponse;
 
 @Managed
 public class WebApiServerRxModuleSpace implements RxModuleContract, WebApiServerContract {
 	private static Logger logger = Logger.getLogger(WebApiServerRxModuleSpace.class);
 
 	private static final String MIME_TYPE_JSON = "application/json";
+	private static final ModelSymbol defaultReasonMetadataModel =
+			ModelSymbol.of("hiconic.platform.reflex:web-api-default-reason-metadata-model");
 
 	@Import
 	private WireContext<?> wireContext;
@@ -80,6 +95,8 @@ public class WebApiServerRxModuleSpace implements RxModuleContract, WebApiServer
 
 	@Override
 	public void configureModels(ModelConfigurations configurations) {
+		configureDefaultReasonMetadata(configurations);
+
 		ModelConfiguration resourceApiModel = configurations.extendedModel(AccessModelSymbols.configuredResourceApiModel,
 				_ResourceApiModel_.reflection);
 
@@ -92,6 +109,33 @@ public class WebApiServerRxModuleSpace implements RxModuleContract, WebApiServer
 			editor.onEntityType(GetResource.T).addPropertyMetaData("resource", embedded);
 			editor.onEntityType(DeleteResource.T).addPropertyMetaData("resource", embedded);
 		});
+	}
+
+	private void configureDefaultReasonMetadata(ModelConfigurations configurations) {
+		ModelConfiguration model = configurations.bySymbol(defaultReasonMetadataModel);
+		model.addModel(InvalidArgument.T.getModel());
+		model.addModel(SecurityReason.T.getModel());
+		model.configureModel(editor -> {
+			editor.onEntityType(InvalidArgument.T).addMetaData(httpStatus(HttpServletResponse.SC_BAD_REQUEST));
+			editor.onEntityType(ParseError.T).addMetaData(httpStatus(HttpServletResponse.SC_BAD_REQUEST));
+			editor.onEntityType(UnsupportedOperation.T).addMetaData(httpStatus(HttpServletResponse.SC_BAD_REQUEST));
+			editor.onEntityType(NotFound.T).addMetaData(httpStatus(HttpServletResponse.SC_NOT_FOUND));
+			editor.onEntityType(AlreadyExists.T).addMetaData(httpStatus(HttpServletResponse.SC_CONFLICT));
+			editor.onEntityType(InternalError.T).addMetaData(httpStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR));
+			editor.onEntityType(AuthenticationFailure.T).addMetaData(httpStatus(HttpServletResponse.SC_UNAUTHORIZED));
+			editor.onEntityType(Forbidden.T).addMetaData(httpStatus(HttpServletResponse.SC_FORBIDDEN));
+		});
+	}
+
+	private HttpStatusCode httpStatus(int code) {
+		HttpStatusCode metadata = HttpStatusCode.T.create();
+		metadata.setCode(code);
+		return metadata;
+	}
+
+	@Override
+	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
+		configurations.addModelToAllDomains(defaultReasonMetadataModel);
 	}
 
 	@Override

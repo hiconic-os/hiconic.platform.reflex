@@ -24,6 +24,13 @@ import hiconic.rx.module.api.wire.RxModuleContract;
 public interface ServiceDomainConfigurations {
 
 	/**
+	 * Adds the referenced model to every service domain, including domains configured after this call.
+	 * <p>
+	 * This is intended for cross-domain model enrichments such as common reason metadata which must not be repeated by each domain.
+	 */
+	void addModelToAllDomains(ModelSymbol modelReference);
+
+	/**
 	 * Acquires a {@link ServiceDomainConfiguration} for given domainId. This means this method could potentially register a new {@link ServiceDomain}
 	 * in the platform.
 	 */
