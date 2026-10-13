@@ -31,6 +31,12 @@ web-app/
 | /tribefire-services/login | `LoginRxServlet` | 
 | /tribefire-services/login/auth | `AuthRxServlet` |
 
+### Configuration
+
+| Property | Description |
+| --- | --- |
+| `TRIBEFIRE_EXPLORER_URL` | URL of the explorer, used by the links on the home page and passed to the explorer in its runtime configuration. Default for the home page links: `/tribefire-explorer`. Set it if a reverse proxy serves the explorer under a different path, e.g. `/explorer`. |
+
 ### Generic Endpoints
 
 |Name| RX module | URL path | Description |

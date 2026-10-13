@@ -355,7 +355,7 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	}
 
 	@Override
-	public void addWebAppRuntimeConfiguration(String webAppPath, Supplier<? extends Map<String, ?>> properties) {
+	public void addWebAppRuntimeConfiguration(String webAppPath, Supplier<? extends Map<String, ?>> propertiesSupplier) {
 		String normalizedWebAppPath = normalizeWebAppPath(webAppPath);
 		webAppRegistry().register(normalizedWebAppPath);
 		String normalizedPath = URLUtils.normalizeSlashes("/" + normalizedWebAppPath + "/runtime-config.json");
@@ -363,7 +363,7 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 				new RuntimeConfigurationHandler(() -> {
 					Map<String, Object> result = new java.util.LinkedHashMap<>();
 					result.put("servicesUrl", defaultEndpointUrl());
-					result.putAll(properties.get());
+					result.putAll(propertiesSupplier.get());
 					return result;
 				}));
 	}

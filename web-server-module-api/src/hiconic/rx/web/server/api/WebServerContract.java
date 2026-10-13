@@ -64,7 +64,7 @@ public interface WebServerContract extends RxExportContract {
 	}
 
 	/** Adds compatibility/application-specific values to the canonical runtime configuration. */
-	void addWebAppRuntimeConfiguration(String webAppPath, Supplier<? extends Map<String, ?>> properties);
+	void addWebAppRuntimeConfiguration(String webAppPath, Supplier<? extends Map<String, ?>> propertiesSupplier);
 
 	/**
 	 * Returns whether a web application registered its runtime endpoint. This provides optional consumers, such as a landing page, with a

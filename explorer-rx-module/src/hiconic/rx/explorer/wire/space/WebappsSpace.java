@@ -56,11 +56,12 @@ import jakarta.servlet.DispatcherType;
 public class WebappsSpace implements WireSpace {
 	private static final String EXPLORER_WEB_APP_PATH = "tribefire-explorer";
 	private static final String NOT_FOUND_PATH = "/_rx/not-found";
+	private static final String EXPLORER_URL_PROPERTY = "TRIBEFIRE_EXPLORER_URL";
 
 	private static final Map<String, String> OPTIONAL_CLIENT_PROPERTIES = Map.of(
 			"websocketUrl", "TRIBEFIRE_WEBSOCKET_URL",
 			"controlCenterUrl", "TRIBEFIRE_CONTROL_CENTER_URL",
-			"explorerUrl", "TRIBEFIRE_EXPLORER_URL",
+			"explorerUrl", EXPLORER_URL_PROPERTY,
 			"tribefireJsUrl", "TRIBEFIRE_JS_URL",
 			"platformSetupSupport", "TRIBEFIRE_PLATFORM_SETUP_SUPPORT",
 			"webLoginRelativePath", "TRIBEFIRE_WEB_LOGIN_RELATIVE_PATH",
@@ -157,7 +158,7 @@ public class WebappsSpace implements WireSpace {
 		HomeRxServlet bean = new HomeRxServlet();
 		ExplorerConfiguration configuration = platform.configuration().readConfig(ExplorerConfiguration.T).get();
 		bean.setApplicationName(platform.application().applicationName());
-		bean.setExplorerUrl("/tribefire-explorer"); // relative path works
+		bean.setExplorerUrl(explorerUrl());
 		bean.setServiceDomains(serviceProcessing.serviceDomains());
 		bean.setAccessDomains(access.accessDomains());
 		bean.setGrantedRoles(platform.auth().roleAuthorization().adminRoles());
@@ -175,6 +176,15 @@ public class WebappsSpace implements WireSpace {
 		}
 
 		return bean;
+	}
+
+	/**
+	 * URL of the explorer for the links on the home page. Configurable for a deployment that serves the explorer under a different path, e.g. a
+	 * reverse proxy that maps <tt>/explorer</tt> to <tt>/tribefire-explorer</tt>. Default is the relative path of the explorer web app.
+	 */
+	private String explorerUrl() {
+		String explorerUrl = platform.configuration().propertyResolver().resolve(EXPLORER_URL_PROPERTY);
+		return explorerUrl != null ? explorerUrl : "/" + EXPLORER_WEB_APP_PATH;
 	}
 
 	@Managed
