@@ -39,6 +39,7 @@ import hiconic.rx.web.ddra.endpoints.api.DdraEndpointContext;
 import hiconic.rx.web.ddra.endpoints.api.DdraEndpointsUtils;
 import hiconic.rx.web.ddra.endpoints.api.DdraTraversingCriteriaMap;
 import hiconic.rx.web.ddra.endpoints.api.v1.ApiV1EndpointContext;
+import hiconic.rx.web.ddra.endpoints.api.v1.StreamHeaderUtils;
 import hiconic.rx.webapi.endpoints.DdraEndpoint;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -104,6 +105,7 @@ public abstract class AbstractDdraRestServlet<Context extends DdraEndpointContex
 
 	@Override
 	protected final void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		StreamHeaderUtils.setResponseCacheControlHeaders(response, null, null, false);
 
 		Pair<String, Boolean> requestLogAndRecurring = logRequest(request);
 		String requestLog = requestLogAndRecurring.first;

@@ -22,6 +22,7 @@ import java.util.Date;
 import java.util.List;
 
 import com.braintribe.model.cache.CacheControl;
+import com.braintribe.model.cache.CacheType;
 import com.braintribe.model.resourceapi.stream.BinaryRetrievalResponse;
 import com.braintribe.model.resourceapi.stream.HasStreamCondition;
 import com.braintribe.model.resourceapi.stream.HasStreamRange;
@@ -119,6 +120,35 @@ public interface StreamHeaderUtils {
 		response.setHeader("Cache-Control", "no-store, no-cache");
 		response.setHeader("Pragma", "no-cache");
 		response.setDateHeader("Expires", 0);
+	}
+
+	/** Applies the cache policy of a regular mapped response. The secure default is deliberately just {@code no-store}. */
+	static void setResponseCacheControlHeaders(HttpServletResponse response, CacheType type, Integer maxAge, boolean mustRevalidate) {
+		List<String> ccParts = new ArrayList<>();
+		CacheType effectiveType = type == null ? CacheType.noStore : type;
+
+		switch (effectiveType) {
+			case noCache:
+				ccParts.add("no-cache");
+				response.setHeader("Pragma", "no-cache");
+				break;
+			case noStore:
+				ccParts.add("no-store");
+				break;
+			case privateCache:
+				ccParts.add("private");
+				break;
+			case publicCache:
+				ccParts.add("public");
+				break;
+		}
+
+		if (maxAge != null && maxAge >= 0)
+			ccParts.add("max-age=" + maxAge);
+		if (mustRevalidate)
+			ccParts.add("must-revalidate");
+
+		response.setHeader("Cache-Control", String.join(", ", ccParts));
 	}
 
 	static void setCacheControlHeaders(HttpServletResponse response, CacheControl cacheControl) {

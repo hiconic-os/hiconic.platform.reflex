@@ -16,6 +16,7 @@ package hiconic.rx.web.ddra.endpoints.api;
 import java.util.Set;
 import java.util.function.Supplier;
 
+import com.braintribe.model.cache.CacheType;
 import com.braintribe.model.service.api.ServiceRequest;
 
 import hiconic.rx.webapi.endpoints.OutputPrettiness;
@@ -38,6 +39,7 @@ public interface WebApiMappingBuilder {
 
 	WebApiMappingBuilder responseProjection(String propertyPath);
 	WebApiMappingBuilder responseMimeType(String mimeType);
+	WebApiMappingBuilder responseCacheControl(CacheType type, Integer maxAge, boolean mustRevalidate);
 	WebApiMappingBuilder downloadResource(boolean downloadResource);
 	WebApiMappingBuilder saveLocally(boolean saveLocally);
 	WebApiMappingBuilder responseFilename(String filename);

@@ -23,6 +23,7 @@ import java.util.List;
 import org.junit.Test;
 
 import com.braintribe.model.resourceapi.persistence.DeleteResource;
+import com.braintribe.model.cache.CacheType;
 import com.braintribe.model.resourceapi.persistence.DeletionScope;
 import com.braintribe.model.resourceapi.persistence.UpdateResource;
 import com.braintribe.model.resourceapi.persistence.UploadResources;
@@ -33,6 +34,8 @@ import com.braintribe.model.service.api.ServiceRequest;
 
 import hiconic.rx.web.ddra.endpoints.api.v1.SingleDdraMapping;
 import hiconic.rx.webapi.model.meta.HttpRequestMethod;
+import hiconic.rx.webapi.model.meta.CacheTypeOverride;
+import hiconic.rx.webapi.model.meta.RequestMapping;
 import hiconic.rx.webapi.model.meta.RequestPath;
 import hiconic.rx.webapi.model.meta.RequestPathPrefix;
 
@@ -123,6 +126,42 @@ public class StandardWebApiMappingOracleTest {
 		ServiceRequest prototype = oracle.get("/test-prototype", HttpRequestMethod.POST).createRequestPrototype();
 		assertTrue(prototype instanceof Logout);
 		assertEquals("from-prototype", ((Logout) prototype).getSessionId());
+	}
+
+	@Test
+	public void explicitMappingCanOptIntoCaching() {
+		StandardWebApiMappingOracle oracle = new StandardWebApiMappingOracle();
+		oracle.mapping("/cacheable", HttpRequestMethod.GET, Logout.T) //
+				.responseCacheControl(CacheType.publicCache, 300, true) //
+				.register();
+
+		SingleDdraMapping mapping = oracle.get("/cacheable", HttpRequestMethod.GET);
+		assertEquals(CacheType.publicCache, mapping.getResponseCacheType());
+		assertEquals(Integer.valueOf(300), mapping.getResponseCacheMaxAge());
+		assertTrue(mapping.getResponseCacheMustRevalidate());
+	}
+
+	@Test
+	public void responseCachingDefaultsToNoStore() {
+		StandardWebApiMappingOracle.MappingMds mapping = new StandardWebApiMappingOracle.MappingMds();
+
+		assertEquals(CacheType.noStore, mapping.responseCacheType(null));
+		assertNull(mapping.responseCacheMaxAge(null));
+	}
+
+	@Test
+	public void completeMappingCachePolicyIsAnAtomicOverride() {
+		RequestMapping completeMapping = RequestMapping.T.create();
+		completeMapping.setResponseCacheType(CacheTypeOverride.NO_STORE);
+		completeMapping.setResponseCacheMaxAge(-1);
+		completeMapping.setResponseCacheMustRevalidate(false);
+
+		StandardWebApiMappingOracle.MappingMds mapping = new StandardWebApiMappingOracle.MappingMds();
+		mapping.completeMapping = completeMapping;
+
+		assertEquals(CacheType.noStore, mapping.responseCacheType(CacheType.publicCache));
+		assertNull(mapping.responseCacheMaxAge(300));
+		org.junit.Assert.assertFalse(mapping.responseCacheMustRevalidate(true));
 	}
 
 	private RequestPathPrefix prefix(String value) {

@@ -109,6 +109,7 @@ import hiconic.rx.web.ddra.endpoints.api.context.HttpRequestSupplierAspect;
 import hiconic.rx.web.ddra.endpoints.api.context.HttpResponseConfigurerAspect;
 import hiconic.rx.web.ddra.endpoints.api.v1.ApiV1EndpointContext;
 import hiconic.rx.web.ddra.endpoints.api.v1.SingleDdraMapping;
+import hiconic.rx.web.ddra.endpoints.api.v1.StreamHeaderUtils;
 import hiconic.rx.web.ddra.endpoints.api.v1.WebApiMappingOracle;
 import hiconic.rx.web.ddra.servlet.ApiV1RestServletUtils.DecodingTargetTraversalResult;
 import hiconic.rx.webapi.endpoints.DdraBaseUrlPathParameters;
@@ -289,6 +290,11 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 			// In case something relevant was configured , such as response mime-type, we want to override the originally set Endpoint
 			context.setEndpoint(restServletUtils.createDefaultEndpoint(context.getMapping()));
 		}
+
+		SingleDdraMapping responseMapping = context.getMapping();
+		if (responseMapping != null)
+			StreamHeaderUtils.setResponseCacheControlHeaders(context.getResponse(), responseMapping.getResponseCacheType(),
+					responseMapping.getResponseCacheMaxAge(), responseMapping.getResponseCacheMustRevalidate());
 
 		return true;
 	}

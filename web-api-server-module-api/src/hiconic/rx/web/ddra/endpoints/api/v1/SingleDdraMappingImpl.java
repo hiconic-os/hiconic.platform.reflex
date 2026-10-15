@@ -6,6 +6,7 @@ import static java.util.Collections.emptySet;
 import java.util.Set;
 import java.util.function.Supplier;
 
+import com.braintribe.model.cache.CacheType;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.StandardCloningContext;
 import com.braintribe.model.service.api.ServiceRequest;
@@ -32,6 +33,9 @@ public class SingleDdraMappingImpl implements SingleDdraMapping {
 
 	public String defaultProjection;
 	public String defaultMimeType;
+	public CacheType responseCacheType = CacheType.noStore;
+	public Integer responseCacheMaxAge;
+	public boolean responseCacheMustRevalidate;
 
 	public OutputPrettiness defaultPrettiness;
 	public String defaultDepth;
@@ -64,6 +68,9 @@ public class SingleDdraMappingImpl implements SingleDdraMapping {
 	@Override public String getDefaultResponseContentType() { return defaultResponseContentType; }
 	@Override public String getDefaultProjection() { return defaultProjection; }
 	@Override public String getDefaultMimeType() { return defaultMimeType; }
+	@Override public CacheType getResponseCacheType() { return responseCacheType; }
+	@Override public Integer getResponseCacheMaxAge() { return responseCacheMaxAge; }
+	@Override public boolean getResponseCacheMustRevalidate() { return responseCacheMustRevalidate; }
 	@Override public Boolean getAnnounceAsMultipart() { return announceAsMultipart; }
 	@Override public boolean getHideSerializedRequest() { return hideSerializedRequest; }
 	@Override public ApiV1DdraEndpoint getEndpointPrototype() { return endpointPrototype == null ? null : endpointPrototype.clone(new StandardCloningContext()); }

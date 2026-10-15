@@ -15,6 +15,7 @@ package hiconic.rx.web.ddra.endpoints.api.v1;
 
 import java.util.Set;
 
+import com.braintribe.model.cache.CacheType;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.service.api.ServiceRequest;
 
@@ -62,6 +63,12 @@ public interface SingleDdraMapping {
 	String getDefaultProjection();
 
 	String getDefaultMimeType();
+
+	CacheType getResponseCacheType();
+
+	Integer getResponseCacheMaxAge();
+
+	boolean getResponseCacheMustRevalidate();
 
 	Boolean getAnnounceAsMultipart();
 

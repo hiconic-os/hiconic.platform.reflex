@@ -8,6 +8,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import hiconic.rx.webapi.model.meta.BooleanOverride;
+import hiconic.rx.webapi.model.meta.CacheTypeOverride;
 import hiconic.rx.webapi.model.meta.HttpRequestMethod;
 
 /**
@@ -30,6 +31,9 @@ public @interface RequestMapping {
 	BooleanOverride responseAsResourcePayload() default BooleanOverride.INHERIT;
 	BooleanOverride responseWithDownloadDialog() default BooleanOverride.INHERIT;
 	String responseMimeType() default "";
+	CacheTypeOverride responseCacheType() default CacheTypeOverride.INHERIT;
+	int responseCacheMaxAge() default -1;
+	boolean responseCacheMustRevalidate() default false;
 	BooleanOverride hideSerializedRequest() default BooleanOverride.INHERIT;
 	BooleanOverride announceAsMultipart() default BooleanOverride.INHERIT;
 	BooleanOverride useSessionEvaluation() default BooleanOverride.INHERIT;

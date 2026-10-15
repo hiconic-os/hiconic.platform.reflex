@@ -47,6 +47,18 @@ public interface RequestMapping extends EntityTypeMetaData {
 	String getResponseMimeType();
 	void setResponseMimeType(String responseMimeType);
 
+	/** {@code null} or {@link CacheTypeOverride#INHERIT} means inherit the complete {@link ResponseCacheControl} policy. */
+	CacheTypeOverride getResponseCacheType();
+	void setResponseCacheType(CacheTypeOverride responseCacheType);
+
+	/** Used only when {@link #getResponseCacheType()} overrides the inherited policy; negative values mean no max-age directive. */
+	Integer getResponseCacheMaxAge();
+	void setResponseCacheMaxAge(Integer responseCacheMaxAge);
+
+	/** Used only when {@link #getResponseCacheType()} overrides the inherited policy. */
+	boolean getResponseCacheMustRevalidate();
+	void setResponseCacheMustRevalidate(boolean responseCacheMustRevalidate);
+
 	/** {@code null} or {@link BooleanOverride#INHERIT} means inherit {@link HideSerializedRequest}. */
 	BooleanOverride getHideSerializedRequest();
 	void setHideSerializedRequest(BooleanOverride hideSerializedRequest);

@@ -32,6 +32,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import com.braintribe.cfg.Required;
+import com.braintribe.model.cache.CacheType;
 import com.braintribe.model.generic.pr.criteria.TraversingCriterion;
 import com.braintribe.model.generic.pr.criteria.matching.StandardMatcher;
 import com.braintribe.model.generic.processing.pr.fluent.TC;
@@ -58,6 +59,7 @@ import hiconic.rx.web.ddra.endpoints.api.v1.WebApiMappingOracle;
 import hiconic.rx.webapi.endpoints.OutputPrettiness;
 import hiconic.rx.webapi.endpoints.TypeExplicitness;
 import hiconic.rx.webapi.model.meta.BooleanOverride;
+import hiconic.rx.webapi.model.meta.CacheTypeOverride;
 import hiconic.rx.webapi.model.meta.HideSerializedRequest;
 import hiconic.rx.webapi.model.meta.HttpRequestMethod;
 import hiconic.rx.webapi.model.meta.RequestDecodingLenience;
@@ -69,6 +71,7 @@ import hiconic.rx.webapi.model.meta.RequestPathPrefix;
 import hiconic.rx.webapi.model.meta.RequestSection;
 import hiconic.rx.webapi.model.meta.ResponseAsMultipart;
 import hiconic.rx.webapi.model.meta.ResponseAsResourcePayload;
+import hiconic.rx.webapi.model.meta.ResponseCacheControl;
 import hiconic.rx.webapi.model.meta.ResponseDepth;
 import hiconic.rx.webapi.model.meta.ResponseEntityRecurrenceDepth;
 import hiconic.rx.webapi.model.meta.ResponseIncludesEmptyProperties;
@@ -177,6 +180,13 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 		@Override public WebApiMappingBuilder requestPrototype(Supplier<? extends ServiceRequest> value) { return configure(() -> mapping.requestPrototype = value); }
 		@Override public WebApiMappingBuilder responseProjection(String value) { return configure(() -> mapping.defaultProjection = value); }
 		@Override public WebApiMappingBuilder responseMimeType(String value) { return configure(() -> mapping.defaultMimeType = value); }
+		@Override public WebApiMappingBuilder responseCacheControl(CacheType type, Integer maxAge, boolean mustRevalidate) {
+			return configure(() -> {
+				mapping.responseCacheType = type;
+				mapping.responseCacheMaxAge = normalizeMaxAge(maxAge);
+				mapping.responseCacheMustRevalidate = mustRevalidate;
+			});
+		}
 		@Override public WebApiMappingBuilder downloadResource(boolean value) { return configure(() -> mapping.defaultDownloadResource = value); }
 		@Override public WebApiMappingBuilder saveLocally(boolean value) { return configure(() -> mapping.defaultSaveLocally = value); }
 		@Override public WebApiMappingBuilder responseFilename(String value) { return configure(() -> mapping.defaultResponseFilename = value); }
@@ -316,6 +326,11 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 			result.defaultEntityRecurrenceDepth = mappingMds.entityRecurrenceDepth(mdProp(ResponseEntityRecurrenceDepth.T, ResponseEntityRecurrenceDepth::getDepth));
 			result.defaultWriteEmptyProperties = requestMdResolver.is(ResponseIncludesEmptyProperties.T);
 			result.defaultMimeType = mappingMds.responseMimeType(mdProp(ResponseMimeType.T, ResponseMimeType::getMimeType));
+			ResponseCacheControl responseCacheControl = requestMdResolver.meta(ResponseCacheControl.T).exclusive();
+			result.responseCacheType = mappingMds.responseCacheType(responseCacheControl == null ? null : responseCacheControl.getType());
+			result.responseCacheMaxAge = mappingMds.responseCacheMaxAge(responseCacheControl == null ? null : responseCacheControl.getMaxAge());
+			result.responseCacheMustRevalidate = mappingMds
+					.responseCacheMustRevalidate(responseCacheControl != null && responseCacheControl.getMustRevalidate());
 			result.defaultPreserveTransportPayload = requestMdResolver.is(ResponsePreservesTransportPayload.T);
 			result.defaultDecodingLenience = mappingMds.decodingLenience(requestMdResolver.is(RequestDecodingLenience.T));
 			result.defaultProjection = mappingMds.responseProjection(mdProp(ResponseProjection.T, ResponseProjection::getPath));
@@ -587,6 +602,21 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 		boolean decodingLenience(boolean fallback) {
 			return override(completeMapping == null ? null : completeMapping.getDecodingLenience(), fallback);
 		}
+		CacheType responseCacheType(CacheType fallback) {
+			if (!overridesResponseCacheControl())
+				return fallback == null ? CacheType.noStore : fallback;
+			return completeMapping.getResponseCacheType().cacheType();
+		}
+		Integer responseCacheMaxAge(Integer fallback) {
+			return normalizeMaxAge(overridesResponseCacheControl() ? completeMapping.getResponseCacheMaxAge() : fallback);
+		}
+		boolean responseCacheMustRevalidate(boolean fallback) {
+			return overridesResponseCacheControl() ? completeMapping.getResponseCacheMustRevalidate() : fallback;
+		}
+		private boolean overridesResponseCacheControl() {
+			CacheTypeOverride override = completeMapping == null ? null : completeMapping.getResponseCacheType();
+			return override != null && override != CacheTypeOverride.INHERIT;
+		}
 		private boolean override(BooleanOverride override, boolean fallback) {
 			if (override == null)
 				return fallback;
@@ -607,6 +637,10 @@ public class StandardWebApiMappingOracle implements WebApiMappingOracle, WebApiM
 		}
 		private String emptyToNull(String value) { return StringTools.isEmpty(value) ? null : value; }
 		private String emptyToFallback(String value, String fallback) { return StringTools.isEmpty(value) ? fallback : value; }
+	}
+
+	private static Integer normalizeMaxAge(Integer maxAge) {
+		return maxAge == null || maxAge < 0 ? null : maxAge;
 	}
 
 	private static record PathAndMethod(String path, HttpRequestMethod method) {
