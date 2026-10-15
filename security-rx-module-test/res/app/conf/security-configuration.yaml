@@ -1,1 +1,4 @@
 userSessionDb: "user-sessions"
+userSessionMaxIdleTime:
+  value: 2
+  unit: hour

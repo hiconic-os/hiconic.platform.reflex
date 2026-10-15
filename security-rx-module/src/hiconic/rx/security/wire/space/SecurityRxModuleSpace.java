@@ -202,6 +202,7 @@ public class SecurityRxModuleSpace implements RxModuleContract, SecurityContract
 		bean.setEvaluator(serviceProcessing.evaluator());
 		bean.setUserService(userServices.userService());
 		bean.setUserSessionService(userServices.userSessionService());
+		bean.setSessionMaxIdleTime(userServices.userSessionMaxIdleTime());
 		bean.setOpenUserSessionConfiguration(platform.configuration().readConfig(OpenUserSessionConfiguration.T).get());
 		bean.setInternalRole(internalRole());
 		bean.setUserSessionOpeningVerificationExperts(openingVerificationExperts());

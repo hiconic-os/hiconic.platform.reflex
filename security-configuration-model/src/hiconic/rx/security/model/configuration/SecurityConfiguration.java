@@ -17,6 +17,7 @@ import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.annotation.Initializer;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
+import com.braintribe.model.time.TimeSpan;
 
 import java.util.Set;
 
@@ -35,5 +36,9 @@ public interface SecurityConfiguration extends GenericEntity {
 	@Initializer("'internal'") // matches RxAuthSpace.internalRole
 	String getInternalRole();
 	void setInternalRole(String internalRole);
+
+	/** Maximum time without session access before a normal user session expires. Defaults to 24 hours when unset. */
+	TimeSpan getUserSessionMaxIdleTime();
+	void setUserSessionMaxIdleTime(TimeSpan userSessionMaxIdleTime);
 
 }

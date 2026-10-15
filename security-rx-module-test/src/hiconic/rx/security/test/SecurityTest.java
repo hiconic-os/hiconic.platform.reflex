@@ -118,6 +118,17 @@ public class SecurityTest extends AbstractRxTest {
 		
 		Assertions.assertThat(maybe.isSatisfied()).isTrue();
 	}
+
+	@Test
+	public void configuredUserSessionMaxIdleTimeIsApplied() {
+		OpenUserSessionWithUserAndPassword openSession = OpenUserSessionWithUserAndPassword.T.create();
+		openSession.setUser("reflector");
+		openSession.setPassword("reflect");
+
+		OpenUserSessionResponse response = openSession.eval(evaluator).getReasoned().get();
+
+		Assertions.assertThat(response.getUserSession().getMaxIdleTime().toLongMillies()).isEqualTo(2 * 60 * 60 * 1_000L);
+	}
 	
 	@Test
 	public void testAuthenticationInvalidCredentials() {

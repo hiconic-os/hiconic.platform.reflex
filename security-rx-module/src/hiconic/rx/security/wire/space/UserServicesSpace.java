@@ -140,7 +140,7 @@ public class UserServicesSpace implements WireSpace {
 		StandardUserSessionService bean = new StandardUserSessionService();
 		bean.setSessionIdProvider(userSessionIdFactory());
 		bean.setNodeId(platform.application().nodeId());
-		bean.setDefaultUserSessionMaxIdleTime(TimeSpan.create(24, TimeUnit.hour));
+		bean.setDefaultUserSessionMaxIdleTime(userSessionMaxIdleTime());
 		return bean;
 	}
 
@@ -150,9 +150,22 @@ public class UserServicesSpace implements WireSpace {
 		bean.setDataSource(dataSource);
 		bean.setSessionIdProvider(userSessionIdFactory());
 		bean.setNodeId(platform.application().nodeId());
-		bean.setDefaultUserSessionMaxIdleTime(TimeSpan.create(24, TimeUnit.hour));
+		bean.setDefaultUserSessionMaxIdleTime(userSessionMaxIdleTime());
 		bean.setSystemUserSession(platform.auth().systemUserSession());
 		return bean;
+	}
+
+	@Managed
+	public TimeSpan userSessionMaxIdleTime() {
+		TimeSpan configured = configuration().getUserSessionMaxIdleTime();
+		TimeSpan result = configured != null ? configured : TimeSpan.create(24, TimeUnit.hour);
+
+		if (result.getUnit() == null)
+			throw new IllegalStateException("Security configuration userSessionMaxIdleTime requires a unit.");
+		if (!Double.isFinite(result.getValue()) || result.getValue() <= 0)
+			throw new IllegalStateException("Security configuration userSessionMaxIdleTime must be a finite value greater than zero.");
+
+		return result;
 	}
 
 	@Managed
