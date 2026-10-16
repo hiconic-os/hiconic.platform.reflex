@@ -21,6 +21,7 @@ import hiconic.rx.security.model.configuration.SecurityConfiguration;
 import hiconic.rx.security.web.api.AuthFilters;
 import hiconic.rx.security.web.api.CookieHandler;
 import hiconic.rx.security.web.api.LoginFlowExtension;
+import hiconic.rx.security.web.api.LoginOption;
 import hiconic.rx.security.web.api.WebSecurityConfigurationContract;
 import hiconic.rx.security.web.api.WebSecurityConstants;
 import hiconic.rx.security.web.api.WebSecurityContract;
@@ -121,6 +122,8 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 	@Managed
 	private LoginRxServlet loginServlet() {
 		LoginRxServlet bean = new LoginRxServlet();
+		bean.setLocalLoginEnabled(configurationManager().localLoginEnabled());
+		bean.setLoginOptions(loginOptions());
 		return bean;
 	}
 
@@ -249,6 +252,16 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 		loginFlowExtensions().add(extension);
 	}
 
+	@Override
+	public void registerLoginOption(LoginOption option) {
+		for (LoginOption registeredOption : loginOptions()) {
+			if (registeredOption.getId().equals(option.getId()))
+				throw new IllegalStateException("A login option with id '" + option.getId() + "' is already registered");
+		}
+
+		loginOptions().add(option);
+	}
+
 	@Managed
 	private List<WebSecurityRequestContextContributor> requestContextContributors() {
 		return new ArrayList<>();
@@ -256,6 +269,11 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 
 	@Managed
 	private List<LoginFlowExtension> loginFlowExtensions() {
+		return new ArrayList<>();
+	}
+
+	@Managed
+	private List<LoginOption> loginOptions() {
 		return new ArrayList<>();
 	}
 
@@ -324,6 +342,10 @@ class WebSecurityConfigurationManager {
 			return standardLoginEnabled;
 
 		return defaultLoginPathSetProgrammatically == null;
+	}
+
+	public boolean localLoginEnabled() {
+		return wsConfig.getLocalLoginEnabled();
 	}
 
 	public String getDefaultLoginPath() {

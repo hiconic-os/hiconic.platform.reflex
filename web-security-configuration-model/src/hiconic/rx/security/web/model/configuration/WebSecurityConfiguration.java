@@ -21,6 +21,12 @@ public interface WebSecurityConfiguration extends GenericEntity {
 	Boolean getStandardLoginEnabled();
 	void setStandardLoginEnabled(Boolean standardLoginEnabled);
 
+	/** Whether the standard login page offers authentication with username and password. */
+	@Initializer("true")
+	boolean getLocalLoginEnabled();
+	void setLocalLoginEnabled(boolean localLoginEnabled);
+
+	@Initializer("'login'")
 	String getLoginPath();
 	void setLoginPath(String loginPath);
 

@@ -124,6 +124,29 @@ form.loginForm .loginBusySpinner {
 	width: 100% !important;
 	color: white;
 }
+*.loginContent a.loginOption {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 35px;
+	padding: 5px 12px;
+	background-color: white;
+	color: gray;
+	text-decoration: none;
+	border: 1px solid rgba(0,0,0,0.15);
+}
+*.loginContent a.loginOption:hover {
+	border-color: #ffa500;
+}
+*.loginContent a.loginOption img {
+	width: 24px;
+	height: 24px;
+	margin-top: 0;
+	object-fit: contain;
+}
 *.loginContent .errorMessage {
 	font-size: small;
 	color: red;
@@ -146,17 +169,18 @@ form.loginForm .loginBusySpinner {
 var busyRevealTimer;
 
 function bindForm() {
- var form = document.getElementById("signinForm");
- form.addEventListener("submit", function (event) {
-   event.preventDefault();
-   login();
- });
+	#if($localLoginEnabled)
+	var form = document.getElementById("signinForm");
+	form.addEventListener("submit", function (event) {
+		event.preventDefault();
+		login();
+	});
 
- document.getElementById("loginAction").addEventListener("click", function () {
-	var action = this.getAttribute("data-action");
-	if (action) login(action);
- });
-
+	document.getElementById("loginAction").addEventListener("click", function () {
+		var action = this.getAttribute("data-action");
+		if (action) login(action);
+	});
+	#end
 }
 
 function login(action) {
@@ -293,6 +317,7 @@ function setBusy(busy) {
 	<h1>Welcome</h1>
 	
 	<form id="signinForm" class="loginForm" accept-charset="UTF-8">
+			#if($localLoginEnabled)
 			<div id="loginBusyMask" class="loginBusyMask" aria-hidden="true">
 				<div class="loginBusyIndicator" role="status" aria-live="polite">
 					<span class="loginBusySpinner" aria-hidden="true"></span>
@@ -314,6 +339,7 @@ function setBusy(busy) {
 				<span style="font-size:12px">Stay signed in</span>
 			</div>
 			#end
+			#end
 
 			<div>
 				#if ($messageStatus == "OK")
@@ -328,6 +354,21 @@ function setBusy(busy) {
 					<button id="loginAction" type="button" style="display:none"></button>
 				</div>
 			</div>
+
+			#if($loginOptions && !$loginOptions.isEmpty())
+				#foreach($loginOption in $loginOptions)
+				<div>
+					<a id="loginOption-$tools.escape($loginOption.id)" class="loginOption" href="$tools.escape($loginOption.url)">
+						#if($loginOption.iconPath)
+							<img src="$tools.escape($loginOption.iconPath)" alt="">
+						#end
+						<span>Sign in with $tools.escape($loginOption.label)</span>
+					</a>
+				</div>
+				#end
+			#elseif(!$localLoginEnabled)
+				<div class="errorMessage">No login method is configured.</div>
+			#end
 			
 			#if ($continue)
 				<input type="hidden" name="continue" value="$tools.escape($continue)" />
