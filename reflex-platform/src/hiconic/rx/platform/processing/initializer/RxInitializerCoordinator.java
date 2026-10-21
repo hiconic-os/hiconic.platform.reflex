@@ -13,6 +13,7 @@
 // ============================================================================
 package hiconic.rx.platform.processing.initializer;
 
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -20,6 +21,7 @@ import java.util.Set;
 
 import com.braintribe.gm.initializer.api.InitializerFingerprintResolver;
 import com.braintribe.gm.initializer.api.InitializerRegistry;
+import com.braintribe.gm.initializer.api.InitializerStatus;
 import com.braintribe.gm.initializer.api.InitializerTask;
 
 import hiconic.rx.initializer.api.InitializerBackend;
@@ -63,6 +65,18 @@ public class RxInitializerCoordinator implements InitializerRegistry {
 			throw new IllegalStateException("An initializer backend was already explicitly configured");
 		this.backend = backend;
 		backendExplicitlyConfigured = true;
+	}
+
+	/**
+	 * Asks the backend. The backend only learns the registered tasks when the initializers run, so before that it would report every task as not
+	 * registered. This therefore fails until the initializers ran.
+	 */
+	@Override
+	public synchronized Map<String, InitializerStatus> statusesOf(Collection<String> taskNames) {
+		if (!runningOrFinished)
+			throw new IllegalStateException("Initializer statuses are only available once the initializers were run");
+
+		return backend.statusesOf(taskNames);
 	}
 
 	public synchronized void runInitializers() {
