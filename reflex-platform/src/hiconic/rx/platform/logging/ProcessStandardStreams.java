@@ -21,10 +21,12 @@ import java.nio.file.Path;
 import hiconic.rx.module.api.output.OutputChannel;
 
 /**
- * Separates unstructured process protocol from the original process streams.
+ * Provides a dedicated process protocol stream without replacing the JVM's
+ * standard streams.
  * <p>
- * Log appenders can keep writing to {@link #processOut()} while direct writes to
- * {@link System#out} and {@link System#err} are redirected to a file.
+ * This keeps intentional {@code ConsoleOutputs} separate from direct library,
+ * JVM and bootstrap output. In particular, failures written to
+ * {@link System#err} remain visible to the process supervisor.
  */
 public final class ProcessStandardStreams {
 	public static final String PROPERTY_PROTOCOL_OUTPUT = "reflex.protocol.output";
@@ -38,7 +40,7 @@ public final class ProcessStandardStreams {
 	private ProcessStandardStreams() {
 	}
 
-	/** Captures the process streams before an optional redirect is installed. */
+	/** Captures the original process streams before the protocol channel is opened. */
 	public static void initialize() {
 		// Intentionally empty. Calling this method initializes the class.
 	}
@@ -50,7 +52,7 @@ public final class ProcessStandardStreams {
 	 * reported on the original process error stream and leaves both standard
 	 * streams untouched.
 	 */
-	public static synchronized void redirectConfigured() {
+	public static synchronized void openConfiguredProtocol() {
 		String configuredPath = System.getProperty(PROPERTY_PROTOCOL_OUTPUT);
 		if (configuredPath == null || configuredPath.isBlank())
 			return;
@@ -62,14 +64,25 @@ public final class ProcessStandardStreams {
 			// file avoids silently mixing records from different node incarnations.
 			OutputChannel channel = OutputChannel.open(configuredPath, appDirectory, StandardCharsets.UTF_8, false, true,
 					PROCESS_OUT, PROCESS_ERR);
-			PrintStream stream = channel.stream();
 			protocolChannel = channel;
-			System.setOut(stream);
-			System.setErr(stream);
 		} catch (IOException | RuntimeException e) {
-			PROCESS_ERR.println("Could not redirect process protocol to " + configuredPath + ": " + e.getMessage());
+			PROCESS_ERR.println("Could not open process protocol " + configuredPath + ": " + e.getMessage());
 			e.printStackTrace(PROCESS_ERR);
 		}
+	}
+
+	/**
+	 * @deprecated use {@link #openConfiguredProtocol()}; standard streams are no
+	 *             longer redirected
+	 */
+	@Deprecated
+	public static void redirectConfigured() {
+		openConfiguredProtocol();
+	}
+
+	/** Returns the dedicated protocol stream, or the original stdout if none was configured. */
+	public static synchronized PrintStream protocolOut() {
+		return protocolChannel == null ? PROCESS_OUT : protocolChannel.stream();
 	}
 
 	public static PrintStream processOut() {
@@ -89,11 +102,6 @@ public final class ProcessStandardStreams {
 		if (channel == null)
 			return;
 
-		PrintStream stream = channel.stream();
-		if (System.out == stream)
-			System.setOut(PROCESS_OUT);
-		if (System.err == stream)
-			System.setErr(PROCESS_ERR);
 		protocolChannel = null;
 		channel.close();
 	}

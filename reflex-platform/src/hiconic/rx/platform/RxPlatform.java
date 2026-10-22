@@ -20,6 +20,7 @@ import static com.braintribe.console.ConsoleOutputs.sequence;
 import static com.braintribe.console.ConsoleOutputs.text;
 
 import java.io.File;
+import java.io.PrintStream;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.nio.file.Files;
@@ -223,7 +224,7 @@ public class RxPlatform implements AutoCloseable {
 
 	public static void main(String[] args) {
 		ProcessStandardStreams.initialize();
-		ProcessStandardStreams.redirectConfigured();
+		ProcessStandardStreams.openConfiguredProtocol();
 		int exitCode = 0;
 		try {
 			try (@SuppressWarnings("unused") RxPlatform platform = new RxPlatform(args)) {
@@ -437,23 +438,25 @@ public class RxPlatform implements AutoCloseable {
 
 	private void setupConsoleOutput() {
 		if (applicationProperties.consoleOutput())
-			ConsoleConfiguration.install(new SysOutConsole(true));
+			ConsoleConfiguration.install(new PrintStreamConsole(ProcessStandardStreams.protocolOut(), true));
 	}
 
-	private static class SysOutConsole extends AbstractAnsiConsole {
+	private static class PrintStreamConsole extends AbstractAnsiConsole {
+		private final PrintStream out;
 
-		public SysOutConsole(boolean ansiConsole) {
+		public PrintStreamConsole(PrintStream out, boolean ansiConsole) {
 			super(ansiConsole, false);
+			this.out = out;
 		}
 
 		@Override
 		protected void _out(CharSequence text, boolean linebreak) {
 			if (linebreak)
-				System.out.println(text);
+				out.println(text);
 			else
-				System.out.print(text);
+				out.print(text);
 
-			System.out.flush();
+			out.flush();
 		}
 	}
 }

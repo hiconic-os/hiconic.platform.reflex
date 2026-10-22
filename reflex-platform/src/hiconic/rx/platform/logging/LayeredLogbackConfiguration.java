@@ -1,6 +1,7 @@
 package hiconic.rx.platform.logging;
 
 import java.io.File;
+import java.net.URL;
 import java.util.List;
 
 import com.braintribe.gm.config.yaml.index.ClasspathIndex;
@@ -16,11 +17,14 @@ import hiconic.rx.platform.conf.LayeredConfigurationEntries.Entry;
  * <p>
  * Packaged {@code logback*.xml} entries are applied first, followed by external
  * {@code conf/logback*.xml} entries. All entries participate in the same ordered
- * composition without an implicit reset between configuration layers.
+ * composition without an implicit reset between configuration layers. If no
+ * application configuration exists, the platform's internal file configuration
+ * is applied as a fallback.
  */
 public class LayeredLogbackConfiguration {
 	private static final String BASE_NAME = "logback";
 	private static final String EXTENSION = ".xml";
+	private static final String DEFAULT_CONFIGURATION = "default-logback.xml";
 
 	private final LayeredConfigurationEntries entries;
 
@@ -29,22 +33,38 @@ public class LayeredLogbackConfiguration {
 	}
 
 	/**
-	 * @return {@code true} if at least one explicit configuration was applied
+	 * @return {@code true}; either the application configuration or the platform
+	 *         fallback is always applied
 	 */
 	public boolean configure(LoggerContext context) {
 		List<Entry> configurationEntries = entries.entries();
-		if (configurationEntries.isEmpty())
-			return false;
 
 		context.reset();
 		JoranConfigurator configurator = new JoranConfigurator();
 		configurator.setContext(context);
 
-		for (Entry entry : configurationEntries) {
-			configure(configurator, entry);
-		}
+		if (configurationEntries.isEmpty())
+			configure(configurator, defaultConfiguration());
+		else
+			for (Entry entry : configurationEntries)
+				configure(configurator, entry);
 
 		return true;
+	}
+
+	private URL defaultConfiguration() {
+		URL resource = LayeredLogbackConfiguration.class.getResource(DEFAULT_CONFIGURATION);
+		if (resource == null)
+			throw new IllegalStateException("Missing platform Logback fallback [" + DEFAULT_CONFIGURATION + "]");
+		return resource;
+	}
+
+	private void configure(JoranConfigurator configurator, URL resource) {
+		try {
+			configurator.doConfigure(resource);
+		} catch (JoranException e) {
+			throw new IllegalStateException("Error configuring Logback fallback from [" + resource + "]", e);
+		}
 	}
 
 	private void configure(JoranConfigurator configurator, Entry entry) {

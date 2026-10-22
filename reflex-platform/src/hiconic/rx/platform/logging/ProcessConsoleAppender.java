@@ -19,11 +19,11 @@ import java.io.OutputStream;
 import ch.qos.logback.core.OutputStreamAppender;
 
 /**
- * Logback appender that always targets the process' original stdout.
+ * Logback appender that always targets the process' original stdout and remains
+ * independent of the dedicated {@code ConsoleOutputs} protocol channel.
  * <p>
- * Unlike {@code ConsoleAppender}, it is deliberately unaffected when the
- * application's direct {@code System.out}/{@code System.err} protocol is
- * redirected.
+ * This keeps structured application logging on the container stream while the
+ * human-oriented process protocol may be written to a file.
  */
 public class ProcessConsoleAppender<E> extends OutputStreamAppender<E> {
 
