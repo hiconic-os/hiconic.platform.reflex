@@ -85,6 +85,26 @@ public class StructuredLiveLogCollectorTest {
 	}
 
 	@Test
+	public void pagesBackwardsIndependentlyFromTailing() {
+		logger.info("one");
+		logger.info("two");
+		logger.info("three");
+
+		LogRecordPage latest = collector.query(null, null, null, 1, 0);
+		assertThat(latest.getRecords()).extracting(r -> r.getMessage()).containsExactly("three");
+		assertThat(latest.getMoreBeforeAvailable()).isTrue();
+		String tailCursor = latest.getNextCursor();
+
+		LogRecordPage previous = collector.query(null, null, latest.getPreviousCursor(), 1, 0);
+		assertThat(previous.getRecords()).extracting(r -> r.getMessage()).containsExactly("two");
+		assertThat(previous.getMoreBeforeAvailable()).isTrue();
+
+		logger.info("four");
+		LogRecordPage continued = collector.query(null, tailCursor, null, 10, 0);
+		assertThat(continued.getRecords()).extracting(r -> r.getMessage()).containsExactly("four");
+	}
+
+	@Test
 	public void filtersLoggerByCaseInsensitiveSubstring() {
 		logger.info("matching");
 		context.getLogger("hiconic.other.component").info("not matching");

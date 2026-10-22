@@ -19,8 +19,17 @@ public interface LogRecordPage extends GenericEntity {
 	String getNextCursor();
 	void setNextCursor(String nextCursor);
 
+	/** Cursor for loading the page immediately preceding this page without disturbing the tail cursor. */
+	String getPreviousCursor();
+	void setPreviousCursor(String previousCursor);
+
+	/** Whether records newer than this page remain available through {@link #getNextCursor()}. */
 	boolean getMoreAvailable();
 	void setMoreAvailable(boolean moreAvailable);
+
+	/** Whether older records remain available through {@link #getPreviousCursor()}. */
+	boolean getMoreBeforeAvailable();
+	void setMoreBeforeAvailable(boolean moreBeforeAvailable);
 
 	Set<String> getObservedProperties();
 	void setObservedProperties(Set<String> observedProperties);

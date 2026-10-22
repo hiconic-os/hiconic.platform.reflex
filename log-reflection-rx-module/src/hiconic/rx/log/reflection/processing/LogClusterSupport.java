@@ -61,13 +61,18 @@ final class LogClusterSupport {
 				.toList();
 
 		Map<String, String> nextCursors = new TreeMap<>(priorCursors);
+		Map<String, String> previousCursors = new TreeMap<>();
 		boolean moreAvailable = false;
+		boolean moreBeforeAvailable = false;
 		LinkedHashSet<String> observedProperties = new LinkedHashSet<>();
 		for (Map.Entry<String, LogRecordPage> entry : responses.entrySet()) {
 			LogRecordPage page = entry.getValue();
 			if (page.getNextCursor() != null)
 				nextCursors.put(entry.getKey(), page.getNextCursor());
+			if (page.getPreviousCursor() != null)
+				previousCursors.put(entry.getKey(), page.getPreviousCursor());
 			moreAvailable |= page.getMoreAvailable();
+			moreBeforeAvailable |= page.getMoreBeforeAvailable();
 			if (page.getObservedProperties() != null)
 				observedProperties.addAll(page.getObservedProperties());
 		}
@@ -75,7 +80,10 @@ final class LogClusterSupport {
 		LogRecordPage result = LogRecordPage.T.create();
 		result.setRecords(records);
 		result.setNextCursor(encodeCursor(nextCursors));
+		if (!previousCursors.isEmpty())
+			result.setPreviousCursor(encodeCursor(previousCursors));
 		result.setMoreAvailable(moreAvailable);
+		result.setMoreBeforeAvailable(moreBeforeAvailable);
 		result.setObservedProperties(observedProperties);
 		result.setErrors(new LinkedHashMap<>(errors));
 		return result;

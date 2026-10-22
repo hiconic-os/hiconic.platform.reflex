@@ -29,6 +29,13 @@ public class LogFileReader {
 
 	public LogRecordPage query(LogbackFileStream stream, LogFilter filter, String cursor, int requestedLimit, long waitMillis,
 			boolean includeRotated) {
+		return query(stream, filter, cursor, null, requestedLimit, waitMillis, includeRotated);
+	}
+
+	public LogRecordPage query(LogbackFileStream stream, LogFilter filter, String cursor, String beforeCursor, int requestedLimit,
+			long waitMillis, boolean includeRotated) {
+		if (beforeCursor != null && !beforeCursor.isBlank())
+			return queryBefore(stream, filter, beforeCursor, requestedLimit);
 		if (includeRotated && (cursor == null || cursor.isBlank()) && stream.segmentPaths().size() > 1)
 			return queryHistory(stream, filter, requestedLimit);
 		try {
@@ -60,6 +67,7 @@ public class LogFileReader {
 			int limit = Math.max(1, Math.min(requestedLimit, 10_000));
 			boolean initial = cursor == null;
 			boolean moreAvailable = !initial && matches.size() > limit;
+			boolean moreBeforeAvailable = initial && (matches.size() > limit || readStart > 0);
 			List<PhysicalRecord> selected;
 			if (initial && matches.size() > limit)
 				selected = matches.subList(matches.size() - limit, matches.size());
@@ -71,6 +79,11 @@ public class LogFileReader {
 			response.setRecords(page);
 			response.setObservedProperties(LogRecordFiltering.observedProperties(page));
 			response.setMoreAvailable(moreAvailable);
+			response.setMoreBeforeAvailable(moreBeforeAvailable);
+			if (moreBeforeAvailable) {
+				long previousOffset = selected.isEmpty() ? slice.absoluteStart : startOffset(selected.get(0));
+				response.setPreviousCursor(new FileCursor(state.generation, previousOffset).externalForm());
+			}
 
 			long nextOffset;
 			if (moreAvailable)
@@ -81,6 +94,42 @@ public class LogFileReader {
 			return response;
 		} catch (IOException e) {
 			throw new IllegalStateException("Could not read log stream " + stream.descriptor().getStreamId(), e);
+		}
+	}
+
+	private LogRecordPage queryBefore(LogbackFileStream stream, LogFilter filter, String beforeCursor, int requestedLimit) {
+		try {
+			Path path = stream.path();
+			FileState state = state(path);
+			FileCursor cursor = FileCursor.parse(beforeCursor);
+			long end = cursor.generation == state.generation ? Math.min(cursor.offset, state.size) : state.size;
+			long start = Math.max(0, end - MAX_READ_BYTES);
+			ReadSlice slice = read(path, start, end);
+			if (start > 0)
+				slice = discardPartialFirstLine(slice);
+
+			List<PhysicalRecord> matches = records(slice.bytes, slice.absoluteStart, stream.parser()).stream()
+					.filter(record -> LogRecordFiltering.matches(record.record, filter))
+					.toList();
+			int limit = Math.max(1, Math.min(requestedLimit, 10_000));
+			List<PhysicalRecord> selected = matches.size() > limit
+					? matches.subList(matches.size() - limit, matches.size())
+					: matches;
+			boolean moreBeforeAvailable = matches.size() > limit || start > 0;
+
+			LogRecordPage response = LogRecordPage.T.create();
+			List<LogRecord> page = selected.stream().map(record -> record.record).toList();
+			response.setRecords(page);
+			response.setObservedProperties(LogRecordFiltering.observedProperties(page));
+			response.setMoreAvailable(false);
+			response.setMoreBeforeAvailable(moreBeforeAvailable);
+			if (moreBeforeAvailable) {
+				long previousOffset = selected.isEmpty() ? slice.absoluteStart : startOffset(selected.get(0));
+				response.setPreviousCursor(new FileCursor(state.generation, previousOffset).externalForm());
+			}
+			return response;
+		} catch (IOException e) {
+			throw new IllegalStateException("Could not read earlier log records from " + stream.descriptor().getStreamId(), e);
 		}
 	}
 
@@ -114,11 +163,17 @@ public class LogFileReader {
 			response.setRecords(page);
 			response.setObservedProperties(LogRecordFiltering.observedProperties(page));
 			response.setMoreAvailable(matches.size() > limit);
+			response.setMoreBeforeAvailable(false);
 			response.setNextCursor(new FileCursor(active.generation, active.size).externalForm());
 			return response;
 		} catch (IOException e) {
 			throw new IllegalStateException("Could not read log history " + stream.descriptor().getStreamId(), e);
 		}
+	}
+
+	private static long startOffset(PhysicalRecord record) {
+		Long offset = record.record.getPosition().getByteOffset();
+		return offset == null ? 0 : offset;
 	}
 
 	private static ReadSlice readTail(Path path, long maximumBytes) throws IOException {

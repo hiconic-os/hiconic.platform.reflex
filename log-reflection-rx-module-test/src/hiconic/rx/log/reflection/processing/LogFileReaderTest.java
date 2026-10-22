@@ -89,6 +89,33 @@ public class LogFileReaderTest {
 	}
 
 	@Test
+	public void pagesBackwardsWithoutMovingTheTailCursor() throws Exception {
+		String simplePattern = "%date %level %logger %msg%n";
+		write("""
+				2026-07-23 10:44:21,000 INFO dt1.Test one
+				2026-07-23 10:44:22,000 INFO dt1.Test two
+				2026-07-23 10:44:23,000 INFO dt1.Test three
+				2026-07-23 10:44:24,000 INFO dt1.Test four
+				2026-07-23 10:44:25,000 INFO dt1.Test five
+				""");
+
+		LogRecordPage latest = reader().query(stream(simplePattern), null, null, null, 2, 0, false);
+		assertThat(latest.getRecords()).extracting(r -> r.getMessage()).containsExactly("four", "five");
+		assertThat(latest.getMoreBeforeAvailable()).isTrue();
+		assertThat(latest.getPreviousCursor()).isNotBlank();
+		String tailCursor = latest.getNextCursor();
+
+		LogRecordPage previous = reader().query(stream(simplePattern), null, null, latest.getPreviousCursor(), 2, 0, false);
+		assertThat(previous.getRecords()).extracting(r -> r.getMessage()).containsExactly("two", "three");
+		assertThat(previous.getNextCursor()).isNull();
+		assertThat(previous.getMoreBeforeAvailable()).isTrue();
+
+		Files.writeString(file, "2026-07-23 10:44:26,000 INFO dt1.Test six\n", StandardCharsets.UTF_8, APPEND);
+		LogRecordPage continued = reader().query(stream(simplePattern), null, tailCursor, null, 2, 0, false);
+		assertThat(continued.getRecords()).extracting(r -> r.getMessage()).containsExactly("six");
+	}
+
+	@Test
 	public void exposesUnknownFormatAsRawLineRecords() throws Exception {
 		write("opaque first line\nopaque second line\n");
 

@@ -68,6 +68,7 @@ export class LogReflectionApi {
     target: TargetSelection,
     filter: RecordFilter,
     cursor: string | undefined,
+    beforeCursor: string | undefined,
     waitMillis: number,
     includeRotated = false
   ): Promise<LogRecordPage> {
@@ -76,6 +77,7 @@ export class LogReflectionApi {
     request.target = toTarget(target);
     request.filter = toFilter(filter);
     request.cursor = cursor ?? null;
+    request.beforeCursor = beforeCursor ?? null;
     request.limit = 300;
     request.waitMillis = waitMillis;
     request.includeRotated = includeRotated;

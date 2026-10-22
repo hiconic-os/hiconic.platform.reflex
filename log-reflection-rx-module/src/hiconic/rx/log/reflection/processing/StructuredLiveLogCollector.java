@@ -146,25 +146,33 @@ public class StructuredLiveLogCollector implements LifecycleAware {
 	}
 
 	public LogRecordPage query(LogFilter filter, String cursor, int requestedLimit, long waitMillis) {
+		return query(filter, cursor, null, requestedLimit, waitMillis);
+	}
+
+	public LogRecordPage query(LogFilter filter, String cursor, String beforeCursor, int requestedLimit, long waitMillis) {
 		int limit = Math.max(1, Math.min(requestedLimit, 10_000));
 		Long afterSequence = parseCursor(cursor);
+		Long beforeSequence = parseCursor(beforeCursor);
 
 		List<LogRecord> matches;
 		synchronized (monitor) {
-			matches = matches(filter, afterSequence);
-			if (matches.isEmpty() && afterSequence != null && waitMillis > 0) {
+			matches = matches(filter, afterSequence, beforeSequence);
+			if (matches.isEmpty() && afterSequence != null && beforeSequence == null && waitMillis > 0) {
 				try {
 					monitor.wait(Math.min(waitMillis, 30_000));
 				} catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
 				}
-				matches = matches(filter, afterSequence);
+				matches = matches(filter, afterSequence, null);
 			}
 		}
 
-		boolean moreAvailable = matches.size() > limit;
+		boolean backwards = beforeSequence != null;
+		boolean initial = afterSequence == null && !backwards;
+		boolean moreAvailable = afterSequence != null && matches.size() > limit;
+		boolean moreBeforeAvailable = (initial || backwards) && matches.size() > limit;
 		List<LogRecord> page;
-		if (afterSequence == null && matches.size() > limit)
+		if ((initial || backwards) && matches.size() > limit)
 			page = new ArrayList<>(matches.subList(matches.size() - limit, matches.size()));
 		else
 			page = new ArrayList<>(matches.subList(0, Math.min(limit, matches.size())));
@@ -172,18 +180,23 @@ public class StructuredLiveLogCollector implements LifecycleAware {
 		LogRecordPage response = LogRecordPage.T.create();
 		response.setRecords(page);
 		response.setMoreAvailable(moreAvailable);
+		response.setMoreBeforeAvailable(moreBeforeAvailable);
 		response.setObservedProperties(LogRecordFiltering.observedProperties(page));
-		if (!page.isEmpty())
+		if (!page.isEmpty() && !backwards)
 			response.setNextCursor(Long.toString(page.get(page.size() - 1).getPosition().getSequence()));
 		else
 			response.setNextCursor(cursor);
+		if (!page.isEmpty() && moreBeforeAvailable)
+			response.setPreviousCursor(Long.toString(page.get(0).getPosition().getSequence()));
 		return response;
 	}
 
-	private List<LogRecord> matches(LogFilter filter, Long afterSequence) {
+	private List<LogRecord> matches(LogFilter filter, Long afterSequence, Long beforeSequence) {
 		List<LogRecord> result = new ArrayList<>();
 		for (LogRecord record : records) {
 			if (afterSequence != null && record.getPosition().getSequence() <= afterSequence)
+				continue;
+			if (beforeSequence != null && record.getPosition().getSequence() >= beforeSequence)
 				continue;
 			if (LogRecordFiltering.matches(record, filter))
 				result.add(record);

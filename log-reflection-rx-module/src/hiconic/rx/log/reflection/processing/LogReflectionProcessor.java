@@ -156,19 +156,23 @@ public class LogReflectionProcessor extends AbstractDispatchingServiceProcessor<
 
 	private LogRecordPage queryRecords(ServiceRequestContext context, QueryLogRecords request) {
 		if (request.getTarget() == null)
-			return queryLocalRecords(localRequest(request, instanceId.stringify(), request.getCursor()));
+			return queryLocalRecords(localRequest(request, instanceId.stringify(), request.getCursor(), request.getBeforeCursor()));
 
 		ResolvedTarget target = resolve(request.getTarget());
 		if (target.nodeId != null && !target.allApplications()) {
 			String localCursor = LogClusterSupport.localCursor(request.getCursor(), target.instanceId().stringify());
-			QueryLocalLogRecords localRequest = localRequest(request, target.instanceId().stringify(), localCursor);
+			String localBeforeCursor = LogClusterSupport.localCursor(request.getBeforeCursor(), target.instanceId().stringify());
+			QueryLocalLogRecords localRequest = localRequest(request, target.instanceId().stringify(), localCursor, localBeforeCursor);
 			if (target.is(instanceId))
 				return queryLocalRecords(localRequest);
 			return unicast(context, localRequest, target.instanceId(), LogRecordPage.class, timeout(request.getWaitMillis()));
 		}
 
 		Map<String, String> cursors = LogClusterSupport.decodeCursor(request.getCursor());
-		QueryLocalLogRecords localRequest = localRequest(request, cursors);
+		Map<String, String> beforeCursors = request.getBeforeCursor() == null
+				? null
+				: LogClusterSupport.decodeCursor(request.getBeforeCursor());
+		QueryLocalLogRecords localRequest = localRequest(request, cursors, beforeCursors);
 		MulticastResponse multicast = multicast(context, localRequest, target.addressee(), timeout(request.getWaitMillis()));
 		Map<String, String> errors = new LinkedHashMap<>();
 		Map<String, LogRecordPage> responses = successfulResponses(multicast, LogRecordPage.class, errors);
@@ -181,28 +185,49 @@ public class LogReflectionProcessor extends AbstractDispatchingServiceProcessor<
 			streamId = StructuredLiveLogCollector.STREAM_ID;
 		Map<String, String> cursors = request.getCursors();
 		String cursor = cursors == null ? null : cursors.get(instanceId.stringify());
+		Map<String, String> beforeCursors = request.getBeforeCursors();
+		String beforeCursor = beforeCursors == null ? null : beforeCursors.get(instanceId.stringify());
+		if (request.getLoadBefore() && beforeCursor == null)
+			return emptyPage();
 		LogRecordPage response;
 		if (StructuredLiveLogCollector.STREAM_ID.equals(streamId))
-			response = collector.query(request.getFilter(), cursor, request.getLimit(), request.getWaitMillis());
+			response = collector.query(request.getFilter(), cursor, beforeCursor, request.getLimit(), request.getWaitMillis());
 		else
-			response = fileReader.query(inventory.fileStream(streamId), request.getFilter(), cursor, request.getLimit(),
-					request.getWaitMillis(), request.getIncludeRotated());
+			response = fileReader.query(inventory.fileStream(streamId), request.getFilter(), cursor, beforeCursor,
+					request.getLimit(), request.getWaitMillis(), request.getIncludeRotated());
 		response.setErrors(new LinkedHashMap<>());
 		return response;
 	}
 
-	private QueryLocalLogRecords localRequest(QueryLogRecords source, String instance, String cursor) {
+	private static LogRecordPage emptyPage() {
+		LogRecordPage response = LogRecordPage.T.create();
+		response.setRecords(java.util.List.of());
+		response.setObservedProperties(java.util.Set.of());
+		response.setErrors(new LinkedHashMap<>());
+		return response;
+	}
+
+	private QueryLocalLogRecords localRequest(QueryLogRecords source, String instance, String cursor, String beforeCursor) {
 		Map<String, String> cursors = new LinkedHashMap<>();
 		if (cursor != null)
 			cursors.put(instance, cursor);
-		return localRequest(source, cursors);
+		Map<String, String> beforeCursors = null;
+		if (source.getBeforeCursor() != null) {
+			beforeCursors = new LinkedHashMap<>();
+			if (beforeCursor != null)
+				beforeCursors.put(instance, beforeCursor);
+		}
+		return localRequest(source, cursors, beforeCursors);
 	}
 
-	private QueryLocalLogRecords localRequest(QueryLogRecords source, Map<String, String> cursors) {
+	private QueryLocalLogRecords localRequest(QueryLogRecords source, Map<String, String> cursors,
+			Map<String, String> beforeCursors) {
 		QueryLocalLogRecords target = QueryLocalLogRecords.T.create();
 		target.setStreamId(source.getStreamId());
 		target.setFilter(source.getFilter());
 		target.setCursors(new LinkedHashMap<>(cursors));
+		target.setLoadBefore(beforeCursors != null);
+		target.setBeforeCursors(beforeCursors == null ? null : new LinkedHashMap<>(beforeCursors));
 		target.setLimit(source.getLimit());
 		target.setWaitMillis(source.getWaitMillis());
 		target.setIncludeRotated(source.getIncludeRotated());

@@ -22,8 +22,16 @@ public interface QueryLogRecords extends LogReflectionRequest {
 	LogFilter getFilter();
 	void setFilter(LogFilter filter);
 
+	/** Continues towards newer records; kept independently from backwards history paging. */
 	String getCursor();
 	void setCursor(String cursor);
+
+	/**
+	 * Loads the page immediately preceding this cursor. This is independent from {@link #getCursor()}, which continues
+	 * towards newer records and is used for tailing.
+	 */
+	String getBeforeCursor();
+	void setBeforeCursor(String beforeCursor);
 
 	/**
 	 * Includes segments discovered from the appender's rolling policy in the initial history window. Follow-up/tail

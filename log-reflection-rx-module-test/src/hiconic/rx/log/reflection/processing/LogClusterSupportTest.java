@@ -22,6 +22,8 @@ public class LogClusterSupportTest {
 	public void mergesRecordsChronologicallyAndCarriesIndependentNodeCursors() {
 		LogRecordPage node1 = page(record("app", "node-1", 200, 2, "later"), "cursor-1", false, "tenant");
 		LogRecordPage node2 = page(record("app", "node-2", 100, 7, "earlier"), "cursor-2", true, "requestId");
+		node1.setPreviousCursor("previous-1");
+		node1.setMoreBeforeAvailable(true);
 
 		Map<String, LogRecordPage> responses = new LinkedHashMap<>();
 		responses.put("app@node-1", node1);
@@ -34,6 +36,7 @@ public class LogClusterSupportTest {
 		assertThat(merged.getRecords()).extracting(LogRecord::getMessage).containsExactly("earlier", "later");
 		assertThat(merged.getObservedProperties()).containsExactlyInAnyOrder("tenant", "requestId");
 		assertThat(merged.getMoreAvailable()).isTrue();
+		assertThat(merged.getMoreBeforeAvailable()).isTrue();
 		assertThat(merged.getErrors()).containsEntry("app@node-3", "timeout");
 
 		Map<String, String> cursors = LogClusterSupport.decodeCursor(merged.getNextCursor());
@@ -41,6 +44,8 @@ public class LogClusterSupportTest {
 				.containsEntry("app@node-2", "cursor-2")
 				.containsEntry("app@offline", "cursor-old");
 		assertThat(LogClusterSupport.localCursor(merged.getNextCursor(), "app@node-2")).isEqualTo("cursor-2");
+		assertThat(LogClusterSupport.decodeCursor(merged.getPreviousCursor()))
+				.containsOnly(Map.entry("app@node-1", "previous-1"));
 	}
 
 	@Test

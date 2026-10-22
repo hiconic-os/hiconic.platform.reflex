@@ -26,6 +26,13 @@ public interface QueryLocalLogRecords extends LogReflectionRequest {
 	Map<String, String> getCursors();
 	void setCursors(Map<String, String> cursors);
 
+	Map<String, String> getBeforeCursors();
+	void setBeforeCursors(Map<String, String> beforeCursors);
+
+	@Initializer("false")
+	boolean getLoadBefore();
+	void setLoadBefore(boolean loadBefore);
+
 	@Initializer("false")
 	boolean getIncludeRotated();
 	void setIncludeRotated(boolean includeRotated);

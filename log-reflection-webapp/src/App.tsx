@@ -15,6 +15,8 @@ type Tab = {
   target: TargetSelection;
   records: LogRecord[];
   cursor?: string;
+  previousCursor?: string;
+  moreBefore: boolean;
   tailing: boolean;
 };
 
@@ -211,11 +213,13 @@ export function App() {
       },
       records: [],
       cursor: undefined,
+      previousCursor: undefined,
+      moreBefore: false,
       tailing: false
     })));
     const tab = activeTab();
     if (tab)
-      await loadRecords(tab, false);
+      await loadRecords(tab, "replace");
   }
 
   function toggleColumn(column: ColumnKey) {
@@ -232,35 +236,50 @@ export function App() {
       setActiveTabId(id);
       return;
     }
-    const tab: Tab = { id, stream, target: selectedTarget, records: [], tailing: false };
+    const tab: Tab = { id, stream, target: selectedTarget, records: [], moreBefore: false, tailing: false };
     setTabs(current => [...current, tab]);
     setActiveTabId(id);
-    await loadRecords(tab, false);
+    await loadRecords(tab, "replace");
   }
 
-  async function loadRecords(tab = activeTab(), append = false, waitMillis = 0) {
+  async function loadRecords(tab = activeTab(), mode: "replace" | "newer" | "older" = "replace", waitMillis = 0) {
     const client = api();
     if (!client || !tab) return;
     const requestedFilterRevision = filterRevision;
+    const scrollHeightBefore = mode === "older" ? recordsViewport?.scrollHeight : undefined;
     const backgroundTail = waitMillis > 0;
     if (!backgroundTail)
       setLoading(true);
     setError(undefined);
     try {
-      const page = await client.records(tab.stream.streamId, tab.target, filter(), append ? tab.cursor : undefined, waitMillis,
-        includeRotated());
+      const page = await client.records(
+        tab.stream.streamId,
+        tab.target,
+        filter(),
+        mode === "newer" ? tab.cursor : undefined,
+        mode === "older" ? tab.previousCursor : undefined,
+        waitMillis,
+        includeRotated()
+      );
       if (requestedFilterRevision !== filterRevision)
         return;
       const incoming = Array.from(page.records ?? []) as LogRecord[];
       setTabs(current => current.map(candidate => candidate.id === tab.id ? {
         ...candidate,
-        records: append
+        records: mode === "newer"
           ? retainRecords([...candidate.records, ...incoming], candidate.tailing, tailBufferSize())
-          : incoming,
-        cursor: page.nextCursor ?? undefined
+          : mode === "older" ? [...incoming, ...candidate.records] : incoming,
+        cursor: mode === "older" ? candidate.cursor : page.nextCursor ?? undefined,
+        previousCursor: page.previousCursor ?? undefined,
+        moreBefore: Boolean(page.moreBeforeAvailable)
       } : candidate));
-      if (append && incoming.length && tab.id === activeTabId() && followTail())
+      if (mode === "newer" && incoming.length && tab.id === activeTabId() && followTail())
         requestAnimationFrame(() => scrollToLatest());
+      if (mode === "older" && incoming.length && scrollHeightBefore != null)
+        requestAnimationFrame(() => {
+          if (recordsViewport)
+            recordsViewport.scrollTop += recordsViewport.scrollHeight - scrollHeightBefore;
+        });
       const partialErrors = mapEntries(page.errors);
       if (partialErrors.length)
         setError(partialErrors.map(([origin, message]) => `${origin}: ${message}`).join("\n"));
@@ -291,7 +310,7 @@ export function App() {
       }
       const current = tabs().find(candidate => candidate.id === tab.id);
       if (!current?.tailing) break;
-      await loadRecords(current, true, 15_000);
+      await loadRecords(current, "newer", 15_000);
     }
   }
 
@@ -328,7 +347,7 @@ export function App() {
       filterReloadTimer = undefined;
       const tab = activeTab();
       if (tab)
-        await loadRecords(tab, false);
+        await loadRecords(tab, "replace");
       filterReloadPending = false;
     }, delay);
   }
@@ -574,7 +593,12 @@ export function App() {
                         {followTail() ? "Following" : "Resume"}
                       </button>
                     </Show>
-                    <button onClick={() => loadRecords(tab(), true)}>Load more</button>
+                    <button
+                      disabled={!tab().moreBefore || !tab().previousCursor}
+                      title={tab().moreBefore ? "Load the preceding log page" : "The beginning of the available history is visible"}
+                      onClick={() => loadRecords(tab(), "older")}
+                    >Load older</button>
+                    <button onClick={() => loadRecords(tab(), "replace")}>Refresh</button>
                     <button onClick={() => download("raw")}>Raw ↓</button>
                     <button onClick={() => download("json")}>JSON ↓</button>
                     <button onClick={openBundle}>Bundle ↓</button>
