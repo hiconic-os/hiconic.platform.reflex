@@ -28,7 +28,6 @@ import com.braintribe.utils.stream.api.StreamPipes;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import hiconic.rx.log.reflection.model.LogBundleFormat;
-import hiconic.rx.log.reflection.model.LogFilter;
 import hiconic.rx.log.reflection.model.LogRecord;
 import hiconic.rx.log.reflection.model.api.CreateLogBundle;
 import hiconic.rx.log.reflection.model.api.CreateLocalLogBundle;
@@ -43,20 +42,16 @@ public class LogBundleWriter {
 	private final LogFileReader fileReader = new LogFileReader();
 
 	public Resource create(LogbackLogStreamInventory inventory, CreateLogBundle request, InstanceId instanceId) {
-		return create(inventory, request.getStreamIds(), request.getIncludeRotated(), request.getFormat(), request.getFilter(),
-				instanceId);
+		return create(inventory, request.getStreamIds(), request.getIncludeRotated(), request.getFormat(), instanceId);
 	}
 
 	public Resource create(LogbackLogStreamInventory inventory, CreateLocalLogBundle request, InstanceId instanceId) {
-		return create(inventory, request.getStreamIds(), request.getIncludeRotated(), request.getFormat(), request.getFilter(),
-				instanceId);
+		return create(inventory, request.getStreamIds(), request.getIncludeRotated(), request.getFormat(), instanceId);
 	}
 
 	private Resource create(LogbackLogStreamInventory inventory, Set<String> requestedStreams, boolean includeRotated,
-			LogBundleFormat requestedFormat, LogFilter filter, InstanceId instanceId) {
+			LogBundleFormat requestedFormat, InstanceId instanceId) {
 		LogBundleFormat format = requestedFormat == null ? LogBundleFormat.RAW_FILES : requestedFormat;
-		if (format == LogBundleFormat.CANONICAL_TEXT)
-			throw new IllegalArgumentException("Canonical text bundle serialization is not implemented; use RAW_FILES or CANONICAL_JSONL");
 
 		Set<String> requested = requestedStreams == null ? Set.of() : requestedStreams;
 		List<BundleEntry> entries = new ArrayList<>();
@@ -83,17 +78,29 @@ public class LogBundleWriter {
 		try (OutputStream output = pipe.openOutputStream(); ZipOutputStream zip = new ZipOutputStream(output)) {
 			writeManifest(zip, instanceId, entries, includeRotated, format);
 			Set<String> names = new HashSet<>();
-			for (BundleEntry entry : entries) {
-				String fileName = entry.path.getFileName().toString();
-				if (format == LogBundleFormat.CANONICAL_JSONL)
-					fileName += ".jsonl";
-				String name = unique(names, safe(entry.stream.descriptor().getDisplayName()) + "/" + fileName);
-				zip.putNextEntry(new ZipEntry(name));
-				if (format == LogBundleFormat.RAW_FILES)
+			if (format == LogBundleFormat.RAW_FILES) {
+				for (BundleEntry entry : entries) {
+					String fileName = entry.path.getFileName().toString();
+					String name = unique(names, safe(entry.stream.descriptor().getDisplayName()) + "/" + fileName);
+					zip.putNextEntry(new ZipEntry(name));
 					writeRaw(entry.path, zip);
-				else
-					writeCanonicalJsonl(entry, filter, zip);
-				zip.closeEntry();
+					zip.closeEntry();
+				}
+			} else {
+				for (List<BundleEntry> streamEntries : entriesByStream(entries).values()) {
+					BundleEntry first = streamEntries.get(0);
+					String extension = format == LogBundleFormat.CANONICAL_JSONL ? ".jsonl" : ".log";
+					String displayName = safe(first.stream.descriptor().getDisplayName());
+					String name = unique(names, displayName + "/merged" + extension);
+					zip.putNextEntry(new ZipEntry(name));
+					for (BundleEntry entry : streamEntries) {
+						if (format == LogBundleFormat.CANONICAL_JSONL)
+							writeCanonicalJsonl(entry, zip);
+						else
+							writeCanonicalText(entry, zip);
+					}
+					zip.closeEntry();
+				}
 			}
 			zip.finish();
 		} catch (IOException | UncheckedIOException e) {
@@ -122,8 +129,8 @@ public class LogBundleWriter {
 		}
 	}
 
-	private void writeCanonicalJsonl(BundleEntry entry, LogFilter filter, ZipOutputStream zip) {
-		fileReader.forEachRecord(entry.stream, entry.path, filter, record -> {
+	private void writeCanonicalJsonl(BundleEntry entry, ZipOutputStream zip) {
+		fileReader.forEachRecord(entry.stream, entry.path, null, record -> {
 			try {
 				zip.write(objectMapper.writeValueAsBytes(canonicalRecord(record)));
 				zip.write('\n');
@@ -131,6 +138,49 @@ public class LogBundleWriter {
 				throw new UncheckedIOException(e);
 			}
 		});
+	}
+
+	private void writeCanonicalText(BundleEntry entry, ZipOutputStream zip) {
+		fileReader.forEachRecord(entry.stream, entry.path, null, record -> {
+			try {
+				zip.write(canonicalText(record).getBytes(StandardCharsets.UTF_8));
+			} catch (IOException e) {
+				throw new UncheckedIOException(e);
+			}
+		});
+	}
+
+	private static String canonicalText(LogRecord record) {
+		if (record.getTimestamp() == null && record.getLevel() == null && record.getLoggerName() == null)
+			return terminated(record.getRawText());
+
+		String timestamp = record.getTimestamp() == null ? "-" : record.getTimestamp().toInstant().toString();
+		String level = record.getLevel() == null ? "-" : record.getLevel().name();
+		String application = record.getOrigin() == null ? null : record.getOrigin().getApplicationId();
+		String node = record.getOrigin() == null ? null : record.getOrigin().getNodeId();
+		String origin = safe(application) + "@" + safe(node);
+		String logger = record.getLoggerName() == null ? "-" : record.getLoggerName();
+		String message = record.getMessage() == null ? "" : record.getMessage();
+		StringBuilder result = new StringBuilder()
+				.append(timestamp).append(' ')
+				.append(level).append(" [").append(origin).append("] ")
+				.append(logger).append(" - ").append(message).append('\n');
+		if (record.getThrowable() != null && !record.getThrowable().isBlank())
+			result.append(terminated(record.getThrowable()));
+		return result.toString();
+	}
+
+	private static String terminated(String value) {
+		if (value == null || value.isEmpty())
+			return "\n";
+		return value.endsWith("\n") ? value : value + '\n';
+	}
+
+	private static Map<String, List<BundleEntry>> entriesByStream(List<BundleEntry> entries) {
+		Map<String, List<BundleEntry>> result = new LinkedHashMap<>();
+		for (BundleEntry entry : entries)
+			result.computeIfAbsent(entry.stream.descriptor().getStreamId(), ignored -> new ArrayList<>()).add(entry);
+		return result;
 	}
 
 	private static Map<String, Object> canonicalRecord(LogRecord record) {

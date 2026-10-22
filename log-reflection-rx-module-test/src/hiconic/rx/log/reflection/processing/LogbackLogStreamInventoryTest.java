@@ -178,7 +178,7 @@ public class LogbackLogStreamInventoryTest {
 	}
 
 	@Test
-	public void streamsFilteredCanonicalJsonlIntoTheBundle() throws Exception {
+	public void streamsCompleteCanonicalJsonlIntoTheBundleRegardlessOfRequestFilter() throws Exception {
 		Files.writeString(logFile, """
 				2026-07-24 10:00:00,000 INFO  [main] demo.Inventory - ignored
 				2026-07-24 10:00:01,000 ERROR [worker] demo.Orders - failed
@@ -205,12 +205,43 @@ public class LogbackLogStreamInventoryTest {
 		}
 
 		assertThat(jsonl).isNotNull();
-		assertThat(jsonl.lines()).hasSize(1);
+		assertThat(jsonl.lines()).hasSize(2);
 		assertThat(jsonl)
+				.contains("\"level\":\"INFO\"")
 				.contains("\"level\":\"ERROR\"")
 				.contains("\"loggerName\":\"demo.Orders\"")
 				.contains("caused by a multiline detail")
-				.doesNotContain("ignored");
+				.contains("ignored");
+	}
+
+	@Test
+	public void streamsHumanReadableCanonicalTextIntoTheBundle() throws Exception {
+		Files.writeString(logFile, """
+				2026-07-24 10:00:00,000 INFO  [main] demo.Inventory - started
+				2026-07-24 10:00:01,000 ERROR [worker] demo.Orders - failed
+				caused by a multiline detail
+				""");
+		LogbackLogStreamInventory inventory = new LogbackLogStreamInventory();
+		inventory.setLoggerContext(context);
+		InstanceId instanceId = instanceId();
+		inventory.setInstanceId(instanceId);
+
+		CreateLogBundle request = CreateLogBundle.T.create();
+		request.setStreamIds(Set.of("appender:application"));
+		request.setFormat(LogBundleFormat.CANONICAL_TEXT);
+
+		var resource = new LogBundleWriter().create(inventory, request, instanceId);
+		String text = null;
+		try (ZipInputStream zip = new ZipInputStream(resource.openStream())) {
+			for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry())
+				if (entry.getName().endsWith("/merged.log"))
+					text = new String(zip.readAllBytes(), StandardCharsets.UTF_8);
+		}
+
+		assertThat(text).isNotNull()
+				.contains("INFO [test-app@node-1] demo.Inventory - started")
+				.contains("ERROR [test-app@node-1] demo.Orders - failed")
+				.contains("caused by a multiline detail");
 	}
 
 	private static InstanceId instanceId() {

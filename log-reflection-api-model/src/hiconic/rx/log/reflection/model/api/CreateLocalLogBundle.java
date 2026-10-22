@@ -30,6 +30,7 @@ public interface CreateLocalLogBundle extends LogReflectionRequest {
 	LogBundleFormat getFormat();
 	void setFormat(LogBundleFormat format);
 
+	/** Retained for wire compatibility; support bundles deliberately ignore interactive UI filters. */
 	LogFilter getFilter();
 	void setFilter(LogFilter filter);
 

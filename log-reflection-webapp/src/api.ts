@@ -86,8 +86,7 @@ export class LogReflectionApi {
     target: TargetSelection,
     streamIds: readonly string[],
     includeRotated: boolean,
-    format: "raw" | "jsonl",
-    filter: RecordFilter
+    format: "raw" | "text" | "jsonl"
   ): Promise<{
     blob: Blob;
     name: string;
@@ -98,8 +97,10 @@ export class LogReflectionApi {
     streamIds.forEach(id => ids.add(id));
     request.streamIds = ids;
     request.includeRotated = includeRotated;
-    request.format = format === "jsonl" ? LogBundleFormat.CANONICAL_JSONL : LogBundleFormat.RAW_FILES;
-    request.filter = format === "jsonl" ? toFilter(filter) : null;
+    request.format = format === "jsonl"
+      ? LogBundleFormat.CANONICAL_JSONL
+      : format === "text" ? LogBundleFormat.CANONICAL_TEXT : LogBundleFormat.RAW_FILES;
+    request.filter = null;
 
     const resource = await this.evaluate<Resource>(request, this.loggingEvaluator);
     const source = resource.resourceSource;

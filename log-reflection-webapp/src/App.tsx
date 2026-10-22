@@ -78,11 +78,12 @@ export function App() {
   const [tailBufferSize, setTailBufferSize] = createSignal(2000);
   const [followTail, setFollowTail] = createSignal(true);
   const [includeRotated, setIncludeRotated] = createSignal(false);
+  const [bundleIncludeRotated, setBundleIncludeRotated] = createSignal(true);
   const [bundleOpen, setBundleOpen] = createSignal(false);
   const [bundleApplication, setBundleApplication] = createSignal("");
   const [bundleNode, setBundleNode] = createSignal("");
   const [bundleStreams, setBundleStreams] = createSignal<string[]>([]);
-  const [bundleFormat, setBundleFormat] = createSignal<"raw" | "jsonl">("raw");
+  const [bundleFormat, setBundleFormat] = createSignal<"raw" | "text" | "jsonl">("text");
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal<string>();
   let recordsViewport: HTMLDivElement | undefined;
@@ -422,7 +423,7 @@ export function App() {
       const result = await client.bundle({
         applicationId: bundleApplication(),
         nodeId: bundleNode()
-      }, bundleStreams(), includeRotated(), bundleFormat(), filter());
+      }, bundleStreams(), bundleIncludeRotated(), bundleFormat());
       const url = URL.createObjectURL(result.blob);
       const link = document.createElement("a");
       link.href = url;
@@ -632,7 +633,7 @@ export function App() {
         }}>
           <section class="bundle-dialog" role="dialog" aria-modal="true" aria-label="Download log bundle">
             <header>
-              <div><strong>Download log bundle</strong><small>Stream original files or canonical filtered JSONL without buffering the bundle in heap.</small></div>
+              <div><strong>Download log bundle</strong><small>Download complete, unfiltered logs without buffering the bundle in heap.</small></div>
               <button onClick={() => setBundleOpen(false)}>×</button>
             </header>
             <div class="bundle-scope">
@@ -648,13 +649,14 @@ export function App() {
                 </select>
               </label>
               <label>Segments
-                <select value={includeRotated() ? "rotated" : "active"} onChange={event => setIncludeRotated(event.currentTarget.value === "rotated")}>
+                <select value={bundleIncludeRotated() ? "rotated" : "active"} onChange={event => setBundleIncludeRotated(event.currentTarget.value === "rotated")}>
                   <option value="active">Current files</option>
                   <option value="rotated">Current + rotated files</option>
                 </select>
               </label>
               <label>Representation
-                <select value={bundleFormat()} onChange={event => setBundleFormat(event.currentTarget.value as "raw" | "jsonl")}>
+                <select value={bundleFormat()} onChange={event => setBundleFormat(event.currentTarget.value as "raw" | "text" | "jsonl")}>
+                  <option value="text">Human-readable merged logs</option>
                   <option value="raw">Original files</option>
                   <option value="jsonl">Canonical JSONL</option>
                 </select>
