@@ -36,7 +36,6 @@ type ColumnKey =
   | "thread"
   | "source"
   | "message"
-  | "throwable"
   | "properties"
   | "raw";
 
@@ -48,14 +47,13 @@ const columns: readonly ColumnDefinition[] = [
   { key: "timestamp", label: "Timestamp", width: "184px" },
   { key: "level", label: "Level", width: "64px" },
   { key: "application", label: "Application", width: "130px" },
-  { key: "node", label: "Node", width: "110px" },
   { key: "stream", label: "Stream", width: "140px" },
   { key: "position", label: "Position", width: "105px" },
   { key: "logger", label: "Logger", width: "230px" },
   { key: "thread", label: "Thread", width: "170px" },
   { key: "source", label: "Source", width: "220px" },
   { key: "message", label: "Message", width: "minmax(280px, 1fr)" },
-  { key: "throwable", label: "Throwable", width: "minmax(260px, 1fr)" },
+  { key: "node", label: "Node", width: "110px" },
   { key: "properties", label: "Properties", width: "260px" },
   { key: "raw", label: "Raw text", width: "minmax(280px, 1fr)" }
 ];
@@ -94,6 +92,7 @@ export function App() {
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal<string>();
   let recordsViewport: HTMLDivElement | undefined;
+  const tabScrollPositions = new Map<string, number>();
   let tailGeneration = 0;
   let filterRevision = 0;
   let filterReloadPending = false;
@@ -303,13 +302,24 @@ export function App() {
     const id = `${stream.streamId}:${selectedTarget.applicationId ?? "local"}`;
     const existing = tabs().find(tab => tab.id === id);
     if (existing) {
-      setActiveTabId(id);
+      activateTab(id);
       return;
     }
     const tab: Tab = { id, stream, target: selectedTarget, records: [], moreBefore: false, tailing: false };
     setTabs(current => [...current, tab]);
-    setActiveTabId(id);
+    activateTab(id);
     await loadRecords(tab, "replace");
+  }
+
+  function activateTab(id: string | undefined) {
+    const currentId = activeTabId();
+    if (currentId && recordsViewport)
+      tabScrollPositions.set(currentId, recordsViewport.scrollTop);
+    setActiveTabId(id);
+    requestAnimationFrame(() => {
+      if (id && recordsViewport)
+        recordsViewport.scrollTop = tabScrollPositions.get(id) ?? 0;
+    });
   }
 
   async function loadRecords(tab = activeTab(), mode: "replace" | "newer" | "older" = "replace", waitMillis = 0) {
@@ -396,7 +406,8 @@ export function App() {
     const remaining = tabs().filter(tab => tab.id !== id);
     setTabs(remaining);
     if (activeTabId() === id)
-      setActiveTabId(remaining.at(-1)?.id);
+      activateTab(remaining.at(-1)?.id);
+    tabScrollPositions.delete(id);
   }
 
   function toggleLevel(level: string) {
@@ -450,6 +461,9 @@ export function App() {
 
   function trackTailScroll(event: Event) {
     const viewport = event.currentTarget as HTMLDivElement;
+    const tabId = activeTabId();
+    if (tabId)
+      tabScrollPositions.set(tabId, viewport.scrollTop);
     const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
     setFollowTail(distanceFromBottom < 48);
   }
@@ -586,7 +600,7 @@ export function App() {
           <section class="log-panel">
             <div class="tabs">
               <For each={tabs()} fallback={<div class="tab-placeholder">Open a stream to begin</div>}>
-                {tab => <button classList={{ tab: true, active: tab.id === activeTabId() }} onClick={() => setActiveTabId(tab.id)}>
+                {tab => <button classList={{ tab: true, active: tab.id === activeTabId() }} onClick={() => activateTab(tab.id)}>
                   <span>{tab.stream.displayName || tab.stream.streamId}</span><small>{tab.target.nodeId || "all nodes"}</small>
                   <i onClick={event => { event.stopPropagation(); closeTab(tab.id); }}>×</i>
                 </button>}
@@ -827,8 +841,6 @@ function textColumnValue(record: LogRecord, column: ColumnKey): string {
   switch (column) {
     case "message":
       return record.message || "—";
-    case "throwable":
-      return record.throwable || "";
     case "raw":
       return record.rawText || "—";
     default:
@@ -858,8 +870,6 @@ function columnValue(record: LogRecord, column: ColumnKey): string {
       return formatSourceLocation(record) || "—";
     case "message":
       return oneLine(record.message) || "—";
-    case "throwable":
-      return oneLine(record.throwable) || "";
     case "properties":
       return formatProperties(record.properties);
     case "raw":
@@ -886,18 +896,31 @@ function LogRecordDetail(props: { record: LogRecord; onClose: () => void }) {
       <For each={properties()}>{([name, value]) => <DetailProperty name={name} value={value} />}</For>
     </div>
     <section class="detail-content">
-      <small>Message</small>
+      <DetailHeading label="Message" value={props.record.message || "—"} />
       <pre>{props.record.message || "—"}</pre>
-      <Show when={props.record.throwable}>
-        <small>Exception</small>
-        <pre class="throwable">{props.record.throwable}</pre>
+      <Show when={!props.record.rawText && props.record.throwable}>
+        {throwable => <>
+          <DetailHeading label="Throwable" value={throwable()} />
+          <pre class="throwable">{throwable()}</pre>
+        </>}
       </Show>
       <Show when={props.record.rawText && props.record.rawText !== props.record.message}>
-        <small>Raw record</small>
+        <DetailHeading label="Raw record" value={props.record.rawText!} />
         <pre class="raw">{props.record.rawText}</pre>
       </Show>
     </section>
   </aside>;
+}
+
+function DetailHeading(props: { label: string; value: string }) {
+  return <div class="detail-heading">
+    <small>{props.label}</small>
+    <button title={`Copy ${props.label.toLowerCase()} to clipboard`} onClick={() => void copyText(props.value)}>Copy</button>
+  </div>;
+}
+
+async function copyText(value: string) {
+  await navigator.clipboard.writeText(value);
 }
 
 function DetailProperty(props: { name: string; value: unknown }) {

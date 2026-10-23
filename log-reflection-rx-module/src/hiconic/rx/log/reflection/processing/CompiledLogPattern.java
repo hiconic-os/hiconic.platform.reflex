@@ -46,7 +46,8 @@ final class CompiledLogPattern implements CanonicalLogParser {
 		List<Capture> captures = new ArrayList<>();
 		boolean startComplete = false;
 
-		for (Part part : parts) {
+		for (int partIndex = 0; partIndex < parts.size(); partIndex++) {
+			Part part = parts.get(partIndex);
 			if (part.literal != null) {
 				String literalRegex = literalRegex(part.literal);
 				full.append(literalRegex);
@@ -60,7 +61,7 @@ final class CompiledLogPattern implements CanonicalLogParser {
 				continue;
 
 			Field field = field(word);
-			String valueRegex = valueRegex(field);
+			String valueRegex = valueRegex(field, isDelimitedMessage(parts, partIndex));
 			if (field != Field.UNKNOWN) {
 				full.append('(').append(valueRegex).append(')');
 				captures.add(new Capture(captures.size() + 1, field, part.option));
@@ -185,12 +186,29 @@ final class CompiledLogPattern implements CanonicalLogParser {
 		}
 	}
 
-	private static String valueRegex(Field field) {
+	private static String valueRegex(Field field, boolean delimitedMessage) {
 		return switch (field) {
 			case LEVEL -> "[A-Z]+";
 			case LOGGER -> "\\S+";
-			case TIMESTAMP, THREAD, MESSAGE, THROWABLE, NDC, MDC, UNKNOWN -> ".*?";
+			case MESSAGE -> delimitedMessage ? ".*" : ".*?";
+			case TIMESTAMP, THREAD, THROWABLE, NDC, MDC, UNKNOWN -> ".*?";
 		};
+	}
+
+	/**
+	 * A quoted message must be matched from its closing delimiter. Otherwise an apostrophe in e.g. {@code Won't}
+	 * is mistaken for the end of the message and the remaining text is captured as a throwable.
+	 */
+	private static boolean isDelimitedMessage(List<Part> parts, int messageIndex) {
+		if (messageIndex == 0 || messageIndex + 1 >= parts.size())
+			return false;
+		Part before = parts.get(messageIndex - 1);
+		Part after = parts.get(messageIndex + 1);
+		if (before.literal == null || before.literal.isEmpty() || after.literal == null || after.literal.isEmpty())
+			return false;
+		char opening = before.literal.charAt(before.literal.length() - 1);
+		char closing = after.literal.charAt(0);
+		return opening == closing && (opening == '\'' || opening == '"');
 	}
 
 	private static Field field(String word) {

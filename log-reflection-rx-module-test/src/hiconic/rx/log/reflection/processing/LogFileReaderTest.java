@@ -72,6 +72,22 @@ public class LogFileReaderTest {
 	}
 
 	@Test
+	public void keepsApostrophesInsideQuotedMessages() throws Exception {
+		String raw = "2026-10-23T09:07:59.115+0000 INFO    dt1.proventem.processing.init.masterdata.MasterDataInitialization"
+				+ "           'Won't register initializer [master-data-initializer:MdSpaceDocumentConfiguration] because no explicit configuration found' []";
+		write(raw + "\n");
+
+		LogRecordPage page = reader().query(stream(PROVENTEM_PATTERN), null, null, 20, 0, false);
+
+		assertThat(page.getRecords()).hasSize(1);
+		var record = page.getRecords().get(0);
+		assertThat(record.getMessage()).isEqualTo(
+				"Won't register initializer [master-data-initializer:MdSpaceDocumentConfiguration] because no explicit configuration found");
+		assertThat(record.getThrowable()).isNull();
+		assertThat(record.getRawText()).isEqualTo(raw);
+	}
+
+	@Test
 	public void continuesFromByteCursorAfterFileGrowth() throws Exception {
 		String simplePattern = "%date %level %logger{10} %msg%n";
 		write("2026-07-23 10:44:25,992 INFO dt1.First first\n");

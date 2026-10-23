@@ -177,8 +177,11 @@ button { border: 0; cursor: pointer; }
 .detail-properties small { color: #6f7b8b; font: 10px var(--mono); text-transform: uppercase; letter-spacing: .06em; }
 .detail-properties span { min-width: 0; overflow-wrap: anywhere; color: #cbd2dc; font: 11px var(--mono); }
 .detail-content { flex: 1 1 auto; min-height: 0; padding: 14px; overflow: auto; overscroll-behavior: contain; }
-.detail-content > small { display: block; margin: 0 0 7px; color: #7f8b9a; font: 600 10px var(--mono); text-transform: uppercase; letter-spacing: .1em; }
-.detail-content > small:not(:first-child) { margin-top: 20px; }
+.detail-heading { display: flex; align-items: center; justify-content: space-between; margin: 0 0 7px; }
+.detail-heading:not(:first-child) { margin-top: 20px; }
+.detail-heading small { color: #7f8b9a; font: 600 10px var(--mono); text-transform: uppercase; letter-spacing: .1em; }
+.detail-heading button { height: 24px; padding: 0 8px; border-radius: 5px; color: #aeb8c5; background: #19222d; font: 10px var(--mono); }
+.detail-heading button:hover { color: #fff; background: #243141; }
 .detail-content pre { margin: 0; color: #eef2f7; font: 12px/1.6 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 .detail-content pre.throwable { color: #ff9ba7; }
 .detail-content pre.raw { color: #aeb8c5; }
