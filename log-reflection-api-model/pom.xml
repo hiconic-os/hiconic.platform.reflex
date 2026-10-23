@@ -9,6 +9,8 @@
 	<version>1.0.5</version>
 	<properties>
 		<archetype>model</archetype>
+		<npmPackaging>model</npmPackaging>
+		<npmRegistryUrl>https://registry.npmjs.org</npmRegistryUrl>
 	</properties>
 	<dependencies>
 		<dependency>
