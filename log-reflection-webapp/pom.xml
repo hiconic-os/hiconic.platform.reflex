@@ -9,11 +9,6 @@
 	<version>1.0.6</version>
 	<packaging>pom</packaging>
 	<dependencies>
-		<!--
-			The webapp consumes the generated TypeScript model through a local file dependency.
-			Declaring the same relation in the Devrock graph makes clean CI builds generate the
-			NPM model before npm ci/typecheck runs for this artifact.
-		-->
 		<dependency>
 			<groupId>hiconic.platform.reflex</groupId>
 			<artifactId>log-reflection-api-model</artifactId>

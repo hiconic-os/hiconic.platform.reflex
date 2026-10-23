@@ -315,6 +315,11 @@ export function App() {
   async function loadRecords(tab = activeTab(), mode: "replace" | "newer" | "older" = "replace", waitMillis = 0) {
     const client = api();
     if (!client || !tab) return;
+    const streamId = tab.stream.streamId;
+    if (!streamId) {
+      setError("The selected log stream has no stream ID.");
+      return;
+    }
     const requestedFilterRevision = filterRevision;
     const scrollHeightBefore = mode === "older" ? recordsViewport?.scrollHeight : undefined;
     const backgroundTail = waitMillis > 0;
@@ -323,7 +328,7 @@ export function App() {
     setError(undefined);
     try {
       const page = await client.records(
-        tab.stream.streamId,
+        streamId,
         tab.target,
         filter(),
         mode === "newer" ? tab.cursor : undefined,
@@ -479,7 +484,7 @@ export function App() {
     const blob = new Blob([content], { type: format === "json" ? "application/json" : "text/plain" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `${safeName(tab.stream.displayName || tab.stream.streamId)}.${format === "json" ? "json" : "log"}`;
+    link.download = `${safeName(tab.stream.displayName || tab.stream.streamId || "logs")}.${format === "json" ? "json" : "log"}`;
     link.click();
     URL.revokeObjectURL(link.href);
   }
@@ -489,7 +494,7 @@ export function App() {
     const availableNodes = topology().filter(instance => instance.applicationId === application).map(instance => instance.nodeId);
     setBundleApplication(application);
     setBundleNode(nodeId() || "");
-    setBundleStreams(fileStreams().map(stream => stream.streamId));
+    setBundleStreams(fileStreams().map(stream => stream.streamId).filter((id): id is string => Boolean(id)));
     setBundleOpen(true);
   }
 
@@ -762,8 +767,8 @@ export function App() {
               <strong>File streams</strong>
               <For each={fileStreams()} fallback={<span>No file streams are available in this application scope.</span>}>
                 {stream => <label>
-                  <input type="checkbox" checked={bundleStreams().includes(stream.streamId)}
-                    onChange={() => toggleBundleStream(stream.streamId)} />
+                  <input type="checkbox" checked={Boolean(stream.streamId) && bundleStreams().includes(stream.streamId!)}
+                    disabled={!stream.streamId} onChange={() => stream.streamId && toggleBundleStream(stream.streamId)} />
                   <span>{stream.displayName || stream.streamId}<small>{streamDetails(stream)}</small></span>
                 </label>}
               </For>
@@ -972,8 +977,9 @@ function streamDetails(stream: LogStreamDescriptor) {
 function uniqueStreams(streams: readonly LogStreamDescriptor[]): LogStreamDescriptor[] {
   const unique = new Map<string, LogStreamDescriptor>();
   streams.forEach(stream => {
-    if (!unique.has(stream.streamId))
-      unique.set(stream.streamId, stream);
+    const streamId = stream.streamId;
+    if (streamId && !unique.has(streamId))
+      unique.set(streamId, stream);
   });
   return Array.from(unique.values());
 }
@@ -987,11 +993,13 @@ function commonApplicationStreams(
   const expectedOrigins = new Set(instances.map(instance => `${instance.applicationId}\u0000${instance.nodeId}`));
   const grouped = new Map<string, LogStreamDescriptor[]>();
   streams.forEach(stream => {
-    const group = grouped.get(stream.streamId);
+    const streamId = stream.streamId;
+    if (!streamId) return;
+    const group = grouped.get(streamId);
     if (group)
       group.push(stream);
     else
-      grouped.set(stream.streamId, [stream]);
+      grouped.set(streamId, [stream]);
   });
 
   const result: LogStreamDescriptor[] = [];
@@ -1071,7 +1079,7 @@ function formatPosition(record: LogRecord) {
   return "—";
 }
 
-function formatProperties(value: Map<string, string> | Record<string, string> | null | undefined) {
+function formatProperties(value: unknown) {
   const entries = mapEntries(value);
   return entries.length ? entries.map(([name, item]) => `${name}=${item}`).join(" ") : "—";
 }
@@ -1090,16 +1098,16 @@ function shortLogger(value: string | null | undefined) {
   return parts.length > 3 ? `…${parts.slice(-3).join(".")}` : value;
 }
 
-function mapEntries(value: Map<string, string> | Record<string, string> | null | undefined): [string, string][] {
+function mapEntries(value: unknown): [string, string][] {
   if (!value) return [];
 
   const modeledMap = value as {
-    entries?: () => IterableIterator<[string, string]>;
+    entries?: () => Iterable<[string | null, string | null]>;
   };
   if (typeof modeledMap.entries === "function")
-    return Array.from(modeledMap.entries());
+    return Array.from(modeledMap.entries(), ([name, item]) => [name ?? "", item ?? ""]);
 
-  return Object.entries(value);
+  return Object.entries(value as Record<string, unknown>).map(([name, item]) => [name, item == null ? "" : String(item)]);
 }
 
 function recordToJson(record: LogRecord) {

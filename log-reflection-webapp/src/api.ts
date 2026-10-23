@@ -80,7 +80,7 @@ export class LogReflectionApi {
     request.cursor = cursor ?? null;
     request.beforeCursor = beforeCursor ?? null;
     request.limit = 300;
-    request.waitMillis = waitMillis;
+    request.waitMillis = BigInt(waitMillis);
     request.includeRotated = includeRotated;
     return this.evaluate(request, this.loggingEvaluator);
   }
