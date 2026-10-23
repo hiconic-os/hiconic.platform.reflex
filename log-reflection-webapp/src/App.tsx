@@ -42,6 +42,7 @@ type ColumnKey =
 
 type ColumnDefinition = { key: ColumnKey; label: string; width: string };
 type ViewMode = "structured" | "text";
+type AccessState = "checking" | "authenticated" | "unauthenticated" | "denied" | "offline" | "error";
 
 const columns: readonly ColumnDefinition[] = [
   { key: "timestamp", label: "Timestamp", width: "184px" },
@@ -63,9 +64,12 @@ const levels = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"];
 const defaultFilter: RecordFilter = { levels: [] };
 
 export function App() {
+  let runtimeConfig: RuntimeConfig | undefined;
   const [api, setApi] = createSignal<LogReflectionApi>();
-  const [user, setUser] = createSignal("Connecting");
-  const [roles, setRoles] = createSignal<string[]>([]);
+  const [canRead, setCanRead] = createSignal(false);
+  const [canManageLevels, setCanManageLevels] = createSignal(false);
+  const [accessState, setAccessState] = createSignal<AccessState>("checking");
+  const [accessDetail, setAccessDetail] = createSignal("");
   const [applicationId, setApplicationId] = createSignal("");
   const [nodeId, setNodeId] = createSignal("");
   const [topology, setTopology] = createSignal<TopologyInstance[]>([]);
@@ -112,50 +116,33 @@ export function App() {
     nodeId: nodeId().trim() || undefined
   });
 
-  onMount(async () => {
-    let config: RuntimeConfig | undefined;
+  onMount(() => void initialize());
+
+  async function initialize() {
+    setAccessState("checking");
     try {
-      config = await loadConfig();
-      const client = new LogReflectionApi(config);
+      runtimeConfig = await loadConfig();
+      const client = new LogReflectionApi(runtimeConfig);
       setApi(client);
-      const authorization = await client.authorization();
-      const authUser = authorization.user as { name?: string; id?: string } | undefined;
-      const effectiveRoles = Array.from(authorization.effectiveRoles ?? []);
-      setUser(authUser?.name ?? authUser?.id ?? "Authenticated user");
-      setRoles(effectiveRoles);
-      const adminRoles = Array.from(config.adminRoles ?? []);
-      if (adminRoles.length && !effectiveRoles.some(role => adminRoles.includes(role))) {
-        setError(`Administrative role required (${adminRoles.join(", ")}).`);
-        return;
-      }
-      const reflectedTopology = await client.topology();
-      const reflectedInstances = Array.from(reflectedTopology.instances ?? []) as Array<{
-        applicationId?: string | null;
-        nodeId?: string | null;
-      }>;
-      const uniqueInstances = new Map<string, TopologyInstance>();
-      reflectedInstances.forEach(instance => {
-        const reflected = {
-          applicationId: instance.applicationId ?? "",
-          nodeId: instance.nodeId ?? ""
-        };
-        if (reflected.applicationId)
-          uniqueInstances.set(`${reflected.applicationId}\u0000${reflected.nodeId}`, reflected);
-      });
-      const instances = Array.from(uniqueInstances.values());
-      setTopology(instances);
-      const localApplicationId = reflectedTopology.localInstance?.applicationId ?? instances[0]?.applicationId ?? "";
-      setApplicationId(localApplicationId);
-      await refreshStreams(client, { applicationId: localApplicationId || undefined });
+      await refreshAccess(true);
     } catch (caught) {
       console.error("Log Reflection initialization failed", caught);
-      const message = messageOf(caught);
-      if (config && isAuthenticationFailure(message)) redirectToLogin(config, caught);
-      else {
-        setUser("Unavailable");
-        setError(message);
-      }
+      applyAccessFailure(caught);
     }
+  }
+
+  function retryAccess() {
+    if (api()) void refreshAccess(topology().length === 0);
+    else void initialize();
+  }
+
+  const recheckAfterReturn = () => {
+    if (document.visibilityState === "visible") void refreshAccess(topology().length === 0);
+  };
+
+  onMount(() => {
+    window.addEventListener("focus", recheckAfterReturn);
+    document.addEventListener("visibilitychange", recheckAfterReturn);
   });
 
   const closePopupMenus = (event: PointerEvent) => {
@@ -172,7 +159,77 @@ export function App() {
     if (filterReloadTimer)
       clearTimeout(filterReloadTimer);
     document.removeEventListener("pointerdown", closePopupMenus);
+    window.removeEventListener("focus", recheckAfterReturn);
+    document.removeEventListener("visibilitychange", recheckAfterReturn);
   });
+
+  async function refreshAccess(loadWorkspace: boolean) {
+    const client = api();
+    if (!client) return;
+    setAccessState("checking");
+    setAccessDetail("");
+    try {
+      const capabilities = await client.capabilities();
+      setCanRead(capabilities.canRead);
+      setCanManageLevels(capabilities.canManageLevels);
+      if (!capabilities.authenticated) {
+        setAccessState("unauthenticated");
+        tailGeneration++;
+        return;
+      }
+      if (!capabilities.canRead) {
+        setAccessState("denied");
+        tailGeneration++;
+        return;
+      }
+      setAccessState("authenticated");
+      setError(undefined);
+      if (loadWorkspace)
+        await loadInitialWorkspace(client);
+    } catch (caught) {
+      applyAccessFailure(caught);
+    }
+  }
+
+  async function loadInitialWorkspace(client: LogReflectionApi) {
+    const reflectedTopology = await client.topology();
+    const reflectedInstances = Array.from(reflectedTopology.instances ?? []) as Array<{
+      applicationId?: string | null;
+      nodeId?: string | null;
+    }>;
+    const uniqueInstances = new Map<string, TopologyInstance>();
+    reflectedInstances.forEach(instance => {
+      const reflected = { applicationId: instance.applicationId ?? "", nodeId: instance.nodeId ?? "" };
+      if (reflected.applicationId)
+        uniqueInstances.set(`${reflected.applicationId}\u0000${reflected.nodeId}`, reflected);
+    });
+    const instances = Array.from(uniqueInstances.values());
+    setTopology(instances);
+    const localApplicationId = reflectedTopology.localInstance?.applicationId ?? instances[0]?.applicationId ?? "";
+    setApplicationId(localApplicationId);
+    await refreshStreams(client, { applicationId: localApplicationId || undefined });
+  }
+
+  function applyAccessFailure(caught: unknown) {
+    const message = messageOf(caught);
+    setAccessDetail(message);
+    setCanRead(false);
+    setCanManageLevels(false);
+    tailGeneration++;
+    setTabs(current => current.map(tab => tab.tailing ? { ...tab, tailing: false } : tab));
+    if (isConnectivityFailure(message)) setAccessState("offline");
+    else if (isAuthorizationFailure(message)) setAccessState("denied");
+    else if (isAuthenticationFailure(message)) setAccessState("unauthenticated");
+    else setAccessState("error");
+  }
+
+  function handleOperationalFailure(caught: unknown) {
+    const message = messageOf(caught);
+    if (isAuthenticationFailure(message) || isAuthorizationFailure(message) || isConnectivityFailure(message))
+      applyAccessFailure(caught);
+    else
+      setError(message);
+  }
 
   async function refreshStreams(client = api(), selectedTarget = target()) {
     if (!client) return;
@@ -187,7 +244,7 @@ export function App() {
       setStreamErrors(mapEntries(result.errors).map(([origin, message]) => `${origin}: ${message}`));
     } catch (caught) {
       console.error("Discovering log streams failed", caught);
-      setError(messageOf(caught));
+      handleOperationalFailure(caught);
     } finally {
       setLoading(false);
     }
@@ -285,9 +342,7 @@ export function App() {
         setError(partialErrors.map(([origin, message]) => `${origin}: ${message}`).join("\n"));
     } catch (caught) {
       console.error("Loading log records failed", caught);
-      const message = messageOf(caught);
-      if (isAuthenticationFailure(message)) redirectToLogin(client.config, caught);
-      else setError(message);
+      handleOperationalFailure(caught);
     } finally {
       if (!backgroundTail)
         setLoading(false);
@@ -304,6 +359,10 @@ export function App() {
     setFollowTail(true);
     requestAnimationFrame(() => scrollToLatest(true));
     while (generation === tailGeneration) {
+      if (document.visibilityState !== "visible" || accessState() !== "authenticated") {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        continue;
+      }
       if (filterReloadPending) {
         await new Promise(resolve => setTimeout(resolve, 75));
         continue;
@@ -452,7 +511,7 @@ export function App() {
       setBundleOpen(false);
     } catch (caught) {
       console.error("Creating log bundle failed", caught);
-      setError(messageOf(caught));
+      handleOperationalFailure(caught);
     } finally {
       setLoading(false);
     }
@@ -466,7 +525,7 @@ export function App() {
 
   return (
     <div class="shell">
-      <main>
+      <main classList={{ masked: accessState() !== "authenticated" }}>
         <section class="workspace">
           <aside class="streams-panel">
             <div class="sidebar-brand">
@@ -476,7 +535,7 @@ export function App() {
               </div>
               <div class="identity">
                 <span class="status-dot"></span>
-                <div><strong>{user()}</strong><small>{roles().slice(0, 3).join(" · ") || "web session"}</small></div>
+                <div><strong>{canRead() ? "Log access" : "Checking access"}</strong><small>{canManageLevels() ? "Read · Manage levels" : "Read only"}</small></div>
               </div>
             </div>
             <div class="scope-panel">
@@ -703,6 +762,8 @@ export function App() {
           </section>
         </div>
       </Show>
+      <Show when={accessState() !== "authenticated"}><AccessOverlay state={accessState()} detail={accessDetail()}
+        loginUrl={runtimeConfig ? loginUrl(runtimeConfig) : undefined} retry={retryAccess}/></Show>
     </div>
   );
 }
@@ -837,15 +898,40 @@ async function loadConfig(): Promise<RuntimeConfig> {
   return response.json();
 }
 
-function redirectToLogin(config: RuntimeConfig, caught: unknown): never {
-  const loginUrl = new URL(`${config.servicesUrl.replace(/\/$/, "")}/login`, window.location.origin);
-  loginUrl.searchParams.set("continue", `${window.location.pathname}${window.location.search}${window.location.hash}`);
-  window.location.replace(loginUrl);
-  throw caught;
+function loginUrl(config: RuntimeConfig) {
+  const url = new URL(config.loginUrl ?? `${config.servicesUrl.replace(/\/$/, "")}/login`, window.location.origin);
+  url.searchParams.set("continue", `${window.location.pathname}${window.location.search}${window.location.hash}`);
+  return url.toString();
 }
 
 function isAuthenticationFailure(message: string) {
   return /MissingSession|MissingCredentials|AuthenticationFailure|SessionNotFound|No authenticated web session|Unauthorized|401/i.test(message);
+}
+
+function isAuthorizationFailure(message: string) {
+  return /Forbidden|Insufficient.*role|required role|403/i.test(message);
+}
+
+function isConnectivityFailure(message: string) {
+  return /Failed to fetch|NetworkError|Network request failed|Load failed|timeout|HTTP 50[234]/i.test(message);
+}
+
+function AccessOverlay(props: { state: AccessState; detail: string; loginUrl?: string; retry: () => void }) {
+  const title = () => props.state === "checking" ? "Checking access…"
+    : props.state === "offline" ? "Connection interrupted"
+    : props.state === "denied" ? "Access denied"
+    : props.state === "error" ? "Access check failed"
+    : "Session required";
+  const explanation = () => props.state === "offline" ? "The server cannot currently be reached. Filters and selections remain in this browser."
+    : props.state === "denied" ? "Your session is valid, but it has no Log Reflection reader role."
+    : props.state === "error" ? "The server returned an unexpected error while checking access."
+    : props.state === "unauthenticated" ? "Sign in to inspect logs. The current workspace remains available."
+    : "Verifying session and capabilities.";
+  return <div class="access-overlay" role="dialog" aria-live="polite"><div class="access-card"><strong>{title()}</strong><p>{explanation()}</p>
+    <Show when={props.detail && props.state !== "checking"}><small>{props.detail}</small></Show>
+    <div class="access-actions"><Show when={props.state === "offline" || props.state === "error"}><button onClick={props.retry}>Try again</button></Show>
+      <Show when={props.state === "unauthenticated" && props.loginUrl}><a class="login" href={props.loginUrl}>Sign in</a></Show></div>
+  </div></div>;
 }
 
 function messageOf(caught: unknown) {

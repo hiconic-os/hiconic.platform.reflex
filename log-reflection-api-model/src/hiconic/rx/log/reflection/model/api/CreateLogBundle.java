@@ -18,7 +18,7 @@ import hiconic.rx.log.reflection.model.LogTarget;
  * Creates a streamed ZIP bundle. The returned resource has a transient source and is transported by Web-RPC as
  * multipart data rather than being materialized in the response model.
  */
-public interface CreateLogBundle extends LogReflectionRequest {
+public interface CreateLogBundle extends AuthorizedLogReflectionRequest {
 	EntityType<CreateLogBundle> T = EntityTypes.T(CreateLogBundle.class);
 
 	LogTarget getTarget();

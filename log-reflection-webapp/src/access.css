@@ -1,0 +1,41 @@
+.masked {
+  filter: blur(7px);
+  opacity: 0.38;
+  pointer-events: none;
+  user-select: none;
+}
+
+.access-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(7 10 15 / 58%);
+  backdrop-filter: blur(2px);
+}
+
+.access-card {
+  width: min(460px, 100%);
+  padding: 25px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-2);
+  box-shadow: 0 24px 80px #0009;
+}
+
+.access-card strong { font-size: 20px; }
+.access-card p { color: #b3bfd0; line-height: 1.5; }
+.access-card small { display: block; max-height: 90px; overflow: auto; color: var(--muted); font-family: var(--mono); }
+.access-actions { display: flex; gap: 10px; margin-top: 18px; }
+.access-actions button, .access-actions .login {
+  display: inline-block;
+  border: 0;
+  border-radius: 7px;
+  padding: 9px 14px;
+  background: #3978d5;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 650;
+}

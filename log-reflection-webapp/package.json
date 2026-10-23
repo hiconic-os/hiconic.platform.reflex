@@ -12,7 +12,6 @@
     "@dev.hiconic/gm_gm-core-api": "2.0.x",
     "@dev.hiconic/gm_logging-model": "2.0.x",
     "@dev.hiconic/gm_resource-model": "2.0.x",
-    "@dev.hiconic/gm_security-service-api-model": "2.0.x",
     "@dev.hiconic/gm_transient-resource-model": "2.0.x",
     "@dev.hiconic/platform.reflex_log-reflection-api-model": "file:../log-reflection-api-model/dist/npm",
     "@dev.hiconic/runtime": "3.0.168",

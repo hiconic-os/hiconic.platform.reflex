@@ -1,6 +1,6 @@
-import { GetWebAuthorization, type WebAuthorization } from "@dev.hiconic/gm_security-service-api-model";
 import {
   CreateLogBundle,
+  GetLogReflectionCapabilities,
   GetLogTopology,
   ListLogStreams,
   LogBundleFormat,
@@ -9,6 +9,7 @@ import {
   LogTarget,
   QueryLogRecords,
   type LogRecord,
+  type LogReflectionCapabilities,
   type LogRecordPage,
   type LogTopology,
   type LogSegmentDescriptor,
@@ -22,7 +23,9 @@ import { T, hc, remote } from "@dev.hiconic/tf.js_hc-js-api";
 
 export interface RuntimeConfig {
   servicesUrl: string;
-  adminRoles?: readonly string[];
+  loginUrl?: string;
+  readerRoles?: readonly string[];
+  managerRoles?: readonly string[];
 }
 
 export interface TargetSelection {
@@ -39,18 +42,16 @@ export interface RecordFilter {
 }
 
 export class LogReflectionApi {
-  private readonly authorizationEvaluator;
   private readonly loggingEvaluator;
 
   constructor(readonly config: RuntimeConfig) {
     const servicesUrl = new URL(config.servicesUrl, window.location.origin).toString().replace(/\/$/, "");
     const connection = remote.connect(servicesUrl);
-    this.authorizationEvaluator = connection.evaluatorBuilder().setDefaultDomain("security").build();
     this.loggingEvaluator = connection.evaluatorBuilder().setDefaultDomain("logging").build();
   }
 
-  async authorization(): Promise<WebAuthorization> {
-    return this.evaluate(GetWebAuthorization.create(), this.authorizationEvaluator);
+  async capabilities(): Promise<LogReflectionCapabilities> {
+    return this.evaluate(GetLogReflectionCapabilities.create(), this.loggingEvaluator);
   }
 
   async streams(target: TargetSelection): Promise<LogStreams> {

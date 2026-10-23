@@ -16,7 +16,7 @@ import hiconic.rx.log.reflection.model.LogFilter;
 /**
  * Internal cluster request producing the contribution of the receiving node.
  */
-public interface CreateLocalLogBundle extends LogReflectionRequest {
+public interface CreateLocalLogBundle extends AuthorizedLogReflectionRequest {
 	EntityType<CreateLocalLogBundle> T = EntityTypes.T(CreateLocalLogBundle.class);
 
 	Set<String> getStreamIds();

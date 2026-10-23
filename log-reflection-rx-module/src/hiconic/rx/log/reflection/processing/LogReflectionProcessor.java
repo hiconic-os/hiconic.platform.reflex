@@ -8,7 +8,12 @@ import java.util.Set;
 
 import com.braintribe.cfg.Configurable;
 import com.braintribe.cfg.Required;
+import com.braintribe.gm.model.reason.Maybe;
+import com.braintribe.gm.model.reason.Reasons;
+import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
+import com.braintribe.gm.model.security.reason.Forbidden;
 import com.braintribe.model.generic.eval.Evaluator;
+import com.braintribe.model.processing.service.common.context.UserSessionAspect;
 import com.braintribe.model.processing.service.impl.AbstractDispatchingServiceProcessor;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
 import com.braintribe.model.processing.service.impl.DispatchConfiguration;
@@ -19,10 +24,13 @@ import com.braintribe.model.service.api.UnicastRequest;
 import com.braintribe.model.service.api.result.Failure;
 import com.braintribe.model.service.api.result.MulticastResponse;
 import com.braintribe.model.service.api.result.ServiceResult;
+import com.braintribe.model.usersession.UserSession;
 
+import hiconic.rx.log.reflection.model.LogReflectionCapabilities;
 import hiconic.rx.log.reflection.model.LogTarget;
 import hiconic.rx.log.reflection.model.LogOrigin;
 import hiconic.rx.log.reflection.model.api.GetLogTopology;
+import hiconic.rx.log.reflection.model.api.GetLogReflectionCapabilities;
 import hiconic.rx.log.reflection.model.api.CreateLogBundle;
 import hiconic.rx.log.reflection.model.api.CreateLocalLogBundle;
 import hiconic.rx.log.reflection.model.api.ListLogStreams;
@@ -45,6 +53,9 @@ public class LogReflectionProcessor extends AbstractDispatchingServiceProcessor<
 	private long clusterTimeoutMillis = 10_000;
 	private long bundleClusterTimeoutMillis = 120_000;
 	private LogBundleWriter bundleWriter;
+	private Set<String> readerRoles = Set.of();
+	private Set<String> managerRoles = Set.of();
+	private String internalRole;
 
 	@Configurable
 	@Required
@@ -102,15 +113,64 @@ public class LogReflectionProcessor extends AbstractDispatchingServiceProcessor<
 		this.bundleWriter = bundleWriter;
 	}
 
+	@Configurable
+	@Required
+	public void setReaderRoles(Set<String> readerRoles) {
+		this.readerRoles = Set.copyOf(readerRoles);
+	}
+
+	@Configurable
+	@Required
+	public void setManagerRoles(Set<String> managerRoles) {
+		this.managerRoles = Set.copyOf(managerRoles);
+	}
+
+	@Configurable
+	@Required
+	public void setInternalRole(String internalRole) {
+		this.internalRole = internalRole;
+	}
+
 	@Override
 	protected void configureDispatching(DispatchConfiguration<LogReflectionRequest, Object> dispatching) {
-		dispatching.register(ListLogStreams.T, this::listStreams);
-		dispatching.register(GetLogTopology.T, (context, request) -> topology());
-		dispatching.register(QueryLogRecords.T, this::queryRecords);
-		dispatching.register(CreateLogBundle.T, this::createBundle);
-		dispatching.register(CreateLocalLogBundle.T, (context, request) -> bundleWriter.create(inventory, request, instanceId));
-		dispatching.register(ListLocalLogStreams.T, (context, request) -> listLocalStreams());
-		dispatching.register(QueryLocalLogRecords.T, (context, request) -> queryLocalRecords(request));
+		dispatching.register(GetLogReflectionCapabilities.T, this::capabilities);
+		dispatching.register(ListLogStreams.T, (context, request) -> withRead(context, () -> listStreams(context, request)));
+		dispatching.register(GetLogTopology.T, (context, request) -> withRead(context, this::topology));
+		dispatching.register(QueryLogRecords.T, (context, request) -> withRead(context, () -> queryRecords(context, request)));
+		dispatching.register(CreateLogBundle.T, (context, request) -> withRead(context, () -> createBundle(context, request)));
+		dispatching.register(CreateLocalLogBundle.T,
+				(context, request) -> withRead(context, () -> bundleWriter.create(inventory, request, instanceId)));
+		dispatching.register(ListLocalLogStreams.T, (context, request) -> withRead(context, this::listLocalStreams));
+		dispatching.register(QueryLocalLogRecords.T, (context, request) -> withRead(context, () -> queryLocalRecords(request)));
+	}
+
+	private LogReflectionCapabilities capabilities(ServiceRequestContext context, GetLogReflectionCapabilities request) {
+		LogReflectionCapabilities result = LogReflectionCapabilities.T.create();
+		result.setAuthenticated(context.findOrNull(UserSessionAspect.class) != null);
+		result.setCanRead(hasAnyRole(context, readerRoles));
+		result.setCanManageLevels(hasAnyRole(context, managerRoles));
+		return result;
+	}
+
+	private <T> T withRead(ServiceRequestContext context, java.util.function.Supplier<T> operation) {
+		if (!hasAnyRole(context, readerRoles) && !hasRole(context, internalRole))
+			throw forbidden("A log reflection reader role is required.");
+		return operation.get();
+	}
+
+	private static boolean hasAnyRole(ServiceRequestContext context, Set<String> required) {
+		UserSession session = context.findOrNull(UserSessionAspect.class);
+		Set<String> effective = session == null ? null : session.getEffectiveRoles();
+		return effective != null && required != null && effective.stream().anyMatch(required::contains);
+	}
+
+	private static boolean hasRole(ServiceRequestContext context, String required) {
+		return required != null && hasAnyRole(context, Set.of(required));
+	}
+
+	private static UnsatisfiedMaybeTunneling forbidden(String message) {
+		Maybe<Object> maybe = Reasons.build(Forbidden.T).text(message).toMaybe();
+		return new UnsatisfiedMaybeTunneling(maybe);
 	}
 
 	private LogTopology topology() {

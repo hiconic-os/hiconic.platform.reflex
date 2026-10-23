@@ -21,7 +21,8 @@ import com.braintribe.model.generic.eval.AbstractEvalContext;
 import com.braintribe.model.generic.eval.EvalContext;
 import com.braintribe.model.generic.eval.EvalException;
 import com.braintribe.model.generic.eval.Evaluator;
-import com.braintribe.model.processing.service.commons.StandardServiceRequestContext;
+import com.braintribe.model.processing.service.common.context.UserSessionAspect;
+import com.braintribe.model.processing.service.commons.StandardServiceRequestContextBuilder;
 import com.braintribe.model.resource.Resource;
 import com.braintribe.model.service.api.InstanceId;
 import com.braintribe.model.service.api.MulticastRequest;
@@ -29,22 +30,52 @@ import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.model.service.api.UnicastRequest;
 import com.braintribe.model.service.api.result.MulticastResponse;
 import com.braintribe.model.service.api.result.ResponseEnvelope;
+import com.braintribe.model.usersession.UserSession;
 import com.braintribe.processing.async.api.AsyncCallback;
 
 import hiconic.rx.log.reflection.model.LogOrigin;
+import hiconic.rx.log.reflection.model.LogReflectionCapabilities;
 import hiconic.rx.log.reflection.model.LogBundleFormat;
 import hiconic.rx.log.reflection.model.LogRecord;
 import hiconic.rx.log.reflection.model.LogTarget;
 import hiconic.rx.log.reflection.model.api.CreateLocalLogBundle;
 import hiconic.rx.log.reflection.model.api.CreateLogBundle;
+import hiconic.rx.log.reflection.model.api.GetLogReflectionCapabilities;
 import hiconic.rx.log.reflection.model.api.ListLocalLogStreams;
 import hiconic.rx.log.reflection.model.api.ListLogStreams;
 import hiconic.rx.log.reflection.model.api.LogRecordPage;
 import hiconic.rx.log.reflection.model.api.LogStreams;
 import hiconic.rx.log.reflection.model.api.QueryLocalLogRecords;
 import hiconic.rx.log.reflection.model.api.QueryLogRecords;
+import hiconic.rx.log.reflection.model.configuration.LogReflectionConfiguration;
 
 public class LogReflectionProcessorClusterTest {
+	@Test
+	public void configurationDefaultsMakeManagersReaders() {
+		LogReflectionConfiguration configuration = LogReflectionConfiguration.T.create();
+		assertThat(configuration.getReaderRoles()).containsExactlyInAnyOrder("log-reflection-reader", "log-reflection-manager");
+		assertThat(configuration.getManagerRoles()).containsExactly("log-reflection-manager");
+	}
+
+	@Test
+	public void reportsAnonymousAndRoleSpecificCapabilities() {
+		LogReflectionProcessor processor = processor(failingEvaluator());
+		GetLogReflectionCapabilities request = GetLogReflectionCapabilities.T.create();
+
+		LogReflectionCapabilities anonymous = (LogReflectionCapabilities) processor.process(context(), request);
+		assertThat(anonymous.getAuthenticated()).isFalse();
+		assertThat(anonymous.getCanRead()).isFalse();
+		assertThat(anonymous.getCanManageLevels()).isFalse();
+
+		LogReflectionCapabilities reader = (LogReflectionCapabilities) processor.process(context("log-reflection-reader"), request);
+		assertThat(reader.getAuthenticated()).isTrue();
+		assertThat(reader.getCanRead()).isTrue();
+		assertThat(reader.getCanManageLevels()).isFalse();
+
+		LogReflectionCapabilities manager = (LogReflectionCapabilities) processor.process(context("log-reflection-manager"), request);
+		assertThat(manager.getAuthenticated()).isTrue();
+		assertThat(manager.getCanManageLevels()).isTrue();
+	}
 	@Test
 	public void usesUnicastWithLocalPayloadForAnExactRemoteNode() {
 		AtomicReference<ServiceRequest> dispatched = new AtomicReference<>();
@@ -59,7 +90,7 @@ public class LogReflectionProcessorClusterTest {
 		ListLogStreams request = ListLogStreams.T.create();
 		request.setTarget(target("logs-app", "node-2"));
 
-		LogStreams actual = (LogStreams) processor(evaluator).process(new StandardServiceRequestContext(failingEvaluator()), request);
+		LogStreams actual = (LogStreams) processor(evaluator).process(context("log-reflection-reader"), request);
 
 		assertThat(actual).isSameAs(expected);
 		assertThat(dispatched.get()).isInstanceOf(UnicastRequest.class);
@@ -85,7 +116,7 @@ public class LogReflectionProcessorClusterTest {
 		request.setStreamId("structured-live");
 		request.setLimit(20);
 
-		LogRecordPage result = (LogRecordPage) processor(evaluator).process(new StandardServiceRequestContext(failingEvaluator()), request);
+		LogRecordPage result = (LogRecordPage) processor(evaluator).process(context("log-reflection-reader"), request);
 
 		assertThat(dispatched.get().getAddressee().stringify()).isEqualTo("logs-app@<undefined>");
 		assertThat(dispatched.get().getServiceRequest()).isInstanceOf(QueryLocalLogRecords.class);
@@ -108,7 +139,7 @@ public class LogReflectionProcessorClusterTest {
 		ListLogStreams request = ListLogStreams.T.create();
 		request.setTarget(target("*", "node-2"));
 
-		processor(evaluator).process(new StandardServiceRequestContext(failingEvaluator()), request);
+		processor(evaluator).process(context("log-reflection-reader"), request);
 
 		assertThat(dispatched.get().getAddressee().stringify()).isEqualTo("*@node-2");
 		assertThat(dispatched.get().getServiceRequest()).isInstanceOf(ListLocalLogStreams.class);
@@ -133,7 +164,7 @@ public class LogReflectionProcessorClusterTest {
 		request.setStreamIds(Set.of("appender:application"));
 		request.setFormat(LogBundleFormat.RAW_FILES);
 
-		Resource result = (Resource) processor(evaluator).process(new StandardServiceRequestContext(failingEvaluator()), request);
+		Resource result = (Resource) processor(evaluator).process(context("log-reflection-reader"), request);
 		List<String> entries = new ArrayList<>();
 		try (ZipInputStream zip = new ZipInputStream(result.openStream())) {
 			for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry())
@@ -155,7 +186,20 @@ public class LogReflectionProcessorClusterTest {
 		processor.setInstanceId(InstanceId.of("node-1", "logs-app"));
 		processor.setSystemEvaluator(systemEvaluator);
 		processor.setBundleWriter(new LogBundleWriter());
+		processor.setReaderRoles(Set.of("log-reflection-reader", "log-reflection-manager"));
+		processor.setManagerRoles(Set.of("log-reflection-manager"));
+		processor.setInternalRole("internal");
 		return processor;
+	}
+
+	private static com.braintribe.model.processing.service.api.ServiceRequestContext context(String... roles) {
+		StandardServiceRequestContextBuilder builder = new StandardServiceRequestContextBuilder(failingEvaluator());
+		if (roles.length > 0) {
+			UserSession session = UserSession.T.create();
+			session.setEffectiveRoles(Set.of(roles));
+			builder.set(UserSessionAspect.class, session);
+		}
+		return builder.build();
 	}
 
 	private static Resource zipResource(String name, String content) {

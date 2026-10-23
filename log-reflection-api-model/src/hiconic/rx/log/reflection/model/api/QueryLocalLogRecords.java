@@ -14,7 +14,7 @@ import hiconic.rx.log.reflection.model.LogFilter;
 /**
  * Internal cluster payload. Every receiving node selects its own cursor from {@link #getCursors()} and evaluates locally.
  */
-public interface QueryLocalLogRecords extends LogReflectionRequest {
+public interface QueryLocalLogRecords extends AuthorizedLogReflectionRequest {
 	EntityType<QueryLocalLogRecords> T = EntityTypes.T(QueryLocalLogRecords.class);
 
 	String getStreamId();
