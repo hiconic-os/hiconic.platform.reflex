@@ -28,6 +28,7 @@ export default defineConfig(({ command }) => {
         "@dev.hiconic/gm_service-api-model": fromHere("node_modules/@dev.hiconic/gm_service-api-model/dist/service-api-model.js"),
         "@dev.hiconic/gm_logging-model": fromHere("node_modules/@dev.hiconic/gm_logging-model/dist/logging-model.js"),
         "@dev.hiconic/gm_resource-model": fromHere("node_modules/@dev.hiconic/gm_resource-model/dist/resource-model.js"),
+        "@dev.hiconic/gm_security-reason-model": fromHere("node_modules/@dev.hiconic/gm_security-reason-model/dist/security-reason-model.js"),
         "@dev.hiconic/gm_transient-resource-model": fromHere("node_modules/@dev.hiconic/gm_transient-resource-model/dist/transient-resource-model.js")
       }
     },

@@ -65,6 +65,7 @@ const defaultFilter: RecordFilter = { levels: [] };
 
 export function App() {
   let runtimeConfig: RuntimeConfig | undefined;
+  let accessRefreshInFlight: Promise<void> | undefined;
   const [api, setApi] = createSignal<LogReflectionApi>();
   const [canRead, setCanRead] = createSignal(false);
   const [canManageLevels, setCanManageLevels] = createSignal(false);
@@ -164,6 +165,18 @@ export function App() {
   });
 
   async function refreshAccess(loadWorkspace: boolean) {
+    if (accessRefreshInFlight)
+      return accessRefreshInFlight;
+
+    accessRefreshInFlight = doRefreshAccess(loadWorkspace);
+    try {
+      await accessRefreshInFlight;
+    } finally {
+      accessRefreshInFlight = undefined;
+    }
+  }
+
+  async function doRefreshAccess(loadWorkspace: boolean) {
     const client = api();
     if (!client) return;
     setAccessState("checking");
@@ -184,7 +197,7 @@ export function App() {
       }
       setAccessState("authenticated");
       setError(undefined);
-      if (loadWorkspace)
+      if (loadWorkspace || topology().length === 0)
         await loadInitialWorkspace(client);
     } catch (caught) {
       applyAccessFailure(caught);
