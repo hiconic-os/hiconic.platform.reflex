@@ -1,4 +1,15 @@
 <project name="log-reflection-webapp" default="install"
 		xmlns:bt="antlib:com.braintribe.build.ant.tasks">
 	<bt:import artifact="com.braintribe.devrock.ant:npm-web-app-ant-script#1.0"/>
+
+	<!--
+		The TypeScript client consumes the locally generated API model. Generate it
+		explicitly so a clean, incremental build of this webapp does not depend on
+		the API model happening to be part of the same CI change set.
+	-->
+	<target name="prepare-local-api-model">
+		<ant antfile="../log-reflection-api-model/build.xml" target="make-npm-package" inheritall="false"/>
+	</target>
+
+	<target name="prepare" depends="prepare-local-api-model,npm-web-app-ant-script.prepare"/>
 </project>
