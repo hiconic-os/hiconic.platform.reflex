@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 import com.braintribe.gm.model.reason.Reason;
+import com.braintribe.gm.model.reason.essential.CommunicationError;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
 import com.braintribe.gm.model.reason.essential.NotFound;
 import com.braintribe.gm.model.reason.essential.ParseError;
@@ -62,6 +63,24 @@ public class WebApiClientServiceProcessorTest {
 		assertEquals("application/problem+json", status.getMimeType());
 		assertTrue(status.getReasons().get(0) instanceof ParseError);
 		assertStatus(status, 400);
+	}
+
+	@Test
+	public void undecodableSuccessfulResponseBecomesCommunicationErrorWithParseAndTransportEvidence() {
+		String body = "not-json";
+		HttpErrorResponse response = new HttpErrorResponse(null, body, "application/json", NotFound.class.getName(),
+				body.length(), false, "Could not decode response");
+
+		Reason result = WebApiClientServiceProcessor.mapDecodingFailure(200, response);
+
+		assertTrue(result instanceof CommunicationError);
+		assertTrue(result.getReasons().get(0) instanceof ParseError);
+		ParseError parseError = (ParseError) result.getReasons().get(0);
+		assertSame(HttpStatusWithTextBody.T, parseError.getReasons().get(0).entityType());
+		HttpStatusWithTextBody status = (HttpStatusWithTextBody) parseError.getReasons().get(0);
+		assertEquals(body, status.getBody());
+		assertEquals("application/json", status.getMimeType());
+		assertStatus(status, 200);
 	}
 
 	@Test

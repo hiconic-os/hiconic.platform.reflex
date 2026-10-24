@@ -52,6 +52,7 @@ public class BasicRequestContextBuilder implements HttpRequestContextBuilder {
 	private HttpMultipartFormData multipartFormData;
 	private GenericModelType payloadType;
 	private final Map<Integer, GenericModelType> responseTypesByCode = new HashMap<>();
+	private final Map<Integer, Boolean> responseDecodingLenienceByCode = new HashMap<>();
 	private final List<HttpResponseMapping> responseMappings = new ArrayList<>();
 	private final Map<Integer, Boolean> useOrgStatusCode = new HashMap<>();
 
@@ -177,6 +178,12 @@ public class BasicRequestContextBuilder implements HttpRequestContextBuilder {
 	public HttpRequestContextBuilder addResponseType(Integer responseCode, GenericModelType responseType) {
 		this.responseTypesByCode.put(responseCode, responseType);
 		this.responseTypes.add(responseType);
+		return this;
+	}
+
+	@Override
+	public HttpRequestContextBuilder addResponseDecodingLenience(Integer responseCode, boolean lenient) {
+		this.responseDecodingLenienceByCode.put(responseCode, lenient);
 		return this;
 	}
 
@@ -376,6 +383,12 @@ public class BasicRequestContextBuilder implements HttpRequestContextBuilder {
 				if (root == null || root.defaultRule() && wasSuccessful(responseCode)) return null;
 				HttpResponseMapping detail = explicitDetail != null ? explicitDetail : defaultDetail;
 				return HttpResponseMapping.plan(root, detail);
+			}
+
+			@Override
+			public boolean lenientResponseDecodingForCode(int responseCode) {
+				HttpResponseMapping mapping = responseMappingForCode(responseCode);
+				return mapping != null ? mapping.lenient() : responseDecodingLenienceByCode.getOrDefault(responseCode, Boolean.TRUE);
 			}
 
 			private HttpResponseMapping better(HttpResponseMapping current, HttpResponseMapping candidate, int responseCode) {

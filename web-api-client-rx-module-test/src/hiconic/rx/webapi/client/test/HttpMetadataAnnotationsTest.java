@@ -18,7 +18,7 @@ public class HttpMetadataAnnotationsTest {
 	private static class StatusReasoningAnnotated {}
 
 	@com.braintribe.model.deployment.http.annotation.HttpBodyDetailReasoning(globalId = "body-detail", status = "4xx,5xx",
-			reasonType = InvalidArgument.class, mimeType = "application/problem+json")
+			reasonType = InvalidArgument.class, mimeType = "application/problem+json", lenient = true)
 	private static class BodyDetailReasoningAnnotated {}
 
 	@com.braintribe.model.deployment.http.annotation.HttpSuccessCodes(globalId = "success-codes", value = { 200, 201, 204 })
@@ -52,6 +52,7 @@ public class HttpMetadataAnnotationsTest {
 		assertEquals("4xx,5xx", metadata.getStatusCodeExpression());
 		assertEquals(InvalidArgument.class.getName(), metadata.getReasonTypeSignature());
 		assertEquals("application/problem+json", metadata.getMimeType());
+		assertEquals(true, metadata.getLenient());
 	}
 
 	@Test

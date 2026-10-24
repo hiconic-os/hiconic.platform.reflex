@@ -10,6 +10,7 @@ public final class HttpResponseMapping {
 	private final GenericModelType reasonType;
 	private final GenericModelType detailType;
 	private final String bodyMimeType;
+	private final boolean lenient;
 	private final boolean useOriginalStatusCode;
 	private final boolean defaultRule;
 	private final int metadataPrecedence;
@@ -23,15 +24,20 @@ public final class HttpResponseMapping {
 	}
 	public HttpResponseMapping(String statusExpression, Kind kind, GenericModelType reasonType, String bodyMimeType,
 			boolean useOriginalStatusCode, boolean defaultRule, int metadataPrecedence) {
-		this(statusExpression, kind, reasonType, null, bodyMimeType, useOriginalStatusCode, defaultRule, metadataPrecedence);
+		this(statusExpression, kind, reasonType, bodyMimeType, false, useOriginalStatusCode, defaultRule, metadataPrecedence);
+	}
+	public HttpResponseMapping(String statusExpression, Kind kind, GenericModelType reasonType, String bodyMimeType, boolean lenient,
+			boolean useOriginalStatusCode, boolean defaultRule, int metadataPrecedence) {
+		this(statusExpression, kind, reasonType, null, bodyMimeType, lenient, useOriginalStatusCode, defaultRule, metadataPrecedence);
 	}
 	private HttpResponseMapping(String statusExpression, Kind kind, GenericModelType reasonType, GenericModelType detailType, String bodyMimeType,
-			boolean useOriginalStatusCode, boolean defaultRule, int metadataPrecedence) {
+			boolean lenient, boolean useOriginalStatusCode, boolean defaultRule, int metadataPrecedence) {
 		this.statusExpression = statusExpression;
 		this.kind = kind;
 		this.reasonType = reasonType;
 		this.detailType = detailType;
 		this.bodyMimeType = bodyMimeType;
+		this.lenient = lenient;
 		this.useOriginalStatusCode = useOriginalStatusCode;
 		this.defaultRule = defaultRule;
 		this.metadataPrecedence = metadataPrecedence;
@@ -40,6 +46,7 @@ public final class HttpResponseMapping {
 		return new HttpResponseMapping(root.statusExpression, root.kind, root.reasonType,
 				root.kind == Kind.BODY || detail == null ? null : detail.reasonType,
 				root.kind == Kind.BODY ? root.bodyMimeType : detail == null ? null : detail.bodyMimeType,
+				root.kind == Kind.BODY ? root.lenient : detail != null && detail.lenient,
 				root.useOriginalStatusCode, root.defaultRule, root.metadataPrecedence);
 	}
 	public boolean matches(int statusCode) {
@@ -84,6 +91,7 @@ public final class HttpResponseMapping {
 	public GenericModelType detailType() { return detailType; }
 	public GenericModelType bodyType() { return kind == Kind.BODY || kind == Kind.BODY_DETAIL ? reasonType : detailType; }
 	public String bodyMimeType() { return bodyMimeType; }
+	public boolean lenient() { return lenient; }
 	public boolean useOriginalStatusCode() { return useOriginalStatusCode; }
 	public boolean defaultRule() { return defaultRule; }
 	public int metadataPrecedence() { return metadataPrecedence; }

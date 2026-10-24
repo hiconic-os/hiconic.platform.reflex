@@ -52,6 +52,9 @@ public interface HttpRequestContext {
 	default HttpResponseMapping responseMappingForCode(@SuppressWarnings("unused") int responseCode) {
 		return null;
 	}
+	default boolean lenientResponseDecodingForCode(@SuppressWarnings("unused") int responseCode) {
+		return true;
+	}
 
 	HttpDateFormatting dateFormatting();
 

@@ -16,6 +16,7 @@
 package hiconic.rx.webapi.client.model.meta;
 
 import com.braintribe.model.generic.annotation.Initializer;
+import com.braintribe.model.generic.annotation.meta.Description;
 import com.braintribe.model.generic.annotation.meta.Mandatory;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
@@ -31,6 +32,11 @@ public interface HttpProduces extends HasMimeType {
 
 	String getResponseTypeSignature();
 	void setResponseTypeSignature(String responseTypeSignature);
+
+	@Initializer("false")
+	@Description("Whether unknown or otherwise non-matching body elements may be tolerated while decoding this explicitly mapped response.")
+	boolean getLenient();
+	void setLenient(boolean lenient);
 	
 	boolean getUseOriginalStatusCode();
 	void 	setUseOriginalStatusCode(boolean statusCode);

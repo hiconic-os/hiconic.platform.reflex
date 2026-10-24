@@ -1,6 +1,7 @@
 package hiconic.rx.webapi.client.model.meta;
 
 import com.braintribe.model.generic.annotation.Abstract;
+import com.braintribe.model.generic.annotation.Initializer;
 import com.braintribe.model.generic.annotation.meta.Description;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
@@ -15,4 +16,9 @@ public interface HttpBodyBasedReasoning extends HttpReasoning {
 	@Description("Optional MIME type used to decode the HTTP error body.")
 	String getMimeType();
 	void setMimeType(String mimeType);
+
+	@Initializer("false")
+	@Description("Whether unknown or otherwise non-matching body elements may be tolerated while decoding this error response.")
+	boolean getLenient();
+	void setLenient(boolean lenient);
 }
