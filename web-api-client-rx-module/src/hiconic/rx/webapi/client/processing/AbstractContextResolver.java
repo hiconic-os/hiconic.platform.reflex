@@ -582,7 +582,7 @@ public abstract class AbstractContextResolver implements HttpContextResolver {
 					useOriginalStatusCode = bodyReasoning.getUseOriginalStatusCode();
 				} else if (reasoning instanceof HttpBodyDetailReasoning) {
 					HttpBodyDetailReasoning detailReasoning = (HttpBodyDetailReasoning) reasoning;
-					reasonType = resolveReasonType(detailReasoning.getReasonTypeSignature());
+					reasonType = resolveBodyDetailType(detailReasoning.getReasonTypeSignature());
 					bodyMimeType = StringTools.isBlank(detailReasoning.getMimeType()) ? null : detailReasoning.getMimeType();
 					kind = HttpResponseMapping.Kind.BODY_DETAIL;
 				} else if (reasoning instanceof HttpStatusReasoning) {
@@ -613,6 +613,13 @@ public abstract class AbstractContextResolver implements HttpContextResolver {
 			GenericModelType type = resolveResponseType(typeSignature);
 			if (!(type instanceof EntityType) || !com.braintribe.gm.model.reason.Reason.T.isAssignableFrom((EntityType<?>) type))
 				throw new IllegalArgumentException("HTTP reasoning type must be a Reason: " + type.getTypeSignature());
+			return type;
+		}
+
+		private GenericModelType resolveBodyDetailType(String typeSignature) {
+			GenericModelType type = resolveResponseType(typeSignature);
+			if (!(type instanceof EntityType))
+				throw new IllegalArgumentException("HTTP body detail type must be an entity: " + type.getTypeSignature());
 			return type;
 		}
 		

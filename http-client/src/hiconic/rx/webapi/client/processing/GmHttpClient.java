@@ -86,7 +86,6 @@ import com.braintribe.model.generic.reflection.BaseType;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.GenericModelType;
 import com.braintribe.model.generic.reflection.Property;
-import com.braintribe.gm.model.reason.essential.ParseError;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.service.api.aspect.DomainIdAspect;
 import com.braintribe.model.resource.Resource;
@@ -112,6 +111,7 @@ import hiconic.rx.webapi.client.api.HttpClient;
 import hiconic.rx.webapi.client.api.HttpClientException;
 import hiconic.rx.webapi.client.api.HttpConstants;
 import hiconic.rx.webapi.client.api.HttpDateFormatting;
+import hiconic.rx.webapi.client.api.HttpErrorResponse;
 import hiconic.rx.webapi.client.api.HttpMultipartFormData;
 import hiconic.rx.webapi.client.api.HttpMultipartPart;
 import hiconic.rx.webapi.client.api.HttpRequestContext;
@@ -122,6 +122,8 @@ import hiconic.rx.webapi.client.api.HttpResponseMapping;
 public class GmHttpClient implements HttpClient {
 
 	private static final Logger logger = Logger.getLogger(GmHttpClient.class);
+	private static final int MAX_REASON_BODY_BYTES = 16 * 1024;
+	private static final int MAX_ERROR_BODY_BYTES = 256 * 1024;
 
 	private String baseUrl;
 	protected HttpClientProvider httpClientProvider = new DefaultHttpClientProvider();
@@ -280,13 +282,17 @@ public class GmHttpClient implements HttpClient {
 
 				StreamPipe pipe = streamPipeFactory.newPipe(requestUri.toString());
 				Marshaller responseMarshaller = null;
+				String responseMimeType = null;
+				String decodingFailure = null;
+				ErrorBodyCapture errorBodyCapture = responseMapping == null ? null : new ErrorBodyCapture(MAX_ERROR_BODY_BYTES);
 
 				try (OutputStream pipeOut = pipe.acquireOutputStream();
 						InputStream in = new TeeInputStream(new ResponseEntityInputStream(httpResponse), pipeOut)) {
+					InputStream contentIn = errorBodyCapture == null ? in : new TeeInputStream(in, errorBodyCapture, false);
 
 					responseType = context.responseTypeForCode(code);
 					boolean isSuccessfulNeutralResponse = responseType == Neutral.T && context.wasSuccessful(code);
-					String responseMimeType = responseMapping != null ? responseMapping.bodyMimeType() : null;
+					responseMimeType = responseMapping != null ? responseMapping.bodyMimeType() : null;
 					if (responseMapping != null && StringTools.isBlank(responseMimeType)) {
 						Header contentType = httpResponse.getFirstHeader(HttpConstants.HTTP_HEADER_CONTENTTYPE);
 						responseMimeType = contentType != null ? contentType.getValue() : null;
@@ -298,7 +304,7 @@ public class GmHttpClient implements HttpClient {
 						// A neutral result explicitly declares that no response representation is expected. Some APIs acknowledge
 						// such commands with 200/201 and an empty body rather than 204. Do not feed that empty stream to a
 						// marshaller: an empty stream is correctly not valid JSON (or XML).
-						IOTools.consume(in);
+						IOTools.consume(contentIn);
 						responsePayload = Neutral.NEUTRAL;
 					} else if (responseType != null && responseMarshaller != null) {
 
@@ -318,7 +324,7 @@ public class GmHttpClient implements HttpClient {
 
 							StreamPipe responsePipe = streamPipeFactory.newPipe("download-" + requestUri.toString());
 							try (OutputStream responseBodyPipeOutputStream = responsePipe.acquireOutputStream()) {
-								IOTools.transferBytes(in, responseBodyPipeOutputStream);
+								IOTools.transferBytes(contentIn, responseBodyPipeOutputStream);
 							}
 
 							Resource resource = Resource.createTransient(responsePipe::openInputStream);
@@ -354,7 +360,7 @@ public class GmHttpClient implements HttpClient {
 									GmDeserializationOptions //
 											.deriveDefaults() //
 											.setInferredRootType(responseType) //
-											.setDecodingLenience(new DecodingLenience(true)) //
+											.setDecodingLenience(new DecodingLenience(responseMapping == null)) //
 											.set(PropertyTypeInferenceOverride.class, context::propertyTypeInference) //
 											.set(PropertyDeserializationTranslation.class, context::responseBodyParameterTranslation) //
 											.set(DateFormatOption.class, dateFormatting != null ? dateFormatting.getDateFormat() : null) //
@@ -363,28 +369,36 @@ public class GmHttpClient implements HttpClient {
 											.set(CmdResolverOption.class, findCmdResolver()).build();
 
 							try {
-								responsePayload = responseMarshaller.unmarshall(in, options);
+								responsePayload = responseMarshaller.unmarshall(contentIn, options);
 							} catch (Exception e) {
 								if (responseMapping != null) {
-									HttpException failure = new HttpException(code, "Rest request responded with failure code: " + code);
-									failure.withPayload(ParseError.create("Could not decode the HTTP error response as "
-											+ responseType.getTypeSignature() + ": " + e.getMessage()));
-									throw failure;
+									decodingFailure = "Could not decode the HTTP error response as " + responseType.getTypeSignature()
+											+ ": " + e.getMessage();
+									IOTools.consume(contentIn);
+									final String logBody = errorBodyCapture.text();
+									logger.error(decodingFailure + "; response body"
+											+ (errorBodyCapture.truncated() ? " (truncated)" : "") + ": " + logBody, e);
+									responsePayload = null;
+								} else {
+									throw e;
 								}
-								throw e;
 							}
-							if (responsePayload == null && responseType.isEntity()) {
+							if (decodingFailure == null && responsePayload == null && responseType.isEntity()) {
 								logger.debug("Got not payload from the client. Creating an empty " + responseType);
 								responsePayload = ((EntityType<?>) responseType).create();
 							}
 
 						}
 					} else {
-						responsePayload = getResponseAsString(in);
+						responsePayload = getResponseAsString(contentIn);
 						responseBuilder.isGeneric();
 					}
 
 					if (responseMapping != null) {
+						IOTools.consume(contentIn);
+						String expectedType = responseType == null ? null : responseType.getTypeSignature();
+						responsePayload = new HttpErrorResponse(responsePayload, errorBodyCapture.text(MAX_REASON_BODY_BYTES), responseMimeType,
+								expectedType, errorBodyCapture.size(), errorBodyCapture.size() > MAX_REASON_BODY_BYTES, decodingFailure);
 						HttpException ex = new HttpException(code, "Rest request responded with failure code: " + code);
 						ex.withPayload(responsePayload);
 						throw ex;
@@ -487,6 +501,38 @@ public class GmHttpClient implements HttpClient {
 		ByteArrayOutputStream os = new ByteArrayOutputStream();
 		IOTools.pump(in, os);
 		return os.toString();
+	}
+
+	private static final class ErrorBodyCapture extends OutputStream {
+		private final ByteArrayOutputStream bytes;
+		private final int limit;
+		private long size;
+
+		private ErrorBodyCapture(int limit) {
+			this.limit = limit;
+			this.bytes = new ByteArrayOutputStream(Math.min(limit, 4096));
+		}
+
+		@Override
+		public void write(int value) {
+			if (size < limit) bytes.write(value);
+			size++;
+		}
+
+		@Override
+		public void write(byte[] buffer, int offset, int length) {
+			int retained = (int) Math.min(length, Math.max(0, limit - size));
+			if (retained > 0) bytes.write(buffer, offset, retained);
+			size += length;
+		}
+
+		private String text() { return text(limit); }
+		private String text(int requestedLimit) {
+			byte[] content = bytes.toByteArray();
+			return new String(content, 0, Math.min(content.length, requestedLimit), StandardCharsets.UTF_8);
+		}
+		private long size() { return size; }
+		private boolean truncated() { return size > limit; }
 	}
 
 	private RequestBuilder requestBuilder(HttpRequestContext context) {

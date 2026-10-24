@@ -10,20 +10,26 @@ import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
 import com.braintribe.gm.model.reason.essential.ParseError;
 import com.braintribe.logging.Logger;
+import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.processing.service.api.ServiceProcessor;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
 import com.braintribe.model.processing.service.api.aspect.HttpStatusCodeNotification;
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.GenericModelType;
+import com.braintribe.model.generic.reflection.Property;
 import com.braintribe.utils.lcd.StopWatch;
 
 import hiconic.rx.webapi.client.api.HttpClient;
+import hiconic.rx.webapi.client.api.HttpErrorResponse;
 import hiconic.rx.webapi.client.api.HttpRequestContext;
 import hiconic.rx.webapi.client.api.HttpResponse;
 import hiconic.rx.webapi.client.api.HttpResponseMapping;
 import hiconic.rx.webapi.model.reason.HttpError;
 import hiconic.rx.webapi.model.reason.HttpStatusReason;
+import hiconic.rx.webapi.model.reason.HttpStatusWithBody;
+import hiconic.rx.webapi.model.reason.HttpStatusWithEntityBody;
+import hiconic.rx.webapi.model.reason.HttpStatusWithTextBody;
 
 public class WebApiClientServiceProcessor implements ServiceProcessor<ServiceRequest, Object> {
 
@@ -64,7 +70,7 @@ public class WebApiClientServiceProcessor implements ServiceProcessor<ServiceReq
 			if (aspect != null && httpContext != null && httpContext.throwExceptionOnErrorCode(e.getStatusCode())) {
 				logger.debug(() -> "Notifying HttpStatusCodeNotification aspect about HTTP status code: " + e.getStatusCode());
 				aspect.accept(e.getStatusCode());
-				return e.getPayload();
+				return decodedPayload(e.getPayload());
 			}
 			Reason reason = mapFailure(httpContext, e.getStatusCode(), e.getPayload());
 			UnsatisfiedMaybeTunneling exc = new UnsatisfiedMaybeTunneling(Maybe.empty(reason));
@@ -75,38 +81,79 @@ public class WebApiClientServiceProcessor implements ServiceProcessor<ServiceReq
 		}
 	}
 
-	private Reason mapFailure(HttpRequestContext context, int statusCode, Object payload) {
+	static Reason mapFailure(HttpRequestContext context, int statusCode, Object payload) {
 		HttpResponseMapping mapping = context != null ? context.responseMappingForCode(statusCode) : null;
-		HttpStatusReason statusReason = HttpStatusReason.T.create();
-		statusReason.setStatusCode(statusCode);
-		statusReason.setText("HTTP status " + statusCode);
+		HttpErrorResponse errorResponse = payload instanceof HttpErrorResponse ? (HttpErrorResponse) payload : null;
+		Object decodedBody = errorResponse == null ? payload : errorResponse.decodedBody();
 
-		if (mapping != null && mapping.kind() == HttpResponseMapping.Kind.BODY && payload instanceof Reason) {
-			Reason actualReason = (Reason) payload;
-			actualReason.causedBy(statusReason);
+		if (mapping != null && mapping.kind() == HttpResponseMapping.Kind.BODY && decodedBody instanceof Reason) {
+			Reason actualReason = (Reason) decodedBody;
+			actualReason.causedBy(statusReason(statusCode));
 			return actualReason;
 		}
 
-		Reason detail = null;
-		if (mapping != null && mapping.detailType() != null) {
-			detail = payload instanceof Reason ? (Reason) payload
-					: ParseError.create("HTTP error details could not be decoded as " + mapping.detailType().getTypeSignature());
-		}
-
+		HttpStatusReason statusReason = statusReason(statusCode, errorResponse, decodedBody);
 		Reason main = createReason(mapping != null ? mapping.reasonType() : null);
-		String text = detail != null ? detail.getText() : payload != null ? payload.toString() : "Remote service responded with HTTP " + statusCode;
+		String text = detailText(decodedBody);
+		if (text == null && errorResponse != null) text = errorResponse.textBody();
+		if (text == null) text = "Remote service responded with HTTP " + statusCode;
 		main.setText(text);
-		if (detail != null) {
-			detail.causedBy(statusReason);
-			main.causedBy(detail);
-		} else {
-			main.causedBy(statusReason);
-		}
+		main.causedBy(statusReason);
 		return main;
 	}
 
+	private static HttpStatusReason statusReason(int statusCode, HttpErrorResponse response, Object decodedBody) {
+		if (response != null && decodedBody instanceof GenericEntity && response.decodingFailure() == null) {
+			HttpStatusWithEntityBody reason = HttpStatusWithEntityBody.T.create();
+			initializeStatus(reason, statusCode, response);
+			reason.setBody((GenericEntity) decodedBody);
+			return reason;
+		}
+		if (response != null && (response.textBody() != null && !response.textBody().isEmpty() || response.decodingFailure() != null)) {
+			HttpStatusWithTextBody reason = HttpStatusWithTextBody.T.create();
+			initializeStatus(reason, statusCode, response);
+			reason.setBody(response.textBody());
+			reason.setExpectedBodyTypeSignature(response.expectedBodyTypeSignature());
+			if (response.decodingFailure() != null) reason.causedBy(ParseError.create(response.decodingFailure()));
+			return reason;
+		}
+		return statusReason(statusCode);
+	}
+
+	private static HttpStatusReason statusReason(int statusCode) {
+		HttpStatusReason reason = HttpStatusReason.T.create();
+		reason.setStatusCode(statusCode);
+		reason.setText("HTTP status " + statusCode);
+		return reason;
+	}
+
+	private static void initializeStatus(HttpStatusWithBody reason, int statusCode, HttpErrorResponse response) {
+		reason.setStatusCode(statusCode);
+		reason.setText("HTTP status " + statusCode);
+		reason.setMimeType(response.mimeType());
+		reason.setBodySize(response.bodySize());
+		reason.setBodyTruncated(response.bodyTruncated());
+	}
+
+	private static Object decodedPayload(Object payload) {
+		if (!(payload instanceof HttpErrorResponse)) return payload;
+		HttpErrorResponse response = (HttpErrorResponse) payload;
+		return response.decodedBody() != null ? response.decodedBody() : response.textBody();
+	}
+
+	private static String detailText(Object detail) {
+		if (detail instanceof Reason) return ((Reason) detail).getText();
+		if (!(detail instanceof GenericEntity)) return detail instanceof String ? (String) detail : null;
+		GenericEntity entity = (GenericEntity) detail;
+		Property property = entity.entityType().findProperty("text");
+		if (property == null) property = entity.entityType().findProperty("detail");
+		if (property == null) property = entity.entityType().findProperty("title");
+		Object value = property == null ? null : property.get(entity);
+		return value instanceof String ? (String) value : null;
+	}
+
 	@SuppressWarnings("unchecked")
-	private Reason createReason(GenericModelType configuredType) {
+	private static Reason createReason(GenericModelType configuredType) {
 		if (configuredType instanceof EntityType && Reason.T.isAssignableFrom((EntityType<?>) configuredType))
 			return ((EntityType<? extends Reason>) configuredType).create();
 		return HttpError.T.create();
