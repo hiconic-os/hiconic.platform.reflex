@@ -123,7 +123,7 @@ public class GmHttpClient implements HttpClient {
 
 	private static final Logger logger = Logger.getLogger(GmHttpClient.class);
 	private static final int MAX_REASON_BODY_BYTES = 16 * 1024;
-	private static final int MAX_ERROR_BODY_BYTES = 256 * 1024;
+	private static final int MAX_ERROR_BODY_BYTES = 32 * 1024;
 
 	private String baseUrl;
 	protected HttpClientProvider httpClientProvider = new DefaultHttpClientProvider();
