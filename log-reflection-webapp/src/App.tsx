@@ -1,6 +1,7 @@
 import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 import {
   LogReflectionApi,
+  type LogLevelStateView,
   type LogRecord,
   type LogSegmentDescriptor,
   type LogStreamDescriptor,
@@ -9,7 +10,8 @@ import {
   type TargetSelection
 } from "./api";
 
-type Tab = {
+type StreamTab = {
+  kind: "stream";
   id: string;
   stream: LogStreamDescriptor;
   target: TargetSelection;
@@ -19,6 +21,14 @@ type Tab = {
   moreBefore: boolean;
   tailing: boolean;
 };
+
+type LogLevelsTab = {
+  kind: "log-levels";
+  id: string;
+  applicationId: string;
+};
+
+type Tab = StreamTab | LogLevelsTab;
 
 type TopologyInstance = {
   applicationId: string;
@@ -61,6 +71,13 @@ const columns: readonly ColumnDefinition[] = [
 const levels = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"];
 const defaultFilter: RecordFilter = { levels: [] };
 
+function LogLevelValue(props: { level?: string; effective?: boolean; emptyLabel?: string }) {
+  const normalizedLevel = () => props.level?.toLowerCase() || "unset";
+  return <span class={`log-level-value ${normalizedLevel()}${props.effective ? " effective" : ""}`}>
+    {props.level || props.emptyLabel || "—"}
+  </span>;
+}
+
 export function App() {
   let runtimeConfig: RuntimeConfig | undefined;
   let accessRefreshInFlight: Promise<void> | undefined;
@@ -99,6 +116,15 @@ export function App() {
   let filterReloadTimer: ReturnType<typeof setTimeout> | undefined;
 
   const activeTab = createMemo(() => tabs().find(tab => tab.id === activeTabId()));
+  const activeStreamTab = createMemo(() => {
+    const tab = activeTab();
+    return tab?.kind === "stream" ? tab : undefined;
+  });
+  const activeLogLevelsTab = createMemo(() => {
+    const tab = activeTab();
+    return tab?.kind === "log-levels" ? tab : undefined;
+  });
+  const logLevelTabs = createMemo(() => tabs().filter((tab): tab is LogLevelsTab => tab.kind === "log-levels"));
   const applications = createMemo(() => [...new Set(topology().map(instance => instance.applicationId))]);
   const nodes = createMemo(() => [...new Set(topology()
     .filter(instance => applicationId() === "*" || instance.applicationId === applicationId())
@@ -228,7 +254,7 @@ export function App() {
     setCanRead(false);
     setCanManageLevels(false);
     tailGeneration++;
-    setTabs(current => current.map(tab => tab.tailing ? { ...tab, tailing: false } : tab));
+    setTabs(current => current.map(tab => tab.kind === "stream" && tab.tailing ? { ...tab, tailing: false } : tab));
     if (isConnectivityFailure(message)) setAccessState("offline");
     else if (isAuthorizationFailure(message)) setAccessState("denied");
     else if (isAuthenticationFailure(message)) setAccessState("unauthenticated");
@@ -265,30 +291,15 @@ export function App() {
   async function selectApplication(value: string) {
     setApplicationId(value);
     setNodeId("");
-    setTabs([]);
-    setActiveTabId(undefined);
     await refreshStreams(api(), { applicationId: value || undefined });
   }
 
   async function selectNode(value: string) {
-    tailGeneration++;
-    filterRevision++;
     setNodeId(value);
-    setTabs(current => current.map(tab => ({
-      ...tab,
-      target: {
-        applicationId: tab.target.applicationId,
-        nodeId: value || undefined
-      },
-      records: [],
-      cursor: undefined,
-      previousCursor: undefined,
-      moreBefore: false,
-      tailing: false
-    })));
-    const tab = activeTab();
-    if (tab)
-      await loadRecords(tab, "replace");
+    await refreshStreams(api(), {
+      applicationId: applicationId().trim() || undefined,
+      nodeId: value || undefined
+    });
   }
 
   function toggleColumn(column: ColumnKey) {
@@ -299,13 +310,13 @@ export function App() {
 
   async function openStream(stream: LogStreamDescriptor) {
     const selectedTarget = target();
-    const id = `${stream.streamId}:${selectedTarget.applicationId ?? "local"}`;
+    const id = `stream:${selectedTarget.applicationId ?? "local"}:${selectedTarget.nodeId ?? "all"}:${stream.streamId}`;
     const existing = tabs().find(tab => tab.id === id);
     if (existing) {
       activateTab(id);
       return;
     }
-    const tab: Tab = { id, stream, target: selectedTarget, records: [], moreBefore: false, tailing: false };
+    const tab: StreamTab = { kind: "stream", id, stream, target: selectedTarget, records: [], moreBefore: false, tailing: false };
     setTabs(current => [...current, tab]);
     activateTab(id);
     await loadRecords(tab, "replace");
@@ -322,7 +333,16 @@ export function App() {
     });
   }
 
-  async function loadRecords(tab = activeTab(), mode: "replace" | "newer" | "older" = "replace", waitMillis = 0) {
+  function openLogLevels() {
+    const selectedApplication = applicationId();
+    if (!selectedApplication || selectedApplication === "*") return;
+    const id = `log-levels:${selectedApplication}`;
+    if (!tabs().some(tab => tab.id === id))
+      setTabs(current => [...current, { kind: "log-levels", id, applicationId: selectedApplication }]);
+    setActiveTabId(id);
+  }
+
+  async function loadRecords(tab: StreamTab | undefined = activeStreamTab(), mode: "replace" | "newer" | "older" = "replace", waitMillis = 0) {
     const client = api();
     if (!client || !tab) return;
     const streamId = tab.stream.streamId;
@@ -349,7 +369,7 @@ export function App() {
       if (requestedFilterRevision !== filterRevision)
         return;
       const incoming = Array.from(page.records ?? []) as LogRecord[];
-      setTabs(current => current.map(candidate => candidate.id === tab.id ? {
+      setTabs(current => current.map(candidate => candidate.kind === "stream" && candidate.id === tab.id ? {
         ...candidate,
         records: mode === "newer"
           ? retainRecords([...candidate.records, ...incoming], candidate.tailing, tailBufferSize())
@@ -378,10 +398,10 @@ export function App() {
   }
 
   async function toggleTail() {
-    const tab = activeTab();
+    const tab = activeStreamTab();
     if (!tab) return;
     const tailing = !tab.tailing;
-    setTabs(current => current.map(candidate => candidate.id === tab.id ? { ...candidate, tailing } : candidate));
+    setTabs(current => current.map(candidate => candidate.kind === "stream" && candidate.id === tab.id ? { ...candidate, tailing } : candidate));
     const generation = ++tailGeneration;
     if (!tailing) return;
     setFollowTail(true);
@@ -395,7 +415,7 @@ export function App() {
         await new Promise(resolve => setTimeout(resolve, 75));
         continue;
       }
-      const current = tabs().find(candidate => candidate.id === tab.id);
+      const current = tabs().find((candidate): candidate is StreamTab => candidate.kind === "stream" && candidate.id === tab.id);
       if (!current?.tailing) break;
       await loadRecords(current, "newer", 15_000);
     }
@@ -433,7 +453,7 @@ export function App() {
       clearTimeout(filterReloadTimer);
     filterReloadTimer = setTimeout(async () => {
       filterReloadTimer = undefined;
-      const tab = activeTab();
+      const tab = activeStreamTab();
       if (tab)
         await loadRecords(tab, "replace");
       filterReloadPending = false;
@@ -483,14 +503,14 @@ export function App() {
     if (!Number.isFinite(parsed)) return;
     const bounded = Math.max(100, Math.min(20_000, parsed));
     setTailBufferSize(bounded);
-    setTabs(current => current.map(tab => tab.tailing ? {
+    setTabs(current => current.map(tab => tab.kind === "stream" && tab.tailing ? {
       ...tab,
       records: retainRecords(tab.records, true, bounded)
     } : tab));
   }
 
   function download(format: "raw" | "json") {
-    const tab = activeTab();
+    const tab = activeStreamTab();
     if (!tab) return;
     const content = format === "json"
       ? JSON.stringify(tab.records.map(recordToJson), null, 2)
@@ -578,8 +598,21 @@ export function App() {
                   <For each={applications()}>{application => <option value={application}>{application}</option>}</For>
                 </select>
               </label>
+              <label>Node
+                <select value={nodeId()} onChange={event => selectNode(event.currentTarget.value)}>
+                  <option value="">All nodes</option>
+                  <For each={nodes()}>{node => <option value={node}>{node}</option>}</For>
+                </select>
+              </label>
             </div>
-            <div class="panel-heading"><div><strong>Streams</strong><small>{streams().length} available</small></div></div>
+            <div class="panel-heading">
+              <div><strong>Streams</strong><small>{streams().length} available</small></div>
+              <Show when={applicationId() && applicationId() !== "*"}>
+                <button class="levels-action" title={`Configure log levels for ${applicationId()}`} onClick={openLogLevels}>
+                  <span class="tab-kind-icon log-levels">L</span> Levels
+                </button>
+              </Show>
+            </div>
             <div class="stream-list">
               <For each={streams()} fallback={<div class="empty">{loading() ? "Discovering log topology…" : "No streams exposed."}</div>}>
                 {stream => (
@@ -601,13 +634,27 @@ export function App() {
             <div class="tabs">
               <For each={tabs()} fallback={<div class="tab-placeholder">Open a stream to begin</div>}>
                 {tab => <button classList={{ tab: true, active: tab.id === activeTabId() }} onClick={() => activateTab(tab.id)}>
-                  <span>{tab.stream.displayName || tab.stream.streamId}</span><small>{tab.target.nodeId || "all nodes"}</small>
+                  <span class={`tab-kind-icon ${tab.kind}`}>{tab.kind === "stream" ? "≋" : "L"}</span>
+                  <span>{tab.kind === "stream" ? tab.stream.displayName || tab.stream.streamId : "Log levels"}</span>
+                  <small>{tab.kind === "stream"
+                    ? `${tab.target.applicationId || "local"} · ${tab.target.nodeId || "all nodes"}`
+                    : tab.applicationId}</small>
                   <i onClick={event => { event.stopPropagation(); closeTab(tab.id); }}>×</i>
                 </button>}
               </For>
             </div>
 
-            <Show when={activeTab()} fallback={<Welcome />}>
+            <For each={logLevelTabs()}>{tab =>
+              <div classList={{ "tab-workspace": true, hidden: tab.id !== activeTabId() }}>
+                <Show when={api()}>{client =>
+                  <LogLevelEditor client={client()} applicationId={tab.applicationId} />
+                }</Show>
+              </div>
+            }</For>
+
+            <Show when={activeStreamTab()} fallback={
+              <Show when={!activeLogLevelsTab()}><Welcome /></Show>
+            }>
               {tab => <>
                 <div class="filters">
                   <div class="level-filter"><For each={levels}>{level =>
@@ -628,12 +675,6 @@ export function App() {
                     <option class="warn" value="from-warn">WARN+</option>
                     <option class="error" value="from-error">ERROR only</option>
                   </select>
-                  <label class="node-filter"><span>Node</span>
-                    <select value={nodeId()} onChange={event => selectNode(event.currentTarget.value)}>
-                      <option value="">All nodes</option>
-                      <For each={nodes()}>{node => <option value={node}>{node}</option>}</For>
-                    </select>
-                  </label>
                   <label class="search"><span>⌕</span><input placeholder="Full text" value={filter().fulltext ?? ""} onInput={e => changeFilter(f => ({ ...f, fulltext: e.currentTarget.value }))} /></label>
                   <label><span>Logger</span><input placeholder="contains logger" value={filter().logger ?? ""} onInput={e => changeFilter(f => ({ ...f, logger: e.currentTarget.value }))} /></label>
                   <label><span>From</span><input type="datetime-local" value={filter().from ?? ""} onChange={e => changeFilter(f => ({ ...f, from: e.currentTarget.value }), 0)} /></label>
@@ -798,6 +839,208 @@ export function App() {
         loginUrl={runtimeConfig ? loginUrl(runtimeConfig) : undefined} retry={retryAccess}/></Show>
     </div>
   );
+}
+
+function LogLevelEditor(props: { client: LogReflectionApi; applicationId: string }) {
+  const [state, setState] = createSignal<LogLevelStateView>();
+  const [search, setSearch] = createSignal("");
+  const [customLogger, setCustomLogger] = createSignal("");
+  const [customLevel, setCustomLevel] = createSignal("DEBUG");
+  const [loggerSuggestionsOpen, setLoggerSuggestionsOpen] = createSignal(false);
+  const [busy, setBusy] = createSignal(false);
+  const [failure, setFailure] = createSignal<string>();
+  const loggerSuggestions = createMemo(() => {
+    const current = state();
+    if (!current) return [];
+    return [...new Set([
+      ...current.knownLoggerNames,
+      ...current.runtimeLevels.keys(),
+      ...current.packagedLevels.keys()
+    ])].sort();
+  });
+  const matchingLoggerSuggestions = createMemo(() => {
+    const value = customLogger().trim();
+    const needle = value.toLocaleLowerCase();
+
+    return loggerSuggestions()
+      .filter(name => name !== value && (!needle || name.toLocaleLowerCase().includes(needle)))
+      .sort((left, right) => {
+        const leftStartsWith = left.toLocaleLowerCase().startsWith(needle);
+        const rightStartsWith = right.toLocaleLowerCase().startsWith(needle);
+        if (leftStartsWith !== rightStartsWith) return leftStartsWith ? -1 : 1;
+        return left.localeCompare(right);
+      })
+      .slice(0, 80);
+  });
+  const loggerNames = createMemo(() => {
+    const current = state();
+    if (!current) return [];
+    const names = new Set([
+      ...current.runtimeLevels.keys(),
+      ...current.packagedLevels.keys()
+    ]);
+    const needle = search().trim().toLowerCase();
+    return [...names].filter(name => !needle || name.toLowerCase().includes(needle)).sort();
+  });
+
+  onMount(refresh);
+
+  async function refresh() {
+    setBusy(true);
+    setFailure(undefined);
+    try {
+      setState(await props.client.logLevelState(props.applicationId));
+    } catch (caught) {
+      console.error("Loading log-level state failed", caught);
+      setFailure(messageOf(caught));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function updateLogger(name: string, level: string) {
+    setBusy(true);
+    setFailure(undefined);
+    try {
+      if (level)
+        await props.client.setRuntimeLogLevel(props.applicationId, name, level);
+      else
+        await props.client.resetRuntimeLogLevel(props.applicationId, name);
+      await refresh();
+    } catch (caught) {
+      console.error("Updating runtime log level failed", caught);
+      setFailure(messageOf(caught));
+      setBusy(false);
+    }
+  }
+
+  async function addCustomLogger() {
+    const name = customLogger().trim();
+    if (!name) return;
+    await updateLogger(name, customLevel());
+    setCustomLogger("");
+    setLoggerSuggestionsOpen(false);
+  }
+
+  async function clearRuntimeLevels() {
+    if (!window.confirm(`Remove every runtime log-level override from ${props.applicationId}?`)) return;
+    setBusy(true);
+    setFailure(undefined);
+    try {
+      await props.client.clearRuntimeLogLevels(props.applicationId);
+      await refresh();
+    } catch (caught) {
+      console.error("Clearing runtime log levels failed", caught);
+      setFailure(messageOf(caught));
+      setBusy(false);
+    }
+  }
+
+  return <section class="log-level-workspace">
+    <header>
+      <div>
+        <small>Application configuration</small>
+        <h2>Log levels</h2>
+        <p>Explicit log-level mappings for <strong>{props.applicationId}</strong>. Resetting a logger restores its packaged or inherited level.</p>
+      </div>
+      <div class="log-level-actions">
+        <button onClick={refresh} disabled={busy()}>Refresh</button>
+        <button class="danger-subtle" onClick={clearRuntimeLevels} disabled={busy() || !state()?.runtimeLevels.size}>Clear overrides</button>
+      </div>
+    </header>
+    <div class="log-level-controls">
+      <label class="search"><span>⌕</span><input placeholder="Filter logger names" value={search()} onInput={event => setSearch(event.currentTarget.value)} /></label>
+      <div class="custom-level">
+        <div class="logger-completion">
+          <input
+            placeholder="com.example.Logger"
+            spellcheck={false}
+            autocomplete="off"
+            value={customLogger()}
+            onFocus={() => setLoggerSuggestionsOpen(true)}
+            onInput={event => {
+              setCustomLogger(event.currentTarget.value);
+              setLoggerSuggestionsOpen(true);
+            }}
+            onKeyDown={event => {
+              if (event.key === "Escape") setLoggerSuggestionsOpen(false);
+              if (event.key === "Enter" && matchingLoggerSuggestions().length === 1) {
+                event.preventDefault();
+                setCustomLogger(matchingLoggerSuggestions()[0]);
+                setLoggerSuggestionsOpen(false);
+              }
+            }}
+            onBlur={() => window.setTimeout(() => setLoggerSuggestionsOpen(false), 120)}
+          />
+          <Show when={loggerSuggestionsOpen() && matchingLoggerSuggestions().length > 0}>
+            <div class="logger-suggestions" role="listbox" aria-label="Known logger names">
+              <For each={matchingLoggerSuggestions()}>{name =>
+                <button
+                  type="button"
+                  role="option"
+                  onPointerDown={event => event.preventDefault()}
+                  onClick={() => {
+                    setCustomLogger(name);
+                    setLoggerSuggestionsOpen(false);
+                  }}
+                >{name}</button>
+              }</For>
+            </div>
+          </Show>
+        </div>
+        <select value={customLevel()} onChange={event => setCustomLevel(event.currentTarget.value)}>
+          <For each={["ALL", ...levels, "OFF"]}>{level => <option value={level}>{level}</option>}</For>
+        </select>
+        <button class="primary" disabled={busy() || !customLogger().trim()} onClick={addCustomLogger}>Add override</button>
+      </div>
+    </div>
+    <Show when={failure()}>{message => <div class="log-level-error">{message()}</div>}</Show>
+    <div class="log-level-table">
+      <div class="log-level-header"><span>Logger</span><span>Packaged</span><span>Runtime</span><span>Effective</span></div>
+      <Show when={state()} fallback={<div class="empty records">{busy() ? "Loading log levels…" : "No log-level state available."}</div>}>
+        {current => <For each={loggerNames()} fallback={<div class="empty records">
+          {search().trim() ? "No explicitly configured logger matches this filter." : "No explicit log-level mappings configured."}
+        </div>}>
+          {name => <div class="log-level-row">
+            <code title={name}>{name || "<root>"}</code>
+            <LogLevelValue level={current().packagedLevels.get(name)} emptyLabel="inherited" />
+            <details class="runtime-level-menu" data-popup>
+              <summary aria-label={`Change runtime log level for ${name || "root logger"}`}>
+                <LogLevelValue level={current().runtimeLevels.get(name)} emptyLabel="no override" />
+                <svg class="runtime-menu-indicator" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 8.75A3.25 3.25 0 1 0 12 15.25 3.25 3.25 0 0 0 12 8.75Zm8.1 4.65-1.77 1.02c-.12.36-.27.71-.44 1.05l.53 1.98-1.97 1.97-1.98-.53c-.34.17-.69.32-1.05.44L12.4 21.1H9.6l-1.02-1.77a8.2 8.2 0 0 1-1.05-.44l-1.98.53-1.97-1.97.53-1.98a8.2 8.2 0 0 1-.44-1.05L1.9 13.4v-2.8l1.77-1.02c.12-.36.27-.71.44-1.05l-.53-1.98 1.97-1.97 1.98.53c.34-.17.69-.32 1.05-.44L9.6 1.9h2.8l1.02 1.77c.36.12.71.27 1.05.44l1.98-.53 1.97 1.97-.53 1.98c.17.34.32.69.44 1.05l1.77 1.02v2.8Z" />
+                </svg>
+              </summary>
+              <div class="runtime-level-options">
+                <For each={["ALL", ...levels, "OFF"]}>{level =>
+                  <button
+                    type="button"
+                    class={current().runtimeLevels.get(name) === level ? "selected" : ""}
+                    disabled={busy()}
+                    onClick={event => {
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                      updateLogger(name, level);
+                    }}
+                  ><LogLevelValue level={level} /></button>
+                }</For>
+                <button
+                  type="button"
+                  class="reset-runtime-level"
+                  disabled={busy() || !current().runtimeLevels.has(name)}
+                  onClick={event => {
+                    event.currentTarget.closest("details")?.removeAttribute("open");
+                    updateLogger(name, "");
+                  }}
+                >Reset to packaged</button>
+              </div>
+            </details>
+            <LogLevelValue level={current().effectiveLevels.get(name)} effective emptyLabel="inherited" />
+          </div>}
+        </For>}
+      </Show>
+    </div>
+    <Show when={busy()}><div class="log-level-progress"></div></Show>
+  </section>;
 }
 
 function LogRow(props: {

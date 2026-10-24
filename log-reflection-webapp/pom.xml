@@ -14,5 +14,10 @@
 			<artifactId>log-reflection-api-model</artifactId>
 			<version>${V.hiconic.platform.reflex}</version>
 		</dependency>
+		<dependency>
+			<groupId>com.braintribe.gm</groupId>
+			<artifactId>log-level-api-model</artifactId>
+			<version>${V.com.braintribe.gm}</version>
+		</dependency>
 	</dependencies>
 </project>

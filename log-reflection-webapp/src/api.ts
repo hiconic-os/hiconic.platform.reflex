@@ -17,6 +17,7 @@ import {
   type LogStreams
 } from "@dev.hiconic/platform.reflex_log-reflection-api-model";
 import { LogLevel } from "@dev.hiconic/gm_logging-model";
+import { GetLogLevelState, UpdateRuntimeLogLevels, type LogLevelState } from "@dev.hiconic/gm_log-level-api-model";
 import type { Resource } from "@dev.hiconic/gm_resource-model";
 import { TransientSource } from "@dev.hiconic/gm_transient-resource-model";
 import { T, hc, remote } from "@dev.hiconic/tf.js_hc-js-api";
@@ -41,6 +42,13 @@ export interface RecordFilter {
   fulltext?: string;
 }
 
+export interface LogLevelStateView {
+  effectiveLevels: ReadonlyMap<string, string>;
+  runtimeLevels: ReadonlyMap<string, string>;
+  packagedLevels: ReadonlyMap<string, string>;
+  knownLoggerNames: readonly string[];
+}
+
 export class LogReflectionApi {
   private readonly loggingEvaluator;
 
@@ -62,6 +70,43 @@ export class LogReflectionApi {
 
   async topology(): Promise<LogTopology> {
     return this.evaluate(GetLogTopology.create(), this.loggingEvaluator);
+  }
+
+  async logLevelState(applicationId: string): Promise<LogLevelStateView> {
+    const request = GetLogLevelState.create();
+    request.applicationId = applicationId;
+    const state = await this.evaluate<LogLevelState>(request, this.loggingEvaluator);
+    return {
+      effectiveLevels: new Map(state.effectiveLevels?.entries() ?? []),
+      runtimeLevels: new Map(state.runtimeLevels?.entries() ?? []),
+      packagedLevels: new Map(state.packagedLevels?.entries() ?? []),
+      knownLoggerNames: (Array.from(state.knownLoggerNames ?? []) as string[]).sort()
+    };
+  }
+
+  async setRuntimeLogLevel(applicationId: string, loggerName: string, level: string): Promise<void> {
+    const request = UpdateRuntimeLogLevels.create();
+    request.applicationId = applicationId;
+    request.levels = stringMap([[loggerName, level]]);
+    request.namesToRemove = stringSet([]);
+    await this.evaluate(request, this.loggingEvaluator);
+  }
+
+  async resetRuntimeLogLevel(applicationId: string, loggerName: string): Promise<void> {
+    const request = UpdateRuntimeLogLevels.create();
+    request.applicationId = applicationId;
+    request.levels = stringMap([]);
+    request.namesToRemove = stringSet([loggerName]);
+    await this.evaluate(request, this.loggingEvaluator);
+  }
+
+  async clearRuntimeLogLevels(applicationId: string): Promise<void> {
+    const request = UpdateRuntimeLogLevels.create();
+    request.applicationId = applicationId;
+    request.clearAll = true;
+    request.levels = stringMap([]);
+    request.namesToRemove = stringSet([]);
+    await this.evaluate(request, this.loggingEvaluator);
   }
 
   async records(
@@ -133,6 +178,18 @@ function toTarget(selection: TargetSelection) {
   target.applicationId = selection.applicationId ?? null;
   target.nodeId = selection.nodeId ?? null;
   return target;
+}
+
+function stringMap(entries: readonly (readonly [string, string])[]) {
+  const result = new T.Map(hc.reflection.STRING, hc.reflection.STRING);
+  entries.forEach(([key, value]) => result.set(key, value));
+  return result;
+}
+
+function stringSet(values: readonly string[]) {
+  const result = new T.Set(hc.reflection.STRING);
+  values.forEach(value => result.add(value));
+  return result;
 }
 
 function toFilter(source: RecordFilter) {

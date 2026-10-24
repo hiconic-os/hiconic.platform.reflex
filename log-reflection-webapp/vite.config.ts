@@ -1,6 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vite";
+import { defineConfig, normalizePath } from "vite";
 import solid from "vite-plugin-solid";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 
@@ -10,7 +10,7 @@ const fromHere = (relative: string) => path.resolve(here, relative);
 export default defineConfig(({ command }) => {
   const development = command === "serve";
   const runtimePackage = development ? "@dev.hiconic/runtime-dev" : "@dev.hiconic/runtime";
-  const runtimeFile = fromHere(`node_modules/${runtimePackage}/dist/tf-js.js`);
+  const runtimeFile = normalizePath(fromHere(`node_modules/${runtimePackage}/dist/tf-js.js`));
 
   return {
     base: "./",

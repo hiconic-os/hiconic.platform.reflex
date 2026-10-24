@@ -11,6 +11,7 @@
   "dependencies": {
     "@dev.hiconic/gm_gm-core-api": "2.0.x",
     "@dev.hiconic/gm_logging-model": "2.0.x",
+    "@dev.hiconic/gm_log-level-api-model": "2.0.x",
     "@dev.hiconic/gm_resource-model": "2.0.x",
     "@dev.hiconic/gm_security-reason-model": "2.0.x",
     "@dev.hiconic/gm_transient-resource-model": "2.0.x",
