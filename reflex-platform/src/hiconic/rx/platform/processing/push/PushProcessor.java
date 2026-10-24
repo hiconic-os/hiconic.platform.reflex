@@ -13,10 +13,13 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import com.braintribe.cfg.Configurable;
 import com.braintribe.cfg.InitializationAware;
+import com.braintribe.exception.Exceptions;
+import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.logging.Logger;
 import com.braintribe.model.generic.reflection.Property;
 import com.braintribe.model.processing.service.api.ServiceProcessor;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
+import com.braintribe.model.processing.service.common.FailureCodec;
 import com.braintribe.model.processing.service.impl.AbstractDispatchingServiceProcessor;
 import com.braintribe.model.processing.service.impl.DispatchConfiguration;
 import com.braintribe.model.service.api.InstanceId;
@@ -29,6 +32,7 @@ import com.braintribe.model.service.api.result.PushResponse;
 import com.braintribe.model.service.api.result.PushResponseMessage;
 import com.braintribe.model.service.api.result.ResponseEnvelope;
 import com.braintribe.model.service.api.result.ServiceResult;
+import com.braintribe.model.service.api.result.Unsatisfied;
 
 public class PushProcessor extends AbstractDispatchingServiceProcessor<PushRequest, PushResponse> implements InitializationAware {
 	private static final Logger log = Logger.getLogger(PushProcessor.class);
@@ -87,17 +91,20 @@ public class PushProcessor extends AbstractDispatchingServiceProcessor<PushReque
 			multicast.setTimeout(requestTimeout);
 
 		MulticastResponse multicastResponse = multicast.eval(context).get();
+
 		PushResponse response = PushResponse.T.create();
+		List<PushResponseMessage> responseMessages = response.getResponseMessages();
 
 		for (Map.Entry<InstanceId, ServiceResult> entry : multicastResponse.getResponses().entrySet()) {
 			ServiceResult result = entry.getValue();
 			switch (result.resultType()) {
 				case success -> {
 					PushResponse individualResponse = (PushResponse) ((ResponseEnvelope) result).getResult();
-					if (individualResponse != null && individualResponse.sentMessages())
-						response.getResponseMessages().addAll(individualResponse.getResponseMessages());
+					if (individualResponse != null)
+						responseMessages.addAll(individualResponse.getResponseMessages());
 				}
-				case failure -> response.getResponseMessages().add(failureMessage(entry.getKey(), (Failure) result));
+				case failure -> responseMessages.add(failureMessage(entry.getKey(), (Failure) result));
+				case unsatisfied -> responseMessages.add(unsatisfiedMessage(entry.getKey(), (Unsatisfied) result));
 				default -> log.warn("Unsupported multicast push response from " + entry.getKey() + ": " + result);
 			}
 		}
@@ -108,9 +115,20 @@ public class PushProcessor extends AbstractDispatchingServiceProcessor<PushReque
 	private PushResponseMessage failureMessage(InstanceId instanceId, Failure failure) {
 		PushResponseMessage message = PushResponseMessage.T.create();
 		message.setMessage(failure.getMessage());
+		message.setDetails(Exceptions.stringify(FailureCodec.INSTANCE.decode(failure)));
 		message.setSuccessful(false);
 		message.setOriginId(instanceId);
 		return message;
+	}
+
+	private PushResponseMessage unsatisfiedMessage(InstanceId instanceId, Unsatisfied unsatisfied) {
+		PushResponseMessage result = PushResponseMessage.T.create();
+		Reason why = unsatisfied.getWhy();
+		result.setMessage(why.getText());
+		result.setDetails(why.stringify());
+		result.setSuccessful(false);
+		result.setOriginId(instanceId);
+		return result;
 	}
 
 	private InternalPushRequest cloneToInternalRequest(PushRequest request) {
