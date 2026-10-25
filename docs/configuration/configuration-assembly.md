@@ -25,52 +25,53 @@ The design has four goals:
 
 ## Configuration views
 
-An assembled application exposes three distinct views and one protocol:
+An assembled application exposes two configuration views and supporting
+provenance artifacts:
 
 ```text
 application/
-  packaged-resources/              # complete indexed-resource mirror
-    <artifact-slot>/
-      HICONIC-CONF/...
-      ...
-    index.properties               # runtime inventory
-    index.json                     # provenance, digest and disposition
-
-  effective-conf/                  # consumable static configuration closure
-    compiled/
-      <configuration-key>.yaml
-      properties.yaml
+  conf/                            # deployable integral configuration closure
+    <configuration-key>.yaml
+    properties.yaml
     <artifact-slot>/
       <unconsumed-config-resource>
 
+  conf-additions/                  # later, mutable deployment overlay
+  packaged-resource-index.yaml     # logical path, provenance and materialized path
   configuration-compilation.yaml   # compilation protocol
-  conf/                            # deployment overlays
+  configuration-merge-report.yaml  # layer and merge provenance
+
+  packaged-resources/              # optional build-time diagnostic source mirror
 ```
 
-`packaged-resources/` contains every indexed resource byte-for-byte at its
-classpath-relative path, grouped by artifact. It is both the
-source/provenance view and the filesystem replacement which makes safe eviction
-of explicitly marked pure-resource JARs possible. Unstructured indexed
-resources such as icons and templates remain here and are served directly.
-
-`effective-conf/compiled/` contains one result per configuration key
-where the corresponding assembler supports such a representation. A
+`conf/` contains one result per configuration key where the corresponding
+assembler supports such a representation. A
 configuration key consists at least of configuration kind, modeled type and
 use case.
 
 Configuration assets which cannot yet be assembled stay byte-identical in a
-direct artifact slot below `effective-conf/`. The technical `HICONIC-CONF`
+direct artifact slot below `conf/`. The technical `HICONIC-CONF`
 segment is omitted physically and restored logically by the reader. The
 compilation protocol reports these residuals.
 
-At runtime, the existence of `effective-conf/` changes only configuration
-selection: raw `HICONIC-CONF/` entries in `packaged-resources/` are suppressed
-and replaced by the compiled and residual effective slots. All other packaged
-resources remain active. Thus YAML/properties/log configuration may exist in
-both the lossless and effective views without being consumed twice.
+At runtime, the existence of `packaged-resource-index.yaml` activates integral
+mode. The index exposes the compiled and residual entries in `conf/` as the
+packaged resource space; `conf-additions/` remains the later, mutable deployment
+overlay and is intentionally not folded into the packaged static closure.
+Without an index, the legacy behavior remains: `conf/` itself is the mutable
+runtime configuration directory.
 
-`conf/` remains a later, mutable deployment overlay. It is intentionally not
-folded into the packaged static closure.
+`packaged-resources/` is the lossless assembly input grouped by artifact. It is
+removed after a successful application build by default and retained only when
+packaged-resource diagnostics are explicitly requested. The index plus the
+materialized resources in `conf/` are the runtime representation.
+
+The configuration archive in an RX diagnostic package preserves this
+application-relative layout. It includes `conf/`, `conf-additions/`, the resource
+index, both assembly reports and, when retained by the build, the optional
+`packaged-resources/` snapshot. This keeps the generated closure distinguishable
+from deployment additions while retaining the information needed to explain its
+provenance.
 
 ## Explicit deployment imports
 
@@ -368,7 +369,7 @@ The hardened increment provides:
 - a thin application-classpath command-line launcher;
 - a complete indexed-resource filesystem mirror with a deterministic central
   runtime index;
-- runtime replacement of raw packaged configuration by `effective-conf`,
+- runtime replacement of raw packaged configuration by integral `conf/`,
   without affecting unstructured packaged resources.
 
 The RX application Ant script activates that launcher when an application

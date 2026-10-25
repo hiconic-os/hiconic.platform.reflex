@@ -168,8 +168,10 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 	//
 	private String zipPassword = "operating";
 
-	private File confFolder = null;
+	private File confFolder;
+	private File confAdditionsFolder;
 	private File packagedResourcesFolder;
+	private File packagedResourceIndexFile;
 	private File configurationCompilationFile;
 	private File configurationMergeReportFile;
 	private File dataFolder;
@@ -858,14 +860,20 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 		try {
 			ConfigurationFolder hd = ConfigurationFolder.T.create();
 
-			if (confFolder != null || packagedResourcesFolder != null || configurationCompilationFile != null
-					|| configurationMergeReportFile != null) {
+			if (confFolder != null || confAdditionsFolder != null || packagedResourcesFolder != null || packagedResourceIndexFile != null
+					|| configurationCompilationFile != null || configurationMergeReportFile != null) {
 
 				String filename = "conf-" + now(fileDateTimeFormatter) + ".zip";
 
 				Map<String, File> map = new LinkedHashMap<>();
-				addFolderFiles(map, confFolder, "");
+				// Preserve the application directory layout. In an integrally assembled application, conf contains the
+				// generated configuration closure while conf-additions contains the later deployment overlay. Flattening
+				// either directory loses that distinction and, in the modern case, used to omit the closure altogether.
+				addFolderFiles(map, confFolder, "conf/");
+				addFolderFiles(map, confAdditionsFolder, "conf-additions/");
 				addFolderFiles(map, packagedResourcesFolder, "packaged-resources/");
+				if (packagedResourceIndexFile != null && packagedResourceIndexFile.isFile())
+					map.put("packaged-resource-index.yaml", packagedResourceIndexFile);
 				if (configurationCompilationFile != null && configurationCompilationFile.isFile())
 					map.put("configuration-compilation.yaml", configurationCompilationFile);
 				if (configurationMergeReportFile != null && configurationMergeReportFile.isFile())
@@ -886,7 +894,7 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 
 			return hd;
 		} catch (Exception e) {
-			throw Exceptions.unchecked(e, "Could not collect the files in the configuration folder: " + confFolder);
+			throw Exceptions.unchecked(e, "Could not collect the application configuration diagnostics.");
 		} finally {
 			logger.debug("Done with processing a GetConfigurationFolder request.");
 		}
@@ -1551,8 +1559,16 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 		this.confFolder = confFolder;
 	}
 	@Configurable
+	public void setConfAdditionsFolder(File confAdditionsFolder) {
+		this.confAdditionsFolder = confAdditionsFolder;
+	}
+	@Configurable
 	public void setPackagedResourcesFolder(File packagedResourcesFolder) {
 		this.packagedResourcesFolder = packagedResourcesFolder;
+	}
+	@Configurable
+	public void setPackagedResourceIndexFile(File packagedResourceIndexFile) {
+		this.packagedResourceIndexFile = packagedResourceIndexFile;
 	}
 	@Configurable
 	public void setConfigurationCompilationFile(File configurationCompilationFile) {

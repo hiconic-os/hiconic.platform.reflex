@@ -1,5 +1,6 @@
 package hiconic.rx.explorer.wire.space;
 
+import java.nio.file.Path;
 import java.util.function.Supplier;
 
 import com.braintribe.utils.stream.pools.CompoundBlockPool;
@@ -59,10 +60,13 @@ public class PlatformReflectionSpace implements WireSpace {
 		
 		// TODO make zip password configurable
 		bean.setZipPassword(null);
-		bean.setConfFolder(platformResources.confPath().toFile());
-		bean.setPackagedResourcesFolder(platformResources.rootPath().resolve("packaged-resources").toFile());
-		bean.setConfigurationCompilationFile(platformResources.rootPath().resolve("configuration-compilation.yaml").toFile());
-		bean.setConfigurationMergeReportFile(platformResources.rootPath().resolve("configuration-merge-report.yaml").toFile());
+		Path applicationRoot = platformResources.rootPath();
+		bean.setConfFolder(applicationRoot.resolve("conf").toFile());
+		bean.setConfAdditionsFolder(applicationRoot.resolve("conf-additions").toFile());
+		bean.setPackagedResourcesFolder(applicationRoot.resolve("packaged-resources").toFile());
+		bean.setPackagedResourceIndexFile(applicationRoot.resolve("packaged-resource-index.yaml").toFile());
+		bean.setConfigurationCompilationFile(applicationRoot.resolve("configuration-compilation.yaml").toFile());
+		bean.setConfigurationMergeReportFile(applicationRoot.resolve("configuration-merge-report.yaml").toFile());
 		return bean;
 	}
 
