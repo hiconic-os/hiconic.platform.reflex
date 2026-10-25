@@ -28,6 +28,7 @@ import hiconic.rx.explorer.processing.ExplorerServiceDomain;
 import hiconic.rx.explorer.processing.WorkbenchReflectionProcessor;
 import hiconic.rx.explorer.processing.bapi.AvailableAccessesProcessor;
 import hiconic.rx.explorer.processing.bapi.CurrentUserInformationProcessor;
+import hiconic.rx.explorer.processing.model.ExplorerModelProjectionRegistry;
 import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.webapi.model.meta.HttpRequestMethod;
@@ -121,10 +122,16 @@ public class ExplorerRxModuleSpace implements RxModuleContract {
 	private WorkbenchReflectionProcessor workbenchReflectionProcessor() {
 		WorkbenchReflectionProcessor bean = new WorkbenchReflectionProcessor();
 		bean.setAccesses(access.accessDomains());
+		bean.setModelProjections(modelProjections());
 		bean.setSessionFactory(access.systemSessionFactory());
 		bean.setWorkbenches(workbenches);
 		bean.setMetaModelAccessId(modelResources.accessId());
 		return bean;
+	}
+
+	@Managed
+	private ExplorerModelProjectionRegistry modelProjections() {
+		return new ExplorerModelProjectionRegistry();
 	}
 
 	@Managed

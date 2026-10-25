@@ -35,6 +35,7 @@ import com.braintribe.utils.collection.impl.AttributeContexts;
 
 import hiconic.rx.access.module.api.AccessDomain;
 import hiconic.rx.access.module.api.AccessDomains;
+import hiconic.rx.explorer.processing.model.ExplorerModelProjectionRegistry;
 import hiconic.rx.module.api.service.ConfiguredModel;
 import hiconic.rx.workbench.api.WorkbenchContract;
 
@@ -46,6 +47,7 @@ public class WorkbenchReflectionProcessor implements ReasonedServiceProcessor<Ge
 			"root", "actionbar", "headerbar", "homeFolder", "tab-actionbar", "global-actionbar");
 
 	private AccessDomains accesses;
+	private ExplorerModelProjectionRegistry modelProjections;
 	private PersistenceGmSessionFactory sessionFactory;
 	private WorkbenchContract workbenches;
 	private String metaModelAccessId;
@@ -53,6 +55,11 @@ public class WorkbenchReflectionProcessor implements ReasonedServiceProcessor<Ge
 	@Required
 	public void setAccesses(AccessDomains accesses) {
 		this.accesses = accesses;
+	}
+
+	@Required
+	public void setModelProjections(ExplorerModelProjectionRegistry modelProjections) {
+		this.modelProjections = modelProjections;
 	}
 
 	@Required
@@ -87,8 +94,8 @@ public class WorkbenchReflectionProcessor implements ReasonedServiceProcessor<Ge
 		ConfiguredModel serviceModel = dataAccess.configuredServiceModel();
 		ModelEnvironment result = ModelEnvironment.T.create();
 		result.setDataAccessId(accessId);
-		result.setDataModel(dataModel.modelOracle().getGmMetaModel());
-		result.setServiceModel(serviceModel.modelOracle().getGmMetaModel());
+		result.setDataModel(modelProjections.acquire(dataModel));
+		result.setServiceModel(modelProjections.acquire(serviceModel));
 		result.setServiceModelName(serviceModel.name());
 		result.setMetaModelAccessId(metaModelAccessId);
 
@@ -103,7 +110,7 @@ public class WorkbenchReflectionProcessor implements ReasonedServiceProcessor<Ge
 					.toMaybe();
 
 		result.setWorkbenchModelAccessId(workbenchAccessId);
-		result.setWorkbenchModel(workbenchAccess.configuredDataModel().modelOracle().getGmMetaModel());
+		result.setWorkbenchModel(modelProjections.acquire(workbenchAccess.configuredDataModel()));
 		try {
 			UserSession userSession = currentUserSession();
 			if (perspectiveNames == null || perspectiveNames.isEmpty()) {
