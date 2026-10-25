@@ -23,6 +23,7 @@ import jakarta.servlet.DispatcherType;
 import jakarta.servlet.Filter;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.websocket.Endpoint;
 
 public interface WebServerContract extends RxExportContract {
@@ -106,6 +107,12 @@ public interface WebServerContract extends RxExportContract {
 	 * The value DOES NOT END WITH '/'!!!
 	 */
 	String publicUrl();
+
+	/**
+	 * Resolves the externally visible scheme for the given request. Depending on the web-server configuration, this is either taken from the
+	 * configured {@link #publicUrl()} or from the live request and its forwarding headers.
+	 */
+	String externalRequestScheme(HttpServletRequest request);
 
 	/**
 	 * {@link #publicUrl()}, possibly with the default endpoint path

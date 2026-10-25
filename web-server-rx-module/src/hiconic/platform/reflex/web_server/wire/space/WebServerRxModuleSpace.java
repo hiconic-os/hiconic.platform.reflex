@@ -22,6 +22,7 @@ import static com.braintribe.utils.lcd.CollectionTools2.newConcurrentSet;
 import java.io.File;
 import java.net.BindException;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -92,6 +93,7 @@ import jakarta.servlet.Filter;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.websocket.Endpoint;
 import jakarta.websocket.server.ServerEndpointConfig;
 
@@ -493,6 +495,25 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	public String publicUrl() {
 		// DO NOT INLINE !!!
 		return resolvePublicUrl();
+	}
+
+	@Override
+	public String externalRequestScheme(HttpServletRequest request) {
+		if (request == null || configuration().getUsePublicUrlAsOrigin())
+			return URI.create(publicUrl()).getScheme();
+
+		String forwardedScheme = firstForwardedValue(request.getHeader("X-Forwarded-Proto"));
+		return forwardedScheme != null ? forwardedScheme : request.getScheme();
+	}
+
+	private static String firstForwardedValue(String value) {
+		if (value == null)
+			return null;
+
+		int separator = value.indexOf(',');
+		String firstValue = separator < 0 ? value : value.substring(0, separator);
+		firstValue = firstValue.trim();
+		return firstValue.isEmpty() ? null : firstValue;
 	}
 
 	private String resolvePublicUrl() {

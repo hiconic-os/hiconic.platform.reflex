@@ -36,6 +36,7 @@ public class DefaultCookieHandler implements CookieHandler {
 	private String cookieDomain = null;
 	private boolean addSessionCookie = true;
 	private Function<HttpServletRequest, OpenUserSessionEntryPoint> entryPointProvider = r -> null;
+	private Function<HttpServletRequest, String> externalSchemeProvider = HttpServletRequest::getScheme;
 
 	@Override
 	public Cookie ensureCookie(HttpServletRequest req, HttpServletResponse resp, String sessionId) {
@@ -88,7 +89,7 @@ public class DefaultCookieHandler implements CookieHandler {
 			sessionCookie.setDomain(this.cookieDomain);
 		}
 
-		String scheme = req != null ? getScheme(req) : "https";
+		String scheme = req != null ? externalSchemeProvider.apply(req) : "https";
 		
 		boolean isHttps = scheme != null && scheme.equalsIgnoreCase("https"); 
 		
@@ -137,16 +138,6 @@ public class DefaultCookieHandler implements CookieHandler {
         response.addHeader("Set-Cookie", header.toString());
     }
 
-
-	private String getScheme(HttpServletRequest req) {
-		String proxyProto = req.getHeader("X-Forwarded-Proto");
-		if (proxyProto != null) {
-			log.debug("X-Forwarded-Proto header from proxies: " + proxyProto);
-			return proxyProto;
-		}
-		
-		return req.getScheme();
-	}
 
 	private Cookie acquireCookie(HttpServletRequest req, OpenUserSessionEntryPoint entryPoint, String sessionId) throws RuntimeException {
 		String sessionCookieName = entryPoint != null? entryPoint.sessionCookieName(): WebSecurityConstants.COOKIE_SESSIONID;
@@ -215,5 +206,9 @@ public class DefaultCookieHandler implements CookieHandler {
 	@Configurable
 	public void setEntryPointProvider(Function<HttpServletRequest, OpenUserSessionEntryPoint> entryPointProvider) {
 		this.entryPointProvider = entryPointProvider;
+	}
+	@Configurable
+	public void setExternalSchemeProvider(Function<HttpServletRequest, String> externalSchemeProvider) {
+		this.externalSchemeProvider = externalSchemeProvider;
 	}
 }

@@ -12,6 +12,7 @@ import hiconic.rx.module.api.wire.RxConfigurationContract;
 import hiconic.rx.security.web.model.configuration.WebSecurityConfiguration;
 import hiconic.rx.security.web.processing.servlet.cookie.DefaultCookieHandler;
 import hiconic.rx.security.web.processing.servlet.providers.OpenUserSessionConfigurationProviderImpl;
+import hiconic.rx.web.server.api.WebServerContract;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
@@ -23,6 +24,9 @@ public class HttpRxSpace implements WireSpace {
 	@Import
 	private RxConfigurationContract configuration;
 
+	@Import
+	private WebServerContract webServer;
+
 	@Managed
 	public DefaultCookieHandler cookieHandler() {
 		WebSecurityConfiguration config = configuration.readConfig(WebSecurityConfiguration.T).get();
@@ -30,6 +34,7 @@ public class HttpRxSpace implements WireSpace {
 		DefaultCookieHandler bean = new DefaultCookieHandler();
 		bean.setCookieDomain(config.getCookieDomain());
 		bean.setCookiePath(config.getCookiePath());
+		bean.setExternalSchemeProvider(webServer::externalRequestScheme);
 		// DEVCX-208: The Control Center cannot access the cookie anymore if the cookie is not reachable via JavaScript.
 		bean.setAddCookie(config.getCookieEnabled());
 

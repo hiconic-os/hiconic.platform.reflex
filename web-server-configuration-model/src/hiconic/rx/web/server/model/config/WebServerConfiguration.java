@@ -51,6 +51,7 @@ public interface WebServerConfiguration extends GenericEntity {
 	String pushWebSocketEndpointPath = "pushWebSocketEndpointPath";
 	String redirects = "redirects";
 	String forwards = "forwards";
+	String usePublicUrlAsOrigin = "usePublicUrlAsOrigin";
 
 	@Initializer("'localhost'")
 	String getHostName();
@@ -123,6 +124,11 @@ public interface WebServerConfiguration extends GenericEntity {
 	@Pattern(".*[^\\/]$")
 	String getPublicUrl();
 	void setPublicUrl(String publicUrl);
+
+	@Description("Whether the configured publicUrl is authoritative when resolving the externally visible origin of an incoming request. "
+			+ "If false, the origin is resolved from the live HTTP request, preferring forwarded information where available.")
+	boolean getUsePublicUrlAsOrigin();
+	void setUsePublicUrlAsOrigin(boolean usePublicUrlAsOrigin);
 
 	@Description("Default path under which configured endpoints (websockets, servlets, filters) appear. "
 			+ "If not given those endpoints will appear at root level. The value must not end with '/'")
