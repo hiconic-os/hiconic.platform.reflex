@@ -17,6 +17,7 @@ package hiconic.rx.webapi.client.processing;
 
 import java.io.ByteArrayOutputStream;
 import java.io.ByteArrayInputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -371,10 +372,19 @@ public class GmHttpClient implements HttpClient {
 											.set(CmdResolverOption.class, findCmdResolver()).build();
 
 							try {
-								responsePayload = responseMarshaller.unmarshall(contentIn, options);
+								// A marshaller owns its decoding view, but not the HTTP response stream. Some marshallers close their input
+								// when decoding fails. Keep the response stream open so the remaining bytes can still be captured for the
+								// modeled fallback reason.
+								responsePayload = responseMarshaller.unmarshall(new NonClosingInputStream(contentIn), options);
 							} catch (Exception e) {
 								decodingFailure = "Could not decode the HTTP response as " + responseType.getTypeSignature() + ": " + e.getMessage();
-								IOTools.consume(contentIn);
+								try {
+									IOTools.consume(contentIn);
+								} catch (Exception captureFailure) {
+									// Capturing the remaining response is diagnostic and must never replace the original decoding failure.
+									e.addSuppressed(captureFailure);
+									decodingFailure += "; additionally failed to capture the remaining response body: " + captureFailure.getMessage();
+								}
 								final String logBody = responseBodyCapture.text();
 								logger.error(decodingFailure + "; response body"
 										+ (responseBodyCapture.truncated() ? " (truncated)" : "") + ": " + logBody, e);
@@ -398,7 +408,9 @@ public class GmHttpClient implements HttpClient {
 					}
 
 					if (responseMapping != null) {
-						IOTools.consume(contentIn);
+						// A failed decoder already attempted to drain the response in its catch block. Do not read a second time:
+						// if the source itself failed, another read would replace the modeled HTTP error with a generic client exception.
+						if (decodingFailure == null) IOTools.consume(contentIn);
 						String expectedType = responseType == null ? null : responseType.getTypeSignature();
 						responsePayload = new HttpErrorResponse(responsePayload, responseBodyCapture.text(MAX_REASON_BODY_BYTES), responseMimeType,
 								expectedType, responseBodyCapture.size(), responseBodyCapture.size() > MAX_REASON_BODY_BYTES, decodingFailure);
@@ -538,6 +550,18 @@ public class GmHttpClient implements HttpClient {
 		}
 		private long size() { return size; }
 		private boolean truncated() { return size > limit; }
+	}
+
+	/** Prevents a response decoder from taking ownership of the underlying HTTP response stream. */
+	private static final class NonClosingInputStream extends FilterInputStream {
+		private NonClosingInputStream(InputStream delegate) {
+			super(delegate);
+		}
+
+		@Override
+		public void close() {
+			// The surrounding response-processing scope owns and closes the delegate.
+		}
 	}
 
 	private RequestBuilder requestBuilder(HttpRequestContext context) {
