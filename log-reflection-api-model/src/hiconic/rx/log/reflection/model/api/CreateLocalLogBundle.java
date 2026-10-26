@@ -1,5 +1,6 @@
 package hiconic.rx.log.reflection.model.api;
 
+import java.util.Date;
 import java.util.Set;
 
 import com.braintribe.model.generic.annotation.Initializer;
@@ -11,6 +12,8 @@ import com.braintribe.model.resource.Resource;
 import com.braintribe.model.service.api.ServiceRequest;
 
 import hiconic.rx.log.reflection.model.LogBundleFormat;
+import hiconic.rx.log.reflection.model.LogBundleLayout;
+import hiconic.rx.log.reflection.model.LogBundleScope;
 import hiconic.rx.log.reflection.model.LogFilter;
 
 /**
@@ -22,11 +25,33 @@ public interface CreateLocalLogBundle extends AuthorizedLogReflectionRequest {
 	Set<String> getStreamIds();
 	void setStreamIds(Set<String> streamIds);
 
+	/** Remote record scope. If absent, {@link #getIncludeRotated()} supplies the legacy scope. */
+	LogBundleScope getScope();
+	void setScope(LogBundleScope scope);
+
+	/** Non-exclusive physical layouts. Empty means legacy behavior derived from {@link #getFormat()}. */
+	Set<LogBundleLayout> getLayouts();
+	void setLayouts(Set<LogBundleLayout> layouts);
+
+	/** Non-exclusive representations. Empty means legacy behavior derived from {@link #getFormat()}. */
+	Set<LogBundleFormat> getFormats();
+	void setFormats(Set<LogBundleFormat> formats);
+
+	/** Inclusive lower boundary used by {@link LogBundleScope#CUSTOM_RANGE}. */
+	Date getFrom();
+	void setFrom(Date from);
+
+	/** Inclusive upper boundary used by {@link LogBundleScope#CUSTOM_RANGE}. */
+	Date getTo();
+	void setTo(Date to);
+
 	@Initializer("false")
+	@Deprecated
 	boolean getIncludeRotated();
 	void setIncludeRotated(boolean includeRotated);
 
 	@Initializer("enum(hiconic.rx.log.reflection.model.LogBundleFormat,RAW_FILES)")
+	@Deprecated
 	LogBundleFormat getFormat();
 	void setFormat(LogBundleFormat format);
 

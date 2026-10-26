@@ -12,6 +12,8 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -28,6 +30,9 @@ import com.braintribe.utils.stream.api.StreamPipes;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import hiconic.rx.log.reflection.model.LogBundleFormat;
+import hiconic.rx.log.reflection.model.LogBundleLayout;
+import hiconic.rx.log.reflection.model.LogBundleScope;
+import hiconic.rx.log.reflection.model.LogFilter;
 import hiconic.rx.log.reflection.model.LogRecord;
 import hiconic.rx.log.reflection.model.api.CreateLogBundle;
 import hiconic.rx.log.reflection.model.api.CreateLocalLogBundle;
@@ -42,14 +47,26 @@ public class LogBundleWriter {
 	private final LogFileReader fileReader = new LogFileReader();
 
 	public Resource create(LogbackLogStreamInventory inventory, CreateLogBundle request, InstanceId instanceId) {
-		return create(inventory, request.getStreamIds(), request.getIncludeRotated(), request.getFormat(), instanceId);
+		if (modern(request.getScope(), request.getLayouts(), request.getFormats(), request.getFrom(), request.getTo()))
+			return createModern(inventory, request.getStreamIds(), request.getScope(), request.getLayouts(), request.getFormats(),
+					request.getFrom(), request.getTo(), instanceId);
+		return createLegacy(inventory, request.getStreamIds(), request.getIncludeRotated(), request.getFormat(), instanceId);
 	}
 
 	public Resource create(LogbackLogStreamInventory inventory, CreateLocalLogBundle request, InstanceId instanceId) {
-		return create(inventory, request.getStreamIds(), request.getIncludeRotated(), request.getFormat(), instanceId);
+		if (modern(request.getScope(), request.getLayouts(), request.getFormats(), request.getFrom(), request.getTo()))
+			return createModern(inventory, request.getStreamIds(), request.getScope(), request.getLayouts(), request.getFormats(),
+					request.getFrom(), request.getTo(), instanceId);
+		return createLegacy(inventory, request.getStreamIds(), request.getIncludeRotated(), request.getFormat(), instanceId);
 	}
 
-	private Resource create(LogbackLogStreamInventory inventory, Set<String> requestedStreams, boolean includeRotated,
+	private static boolean modern(LogBundleScope scope, Set<LogBundleLayout> layouts, Set<LogBundleFormat> formats,
+			Date from, Date to) {
+		return scope != null || from != null || to != null || layouts != null && !layouts.isEmpty()
+				|| formats != null && !formats.isEmpty();
+	}
+
+	private Resource createLegacy(LogbackLogStreamInventory inventory, Set<String> requestedStreams, boolean includeRotated,
 			LogBundleFormat requestedFormat, InstanceId instanceId) {
 		LogBundleFormat format = requestedFormat == null ? LogBundleFormat.RAW_FILES : requestedFormat;
 
@@ -123,6 +140,166 @@ public class LogBundleWriter {
 		return resource;
 	}
 
+	private Resource createModern(LogbackLogStreamInventory inventory, Set<String> requestedStreams, LogBundleScope requestedScope,
+			Set<LogBundleLayout> requestedLayouts, Set<LogBundleFormat> requestedFormats, Date from, Date to,
+			InstanceId instanceId) {
+		LogBundleScope scope = requestedScope == null ? LogBundleScope.CURRENT : requestedScope;
+		EnumSet<LogBundleLayout> layouts = requestedLayouts == null || requestedLayouts.isEmpty()
+				? EnumSet.of(LogBundleLayout.SEPARATE, LogBundleLayout.MERGED)
+				: EnumSet.copyOf(requestedLayouts);
+		EnumSet<LogBundleFormat> formats = requestedFormats == null || requestedFormats.isEmpty()
+				? EnumSet.of(LogBundleFormat.NATURAL)
+				: EnumSet.copyOf(requestedFormats);
+		if (formats.remove(LogBundleFormat.RAW_FILES))
+			formats.add(LogBundleFormat.NATURAL);
+		if (scope == LogBundleScope.CUSTOM_RANGE) {
+			if (from == null || to == null)
+				throw new IllegalArgumentException("A custom log bundle range requires both from and to");
+			if (from.after(to))
+				throw new IllegalArgumentException("The custom log bundle range starts after it ends");
+		} else if (from != null || to != null) {
+			throw new IllegalArgumentException("Log bundle boundaries require the CUSTOM_RANGE scope");
+		}
+
+		Set<String> requested = requestedStreams == null ? Set.of() : requestedStreams;
+		List<BundleEntry> entries = collectEntries(inventory, requested, scope != LogBundleScope.CURRENT);
+		if (entries.isEmpty())
+			throw new IllegalArgumentException("The selection contains no readable file log segments");
+
+		LogFilter range = scope == LogBundleScope.CUSTOM_RANGE ? range(from, to) : null;
+		Map<Path, SegmentStats> stats = new LinkedHashMap<>();
+		if (range != null)
+			for (BundleEntry entry : entries)
+				stats.put(entry.path, inspect(entry, range));
+		List<BundleEntry> contributing = range == null ? entries : entries.stream()
+				.filter(entry -> stats.get(entry.path).selectedRecords > 0)
+				.toList();
+
+		String baseName = "logs-" + safe(instanceId.getApplicationId()) + "-" + safe(instanceId.getNodeId()) + "-"
+				+ stamp.format(Instant.now());
+		StreamPipe pipe = StreamPipes.fileBackedFactory().newPipe(baseName);
+		try (OutputStream output = pipe.openOutputStream(); ZipOutputStream zip = new ZipOutputStream(output)) {
+			writeModernManifest(zip, instanceId, scope, layouts, formats, from, to, entries, stats);
+			writeModernEntries(zip, contributing, layouts, formats, range);
+			zip.finish();
+		} catch (IOException | UncheckedIOException e) {
+			pipe.close();
+			throw new IllegalStateException("Could not create log bundle", e);
+		}
+		return resource(pipe, baseName);
+	}
+
+	private static List<BundleEntry> collectEntries(LogbackLogStreamInventory inventory, Set<String> requestedStreams,
+			boolean includeRotated) {
+		List<BundleEntry> entries = new ArrayList<>();
+		for (var descriptor : inventory.streams()) {
+			if (descriptor.getKind() != hiconic.rx.log.reflection.model.LogStreamKind.FILE)
+				continue;
+			if (!requestedStreams.isEmpty() && !requestedStreams.contains(descriptor.getStreamId()))
+				continue;
+			LogbackFileStream stream = inventory.fileStream(descriptor.getStreamId());
+			for (Path path : stream.segmentPaths()) {
+				boolean active = path.equals(stream.path());
+				if ((active || includeRotated) && Files.isRegularFile(path))
+					entries.add(new BundleEntry(stream, path, active));
+			}
+		}
+		return entries;
+	}
+
+	private void writeModernEntries(ZipOutputStream zip, List<BundleEntry> entries, Set<LogBundleLayout> layouts,
+			Set<LogBundleFormat> formats, LogFilter range) throws IOException {
+		Set<String> names = new HashSet<>();
+		for (List<BundleEntry> streamEntries : entriesByStream(entries).values()) {
+			String stream = safe(streamEntries.get(0).stream.descriptor().getStreamId());
+			if (layouts.contains(LogBundleLayout.SEPARATE)) {
+				for (BundleEntry entry : streamEntries) {
+					String segment = safe(entry.path.getFileName().toString());
+					if (formats.contains(LogBundleFormat.NATURAL)) {
+						String name = unique(names, stream + "/separate/natural/" + segment + (range == null ? "" : ".log"));
+						zip.putNextEntry(new ZipEntry(name));
+						if (range == null)
+							writeRaw(entry.path, zip);
+						else
+							writeNaturalText(entry, range, zip);
+						zip.closeEntry();
+					}
+					if (formats.contains(LogBundleFormat.CANONICAL_TEXT)) {
+						zip.putNextEntry(new ZipEntry(unique(names, stream + "/separate/canonical-text/" + segment + ".log")));
+						writeCanonicalText(entry, range, zip);
+						zip.closeEntry();
+					}
+					if (formats.contains(LogBundleFormat.CANONICAL_JSONL)) {
+						zip.putNextEntry(new ZipEntry(unique(names, stream + "/separate/jsonl/" + segment + ".jsonl")));
+						writeCanonicalJsonl(entry, range, zip);
+						zip.closeEntry();
+					}
+				}
+			}
+			if (layouts.contains(LogBundleLayout.MERGED)) {
+				if (formats.contains(LogBundleFormat.NATURAL) || formats.contains(LogBundleFormat.CANONICAL_TEXT)) {
+					zip.putNextEntry(new ZipEntry(unique(names, stream + "/merged/canonical.log")));
+					for (BundleEntry entry : streamEntries)
+						writeCanonicalText(entry, range, zip);
+					zip.closeEntry();
+				}
+				if (formats.contains(LogBundleFormat.CANONICAL_JSONL)) {
+					zip.putNextEntry(new ZipEntry(unique(names, stream + "/merged/canonical.jsonl")));
+					for (BundleEntry entry : streamEntries)
+						writeCanonicalJsonl(entry, range, zip);
+					zip.closeEntry();
+				}
+			}
+		}
+	}
+
+	private SegmentStats inspect(BundleEntry entry, LogFilter range) {
+		long[] counts = new long[3];
+		fileReader.forEachRecord(entry.stream, entry.path, null, record -> {
+			counts[0]++;
+			if (record.getTimestamp() == null)
+				counts[2]++;
+			if (LogRecordFiltering.matches(record, range))
+				counts[1]++;
+		});
+		return new SegmentStats(counts[0], counts[1], counts[2]);
+	}
+
+	private static LogFilter range(Date from, Date to) {
+		LogFilter filter = LogFilter.T.create();
+		filter.setFrom(from);
+		filter.setTo(to);
+		return filter;
+	}
+
+	private void writeNaturalText(BundleEntry entry, LogFilter filter, ZipOutputStream zip) {
+		fileReader.forEachRecord(entry.stream, entry.path, filter, record -> write(zip, terminated(record.getRawText())));
+	}
+
+	private static void write(ZipOutputStream zip, String text) {
+		try {
+			zip.write(text.getBytes(StandardCharsets.UTF_8));
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+
+	private static Resource resource(StreamPipe pipe, String baseName) {
+		Resource resource = Resource.createTransient(() -> new FilterInputStream(pipe.openInputStream()) {
+			@Override
+			public void close() throws IOException {
+				try {
+					super.close();
+				} finally {
+					pipe.close();
+				}
+			}
+		});
+		resource.setName(baseName + ".zip");
+		resource.setMimeType("application/zip");
+		return resource;
+	}
+
 	private static void writeRaw(Path path, ZipOutputStream zip) throws IOException {
 		try (InputStream input = Files.newInputStream(path)) {
 			input.transferTo(zip);
@@ -130,7 +307,11 @@ public class LogBundleWriter {
 	}
 
 	private void writeCanonicalJsonl(BundleEntry entry, ZipOutputStream zip) {
-		fileReader.forEachRecord(entry.stream, entry.path, null, record -> {
+		writeCanonicalJsonl(entry, null, zip);
+	}
+
+	private void writeCanonicalJsonl(BundleEntry entry, LogFilter filter, ZipOutputStream zip) {
+		fileReader.forEachRecord(entry.stream, entry.path, filter, record -> {
 			try {
 				zip.write(objectMapper.writeValueAsBytes(canonicalRecord(record)));
 				zip.write('\n');
@@ -141,7 +322,11 @@ public class LogBundleWriter {
 	}
 
 	private void writeCanonicalText(BundleEntry entry, ZipOutputStream zip) {
-		fileReader.forEachRecord(entry.stream, entry.path, null, record -> {
+		writeCanonicalText(entry, null, zip);
+	}
+
+	private void writeCanonicalText(BundleEntry entry, LogFilter filter, ZipOutputStream zip) {
+		fileReader.forEachRecord(entry.stream, entry.path, filter, record -> {
 			try {
 				zip.write(canonicalText(record).getBytes(StandardCharsets.UTF_8));
 			} catch (IOException e) {
@@ -351,6 +536,51 @@ public class LogBundleWriter {
 		zip.closeEntry();
 	}
 
+	private static void writeModernManifest(ZipOutputStream zip, InstanceId instanceId, LogBundleScope scope,
+			Set<LogBundleLayout> layouts, Set<LogBundleFormat> formats, Date from, Date to, List<BundleEntry> entries,
+			Map<Path, SegmentStats> stats) throws IOException {
+		StringBuilder value = new StringBuilder();
+		value.append("{\n")
+				.append("  \"applicationId\": \"").append(json(instanceId.getApplicationId())).append("\",\n")
+				.append("  \"nodeId\": \"").append(json(instanceId.getNodeId())).append("\",\n")
+				.append("  \"createdAt\": \"").append(Instant.now()).append("\",\n")
+				.append("  \"scope\": \"").append(scope.name()).append("\",\n")
+				.append("  \"from\": ").append(date(from)).append(",\n")
+				.append("  \"to\": ").append(date(to)).append(",\n")
+				.append("  \"layouts\": ").append(enumJson(layouts)).append(",\n")
+				.append("  \"formats\": ").append(enumJson(formats)).append(",\n")
+				.append("  \"segments\": [");
+		boolean first = true;
+		for (BundleEntry entry : entries) {
+			if (!first)
+				value.append(',');
+			SegmentStats segment = stats.get(entry.path);
+			value.append("\n    {\"streamId\": \"").append(json(entry.stream.descriptor().getStreamId()))
+					.append("\", \"fileName\": \"").append(json(entry.path.getFileName().toString()))
+					.append("\", \"active\": ").append(entry.active);
+			if (segment != null)
+				value.append(", \"recordCount\": ").append(segment.totalRecords)
+						.append(", \"selectedRecordCount\": ").append(segment.selectedRecords)
+						.append(", \"recordsWithoutTimestamp\": ").append(segment.recordsWithoutTimestamp);
+			value.append('}');
+			first = false;
+		}
+		if (!entries.isEmpty())
+			value.append('\n').append("  ");
+		value.append("]\n}\n");
+		zip.putNextEntry(new ZipEntry("manifest.json"));
+		zip.write(value.toString().getBytes(StandardCharsets.UTF_8));
+		zip.closeEntry();
+	}
+
+	private static String date(Date value) {
+		return value == null ? "null" : "\"" + value.toInstant() + "\"";
+	}
+
+	private static String enumJson(Set<? extends Enum<?>> values) {
+		return values.stream().map(value -> "\"" + value.name() + "\"").collect(java.util.stream.Collectors.joining(", ", "[", "]"));
+	}
+
 	private static String unique(Set<String> names, String proposed) {
 		if (names.add(proposed))
 			return proposed;
@@ -375,5 +605,8 @@ public class LogBundleWriter {
 	}
 
 	private record BundleEntry(LogbackFileStream stream, Path path, boolean active) {
+	}
+
+	private record SegmentStats(long totalRecords, long selectedRecords, long recordsWithoutTimestamp) {
 	}
 }

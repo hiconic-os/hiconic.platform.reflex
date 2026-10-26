@@ -36,6 +36,8 @@ import com.braintribe.processing.async.api.AsyncCallback;
 import hiconic.rx.log.reflection.model.LogOrigin;
 import hiconic.rx.log.reflection.model.LogReflectionCapabilities;
 import hiconic.rx.log.reflection.model.LogBundleFormat;
+import hiconic.rx.log.reflection.model.LogBundleLayout;
+import hiconic.rx.log.reflection.model.LogBundleScope;
 import hiconic.rx.log.reflection.model.LogRecord;
 import hiconic.rx.log.reflection.model.LogTarget;
 import hiconic.rx.log.reflection.model.api.CreateLocalLogBundle;
@@ -162,7 +164,11 @@ public class LogReflectionProcessorClusterTest {
 		CreateLogBundle request = CreateLogBundle.T.create();
 		request.setTarget(target("logs-app", null));
 		request.setStreamIds(Set.of("appender:application"));
-		request.setFormat(LogBundleFormat.RAW_FILES);
+		request.setScope(LogBundleScope.CUSTOM_RANGE);
+		request.setLayouts(Set.of(LogBundleLayout.SEPARATE, LogBundleLayout.MERGED));
+		request.setFormats(Set.of(LogBundleFormat.NATURAL, LogBundleFormat.CANONICAL_JSONL));
+		request.setFrom(new Date(100));
+		request.setTo(new Date(200));
 
 		Resource result = (Resource) processor(evaluator).process(context("log-reflection-reader"), request);
 		List<String> entries = new ArrayList<>();
@@ -175,6 +181,11 @@ public class LogReflectionProcessorClusterTest {
 		assertThat(dispatched.get().getServiceRequest()).isInstanceOf(CreateLocalLogBundle.class);
 		CreateLocalLogBundle local = (CreateLocalLogBundle) dispatched.get().getServiceRequest();
 		assertThat(local.getStreamIds()).containsExactly("appender:application");
+		assertThat(local.getScope()).isEqualTo(LogBundleScope.CUSTOM_RANGE);
+		assertThat(local.getLayouts()).containsExactlyInAnyOrder(LogBundleLayout.SEPARATE, LogBundleLayout.MERGED);
+		assertThat(local.getFormats()).containsExactlyInAnyOrder(LogBundleFormat.NATURAL, LogBundleFormat.CANONICAL_JSONL);
+		assertThat(local.getFrom()).isEqualTo(new Date(100));
+		assertThat(local.getTo()).isEqualTo(new Date(200));
 		assertThat(entries).contains(
 				"logs-app_node-1/application/current.log",
 				"logs-app_node-2/application/current.log",

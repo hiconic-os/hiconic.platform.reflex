@@ -316,6 +316,11 @@ public class LogReflectionProcessor extends AbstractDispatchingServiceProcessor<
 	private static CreateLocalLogBundle localBundleRequest(CreateLogBundle source) {
 		CreateLocalLogBundle target = CreateLocalLogBundle.T.create();
 		target.setStreamIds(source.getStreamIds() == null ? Set.of() : Set.copyOf(source.getStreamIds()));
+		target.setScope(source.getScope());
+		target.setLayouts(source.getLayouts() == null ? Set.of() : Set.copyOf(source.getLayouts()));
+		target.setFormats(source.getFormats() == null ? Set.of() : Set.copyOf(source.getFormats()));
+		target.setFrom(source.getFrom());
+		target.setTo(source.getTo());
 		target.setIncludeRotated(source.getIncludeRotated());
 		target.setFormat(source.getFormat());
 		target.setFilter(source.getFilter());

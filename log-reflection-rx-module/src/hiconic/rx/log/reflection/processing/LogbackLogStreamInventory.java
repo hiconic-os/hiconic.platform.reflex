@@ -28,7 +28,6 @@ import ch.qos.logback.core.OutputStreamAppender;
 import ch.qos.logback.core.encoder.Encoder;
 import ch.qos.logback.core.rolling.RollingFileAppender;
 import ch.qos.logback.core.rolling.RollingPolicyBase;
-import ch.qos.logback.core.rolling.helper.FileNamePattern;
 import hiconic.rx.log.reflection.model.LogCapability;
 import hiconic.rx.log.reflection.model.LogFormat;
 import hiconic.rx.log.reflection.model.LogParsingQuality;
@@ -214,12 +213,7 @@ public class LogbackLogStreamInventory {
 		if (root == null || !Files.isDirectory(root))
 			return List.of();
 
-		String regex;
-		try {
-			regex = new FileNamePattern(absolutePattern.toString(), policy.getContext()).toRegex();
-		} catch (RuntimeException e) {
-			return List.of();
-		}
+		String regex = archiveRegex(absolutePattern.toString());
 
 		int depth = Math.max(1, root.relativize(absolutePattern).getNameCount());
 		try (var candidates = Files.walk(root, depth)) {
@@ -233,6 +227,49 @@ public class LogbackLogStreamInventory {
 		} catch (IOException e) {
 			return List.of();
 		}
+	}
+
+	/**
+	 * Logback's {@code FileNamePattern.toRegex()} resolves date converters for the current period and therefore cannot
+	 * inventory arbitrary historic rotations. For discovery, every converter is deliberately treated as a variable while
+	 * all literal path parts remain exact. The rolling policy, rather than the current clock, is the source of truth.
+	 */
+	private static String archiveRegex(String pattern) {
+		StringBuilder regex = new StringBuilder("^");
+		StringBuilder literal = new StringBuilder();
+		for (int i = 0; i < pattern.length();) {
+			char character = pattern.charAt(i);
+			if (character != '%') {
+				literal.append(character);
+				i++;
+				continue;
+			}
+			if (i + 1 < pattern.length() && pattern.charAt(i + 1) == '%') {
+				literal.append('%');
+				i += 2;
+				continue;
+			}
+			appendQuoted(regex, literal);
+			i++;
+			while (i < pattern.length() && "-0123456789.".indexOf(pattern.charAt(i)) >= 0)
+				i++;
+			while (i < pattern.length() && Character.isLetter(pattern.charAt(i)))
+				i++;
+			if (i < pattern.length() && pattern.charAt(i) == '{') {
+				int end = pattern.indexOf('}', i + 1);
+				i = end < 0 ? pattern.length() : end + 1;
+			}
+			regex.append(".+?");
+		}
+		appendQuoted(regex, literal);
+		return regex.append('$').toString();
+	}
+
+	private static void appendQuoted(StringBuilder target, StringBuilder literal) {
+		if (literal.length() == 0)
+			return;
+		target.append(java.util.regex.Pattern.quote(literal.toString()));
+		literal.setLength(0);
 	}
 
 	private static Path scanRoot(String pattern, Path fallback) {

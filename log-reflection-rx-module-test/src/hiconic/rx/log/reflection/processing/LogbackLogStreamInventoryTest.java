@@ -5,7 +5,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -25,6 +29,8 @@ import ch.qos.logback.core.rolling.RollingFileAppender;
 import ch.qos.logback.core.rolling.TimeBasedRollingPolicy;
 import hiconic.rx.log.reflection.model.LogCapability;
 import hiconic.rx.log.reflection.model.LogBundleFormat;
+import hiconic.rx.log.reflection.model.LogBundleLayout;
+import hiconic.rx.log.reflection.model.LogBundleScope;
 import hiconic.rx.log.reflection.model.LogFilter;
 import hiconic.rx.log.reflection.model.LogFormat;
 import hiconic.rx.log.reflection.model.LogParsingQuality;
@@ -242,6 +248,144 @@ public class LogbackLogStreamInventoryTest {
 				.contains("INFO [test-app@node-1] demo.Inventory - started")
 				.contains("ERROR [test-app@node-1] demo.Orders - failed")
 				.contains("caused by a multiline detail");
+	}
+
+	@Test
+	public void naturalAllKeepsEverySourceSegmentAndProducesOneLosslessMergedView() throws Exception {
+		configureRollingAppender();
+		Files.writeString(archivedFile, """
+				2026-07-24 10:00:00,000 INFO  [main] demo.Inventory - archived-one
+				2026-07-24 10:00:01,000 WARN  [main] demo.Inventory - archived-two
+				""");
+		Files.writeString(logFile, "2026-07-24 10:00:02,000 ERROR [main] demo.Inventory - current\n");
+
+		LogbackLogStreamInventory inventory = inventory();
+		CreateLogBundle request = modernRequest(LogBundleScope.ALL,
+				Set.of(LogBundleLayout.SEPARATE, LogBundleLayout.MERGED), Set.of(LogBundleFormat.NATURAL));
+
+		Map<String, String> contents = zipContents(new LogBundleWriter().create(inventory, request, instanceId()));
+		String archived = contentEndingWith(contents, "/separate/natural/" + archivedFile.getFileName());
+		String active = contentEndingWith(contents, "/separate/natural/" + logFile.getFileName());
+		String merged = contentEndingWith(contents, "/merged/canonical.log");
+
+		assertThat(archived).contains("archived-one", "archived-two");
+		assertThat(active).contains("current");
+		assertThat(merged).containsSubsequence("archived-one", "archived-two", "current");
+		assertThat(merged.lines().filter(line -> line.contains("demo.Inventory -")).count()).isEqualTo(3);
+		assertThat(contents.keySet()).filteredOn(name -> name.endsWith("/merged/canonical.log")).hasSize(1);
+	}
+
+	@Test
+	public void customRangeHasNoLossesMisassignmentsOrOverhangsAcrossAllRepresentations() throws Exception {
+		configureRollingAppender();
+		Files.writeString(archivedFile, """
+				2026-07-24 10:00:00,000 INFO  [main] demo.Inventory - before
+				2026-07-24 10:00:01,000 WARN  [main] demo.Inventory - selected
+				selected continuation
+				""");
+		Files.writeString(logFile, "2026-07-24 10:00:02,000 ERROR [main] demo.Inventory - after\n");
+
+		CreateLogBundle request = modernRequest(LogBundleScope.CUSTOM_RANGE,
+				Set.of(LogBundleLayout.SEPARATE, LogBundleLayout.MERGED),
+				Set.of(LogBundleFormat.NATURAL, LogBundleFormat.CANONICAL_TEXT, LogBundleFormat.CANONICAL_JSONL));
+		request.setFrom(parse("2026-07-24 10:00:00,500"));
+		request.setTo(parse("2026-07-24 10:00:01,500"));
+
+		Map<String, String> contents = zipContents(new LogBundleWriter().create(inventory(), request, instanceId()));
+		assertThat(contents.keySet()).contains("manifest.json");
+		assertThat(contents.keySet()).filteredOn(name -> name.contains("/separate/")).hasSize(3);
+		assertThat(contents.keySet()).filteredOn(name -> name.endsWith("/merged/canonical.log")).hasSize(1);
+		assertThat(contents.keySet()).filteredOn(name -> name.endsWith("/merged/canonical.jsonl")).hasSize(1);
+
+		for (Map.Entry<String, String> entry : contents.entrySet()) {
+			if (entry.getKey().equals("manifest.json"))
+				continue;
+			assertThat(entry.getValue()).as(entry.getKey())
+					.contains("selected")
+					.contains("selected continuation")
+					.doesNotContain("before", "after");
+		}
+		assertThat(contents.get("manifest.json"))
+				.contains("\"recordCount\": 2", "\"selectedRecordCount\": 1")
+				.contains("\"recordCount\": 1", "\"selectedRecordCount\": 0")
+				.contains("\"recordsWithoutTimestamp\": 0");
+	}
+
+	@Test
+	public void customRangeRequiresCompleteOrderedBoundaries() {
+		CreateLogBundle missing = modernRequest(LogBundleScope.CUSTOM_RANGE, Set.of(LogBundleLayout.MERGED),
+				Set.of(LogBundleFormat.NATURAL));
+		missing.setFrom(new Date());
+		org.assertj.core.api.Assertions.assertThatThrownBy(() -> new LogBundleWriter().create(inventory(), missing, instanceId()))
+				.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("both from and to");
+
+		CreateLogBundle reversed = modernRequest(LogBundleScope.CUSTOM_RANGE, Set.of(LogBundleLayout.MERGED),
+				Set.of(LogBundleFormat.NATURAL));
+		reversed.setFrom(new Date(2));
+		reversed.setTo(new Date(1));
+		org.assertj.core.api.Assertions.assertThatThrownBy(() -> new LogBundleWriter().create(inventory(), reversed, instanceId()))
+				.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("starts after");
+	}
+
+	private void configureRollingAppender() throws Exception {
+		Logger root = context.getLogger(Logger.ROOT_LOGGER_NAME);
+		@SuppressWarnings("unchecked")
+		FileAppender<ch.qos.logback.classic.spi.ILoggingEvent> original =
+				(FileAppender<ch.qos.logback.classic.spi.ILoggingEvent>) root.getAppender("application");
+		root.detachAppender(original);
+		original.stop();
+
+		RollingFileAppender<ch.qos.logback.classic.spi.ILoggingEvent> rolling = new RollingFileAppender<>();
+		rolling.setContext(context);
+		rolling.setName("application");
+		rolling.setFile(logFile.toString());
+		rolling.setEncoder(original.getEncoder());
+		TimeBasedRollingPolicy<ch.qos.logback.classic.spi.ILoggingEvent> policy = new TimeBasedRollingPolicy<>();
+		policy.setContext(context);
+		policy.setParent(rolling);
+		policy.setFileNamePattern(logFile.getParent().resolve("archive-%d{yyyy-MM-dd}.log").toString());
+		policy.start();
+		rolling.setRollingPolicy(policy);
+		rolling.setTriggeringPolicy(policy);
+		rolling.start();
+		root.addAppender(rolling);
+
+		archivedFile = logFile.getParent().resolve("archive-2026-07-24.log");
+	}
+
+	private LogbackLogStreamInventory inventory() {
+		LogbackLogStreamInventory inventory = new LogbackLogStreamInventory();
+		inventory.setLoggerContext(context);
+		inventory.setInstanceId(instanceId());
+		return inventory;
+	}
+
+	private static CreateLogBundle modernRequest(LogBundleScope scope, Set<LogBundleLayout> layouts,
+			Set<LogBundleFormat> formats) {
+		CreateLogBundle request = CreateLogBundle.T.create();
+		request.setStreamIds(Set.of("appender:application"));
+		request.setScope(scope);
+		request.setLayouts(layouts);
+		request.setFormats(formats);
+		return request;
+	}
+
+	private static Date parse(String value) throws Exception {
+		return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS").parse(value);
+	}
+
+	private static Map<String, String> zipContents(com.braintribe.model.resource.Resource resource) throws Exception {
+		Map<String, String> result = new LinkedHashMap<>();
+		try (ZipInputStream zip = new ZipInputStream(resource.openStream())) {
+			for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry())
+				result.put(entry.getName(), new String(zip.readAllBytes(), StandardCharsets.UTF_8));
+		}
+		return result;
+	}
+
+	private static String contentEndingWith(Map<String, String> contents, String suffix) {
+		return contents.entrySet().stream().filter(entry -> entry.getKey().endsWith(suffix)).map(Map.Entry::getValue)
+				.findFirst().orElseThrow(() -> new AssertionError("Missing ZIP entry ending with " + suffix));
 	}
 
 	private static InstanceId instanceId() {

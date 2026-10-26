@@ -8,7 +8,13 @@ import com.braintribe.model.generic.reflection.EnumTypes;
  * Representation written into a log bundle.
  */
 public enum LogBundleFormat implements EnumBase<LogBundleFormat> {
+	/**
+	 * Natural representation for the selected layout: unchanged source files for an unfiltered separate layout and
+	 * canonical text where a derived representation is inherently required.
+	 */
+	NATURAL,
 	/** Original active and, when requested, rotated files without normalization. */
+	@Deprecated
 	RAW_FILES,
 	/** Canonical records as newline-delimited JSON. */
 	CANONICAL_JSONL,
