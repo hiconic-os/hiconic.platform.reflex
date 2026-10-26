@@ -152,7 +152,6 @@ export function App() {
       setApi(client);
       await refreshAccess(true);
     } catch (caught) {
-      console.error("Log Reflection initialization failed", caught);
       applyAccessFailure(caught);
     }
   }
@@ -250,7 +249,7 @@ export function App() {
 
   function applyAccessFailure(caught: unknown) {
     const message = messageOf(caught);
-    setAccessDetail(message);
+    setAccessDetail("");
     setCanRead(false);
     setCanManageLevels(false);
     tailGeneration++;
@@ -258,7 +257,11 @@ export function App() {
     if (isConnectivityFailure(message)) setAccessState("offline");
     else if (isAuthorizationFailure(message)) setAccessState("denied");
     else if (isAuthenticationFailure(message)) setAccessState("unauthenticated");
-    else setAccessState("error");
+    else {
+      const tracebackId = reportConsoleTraceback("Log Reflection access check failed", caught);
+      setAccessDetail(`Console traceback ID: ${tracebackId}`);
+      setAccessState("error");
+    }
   }
 
   function handleOperationalFailure(caught: unknown) {
@@ -1208,7 +1211,7 @@ function AccessOverlay(props: { state: AccessState; detail: string; loginUrl?: s
     : "Session required";
   const explanation = () => props.state === "offline" ? "The server cannot currently be reached. Filters and selections remain in this browser."
     : props.state === "denied" ? "Your session is valid, but it has no Log Reflection reader role."
-    : props.state === "error" ? "The server returned an unexpected error while checking access."
+    : props.state === "error" ? "A technical problem occurred while checking access."
     : props.state === "unauthenticated" ? "Sign in to inspect logs. The current workspace remains available."
     : "Verifying session and capabilities.";
   return <div class="access-overlay" role="dialog" aria-live="polite"><div class="access-card"><strong>{title()}</strong><p>{explanation()}</p>
@@ -1220,6 +1223,14 @@ function AccessOverlay(props: { state: AccessState; detail: string; loginUrl?: s
 
 function messageOf(caught: unknown) {
   return caught instanceof Error ? caught.message : String(caught);
+}
+
+function reportConsoleTraceback(context: string, caught: unknown) {
+  // The local reference keeps implementation details out of the UI while linking it to the complete browser-console error. The original
+  // error remains intact and may itself contain a server-side traceback ID.
+  const tracebackId = `LR-${crypto.randomUUID().slice(0, 8)}`;
+  console.error(`[${tracebackId}] ${context}`, caught);
+  return tracebackId;
 }
 
 function enumName(value: unknown): string {
