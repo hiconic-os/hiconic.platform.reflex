@@ -32,6 +32,7 @@ import com.braintribe.exception.HttpException;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
+import com.braintribe.gm.model.reason.essential.ParseError;
 import com.braintribe.model.generic.GMF;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.reflection.EnhancableCustomType;
@@ -91,17 +92,25 @@ public class QueryParamDecoder implements DecoderTargetRegistry {
 		try {
 			_decode(key, value);
 		} catch (HttpException e) {
-			throw invalidParameter(key, e);
+			throw invalidParameter(key, e, false);
 		} catch (Exception e) {
-			throw invalidParameter(key, e);
+			throw invalidParameter(key, e, true);
 		}
 	}
 
-	private static UnsatisfiedMaybeTunneling invalidParameter(String key, Exception cause) {
+	private static UnsatisfiedMaybeTunneling invalidParameter(String key, Exception cause, boolean parsingFailure) {
 		String parserMessage = parserMessage(cause);
 		String message = "Invalid value for request parameter '" + key + "'";
 		if (parserMessage != null && !parserMessage.isBlank())
 			message += ": " + parserMessage;
+
+		if (parsingFailure) {
+			String parseErrorMessage = parserMessage == null || parserMessage.isBlank() ? message : parserMessage;
+			return new UnsatisfiedMaybeTunneling(Reasons.build(InvalidArgument.T) //
+					.text(message) //
+					.cause(Reasons.build(ParseError.T).text(parseErrorMessage).toReason()) //
+					.toMaybe());
+		}
 
 		return new UnsatisfiedMaybeTunneling(Reasons.build(InvalidArgument.T) //
 				.text(message) //

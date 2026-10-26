@@ -32,17 +32,18 @@ public class HttpRequestEntityDecoderUtils {
 
 	private static final Set<Property> INVALID_HEADER_PROPERTIES = new HashSet<>(GenericEntity.T.getDeclaredProperties());
 
-	// TODO move this somewhere?
-	private static final DateTimeFormatter DATETIME_FORMATTER = 
-			new DateTimeFormatterBuilder()
-			.optionalStart().appendPattern("yyyy-MM-dd['T'HH[:mm[:ss[.SSS]]]][X]").optionalEnd()
-			.optionalStart().appendPattern("yyyyMMdd['T'HH[mm[ss[SSS]]]][X]").optionalEnd()
-		            .parseDefaulting(ChronoField.HOUR_OF_DAY, 0)
-		            .parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
-		            .parseDefaulting(ChronoField.SECOND_OF_MINUTE, 0)
-		            .parseDefaulting(ChronoField.NANO_OF_SECOND, 0)
-		            .parseDefaulting(ChronoField.OFFSET_SECONDS, 0)
-		            .toFormatter();
+	private static final String CANONICAL_DATE_TIME_PATTERN = "yyyy-MM-dd['T'HH[:mm[:ss[.SSS]]]][XXX]";
+	private static final String LEGACY_EXTENDED_DATE_TIME_PATTERN = "yyyy-MM-dd['T'HH[:mm[:ss[.SSS]]]][X]";
+	private static final String LEGACY_COMPACT_DATE_TIME_PATTERN = "yyyyMMdd['T'HH[mm[ss[SSS]]]][X]";
+
+	/* The first formatter represents the ideal, canonical RFC-3339-style input. The remaining formatters are adaptive compatibility variants
+	 * for legacy clients that still use an offset without a colon or the compact notation; they are not equally preferred wire representations.
+	 * DateTimeFormatter optional sections are sequential optional grammar parts, not alternatives, so every representation intentionally has
+	 * its own formatter and is tried in a deterministic order. */
+	private static final List<DateTimeFormatter> DATE_TIME_FORMATTERS = List.of( //
+			dateTimeFormatter(CANONICAL_DATE_TIME_PATTERN), // RFC-3339-style offset, e.g. +00:30
+			dateTimeFormatter(LEGACY_EXTENDED_DATE_TIME_PATTERN), // legacy offset, e.g. +0030
+			dateTimeFormatter(LEGACY_COMPACT_DATE_TIME_PATTERN));
 
 	/**
 	 * Parse the given date.
@@ -54,8 +55,30 @@ public class HttpRequestEntityDecoderUtils {
 	 * @see ZonedDateTime#parse
 	 */
 	public static Date parseDate(String date) {
-		ZonedDateTime result = ZonedDateTime.parse(date, DATETIME_FORMATTER);
-		return Date.from(result.toInstant());
+		DateTimeParseException lastFailure = null;
+		for (DateTimeFormatter formatter : DATE_TIME_FORMATTERS) {
+			try {
+				ZonedDateTime result = ZonedDateTime.parse(date, formatter);
+				return Date.from(result.toInstant());
+			} catch (DateTimeParseException e) {
+				lastFailure = e;
+			}
+		}
+
+		throw new DateTimeParseException("Unsupported date/time value. Expected " + CANONICAL_DATE_TIME_PATTERN + " or one of the legacy formats "
+				+ LEGACY_EXTENDED_DATE_TIME_PATTERN + ", " + LEGACY_COMPACT_DATE_TIME_PATTERN, date,
+				lastFailure == null ? 0 : lastFailure.getErrorIndex(), lastFailure);
+	}
+
+	private static DateTimeFormatter dateTimeFormatter(String pattern) {
+		return new DateTimeFormatterBuilder() //
+				.appendPattern(pattern) //
+				.parseDefaulting(ChronoField.HOUR_OF_DAY, 0) //
+				.parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0) //
+				.parseDefaulting(ChronoField.SECOND_OF_MINUTE, 0) //
+				.parseDefaulting(ChronoField.NANO_OF_SECOND, 0) //
+				.parseDefaulting(ChronoField.OFFSET_SECONDS, 0) //
+				.toFormatter();
 	}
 	
 	public static String serializeDate(Date date) {		

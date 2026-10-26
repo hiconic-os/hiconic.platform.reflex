@@ -27,6 +27,7 @@ import org.junit.Test;
 
 import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
+import com.braintribe.gm.model.reason.essential.ParseError;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.user.Group;
@@ -54,8 +55,10 @@ public class QueryParsingDecoderTest {
 			fail("Expected an unsatisfied InvalidArgument");
 		} catch (UnsatisfiedMaybeTunneling e) {
 			assertThat(e.getMaybe().isUnsatisfiedBy(InvalidArgument.T)).isTrue();
-			String message = e.getMaybe().whyUnsatisfied().getText();
+			var reason = e.getMaybe().whyUnsatisfied();
+			String message = reason.getText();
 			assertThat(message).contains("dateProperty").contains(invalidValue);
+			assertThat(reason.getReasons()).singleElement().isInstanceOf(ParseError.class);
 		}
 	}
 	
