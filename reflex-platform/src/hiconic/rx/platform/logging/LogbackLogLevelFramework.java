@@ -8,6 +8,7 @@ import java.util.TreeSet;
 
 import org.slf4j.LoggerFactory;
 
+import com.braintribe.logging.level.JulLogLevelFramework;
 import com.braintribe.logging.level.LogLevelNames;
 import com.braintribe.logging.level.LogLevelFramework;
 import com.braintribe.logging.level.StructuredPackageComparator;
@@ -24,6 +25,18 @@ public class LogbackLogLevelFramework implements LogLevelFramework {
 	public static final String LEVEL_ERROR = "ERROR";
 	public static final String LEVEL_FATAL = "FATAL";
 	public static final String LEVEL_OFF = "OFF";
+
+	private final LoggerContext loggerContext;
+	private final LogLevelFramework julFramework;
+
+	public LogbackLogLevelFramework() {
+		this((LoggerContext) LoggerFactory.getILoggerFactory(), new JulLogLevelFramework());
+	}
+
+	LogbackLogLevelFramework(LoggerContext loggerContext, LogLevelFramework julFramework) {
+		this.loggerContext = loggerContext;
+		this.julFramework = julFramework;
+	}
 
 	@Override
 	public Map<String, String> getConfiguredLogLevels() {
@@ -55,28 +68,36 @@ public class LogbackLogLevelFramework implements LogLevelFramework {
 
 	@Override
 	public void applyLogLevels(Map<String, String> levels) {
-		if (levels == null || levels.isEmpty()) {
-			return;
+		if (levels != null) {
+			for (Map.Entry<String, String> entry: levels.entrySet()) {
+				loggerContext().getLogger(toLogbackLoggerName(entry.getKey())).setLevel(toLogbackLevel(entry.getValue()));
+			}
 		}
 
-		for (Map.Entry<String, String> entry: levels.entrySet()) {
-			loggerContext().getLogger(toLogbackLoggerName(entry.getKey())).setLevel(toLogbackLevel(entry.getValue()));
-		}
+		Map<String, String> julLevels = levels == null ? new LinkedHashMap<>() : new LinkedHashMap<>(levels);
+		julLevels.putIfAbsent(LogLevelNames.ROOT, fromLogbackLevel(loggerContext().getLogger(Logger.ROOT_LOGGER_NAME).getEffectiveLevel()));
+		julFramework.applyLogLevels(julLevels);
 	}
 
 	@Override
 	public void clearLogLevels(Set<String> loggerNames) {
-		if (loggerNames == null || loggerNames.isEmpty()) {
-			return;
-		}
-
-		for (String loggerName: loggerNames) {
+		Set<String> logbackLoggerNames = loggerNames == null ? Set.of() : loggerNames;
+		for (String loggerName: logbackLoggerNames) {
 			if (Logger.ROOT_LOGGER_NAME.equals(toLogbackLoggerName(loggerName))) {
 				continue;
 			}
 
 			loggerContext().getLogger(toLogbackLoggerName(loggerName)).setLevel(null);
 		}
+
+		// com.braintribe.logging.Logger checks JUL before the JUL-to-SLF4J bridge forwards to Logback. Clear every
+		// explicit JUL gate so the subsequent application installs exactly the same effective level hierarchy in both
+		// frameworks. This also preserves lazy Supplier evaluation for disabled levels.
+		Set<String> julLoggerNames = new TreeSet<>(new StructuredPackageComparator());
+		julLoggerNames.addAll(julFramework.getConfiguredLogLevels().keySet());
+		julLoggerNames.addAll(logbackLoggerNames);
+		julLoggerNames.remove(LogLevelNames.ROOT); // Keep a valid root gate until applyLogLevels replaces it.
+		julFramework.clearLogLevels(julLoggerNames);
 	}
 
 	private static String toLogbackLoggerName(String loggerName) {
@@ -140,6 +161,6 @@ public class LogbackLogLevelFramework implements LogLevelFramework {
 	}
 
 	private LoggerContext loggerContext() {
-		return (LoggerContext) LoggerFactory.getILoggerFactory();
+		return loggerContext;
 	}
 }
