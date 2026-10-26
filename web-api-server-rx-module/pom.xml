@@ -30,6 +30,11 @@ limitations under the License.
     </licenses>
     <dependencies>
         <dependency>
+            <groupId>com.braintribe.gm</groupId>
+            <artifactId>reason-model</artifactId>
+            <version>${V.com.braintribe.gm}</version>
+        </dependency>
+        <dependency>
             <groupId>com.braintribe.common</groupId>
             <artifactId>logging</artifactId>
             <version>${V.com.braintribe.common}</version>

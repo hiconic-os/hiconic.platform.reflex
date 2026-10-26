@@ -21,6 +21,7 @@ import java.util.List;
 import org.jboss.logging.Logger;
 
 import com.braintribe.gm._ResourceApiModel_;
+import com.braintribe.gm.model.reason.AnticipatedReason;
 import com.braintribe.gm.model.reason.essential.AlreadyExists;
 import com.braintribe.gm.model.reason.essential.InternalError;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
@@ -28,6 +29,7 @@ import com.braintribe.gm.model.reason.essential.NotFound;
 import com.braintribe.gm.model.reason.essential.ParseError;
 import com.braintribe.gm.model.reason.essential.UnsupportedOperation;
 import com.braintribe.gm.model.reason.meta.HttpStatusCode;
+import com.braintribe.gm.model.reason.meta.LogReason;
 import com.braintribe.gm.model.security.reason.AuthenticationFailure;
 import com.braintribe.gm.model.security.reason.Forbidden;
 import com.braintribe.gm.model.security.reason.SecurityReason;
@@ -113,9 +115,11 @@ public class WebApiServerRxModuleSpace implements RxModuleContract, WebApiServer
 
 	private void configureDefaultReasonMetadata(ModelConfigurations configurations) {
 		ModelConfiguration model = configurations.bySymbol(defaultReasonMetadataModel);
+		model.addModel(AnticipatedReason.T.getModel());
 		model.addModel(InvalidArgument.T.getModel());
 		model.addModel(SecurityReason.T.getModel());
 		model.configureModel(editor -> {
+			editor.onEntityType(AnticipatedReason.T).addMetaData(suppressOperationalLogging());
 			editor.onEntityType(InvalidArgument.T).addMetaData(httpStatus(HttpServletResponse.SC_BAD_REQUEST));
 			editor.onEntityType(ParseError.T).addMetaData(httpStatus(HttpServletResponse.SC_BAD_REQUEST));
 			editor.onEntityType(UnsupportedOperation.T).addMetaData(httpStatus(HttpServletResponse.SC_BAD_REQUEST));
@@ -130,6 +134,13 @@ public class WebApiServerRxModuleSpace implements RxModuleContract, WebApiServer
 	private HttpStatusCode httpStatus(int code) {
 		HttpStatusCode metadata = HttpStatusCode.T.create();
 		metadata.setCode(code);
+		return metadata;
+	}
+
+	private LogReason suppressOperationalLogging() {
+		LogReason metadata = LogReason.T.create();
+		metadata.setLevel(null);
+		metadata.setRecursive(true);
 		return metadata;
 	}
 

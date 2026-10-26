@@ -144,7 +144,7 @@ public class WebApiV1Server extends AbstractDdraRestServlet<ApiV1EndpointContext
 
 	static {
 		defaultLogging = LogReason.T.create();
-		defaultLogging.setLevel(LogLevel.INFO);
+		defaultLogging.setLevel(LogLevel.ERROR);
 		defaultLogging.setRecursive(true);
 	}
 
