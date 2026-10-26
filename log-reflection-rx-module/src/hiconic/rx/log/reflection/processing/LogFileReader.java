@@ -247,7 +247,7 @@ public class LogFileReader {
 		return line.size() == 0 ? null : line.toByteArray();
 	}
 
-	private static InputStream openContent(Path path) throws IOException {
+	static InputStream openContent(Path path) throws IOException {
 		InputStream file = Files.newInputStream(path);
 		String name = path.getFileName().toString().toLowerCase(Locale.ROOT);
 		try {

@@ -7,7 +7,9 @@ import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -152,9 +154,13 @@ public class LogReflectionProcessorClusterTest {
 		AtomicReference<MulticastRequest> dispatched = new AtomicReference<>();
 		MulticastResponse multicastResponse = MulticastResponse.T.create();
 		multicastResponse.getResponses().put(InstanceId.of("node-1", "logs-app"),
-				envelope(zipResource("application/current.log", "node one")));
+				envelope(zipResource(Map.of(
+						"application_node-1.log", "node one\n",
+						"__merged__/application_merged.log", "node one\n"))));
 		multicastResponse.getResponses().put(InstanceId.of("node-2", "logs-app"),
-				envelope(zipResource("application/current.log", "node two")));
+				envelope(zipResource(Map.of(
+						"application_node-2.log", "node two\n",
+						"__merged__/application_merged.log", "node two\n"))));
 
 		Evaluator<ServiceRequest> evaluator = evaluator(request -> {
 			dispatched.set((MulticastRequest) request);
@@ -171,10 +177,10 @@ public class LogReflectionProcessorClusterTest {
 		request.setTo(new Date(200));
 
 		Resource result = (Resource) processor(evaluator).process(context("log-reflection-reader"), request);
-		List<String> entries = new ArrayList<>();
+		Map<String, String> entries = new LinkedHashMap<>();
 		try (ZipInputStream zip = new ZipInputStream(result.openStream())) {
 			for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry())
-				entries.add(entry.getName());
+				entries.put(entry.getName(), new String(zip.readAllBytes(), StandardCharsets.UTF_8));
 		}
 
 		assertThat(dispatched.get().getAddressee().stringify()).isEqualTo("logs-app@<undefined>");
@@ -186,10 +192,9 @@ public class LogReflectionProcessorClusterTest {
 		assertThat(local.getFormats()).containsExactlyInAnyOrder(LogBundleFormat.NATURAL, LogBundleFormat.CANONICAL_JSONL);
 		assertThat(local.getFrom()).isEqualTo(new Date(100));
 		assertThat(local.getTo()).isEqualTo(new Date(200));
-		assertThat(entries).contains(
-				"logs-app_node-1/application/current.log",
-				"logs-app_node-2/application/current.log",
-				"manifest.json");
+		assertThat(entries.keySet()).containsExactlyInAnyOrder(
+				"application_node-1.log", "application_node-2.log", "application_merged.log", "manifest.json");
+		assertThat(entries.get("application_merged.log")).isEqualTo("node one\nnode two\n");
 	}
 
 	private static LogReflectionProcessor processor(Evaluator<ServiceRequest> systemEvaluator) {
@@ -213,13 +218,15 @@ public class LogReflectionProcessorClusterTest {
 		return builder.build();
 	}
 
-	private static Resource zipResource(String name, String content) {
+	private static Resource zipResource(Map<String, String> contents) {
 		try {
 			ByteArrayOutputStream output = new ByteArrayOutputStream();
 			try (ZipOutputStream zip = new ZipOutputStream(output)) {
-				zip.putNextEntry(new ZipEntry(name));
-				zip.write(content.getBytes(StandardCharsets.UTF_8));
-				zip.closeEntry();
+				for (Map.Entry<String, String> entry : contents.entrySet()) {
+					zip.putNextEntry(new ZipEntry(entry.getKey()));
+					zip.write(entry.getValue().getBytes(StandardCharsets.UTF_8));
+					zip.closeEntry();
+				}
 			}
 			byte[] bytes = output.toByteArray();
 			Resource resource = Resource.createTransient(() -> new ByteArrayInputStream(bytes));

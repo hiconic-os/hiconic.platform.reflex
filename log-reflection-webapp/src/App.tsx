@@ -6,6 +6,9 @@ import {
   type LogSegmentDescriptor,
   type LogStreamDescriptor,
   type RecordFilter,
+  type RemoteLogFormat,
+  type RemoteLogLayout,
+  type RemoteLogScope,
   type RuntimeConfig,
   type TargetSelection
 } from "./api";
@@ -100,12 +103,15 @@ export function App() {
   const [tailBufferSize, setTailBufferSize] = createSignal(2000);
   const [followTail, setFollowTail] = createSignal(true);
   const [includeRotated, setIncludeRotated] = createSignal(false);
-  const [bundleIncludeRotated, setBundleIncludeRotated] = createSignal(true);
   const [bundleOpen, setBundleOpen] = createSignal(false);
   const [bundleApplication, setBundleApplication] = createSignal("");
   const [bundleNode, setBundleNode] = createSignal("");
   const [bundleStreams, setBundleStreams] = createSignal<string[]>([]);
-  const [bundleFormat, setBundleFormat] = createSignal<"raw" | "text" | "jsonl">("text");
+  const [bundleScope, setBundleScope] = createSignal<RemoteLogScope>("all");
+  const [bundleLayouts, setBundleLayouts] = createSignal<RemoteLogLayout[]>(["separate", "merged"]);
+  const [bundleFormats, setBundleFormats] = createSignal<RemoteLogFormat[]>(["natural"]);
+  const [bundleFrom, setBundleFrom] = createSignal("");
+  const [bundleTo, setBundleTo] = createSignal("");
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal<string>();
   let recordsViewport: HTMLDivElement | undefined;
@@ -546,17 +552,51 @@ export function App() {
       : [...current, streamId]);
   }
 
+  function toggleBundleLayout(layout: RemoteLogLayout) {
+    setBundleLayouts(current => current.includes(layout)
+      ? current.filter(candidate => candidate !== layout)
+      : [...current, layout]);
+  }
+
+  function toggleBundleFormat(format: RemoteLogFormat) {
+    setBundleFormats(current => current.includes(format)
+      ? current.filter(candidate => candidate !== format)
+      : [...current, format]);
+  }
+
   async function createBundle() {
     const client = api();
     if (!client || !bundleApplication() || bundleStreams().length === 0)
       return;
+    if (bundleLayouts().length === 0 || bundleFormats().length === 0) {
+      setError("Select at least one layout and one format.");
+      return;
+    }
+    if (bundleScope() === "range") {
+      if (!bundleFrom() || !bundleTo()) {
+        setError("A custom range needs both a start and an end.");
+        return;
+      }
+      if (new Date(bundleFrom()).getTime() > new Date(bundleTo()).getTime()) {
+        setError("The custom range starts after it ends.");
+        return;
+      }
+    }
     setLoading(true);
     setError(undefined);
     try {
       const result = await client.bundle({
-        applicationId: bundleApplication(),
-        nodeId: bundleNode()
-      }, bundleStreams(), bundleIncludeRotated(), bundleFormat());
+        target: {
+          applicationId: bundleApplication(),
+          nodeId: bundleNode()
+        },
+        streamIds: bundleStreams(),
+        scope: bundleScope(),
+        layouts: bundleLayouts(),
+        formats: bundleFormats(),
+        from: bundleFrom(),
+        to: bundleTo()
+      });
       const url = URL.createObjectURL(result.blob);
       const link = document.createElement("a");
       link.href = url;
@@ -736,7 +776,7 @@ export function App() {
                     <button onClick={() => loadRecords(tab(), "replace")}>Refresh</button>
                     <button onClick={() => download("raw")}>Raw ↓</button>
                     <button onClick={() => download("json")}>JSON ↓</button>
-                    <button onClick={openBundle}>Bundle ↓</button>
+                    <button onClick={openBundle}>Download logs ↓</button>
                   </div>
                 </div>
                 <div classList={{ "records-surface": true, "detail-open": Boolean(selectedRecord()) }}>
@@ -790,9 +830,9 @@ export function App() {
         <div class="modal-backdrop" onPointerDown={event => {
           if (event.target === event.currentTarget) setBundleOpen(false);
         }}>
-          <section class="bundle-dialog" role="dialog" aria-modal="true" aria-label="Download log bundle">
+          <section class="bundle-dialog" role="dialog" aria-modal="true" aria-label="Download remote logs">
             <header>
-              <div><strong>Download log bundle</strong><small>Download complete, unfiltered logs without buffering the bundle in heap.</small></div>
+              <div><strong>Download remote logs</strong><small>Create a memory-safe ZIP from the selected server-side log data.</small></div>
               <button onClick={() => setBundleOpen(false)}>×</button>
             </header>
             <div class="bundle-scope">
@@ -807,19 +847,31 @@ export function App() {
                   <For each={bundleNodes()}>{node => <option value={node}>{node}</option>}</For>
                 </select>
               </label>
-              <label>Segments
-                <select value={bundleIncludeRotated() ? "rotated" : "active"} onChange={event => setBundleIncludeRotated(event.currentTarget.value === "rotated")}>
-                  <option value="active">Current files</option>
-                  <option value="rotated">Current + rotated files</option>
-                </select>
-              </label>
-              <label>Representation
-                <select value={bundleFormat()} onChange={event => setBundleFormat(event.currentTarget.value as "raw" | "text" | "jsonl")}>
-                  <option value="text">Human-readable merged logs</option>
-                  <option value="raw">Original files</option>
-                  <option value="jsonl">Canonical JSONL</option>
-                </select>
-              </label>
+            </div>
+            <div class="bundle-options">
+              <fieldset>
+                <legend>Scope</legend>
+                <label><input type="radio" name="bundle-scope" checked={bundleScope() === "current"} onChange={() => setBundleScope("current")} />Current log</label>
+                <label><input type="radio" name="bundle-scope" checked={bundleScope() === "all"} onChange={() => setBundleScope("all")} />Current and rotated logs</label>
+                <label><input type="radio" name="bundle-scope" checked={bundleScope() === "range"} onChange={() => setBundleScope("range")} />Custom datetime range</label>
+                <Show when={bundleScope() === "range"}>
+                  <div class="bundle-range">
+                    <label>From<input type="datetime-local" value={bundleFrom()} onChange={event => setBundleFrom(event.currentTarget.value)} /></label>
+                    <label>To<input type="datetime-local" value={bundleTo()} onChange={event => setBundleTo(event.currentTarget.value)} /></label>
+                  </div>
+                </Show>
+              </fieldset>
+              <fieldset>
+                <legend>Layout</legend>
+                <label><input type="checkbox" checked={bundleLayouts().includes("separate")} onChange={() => toggleBundleLayout("separate")} />Separate per node</label>
+                <label><input type="checkbox" checked={bundleLayouts().includes("merged")} onChange={() => toggleBundleLayout("merged")} />Merged across nodes</label>
+              </fieldset>
+              <fieldset>
+                <legend>Format</legend>
+                <label><input type="checkbox" checked={bundleFormats().includes("natural")} onChange={() => toggleBundleFormat("natural")} />Original text</label>
+                <label><input type="checkbox" checked={bundleFormats().includes("canonical")} onChange={() => toggleBundleFormat("canonical")} />Canonical text</label>
+                <label><input type="checkbox" checked={bundleFormats().includes("jsonl")} onChange={() => toggleBundleFormat("jsonl")} />JSONL</label>
+              </fieldset>
             </div>
             <div class="bundle-streams">
               <strong>File streams</strong>
@@ -833,7 +885,7 @@ export function App() {
             </div>
             <footer>
               <span>{bundleStreams().length} stream{bundleStreams().length === 1 ? "" : "s"} selected</span>
-              <div><button onClick={() => setBundleOpen(false)}>Cancel</button><button class="primary" onClick={createBundle}>Create ZIP</button></div>
+              <div><button onClick={() => setBundleOpen(false)}>Cancel</button><button class="primary" onClick={createBundle}>Download ZIP</button></div>
             </footer>
           </section>
         </div>

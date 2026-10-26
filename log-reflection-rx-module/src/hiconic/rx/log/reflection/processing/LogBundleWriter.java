@@ -19,6 +19,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -27,6 +28,7 @@ import com.braintribe.model.resource.Resource;
 import com.braintribe.model.service.api.InstanceId;
 import com.braintribe.utils.stream.api.StreamPipe;
 import com.braintribe.utils.stream.api.StreamPipes;
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import hiconic.rx.log.reflection.model.LogBundleFormat;
@@ -43,20 +45,22 @@ import hiconic.rx.log.reflection.model.api.CreateLocalLogBundle;
  */
 public class LogBundleWriter {
 	private static final DateTimeFormatter stamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneOffset.UTC);
+	private static final DateTimeFormatter rangeStamp = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmssSSS'Z'").withZone(ZoneOffset.UTC);
+	private static final String MERGE_CONTRIBUTION_PREFIX = "__merged__/";
 	private static final ObjectMapper objectMapper = new ObjectMapper();
 	private final LogFileReader fileReader = new LogFileReader();
 
 	public Resource create(LogbackLogStreamInventory inventory, CreateLogBundle request, InstanceId instanceId) {
 		if (modern(request.getScope(), request.getLayouts(), request.getFormats(), request.getFrom(), request.getTo()))
 			return createModern(inventory, request.getStreamIds(), request.getScope(), request.getLayouts(), request.getFormats(),
-					request.getFrom(), request.getTo(), instanceId);
+					request.getFrom(), request.getTo(), instanceId, false);
 		return createLegacy(inventory, request.getStreamIds(), request.getIncludeRotated(), request.getFormat(), instanceId);
 	}
 
 	public Resource create(LogbackLogStreamInventory inventory, CreateLocalLogBundle request, InstanceId instanceId) {
 		if (modern(request.getScope(), request.getLayouts(), request.getFormats(), request.getFrom(), request.getTo()))
 			return createModern(inventory, request.getStreamIds(), request.getScope(), request.getLayouts(), request.getFormats(),
-					request.getFrom(), request.getTo(), instanceId);
+					request.getFrom(), request.getTo(), instanceId, true);
 		return createLegacy(inventory, request.getStreamIds(), request.getIncludeRotated(), request.getFormat(), instanceId);
 	}
 
@@ -142,7 +146,7 @@ public class LogBundleWriter {
 
 	private Resource createModern(LogbackLogStreamInventory inventory, Set<String> requestedStreams, LogBundleScope requestedScope,
 			Set<LogBundleLayout> requestedLayouts, Set<LogBundleFormat> requestedFormats, Date from, Date to,
-			InstanceId instanceId) {
+			InstanceId instanceId, boolean clusterContribution) {
 		LogBundleScope scope = requestedScope == null ? LogBundleScope.CURRENT : requestedScope;
 		EnumSet<LogBundleLayout> layouts = requestedLayouts == null || requestedLayouts.isEmpty()
 				? EnumSet.of(LogBundleLayout.SEPARATE, LogBundleLayout.MERGED)
@@ -171,16 +175,12 @@ public class LogBundleWriter {
 		if (range != null)
 			for (BundleEntry entry : entries)
 				stats.put(entry.path, inspect(entry, range));
-		List<BundleEntry> contributing = range == null ? entries : entries.stream()
-				.filter(entry -> stats.get(entry.path).selectedRecords > 0)
-				.toList();
-
-		String baseName = "logs-" + safe(instanceId.getApplicationId()) + "-" + safe(instanceId.getNodeId()) + "-"
+		String baseName = "log-export_" + safe(instanceId.getApplicationId()) + "_" + safe(instanceId.getNodeId()) + "_"
 				+ stamp.format(Instant.now());
 		StreamPipe pipe = StreamPipes.fileBackedFactory().newPipe(baseName);
 		try (OutputStream output = pipe.openOutputStream(); ZipOutputStream zip = new ZipOutputStream(output)) {
 			writeModernManifest(zip, instanceId, scope, layouts, formats, from, to, entries, stats);
-			writeModernEntries(zip, contributing, layouts, formats, range);
+			writeModernEntries(zip, entries, layouts, formats, scope, from, to, range, instanceId, clusterContribution);
 			zip.finish();
 		} catch (IOException | UncheckedIOException e) {
 			pipe.close();
@@ -208,49 +208,59 @@ public class LogBundleWriter {
 	}
 
 	private void writeModernEntries(ZipOutputStream zip, List<BundleEntry> entries, Set<LogBundleLayout> layouts,
-			Set<LogBundleFormat> formats, LogFilter range) throws IOException {
+			Set<LogBundleFormat> formats, LogBundleScope scope, Date from, Date to, LogFilter range, InstanceId instanceId,
+			boolean clusterContribution) throws IOException {
 		Set<String> names = new HashSet<>();
 		for (List<BundleEntry> streamEntries : entriesByStream(entries).values()) {
-			String stream = safe(streamEntries.get(0).stream.descriptor().getStreamId());
+			String base = exportBaseName(streamEntries.get(0).stream.path());
 			if (layouts.contains(LogBundleLayout.SEPARATE)) {
-				for (BundleEntry entry : streamEntries) {
-					String segment = safe(entry.path.getFileName().toString());
-					if (formats.contains(LogBundleFormat.NATURAL)) {
-						String name = unique(names, stream + "/separate/natural/" + segment + (range == null ? "" : ".log"));
-						zip.putNextEntry(new ZipEntry(name));
-						if (range == null)
-							writeRaw(entry.path, zip);
-						else
-							writeNaturalText(entry, range, zip);
-						zip.closeEntry();
-					}
-					if (formats.contains(LogBundleFormat.CANONICAL_TEXT)) {
-						zip.putNextEntry(new ZipEntry(unique(names, stream + "/separate/canonical-text/" + segment + ".log")));
-						writeCanonicalText(entry, range, zip);
-						zip.closeEntry();
-					}
-					if (formats.contains(LogBundleFormat.CANONICAL_JSONL)) {
-						zip.putNextEntry(new ZipEntry(unique(names, stream + "/separate/jsonl/" + segment + ".jsonl")));
-						writeCanonicalJsonl(entry, range, zip);
-						zip.closeEntry();
-					}
-				}
+				for (LogBundleFormat format : formats)
+					writeCombinedEntry(zip, names, fileName(base, safe(instanceId.getNodeId()), format, scope, from, to),
+							streamEntries, format, range);
 			}
 			if (layouts.contains(LogBundleLayout.MERGED)) {
-				if (formats.contains(LogBundleFormat.NATURAL) || formats.contains(LogBundleFormat.CANONICAL_TEXT)) {
-					zip.putNextEntry(new ZipEntry(unique(names, stream + "/merged/canonical.log")));
-					for (BundleEntry entry : streamEntries)
-						writeCanonicalText(entry, range, zip);
-					zip.closeEntry();
-				}
-				if (formats.contains(LogBundleFormat.CANONICAL_JSONL)) {
-					zip.putNextEntry(new ZipEntry(unique(names, stream + "/merged/canonical.jsonl")));
-					for (BundleEntry entry : streamEntries)
-						writeCanonicalJsonl(entry, range, zip);
-					zip.closeEntry();
+				for (LogBundleFormat format : formats) {
+					String name = fileName(base, "merged", format, scope, from, to);
+					if (clusterContribution)
+						name = MERGE_CONTRIBUTION_PREFIX + name;
+					writeCombinedEntry(zip, names, name, streamEntries, format, range);
 				}
 			}
 		}
+	}
+
+	private void writeCombinedEntry(ZipOutputStream zip, Set<String> names, String requestedName,
+			List<BundleEntry> entries, LogBundleFormat format, LogFilter range) throws IOException {
+		zip.putNextEntry(new ZipEntry(unique(names, requestedName)));
+		for (BundleEntry entry : entries) {
+			if (format == LogBundleFormat.CANONICAL_JSONL)
+				writeCanonicalJsonl(entry, range, zip);
+			else if (format == LogBundleFormat.CANONICAL_TEXT)
+				writeCanonicalText(entry, range, zip);
+			else if (range == null)
+				writeNaturalSegment(entry.path, zip);
+			else
+				writeNaturalText(entry, range, zip);
+		}
+		zip.closeEntry();
+	}
+
+	private static String fileName(String base, String origin, LogBundleFormat format, LogBundleScope scope,
+			Date from, Date to) {
+		String formatHint = format == LogBundleFormat.CANONICAL_TEXT ? "_canonical" : "";
+		String timeHint = switch (scope) {
+			case CURRENT -> "";
+			case ALL -> "_all";
+			case CUSTOM_RANGE -> "_" + rangeStamp.format(from.toInstant()) + "-" + rangeStamp.format(to.toInstant());
+		};
+		String extension = format == LogBundleFormat.CANONICAL_JSONL ? ".jsonl" : ".log";
+		return base + "_" + origin + formatHint + timeHint + extension;
+	}
+
+	private static String exportBaseName(Path activePath) {
+		String name = activePath.getFileName().toString();
+		int extension = name.lastIndexOf('.');
+		return safe(extension > 0 ? name.substring(0, extension) : name);
 	}
 
 	private SegmentStats inspect(BundleEntry entry, LogFilter range) {
@@ -306,19 +316,41 @@ public class LogBundleWriter {
 		}
 	}
 
+	/** Streams an original segment and preserves a record boundary between independently rotated files. */
+	private static void writeNaturalSegment(Path path, ZipOutputStream zip) throws IOException {
+		int last = -1;
+		try (InputStream input = LogFileReader.openContent(path)) {
+			byte[] buffer = new byte[64 * 1024];
+			for (int read; (read = input.read(buffer)) >= 0;) {
+				if (read == 0)
+					continue;
+				zip.write(buffer, 0, read);
+				last = buffer[read - 1] & 0xff;
+			}
+		}
+		if (last >= 0 && last != '\n')
+			zip.write('\n');
+	}
+
 	private void writeCanonicalJsonl(BundleEntry entry, ZipOutputStream zip) {
 		writeCanonicalJsonl(entry, null, zip);
 	}
 
 	private void writeCanonicalJsonl(BundleEntry entry, LogFilter filter, ZipOutputStream zip) {
-		fileReader.forEachRecord(entry.stream, entry.path, filter, record -> {
-			try {
-				zip.write(objectMapper.writeValueAsBytes(canonicalRecord(record)));
-				zip.write('\n');
-			} catch (IOException e) {
-				throw new UncheckedIOException(e);
-			}
-		});
+		try (JsonGenerator json = objectMapper.getFactory().createGenerator(zip)) {
+			json.disable(JsonGenerator.Feature.AUTO_CLOSE_TARGET);
+			fileReader.forEachRecord(entry.stream, entry.path, filter, record -> {
+				try {
+					objectMapper.writeValue(json, canonicalRecord(record));
+					json.writeRaw('\n');
+				} catch (IOException e) {
+					throw new UncheckedIOException(e);
+				}
+			});
+			json.flush();
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
 	}
 
 	private void writeCanonicalText(BundleEntry entry, ZipOutputStream zip) {
@@ -413,26 +445,27 @@ public class LogBundleWriter {
 		return json;
 	}
 
-	/**
-	 * Combines complete node contributions without materializing them in heap. Node ZIP entries retain their selected
-	 * raw or canonical representation; only their container is rewritten to give every node a stable namespace.
-	 */
+	/** Combines node contributions into one flat, file-backed export without materializing log content in heap. */
 	public Resource combine(Map<String, Resource> contributions, Map<String, String> errors, String applicationId) {
 		if (contributions == null || contributions.isEmpty())
 			throw new IllegalArgumentException("No node returned a readable log bundle contribution");
 
-		String baseName = "logs-" + safe(applicationId) + "-all-nodes-" + stamp.format(Instant.now());
+		String baseName = "log-export_" + safe(applicationId) + "_merged_" + stamp.format(Instant.now());
 		StreamPipe pipe = StreamPipes.fileBackedFactory().newPipe(baseName);
+		Map<String, List<StreamPipe>> merged = new TreeMap<>();
 		try (OutputStream output = pipe.openOutputStream(); ZipOutputStream zip = new ZipOutputStream(output)) {
 			writeClusterManifest(zip, contributions.keySet(), errors);
 			Set<String> names = new HashSet<>();
 			names.add("manifest.json");
-			for (Map.Entry<String, Resource> contribution : contributions.entrySet())
-				copyContribution(zip, names, contribution.getKey(), contribution.getValue());
+			for (Map.Entry<String, Resource> contribution : new TreeMap<>(contributions).entrySet())
+				copyContribution(zip, names, contribution.getKey(), contribution.getValue(), merged);
+			writeMergedContributions(zip, names, merged);
 			zip.finish();
 		} catch (IOException e) {
 			pipe.close();
 			throw new IllegalStateException("Could not combine node log bundles", e);
+		} finally {
+			merged.values().stream().flatMap(List::stream).forEach(StreamPipe::close);
 		}
 
 		Resource resource = Resource.createTransient(() -> new FilterInputStream(pipe.openInputStream()) {
@@ -450,16 +483,32 @@ public class LogBundleWriter {
 		return resource;
 	}
 
-	private static void copyContribution(ZipOutputStream target, Set<String> names, String origin, Resource contribution)
-			throws IOException {
-		String prefix = safe(origin) + "/";
+	private static void copyContribution(ZipOutputStream target, Set<String> names, String origin, Resource contribution,
+			Map<String, List<StreamPipe>> merged) throws IOException {
 		try (InputStream input = contribution.openStream(); ZipInputStream source = new ZipInputStream(input)) {
 			ZipEntry sourceEntry;
 			while ((sourceEntry = source.getNextEntry()) != null) {
 				String relativeName = safeEntryName(sourceEntry.getName());
-				if (relativeName.isEmpty())
+				if (relativeName.isEmpty() || "manifest.json".equals(relativeName))
 					continue;
-				String name = unique(names, prefix + relativeName);
+				if (relativeName.startsWith(MERGE_CONTRIBUTION_PREFIX)) {
+					String name = relativeName.substring(MERGE_CONTRIBUTION_PREFIX.length());
+					StreamPipe spool = StreamPipes.fileBackedFactory().newPipe(safe(origin) + "-" + safe(name));
+					boolean retained = false;
+					try {
+						try (OutputStream output = spool.openOutputStream()) {
+							source.transferTo(output);
+						}
+						merged.computeIfAbsent(name, ignored -> new ArrayList<>()).add(spool);
+						retained = true;
+					} finally {
+						if (!retained)
+							spool.close();
+					}
+					source.closeEntry();
+					continue;
+				}
+				String name = unique(names, relativeName);
 				ZipEntry targetEntry = new ZipEntry(name);
 				if (sourceEntry.getTime() >= 0)
 					targetEntry.setTime(sourceEntry.getTime());
@@ -469,6 +518,18 @@ public class LogBundleWriter {
 				target.closeEntry();
 				source.closeEntry();
 			}
+		}
+	}
+
+	private static void writeMergedContributions(ZipOutputStream target, Set<String> names,
+			Map<String, List<StreamPipe>> merged) throws IOException {
+		for (Map.Entry<String, List<StreamPipe>> entry : merged.entrySet()) {
+			target.putNextEntry(new ZipEntry(unique(names, entry.getKey())));
+			for (StreamPipe spool : entry.getValue())
+				try (InputStream input = spool.openInputStream()) {
+					input.transferTo(target);
+				}
+			target.closeEntry();
 		}
 	}
 

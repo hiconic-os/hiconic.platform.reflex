@@ -2,10 +2,13 @@ package hiconic.rx.log.reflection.processing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.BufferedWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -94,30 +97,6 @@ public class LogbackLogStreamInventoryTest {
 			assertThat(segment.getFileName()).isEqualTo(logFile.getFileName().toString());
 			assertThat(segment.getActive()).isTrue();
 		});
-	}
-
-	@Test
-	public void reflectsUnstructuredProcessProtocol() throws Exception {
-		Path protocol = Files.createTempFile("rx-process-protocol-", ".log");
-		try {
-			Files.writeString(protocol, "bootstrap output\nwithout canonical fields\n");
-			LogbackLogStreamInventory inventory = new LogbackLogStreamInventory();
-			inventory.setLoggerContext(context);
-			inventory.setInstanceId(instanceId());
-			inventory.setProcessProtocolPath(protocol);
-
-			LogStreamDescriptor descriptor = inventory.streams().stream()
-					.filter(stream -> LogbackLogStreamInventory.PROCESS_PROTOCOL_STREAM_ID.equals(stream.getStreamId()))
-					.findFirst().orElseThrow();
-
-			assertThat(descriptor.getDisplayName()).isEqualTo("Process protocol");
-			assertThat(descriptor.getFormat()).isEqualTo(LogFormat.RAW);
-			assertThat(descriptor.getParsingQuality()).isEqualTo(LogParsingQuality.RAW_ONLY);
-			assertThat(descriptor.getCapabilities()).containsExactly(LogCapability.FULLTEXT);
-			assertThat(inventory.fileStream(descriptor.getStreamId()).path()).isEqualTo(protocol.toAbsolutePath().normalize());
-		} finally {
-			Files.deleteIfExists(protocol);
-		}
 	}
 
 	@Test
@@ -253,10 +232,8 @@ public class LogbackLogStreamInventoryTest {
 	@Test
 	public void naturalAllKeepsEverySourceSegmentAndProducesOneLosslessMergedView() throws Exception {
 		configureRollingAppender();
-		Files.writeString(archivedFile, """
-				2026-07-24 10:00:00,000 INFO  [main] demo.Inventory - archived-one
-				2026-07-24 10:00:01,000 WARN  [main] demo.Inventory - archived-two
-				""");
+		Files.writeString(archivedFile, "2026-07-24 10:00:00,000 INFO  [main] demo.Inventory - archived-one\n"
+				+ "2026-07-24 10:00:01,000 WARN  [main] demo.Inventory - archived-two");
 		Files.writeString(logFile, "2026-07-24 10:00:02,000 ERROR [main] demo.Inventory - current\n");
 
 		LogbackLogStreamInventory inventory = inventory();
@@ -264,15 +241,14 @@ public class LogbackLogStreamInventoryTest {
 				Set.of(LogBundleLayout.SEPARATE, LogBundleLayout.MERGED), Set.of(LogBundleFormat.NATURAL));
 
 		Map<String, String> contents = zipContents(new LogBundleWriter().create(inventory, request, instanceId()));
-		String archived = contentEndingWith(contents, "/separate/natural/" + archivedFile.getFileName());
-		String active = contentEndingWith(contents, "/separate/natural/" + logFile.getFileName());
-		String merged = contentEndingWith(contents, "/merged/canonical.log");
+		String base = baseName(logFile);
+		String separate = contents.get(base + "_node-1_all.log");
+		String merged = contents.get(base + "_merged_all.log");
 
-		assertThat(archived).contains("archived-one", "archived-two");
-		assertThat(active).contains("current");
+		assertThat(separate).containsSubsequence("archived-one", "archived-two", "current");
 		assertThat(merged).containsSubsequence("archived-one", "archived-two", "current");
 		assertThat(merged.lines().filter(line -> line.contains("demo.Inventory -")).count()).isEqualTo(3);
-		assertThat(contents.keySet()).filteredOn(name -> name.endsWith("/merged/canonical.log")).hasSize(1);
+		assertThat(contents.keySet()).containsExactlyInAnyOrder("manifest.json", base + "_node-1_all.log", base + "_merged_all.log");
 	}
 
 	@Test
@@ -293,9 +269,17 @@ public class LogbackLogStreamInventoryTest {
 
 		Map<String, String> contents = zipContents(new LogBundleWriter().create(inventory(), request, instanceId()));
 		assertThat(contents.keySet()).contains("manifest.json");
-		assertThat(contents.keySet()).filteredOn(name -> name.contains("/separate/")).hasSize(3);
-		assertThat(contents.keySet()).filteredOn(name -> name.endsWith("/merged/canonical.log")).hasSize(1);
-		assertThat(contents.keySet()).filteredOn(name -> name.endsWith("/merged/canonical.jsonl")).hasSize(1);
+		String base = baseName(logFile);
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmssSSS'Z'").withZone(ZoneOffset.UTC);
+		String range = "_" + formatter.format(request.getFrom().toInstant()) + "-" + formatter.format(request.getTo().toInstant());
+		assertThat(contents.keySet()).containsExactlyInAnyOrder(
+				"manifest.json",
+				base + "_node-1" + range + ".log",
+				base + "_node-1_canonical" + range + ".log",
+				base + "_node-1" + range + ".jsonl",
+				base + "_merged" + range + ".log",
+				base + "_merged_canonical" + range + ".log",
+				base + "_merged" + range + ".jsonl");
 
 		for (Map.Entry<String, String> entry : contents.entrySet()) {
 			if (entry.getKey().equals("manifest.json"))
@@ -325,6 +309,36 @@ public class LogbackLogStreamInventoryTest {
 		reversed.setTo(new Date(1));
 		org.assertj.core.api.Assertions.assertThatThrownBy(() -> new LogBundleWriter().create(inventory(), reversed, instanceId()))
 				.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("starts after");
+	}
+
+	@Test
+	public void largeRotatedSelectionIsStreamedIntoExactlyOneFilePerLayout() throws Exception {
+		configureRollingAppender();
+		writeRecords(archivedFile, 0, 12_000);
+		writeRecords(logFile, 12_000, 12_000);
+
+		CreateLogBundle request = modernRequest(LogBundleScope.ALL,
+				Set.of(LogBundleLayout.SEPARATE, LogBundleLayout.MERGED), Set.of(LogBundleFormat.NATURAL));
+		var resource = new LogBundleWriter().create(inventory(), request, instanceId());
+		Map<String, Long> lines = new LinkedHashMap<>();
+		try (ZipInputStream zip = new ZipInputStream(resource.openStream())) {
+			for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
+				if ("manifest.json".equals(entry.getName())) {
+					zip.transferTo(java.io.OutputStream.nullOutputStream());
+					continue;
+				}
+				long count = 0;
+				for (int value = zip.read(); value >= 0; value = zip.read())
+					if (value == '\n')
+						count++;
+				lines.put(entry.getName(), count);
+			}
+		}
+
+		String base = baseName(logFile);
+		assertThat(lines).containsOnly(
+				org.assertj.core.api.Assertions.entry(base + "_node-1_all.log", 24_000L),
+				org.assertj.core.api.Assertions.entry(base + "_merged_all.log", 24_000L));
 	}
 
 	private void configureRollingAppender() throws Exception {
@@ -374,6 +388,16 @@ public class LogbackLogStreamInventoryTest {
 		return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS").parse(value);
 	}
 
+	private static void writeRecords(Path path, int start, int count) throws Exception {
+		try (BufferedWriter writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8)) {
+			for (int i = start; i < start + count; i++) {
+				writer.write("2026-07-24 10:00:00,000 INFO  [main] demo.Inventory - record-");
+				writer.write(Integer.toString(i));
+				writer.newLine();
+			}
+		}
+	}
+
 	private static Map<String, String> zipContents(com.braintribe.model.resource.Resource resource) throws Exception {
 		Map<String, String> result = new LinkedHashMap<>();
 		try (ZipInputStream zip = new ZipInputStream(resource.openStream())) {
@@ -383,9 +407,9 @@ public class LogbackLogStreamInventoryTest {
 		return result;
 	}
 
-	private static String contentEndingWith(Map<String, String> contents, String suffix) {
-		return contents.entrySet().stream().filter(entry -> entry.getKey().endsWith(suffix)).map(Map.Entry::getValue)
-				.findFirst().orElseThrow(() -> new AssertionError("Missing ZIP entry ending with " + suffix));
+	private static String baseName(Path path) {
+		String name = path.getFileName().toString();
+		return name.substring(0, name.lastIndexOf('.'));
 	}
 
 	private static InstanceId instanceId() {

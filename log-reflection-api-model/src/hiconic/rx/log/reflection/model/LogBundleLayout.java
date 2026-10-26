@@ -6,9 +6,9 @@ import com.braintribe.model.generic.reflection.EnumTypes;
 
 /** Determines whether selected records retain their physical segment boundaries. */
 public enum LogBundleLayout implements EnumBase<LogBundleLayout> {
-	/** One result per selected physical segment. */
+	/** One result per selected node and logical stream. Physical rotations are folded into that result. */
 	SEPARATE,
-	/** One result per logical stream and node, preserving the discovered physical segment order. */
+	/** One result per logical stream across all selected nodes. */
 	MERGED;
 
 	public static final EnumType<LogBundleLayout> T = EnumTypes.T(LogBundleLayout.class);

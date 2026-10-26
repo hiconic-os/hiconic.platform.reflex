@@ -301,9 +301,10 @@ public class LogReflectionProcessor extends AbstractDispatchingServiceProcessor<
 		CreateLocalLogBundle localRequest = localBundleRequest(request);
 		if (target.nodeId != null && !target.allApplications()) {
 			if (target.is(instanceId))
-				return bundleWriter.create(inventory, localRequest, instanceId);
-			return unicast(context, localRequest, target.instanceId(), com.braintribe.model.resource.Resource.class,
-					bundleClusterTimeoutMillis);
+				return bundleWriter.create(inventory, request, instanceId);
+			com.braintribe.model.resource.Resource contribution = unicast(context, localRequest, target.instanceId(),
+					com.braintribe.model.resource.Resource.class, bundleClusterTimeoutMillis);
+			return bundleWriter.combine(Map.of(target.instanceId().toString(), contribution), Map.of(), target.applicationId);
 		}
 
 		MulticastResponse multicast = multicast(context, localRequest, target.addressee(), bundleClusterTimeoutMillis);

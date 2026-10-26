@@ -4,6 +4,8 @@ import {
   GetLogTopology,
   ListLogStreams,
   LogBundleFormat,
+  LogBundleLayout,
+  LogBundleScope,
   LogFilter,
   LogPropertyFilter,
   LogTarget,
@@ -40,6 +42,20 @@ export interface RecordFilter {
   levels: readonly string[];
   logger?: string;
   fulltext?: string;
+}
+
+export type RemoteLogScope = "current" | "all" | "range";
+export type RemoteLogLayout = "separate" | "merged";
+export type RemoteLogFormat = "natural" | "canonical" | "jsonl";
+
+export interface RemoteLogDownload {
+  target: TargetSelection;
+  streamIds: readonly string[];
+  scope: RemoteLogScope;
+  layouts: readonly RemoteLogLayout[];
+  formats: readonly RemoteLogFormat[];
+  from?: string;
+  to?: string;
 }
 
 export interface LogLevelStateView {
@@ -130,24 +146,30 @@ export class LogReflectionApi {
     return this.evaluate(request, this.loggingEvaluator);
   }
 
-  async bundle(
-    target: TargetSelection,
-    streamIds: readonly string[],
-    includeRotated: boolean,
-    format: "raw" | "text" | "jsonl"
-  ): Promise<{
+  async bundle(download: RemoteLogDownload): Promise<{
     blob: Blob;
     name: string;
   }> {
     const request = CreateLogBundle.create();
-    request.target = toTarget(target);
+    request.target = toTarget(download.target);
     const ids = new T.Set(hc.reflection.STRING);
-    streamIds.forEach(id => ids.add(id));
+    download.streamIds.forEach(id => ids.add(id));
     request.streamIds = ids;
-    request.includeRotated = includeRotated;
-    request.format = format === "jsonl"
+    request.scope = download.scope === "current"
+      ? LogBundleScope.CURRENT
+      : download.scope === "range" ? LogBundleScope.CUSTOM_RANGE : LogBundleScope.ALL;
+
+    const layouts = new T.Set(LogBundleLayout[hc.Symbol.enumType]);
+    download.layouts.forEach(layout => layouts.add(layout === "merged" ? LogBundleLayout.MERGED : LogBundleLayout.SEPARATE));
+    request.layouts = layouts;
+
+    const formats = new T.Set(LogBundleFormat[hc.Symbol.enumType]);
+    download.formats.forEach(format => formats.add(format === "jsonl"
       ? LogBundleFormat.CANONICAL_JSONL
-      : format === "text" ? LogBundleFormat.CANONICAL_TEXT : LogBundleFormat.RAW_FILES;
+      : format === "canonical" ? LogBundleFormat.CANONICAL_TEXT : LogBundleFormat.NATURAL));
+    request.formats = formats;
+    request.from = download.scope === "range" && download.from ? new Date(download.from) : null;
+    request.to = download.scope === "range" && download.to ? new Date(download.to) : null;
     request.filter = null;
 
     const resource = await this.evaluate<Resource>(request, this.loggingEvaluator);
