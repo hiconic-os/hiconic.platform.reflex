@@ -1,1 +1,1 @@
-{"root":["./src/App.tsx","./src/api.ts","./src/index.tsx","./e2e/main.tsx","./e2e/mock-api.ts","./e2e/tailing.spec.ts","./playwright.config.ts","./vite.config.ts"],"version":"5.7.3"}
+{"root":["./src/app.tsx","./src/api.ts","./src/index.tsx","./src/tab-export.ts","./e2e/export.spec.ts","./e2e/main.tsx","./e2e/mock-api.ts","./e2e/tailing.spec.ts","./playwright.config.ts","./vite.config.ts"],"version":"5.7.3"}

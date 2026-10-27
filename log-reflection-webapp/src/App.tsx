@@ -13,6 +13,7 @@ import {
   type RuntimeConfig,
   type TargetSelection
 } from "./api";
+import { createTabExport, type TabExportColumnKey, type TabExportFormat } from "./tab-export";
 
 type StreamTab = {
   kind: "stream";
@@ -44,19 +45,7 @@ type TopologyInstance = {
   nodeId: string;
 };
 
-type ColumnKey =
-  | "timestamp"
-  | "level"
-  | "application"
-  | "node"
-  | "stream"
-  | "position"
-  | "logger"
-  | "thread"
-  | "source"
-  | "message"
-  | "properties"
-  | "raw";
+type ColumnKey = TabExportColumnKey;
 
 type ColumnDefinition = { key: ColumnKey; label: string; width: string };
 type ViewMode = "structured" | "text";
@@ -601,18 +590,18 @@ export function App(props: AppProps = {}) {
       }));
   }
 
-  function download(format: "raw" | "json") {
+  function exportView(format: TabExportFormat, menu?: HTMLElement) {
     const tab = activeStreamTab();
     if (!tab) return;
-    const content = format === "json"
-      ? JSON.stringify(tab.records.map(recordToJson), null, 2)
-      : tab.records.map(record => record.rawText || `${formatTimestamp(record.timestamp)} ${enumName(record.level)} ${record.loggerName} - ${record.message}`).join("\n");
-    const blob = new Blob([content], { type: format === "json" ? "application/json" : "text/plain" });
+    const selectedColumns = visibleColumnDefinitions().map(({ key, label }) => ({ key, label }));
+    const exported = createTabExport(tab.records, selectedColumns, format, tab.stream.displayName || tab.stream.streamId || "Logs");
+    const blob = new Blob([exported.content], { type: exported.mimeType });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `${safeName(tab.stream.displayName || tab.stream.streamId || "logs")}.${format === "json" ? "json" : "log"}`;
+    link.download = `${safeName(tab.stream.displayName || tab.stream.streamId || "logs")}_${safeName(tab.target.nodeId || "merged")}_view.${exported.extension}`;
     link.click();
-    URL.revokeObjectURL(link.href);
+    window.setTimeout(() => URL.revokeObjectURL(link.href), 0);
+    menu?.closest("details")?.removeAttribute("open");
   }
 
   function openBundle() {
@@ -862,8 +851,20 @@ export function App(props: AppProps = {}) {
                       onClick={() => loadRecords(tab(), "older")}
                     >Load older</button>
                     <button onClick={() => loadRecords(tab(), "replace")}>Refresh</button>
-                    <button onClick={() => download("raw")}>Raw ↓</button>
-                    <button onClick={() => download("json")}>JSON ↓</button>
+                    <details class="view-export" data-popup>
+                      <summary>Export view ↓</summary>
+                      <div role="menu" aria-label="Export current view">
+                        <button type="button" role="menuitem" onClick={event => exportView("text", event.currentTarget)}>
+                          <strong>Plain text</strong><small>Visible columns, preserving multiline values</small>
+                        </button>
+                        <button type="button" role="menuitem" onClick={event => exportView("jsonl", event.currentTarget)}>
+                          <strong>JSONL</strong><small>One structured record per physical line</small>
+                        </button>
+                        <button type="button" role="menuitem" onClick={event => exportView("spreadsheet", event.currentTarget)}>
+                          <strong>Excel XML</strong><small>Visible columns in an Excel-compatible table</small>
+                        </button>
+                      </div>
+                    </details>
                     <button onClick={openBundle}>Download logs ↓</button>
                   </div>
                 </div>
@@ -1525,60 +1526,6 @@ function mapEntries(value: unknown): [string, string][] {
     return Array.from(modeledMap.entries(), ([name, item]) => [name ?? "", item ?? ""]);
 
   return Object.entries(value as Record<string, unknown>).map(([name, item]) => [name, item == null ? "" : String(item)]);
-}
-
-function recordToJson(record: LogRecord) {
-  return modeledValueToJson(record);
-}
-
-/**
- * Converts Generic Model values through their public model/collection APIs.
- * Looking at JavaScript object keys would expose obfuscated implementation state
- * instead of the modeled properties.
- */
-function modeledValueToJson(value: unknown): unknown {
-  if (value == null || typeof value !== "object")
-    return value;
-  if (value instanceof Date)
-    return value.toISOString();
-
-  const enumValue = value as { name?: () => string; EnumType?: () => unknown };
-  if (typeof enumValue.name === "function" && typeof enumValue.EnumType === "function")
-    return enumValue.name();
-
-  const entity = value as {
-    PropertyNames?: () => readonly string[];
-    EntityType?: () => {
-      getProperty: (name: string) => { get: (entity: unknown) => unknown };
-    };
-  };
-  if (typeof entity.PropertyNames === "function" && typeof entity.EntityType === "function") {
-    const entityType = entity.EntityType();
-    return Object.fromEntries(entity.PropertyNames().map(name => [
-      name,
-      modeledValueToJson(entityType.getProperty(name).get(entity))
-    ]));
-  }
-
-  const map = value as {
-    get?: (key: unknown) => unknown;
-    set?: (key: unknown, item: unknown) => unknown;
-    entries?: () => IterableIterator<[unknown, unknown]>;
-  };
-  if (typeof map.get === "function" && typeof map.set === "function" && typeof map.entries === "function")
-    return Object.fromEntries(Array.from(map.entries(), ([key, item]) => [String(key), modeledValueToJson(item)]));
-
-  const set = value as {
-    add?: (item: unknown) => unknown;
-    values?: () => IterableIterator<unknown>;
-  };
-  if (typeof set.add === "function" && typeof set.values === "function")
-    return Array.from(set.values(), modeledValueToJson);
-
-  if (Symbol.iterator in value)
-    return Array.from(value as Iterable<unknown>, modeledValueToJson);
-
-  return String(value);
 }
 
 function safeName(value: string) {
