@@ -44,6 +44,7 @@ import com.braintribe.model.processing.service.api.aspect.RequestorAddressAspect
 import com.braintribe.model.securityservice.OpenUserSession;
 import com.braintribe.model.securityservice.OpenUserSessionResponse;
 import com.braintribe.model.securityservice.OpenUserSessionWithUserAndPassword;
+import com.braintribe.model.securityservice.credentials.Credentials;
 import com.braintribe.model.securityservice.credentials.UserPasswordCredentials;
 import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.model.usersession.UserSession;
@@ -63,6 +64,7 @@ import hiconic.rx.security.web.processing.servlet.aspect.AuthHttpRequestSupplier
 import hiconic.rx.security.web.processing.servlet.aspect.AuthHttpResponseConfigurer;
 import hiconic.rx.security.web.processing.servlet.aspect.AuthHttpResponseConfigurerAspect;
 import hiconic.rx.security.web.processing.servlet.aspect.AuthHttpResponseConfigurerImpl;
+import hiconic.rx.security.web.processing.credentials.extractor.JwtCredentialsProvider;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -83,6 +85,11 @@ public class AuthRxServlet extends HttpServlet {
 	private Function<HttpServletRequest, String> entryPointProvider = r -> null;
 	private List<WebSecurityRequestContextContributor> requestContextContributors = List.of();
 	private List<LoginFlowExtension> loginFlowExtensions = List.of();
+	private final JwtCredentialsProvider jwtCredentialsProvider = new JwtCredentialsProvider();
+
+	private record LoginAttempt(Credentials credentials, OpenUserSessionWithUserAndPassword passwordRequest, String identity,
+			boolean staySignedIn) {
+	}
 
 	@Configurable
 	public void setRequestContextContributors(List<WebSecurityRequestContextContributor> contributors) {
@@ -120,10 +127,10 @@ public class AuthRxServlet extends HttpServlet {
 
 		// Create authentication request.
 
-		OpenUserSessionWithUserAndPassword authRequest = unmarshallRequest(req);
+		LoginAttempt loginAttempt = readLoginAttempt(req);
 
-		OpenUserSession openUserSession = createOpenUserSession(req, authRequest);
-		var attributeContextBuilder = buildAttributeContextBuilder(req, resp, authRequest);
+		OpenUserSession openUserSession = createOpenUserSession(req, loginAttempt);
+		var attributeContextBuilder = buildAttributeContextBuilder(req, resp, openUserSession, loginAttempt.passwordRequest());
 		String actionId = req.getHeader(WebSecurityConstants.HEADER_LOGIN_ACTION);
 		LoginFlowExtension actionExtension = null;
 		if (actionId != null && !actionId.isBlank()) {
@@ -138,7 +145,8 @@ public class AuthRxServlet extends HttpServlet {
 		AttributeContexts.push(attributeContext);
 		try {
 			if (actionExtension != null) {
-				Maybe<LoginIntervention> actionResult = actionExtension.performAction(actionId, authRequest, openUserSession.getEntryPoint());
+				Maybe<LoginIntervention> actionResult = actionExtension.performAction(actionId, loginAttempt.credentials(),
+						openUserSession.getEntryPoint());
 				if (actionResult.isUnsatisfied()) {
 					writeFailure(resp, actionResult.whyUnsatisfied());
 					return;
@@ -157,7 +165,7 @@ public class AuthRxServlet extends HttpServlet {
 				Reason whyUnsatisfied = sessionMaybe.whyUnsatisfied();
 
 				if (!sessionMaybe.isUnsatisfiedAny(SecurityReason.T, InvalidArgument.T)) {
-					logAuthenticationFailure("LOGIN_PROCESSING_REJECTED", authRequest.getUser(), req, openUserSession.getEntryPoint());
+					logAuthenticationFailure("LOGIN_PROCESSING_REJECTED", loginAttempt.identity(), req, openUserSession.getEntryPoint());
 					String logToken = UUID.randomUUID().toString();
 					log.warn(logToken + ": " + whyUnsatisfied.stringify());
 					whyUnsatisfied = Reasons.build(InternalError.T).text("Please check the log files and search for error ID: " + logToken)
@@ -170,21 +178,21 @@ public class AuthRxServlet extends HttpServlet {
 			UserSession session = sessionMaybe.get();
 
 			String sessionId = session.getSessionId();
-			log.debug("Successfully authenticated user: " + authRequest.getUser() + " with session: " + sessionId);
+			log.debug("Successfully authenticated identity: " + loginAttempt.identity() + " with session: " + sessionId);
 
-			cookieHandler.ensureCookie(req, resp, sessionId, authRequest.getStaySignedIn());
+			cookieHandler.ensureCookie(req, resp, sessionId, loginAttempt.staySignedIn());
 
 		} catch (RuntimeException e) {
-			logAuthenticationFailure("LOGIN_PROCESSING_ERROR", authRequest.getUser(), req, openUserSession.getEntryPoint());
+			logAuthenticationFailure("LOGIN_PROCESSING_ERROR", loginAttempt.identity(), req, openUserSession.getEntryPoint());
 			throw e;
 		} finally {
 			AttributeContexts.pop();
 		}
 	}
 
-	private void logAuthenticationFailure(String reason, String user, HttpServletRequest request, String entryPoint) {
+	private void logAuthenticationFailure(String reason, String identity, HttpServletRequest request, String entryPoint) {
 		String requestor = getRemoteAddressResolver().getRemoteIpLenient(request);
-		log.info("Security authentication failure [reason=" + safeAuditValue(reason) + ", identity=user:" + safeAuditValue(user)
+		log.info("Security authentication failure [reason=" + safeAuditValue(reason) + ", identity=" + safeAuditValue(identity)
 				+ ", requestor=" + safeAuditValue(requestor) + ", entryPoint=" + safeAuditValue(entryPoint) + "]");
 	}
 
@@ -204,6 +212,12 @@ public class AuthRxServlet extends HttpServlet {
 	}
 
 	private void writeInterventionHeaders(HttpServletResponse response, LoginIntervention intervention) {
+		response.addHeader("Access-Control-Expose-Headers", String.join(", ",
+				WebSecurityConstants.HEADER_LOGIN_INTERVENTION_STATE,
+				WebSecurityConstants.HEADER_LOGIN_INTERVENTION_TITLE,
+				WebSecurityConstants.HEADER_LOGIN_INTERVENTION_MESSAGE,
+				WebSecurityConstants.HEADER_LOGIN_INTERVENTION_ACTION,
+				WebSecurityConstants.HEADER_LOGIN_INTERVENTION_ACTION_LABEL));
 		response.setHeader(WebSecurityConstants.HEADER_LOGIN_INTERVENTION_STATE, intervention.state().name());
 		setHeaderIfPresent(response, WebSecurityConstants.HEADER_LOGIN_INTERVENTION_TITLE, intervention.title());
 		setHeaderIfPresent(response, WebSecurityConstants.HEADER_LOGIN_INTERVENTION_MESSAGE, intervention.message());
@@ -216,16 +230,34 @@ public class AuthRxServlet extends HttpServlet {
 			response.setHeader(name, value.replace('\r', ' ').replace('\n', ' '));
 	}
 
-	private OpenUserSession createOpenUserSession(HttpServletRequest req, OpenUserSessionWithUserAndPassword authRequest) {
+	private OpenUserSession createOpenUserSession(HttpServletRequest req, LoginAttempt loginAttempt) {
 		String entryPoint = entryPointProvider.apply(req);
 		
-		UserPasswordCredentials credentials = UserPasswordCredentials.forUserName(authRequest.getUser(), authRequest.getPassword());
-		
 		OpenUserSession openUserSession = OpenUserSession.T.create();
-		openUserSession.setCredentials(credentials);
-		openUserSession.setLocale(authRequest.getLocale());
+		openUserSession.setCredentials(loginAttempt.credentials());
+		if (loginAttempt.passwordRequest() != null)
+			openUserSession.setLocale(loginAttempt.passwordRequest().getLocale());
 		openUserSession.setEntryPoint(entryPoint);
 		return openUserSession;
+	}
+
+	private LoginAttempt readLoginAttempt(HttpServletRequest request) {
+		OpenUserSessionWithUserAndPassword passwordRequest = unmarshallRequest(request);
+		if (passwordRequest.getUser() != null || passwordRequest.getPassword() != null) {
+			Credentials credentials = UserPasswordCredentials.forUserName(passwordRequest.getUser(), passwordRequest.getPassword());
+			return new LoginAttempt(credentials, passwordRequest, "user:" + safeAuditValue(passwordRequest.getUser()),
+					passwordRequest.getStaySignedIn());
+		}
+
+		String authorization = request.getHeader("Authorization");
+		if (authorization == null || authorization.isBlank())
+			throw new HttpException(HttpServletResponse.SC_BAD_REQUEST, "No login credentials were supplied");
+
+		Maybe<Credentials> credentials = jwtCredentialsProvider.provideCredentials(authorization);
+		if (credentials.isUnsatisfied())
+			throw new HttpException(HttpServletResponse.SC_BAD_REQUEST, "The Authorization header does not contain supported login credentials");
+
+		return new LoginAttempt(credentials.get(), null, "jwt", false);
 	}
 
 	private int getStatus(Reason whyUnsatisfied) {
@@ -319,7 +351,8 @@ public class AuthRxServlet extends HttpServlet {
 				authRequest.setLocale(locale.getLanguage());
 			}
 
-			logAuthRequest(request, authRequest);
+			if (authRequest.getUser() != null || authRequest.getPassword() != null)
+				logAuthRequest(request, authRequest);
 			
 			return authRequest;
 			
@@ -365,12 +398,17 @@ public class AuthRxServlet extends HttpServlet {
 
 	protected AttributeContext buildAttributeContext(HttpServletRequest httpRequest, HttpServletResponse httpResponse,
 			OpenUserSessionWithUserAndPassword authRequest) {
-		return buildAttributeContextBuilder(httpRequest, httpResponse, authRequest).build();
+		OpenUserSession openUserSession = createOpenUserSession(httpRequest,
+				new LoginAttempt(UserPasswordCredentials.forUserName(authRequest.getUser(), authRequest.getPassword()), authRequest,
+						"user:" + safeAuditValue(authRequest.getUser()), authRequest.getStaySignedIn()));
+		return buildAttributeContextBuilder(httpRequest, httpResponse, openUserSession, authRequest).build();
 	}
 
 	protected com.braintribe.common.attribute.AttributeContextBuilder buildAttributeContextBuilder(HttpServletRequest httpRequest,
-			HttpServletResponse httpResponse, OpenUserSessionWithUserAndPassword authRequest) {
-		AuthHttpRequestSupplier httpRequestSupplier = new AuthHttpRequestSupplierImpl(authRequest, httpRequest);
+			HttpServletResponse httpResponse, OpenUserSession openUserSession, OpenUserSessionWithUserAndPassword passwordRequest) {
+		AuthHttpRequestSupplierImpl httpRequestSupplier = new AuthHttpRequestSupplierImpl(openUserSession, httpRequest);
+		if (passwordRequest != null)
+			httpRequestSupplier.put(passwordRequest, httpRequest);
 		AuthHttpResponseConfigurerImpl httpResponseConfigurer = new AuthHttpResponseConfigurerImpl();
 
 		//@formatter:off

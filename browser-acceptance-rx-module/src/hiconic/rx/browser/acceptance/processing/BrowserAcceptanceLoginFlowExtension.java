@@ -7,8 +7,7 @@ import com.braintribe.gm.model.security.reason.AuthenticationFailure;
 import com.braintribe.gm.model.security.reason.ApprovalPending;
 import com.braintribe.gm.model.security.reason.ApprovalRequired;
 import com.braintribe.model.generic.eval.Evaluator;
-import com.braintribe.model.securityservice.OpenUserSessionWithUserAndPassword;
-import com.braintribe.model.securityservice.credentials.UserPasswordCredentials;
+import com.braintribe.model.securityservice.credentials.Credentials;
 import com.braintribe.model.service.api.ServiceRequest;
 
 import hiconic.rx.browser.acceptance.model.BrowserAcceptance;
@@ -43,12 +42,12 @@ public class BrowserAcceptanceLoginFlowExtension implements LoginFlowExtension {
 	}
 
 	@Override
-	public Maybe<LoginIntervention> performAction(String actionId, OpenUserSessionWithUserAndPassword loginRequest, String entryPoint) {
+	public Maybe<LoginIntervention> performAction(String actionId, Credentials credentials, String entryPoint) {
 		if (!supportsAction(actionId))
 			throw new IllegalArgumentException("Unsupported login action: " + actionId);
 
 		RequestBrowserAcceptance request = RequestBrowserAcceptance.T.create();
-		request.setCredentials(UserPasswordCredentials.forUserName(loginRequest.getUser(), loginRequest.getPassword()));
+		request.setCredentials(credentials);
 		request.setEntryPoint(entryPoint);
 		Maybe<BrowserAcceptance> result = request.eval(evaluator).getReasoned();
 		if (result.isUnsatisfied())

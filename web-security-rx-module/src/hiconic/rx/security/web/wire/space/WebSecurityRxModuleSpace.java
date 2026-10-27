@@ -98,8 +98,10 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 
 		if (configurationManager().loginServletEnabled()) {
 			webServer.addServlet("login-servlet", "login", loginServlet());
-			webServer.addServlet("login-auth-servlet", "login/auth", loginAuthServlet());
 		}
+		// The authentication transport is shared by custom login UIs as well as the standard login page. In particular, an external
+		// identity provider may be the configured login page while still needing the generic intervention flow after authentication.
+		webServer.addServlet("login-auth-servlet", "login/auth", loginAuthServlet());
 
 		webServer.addServlet("logout-servlet", "logout", logoutServlet());
 		// TODO explain why lenient filter?

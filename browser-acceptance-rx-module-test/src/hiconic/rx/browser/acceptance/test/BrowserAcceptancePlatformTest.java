@@ -87,7 +87,8 @@ public class BrowserAcceptancePlatformTest extends AbstractRxTest {
 		loginRequest.setUser("subject");
 		loginRequest.setPassword("subject-password");
 		Maybe<LoginIntervention> requested = withBrowser(browserToken, browserInformation,
-				() -> loginFlow.performAction(BrowserAcceptanceLoginFlowExtension.REQUEST_APPROVAL, loginRequest,
+				() -> loginFlow.performAction(BrowserAcceptanceLoginFlowExtension.REQUEST_APPROVAL,
+						UserPasswordCredentials.forUserName(loginRequest.getUser(), loginRequest.getPassword()),
 						PLATFORM_ENTRY_POINT.getName()));
 		assertThat(requested.isSatisfied()).isTrue();
 		assertThat(requested.get().state()).isEqualTo(LoginInterventionState.PENDING);
