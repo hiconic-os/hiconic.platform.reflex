@@ -72,6 +72,8 @@ button { border: 0; cursor: pointer; }
 .tab-kind-icon { width: 20px; height: 20px; display: grid; place-items: center; border: 1px solid #526071; border-radius: 5px; color: #9cabbc; font: 700 11px var(--mono); }
 .tab .tab-kind-icon { position: absolute; left: 10px; top: 11px; display: grid; }
 .tab-kind-icon.stream { color: var(--cyan); border-color: #357770; }
+.tab.tailing .tab-kind-icon.stream { box-shadow: 0 0 10px #43d7c455; }
+.tab.tailing .tab-kind-icon.stream::after { content: ""; position: absolute; width: 5px; height: 5px; right: -2px; bottom: -2px; border: 1px solid #171e28; border-radius: 50%; background: var(--cyan); }
 .tab-kind-icon.log-levels { color: #b9abff; border-color: #60568d; }
 .levels-action .tab-kind-icon { width: 18px; height: 18px; }
 .tab-placeholder { margin: auto 8px 18px; color: var(--muted); font-size: 11px; }
