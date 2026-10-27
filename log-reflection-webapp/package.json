@@ -6,6 +6,9 @@
   "scripts": {
     "build": "tsc -b && vite build",
     "dev": "vite --host 127.0.0.1",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:install": "playwright install chromium",
     "typecheck": "tsc -b"
   },
   "dependencies": {
@@ -22,6 +25,7 @@
   },
   "devDependencies": {
     "@dev.hiconic/runtime-dev": "3.0.168",
+    "@playwright/test": "^1.64.1",
     "@types/node": "22.13.10",
     "typescript": "5.7.3",
     "vite": "6.2.2",

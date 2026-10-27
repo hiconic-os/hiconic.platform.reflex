@@ -1,6 +1,7 @@
 import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 import {
   LogReflectionApi,
+  type LogReflectionClient,
   type LogLevelStateView,
   type LogRecord,
   type LogSegmentDescriptor,
@@ -79,6 +80,11 @@ const columns: readonly ColumnDefinition[] = [
 const levels = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"];
 const newDefaultFilter = (): RecordFilter => ({ levels: [] });
 
+export interface AppProps {
+  apiFactory?: (config: RuntimeConfig) => LogReflectionClient;
+  configLoader?: () => Promise<RuntimeConfig>;
+}
+
 function LogLevelValue(props: { level?: string; effective?: boolean; emptyLabel?: string }) {
   const normalizedLevel = () => props.level?.toLowerCase() || "unset";
   return <span class={`log-level-value ${normalizedLevel()}${props.effective ? " effective" : ""}`}>
@@ -86,10 +92,10 @@ function LogLevelValue(props: { level?: string; effective?: boolean; emptyLabel?
   </span>;
 }
 
-export function App() {
+export function App(props: AppProps = {}) {
   let runtimeConfig: RuntimeConfig | undefined;
   let accessRefreshInFlight: Promise<void> | undefined;
-  const [api, setApi] = createSignal<LogReflectionApi>();
+  const [api, setApi] = createSignal<LogReflectionClient>();
   const [canRead, setCanRead] = createSignal(false);
   const [canManageLevels, setCanManageLevels] = createSignal(false);
   const [accessState, setAccessState] = createSignal<AccessState>("checking");
@@ -179,8 +185,8 @@ export function App() {
   async function initialize() {
     setAccessState("checking");
     try {
-      runtimeConfig = await loadConfig();
-      const client = new LogReflectionApi(runtimeConfig);
+      runtimeConfig = await (props.configLoader?.() ?? loadConfig());
+      const client = props.apiFactory?.(runtimeConfig) ?? new LogReflectionApi(runtimeConfig);
       setApi(client);
       await refreshAccess(true);
     } catch (caught) {
@@ -262,7 +268,7 @@ export function App() {
     }
   }
 
-  async function loadInitialWorkspace(client: LogReflectionApi) {
+  async function loadInitialWorkspace(client: LogReflectionClient) {
     const reflectedTopology = await client.topology();
     const reflectedInstances = Array.from(reflectedTopology.instances ?? []) as Array<{
       applicationId?: string | null;
@@ -978,7 +984,7 @@ export function App() {
   );
 }
 
-function LogLevelEditor(props: { client: LogReflectionApi; applicationId: string }) {
+function LogLevelEditor(props: { client: LogReflectionClient; applicationId: string }) {
   const [state, setState] = createSignal<LogLevelStateView>();
   const [search, setSearch] = createSignal("");
   const [customLogger, setCustomLogger] = createSignal("");

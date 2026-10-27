@@ -65,7 +65,27 @@ export interface LogLevelStateView {
   knownLoggerNames: readonly string[];
 }
 
-export class LogReflectionApi {
+export interface LogReflectionClient {
+  capabilities(): Promise<LogReflectionCapabilities>;
+  streams(target: TargetSelection): Promise<LogStreams>;
+  topology(): Promise<LogTopology>;
+  logLevelState(applicationId: string): Promise<LogLevelStateView>;
+  setRuntimeLogLevel(applicationId: string, loggerName: string, level: string): Promise<void>;
+  resetRuntimeLogLevel(applicationId: string, loggerName: string): Promise<void>;
+  clearRuntimeLogLevels(applicationId: string): Promise<void>;
+  records(
+    streamId: string,
+    target: TargetSelection,
+    filter: RecordFilter,
+    cursor: string | undefined,
+    beforeCursor: string | undefined,
+    waitMillis: number,
+    includeRotated?: boolean
+  ): Promise<LogRecordPage>;
+  bundle(download: RemoteLogDownload): Promise<{ blob: Blob; name: string }>;
+}
+
+export class LogReflectionApi implements LogReflectionClient {
   private readonly loggingEvaluator;
 
   constructor(readonly config: RuntimeConfig) {
