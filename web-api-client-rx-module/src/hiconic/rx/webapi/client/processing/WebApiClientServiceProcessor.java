@@ -109,11 +109,11 @@ public class WebApiClientServiceProcessor implements ServiceProcessor<ServiceReq
 
 	static Reason mapDecodingFailure(int statusCode, HttpErrorResponse response) {
 		HttpStatusReason status = textStatusReason(statusCode, response);
-		ParseError parseError = ParseError.create(response.decodingFailure());
-		parseError.causedBy(status);
+		Reason decodingReason = decodingReason(response);
+		decodingReason.causedBy(status);
 
 		CommunicationError reason = CommunicationError.create("Could not decode the remote HTTP response according to its modeled contract");
-		reason.causedBy(parseError);
+		reason.causedBy(decodingReason);
 		return reason;
 	}
 
@@ -126,21 +126,27 @@ public class WebApiClientServiceProcessor implements ServiceProcessor<ServiceReq
 	}
 
 	private static HttpStatusReason statusReason(int statusCode, HttpErrorResponse response, Object decodedBody) {
-		if (response != null && decodedBody instanceof GenericEntity && response.decodingFailure() == null) {
+		if (response != null && decodedBody instanceof GenericEntity && response.decodingReason() == null && response.decodingFailure() == null) {
 			HttpStatusWithEntityBody reason = HttpStatusWithEntityBody.T.create();
 			initializeStatus(reason, statusCode, response);
 			reason.setBody((GenericEntity) decodedBody);
 			return reason;
 		}
-		if (response != null && (response.textBody() != null && !response.textBody().isEmpty() || response.decodingFailure() != null)) {
+		if (response != null && (response.textBody() != null && !response.textBody().isEmpty()
+				|| response.decodingReason() != null || response.decodingFailure() != null)) {
 			HttpStatusWithTextBody reason = HttpStatusWithTextBody.T.create();
 			initializeStatus(reason, statusCode, response);
 			reason.setBody(response.textBody());
 			reason.setExpectedBodyTypeSignature(response.expectedBodyTypeSignature());
-			if (response.decodingFailure() != null) reason.causedBy(ParseError.create(response.decodingFailure()));
+			if (response.decodingReason() != null || response.decodingFailure() != null) reason.causedBy(decodingReason(response));
 			return reason;
 		}
 		return statusReason(statusCode);
+	}
+
+	private static Reason decodingReason(HttpErrorResponse response) {
+		if (response.decodingReason() != null) return response.decodingReason();
+		return ParseError.create(response.decodingFailure());
 	}
 
 	private static HttpStatusReason statusReason(int statusCode) {

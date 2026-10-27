@@ -87,6 +87,9 @@ import com.braintribe.model.generic.reflection.BaseType;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.GenericModelType;
 import com.braintribe.model.generic.reflection.Property;
+import com.braintribe.gm.model.reason.Maybe;
+import com.braintribe.gm.model.reason.Reason;
+import com.braintribe.gm.model.reason.essential.ParseError;
 import com.braintribe.model.processing.meta.cmd.CmdResolver;
 import com.braintribe.model.processing.service.api.aspect.DomainIdAspect;
 import com.braintribe.model.resource.Resource;
@@ -286,6 +289,8 @@ public class GmHttpClient implements HttpClient {
 				Marshaller responseMarshaller = null;
 				String responseMimeType = null;
 				String decodingFailure = null;
+				Reason decodingReason = null;
+				Throwable decodingCause = null;
 				responseType = context.responseTypeForCode(code);
 				ResponseBodyCapture responseBodyCapture = responseType == null && responseMapping == null ? null
 						: new ResponseBodyCapture(MAX_ERROR_BODY_BYTES);
@@ -375,25 +380,32 @@ public class GmHttpClient implements HttpClient {
 								// A marshaller owns its decoding view, but not the HTTP response stream. Some marshallers close their input
 								// when decoding fails. Keep the response stream open so the remaining bytes can still be captured for the
 								// modeled fallback reason.
-								responsePayload = responseMarshaller.unmarshall(new NonClosingInputStream(contentIn), options);
+								Maybe<Object> decoded = responseMarshaller.unmarshallReasoned(new NonClosingInputStream(contentIn), options);
+								if (decoded.isSatisfied()) {
+									responsePayload = decoded.get();
+								} else {
+									decodingReason = decoded.whyUnsatisfied();
+									decodingFailure = decodingFailure(responseType, decodingReason);
+								}
 							} catch (Exception e) {
 								decodingFailure = "Could not decode the HTTP response as " + responseType.getTypeSignature() + ": " + e.getMessage();
+								decodingReason = ParseError.create(decodingFailure);
+								decodingCause = e;
+							}
+							if (decodingReason != null) {
 								try {
 									IOTools.consume(contentIn);
 								} catch (Exception captureFailure) {
-									// Capturing the remaining response is diagnostic and must never replace the original decoding failure.
-									e.addSuppressed(captureFailure);
+									// Capturing the remaining response is diagnostic and must never replace the original decoding reason.
 									decodingFailure += "; additionally failed to capture the remaining response body: " + captureFailure.getMessage();
+									if (decodingCause != null) decodingCause.addSuppressed(captureFailure);
 								}
-								final String logBody = responseBodyCapture.text();
-								logger.error(decodingFailure + "; response body"
-										+ (responseBodyCapture.truncated() ? " (truncated)" : "") + ": " + logBody, e);
 								responsePayload = null;
 								if (responseMapping == null) {
 									HttpErrorResponse captured = new HttpErrorResponse(null, responseBodyCapture.text(MAX_REASON_BODY_BYTES), responseMimeType,
 											responseType.getTypeSignature(), responseBodyCapture.size(),
-											responseBodyCapture.size() > MAX_REASON_BODY_BYTES, decodingFailure);
-									throw new HttpResponseDecodingException(code, captured, e);
+											responseBodyCapture.size() > MAX_REASON_BODY_BYTES, decodingFailure, decodingReason);
+									throw new HttpResponseDecodingException(code, captured, decodingCause);
 								}
 							}
 							if (decodingFailure == null && responsePayload == null && responseType.isEntity()) {
@@ -413,7 +425,8 @@ public class GmHttpClient implements HttpClient {
 						if (decodingFailure == null) IOTools.consume(contentIn);
 						String expectedType = responseType == null ? null : responseType.getTypeSignature();
 						responsePayload = new HttpErrorResponse(responsePayload, responseBodyCapture.text(MAX_REASON_BODY_BYTES), responseMimeType,
-								expectedType, responseBodyCapture.size(), responseBodyCapture.size() > MAX_REASON_BODY_BYTES, decodingFailure);
+								expectedType, responseBodyCapture.size(), responseBodyCapture.size() > MAX_REASON_BODY_BYTES, decodingFailure,
+								decodingReason);
 						HttpException ex = new HttpException(code, "Rest request responded with failure code: " + code);
 						ex.withPayload(responsePayload);
 						throw ex;
@@ -827,6 +840,12 @@ public class GmHttpClient implements HttpClient {
 		if (marshaller == null && normalizedMimeType.endsWith("+json"))
 			marshaller = marshallerRegistry.getMarshaller("application/json");
 		return Objects.requireNonNull(marshaller, "No marshaller found for mime type: " + mimeType);
+	}
+
+	private static String decodingFailure(GenericModelType responseType, Reason reason) {
+		String detail = reason == null ? null : reason.getText();
+		return "Could not decode the HTTP response as " + responseType.getTypeSignature()
+				+ (StringTools.isBlank(detail) ? "" : ": " + detail);
 	}
 
 	private static String normalizeMimeType(String mimeType) {

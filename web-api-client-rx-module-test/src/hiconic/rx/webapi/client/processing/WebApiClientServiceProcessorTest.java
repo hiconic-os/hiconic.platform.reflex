@@ -50,8 +50,9 @@ public class WebApiClientServiceProcessorTest {
 				.addResponseMapping(new HttpResponseMapping("4xx", HttpResponseMapping.Kind.BODY_DETAIL, NotFound.T, false, false))
 				.build();
 		String body = "not-json";
+		ParseError decodingReason = ParseError.create("native decoder reason");
 		HttpErrorResponse response = new HttpErrorResponse(null, body, "application/problem+json", NotFound.class.getName(),
-				body.length(), false, "Could not decode response");
+				body.length(), false, "Could not decode response", decodingReason);
 
 		Reason result = WebApiClientServiceProcessor.mapFailure(context, 400, response);
 
@@ -61,20 +62,21 @@ public class WebApiClientServiceProcessorTest {
 		assertEquals(body, status.getBody());
 		assertEquals(NotFound.class.getName(), status.getExpectedBodyTypeSignature());
 		assertEquals("application/problem+json", status.getMimeType());
-		assertTrue(status.getReasons().get(0) instanceof ParseError);
+		assertSame(decodingReason, status.getReasons().get(0));
 		assertStatus(status, 400);
 	}
 
 	@Test
 	public void undecodableSuccessfulResponseBecomesCommunicationErrorWithParseAndTransportEvidence() {
 		String body = "not-json";
+		ParseError decodingReason = ParseError.create("native decoder reason");
 		HttpErrorResponse response = new HttpErrorResponse(null, body, "application/json", NotFound.class.getName(),
-				body.length(), false, "Could not decode response");
+				body.length(), false, "Could not decode response", decodingReason);
 
 		Reason result = WebApiClientServiceProcessor.mapDecodingFailure(200, response);
 
 		assertTrue(result instanceof CommunicationError);
-		assertTrue(result.getReasons().get(0) instanceof ParseError);
+		assertSame(decodingReason, result.getReasons().get(0));
 		ParseError parseError = (ParseError) result.getReasons().get(0);
 		assertSame(HttpStatusWithTextBody.T, parseError.getReasons().get(0).entityType());
 		HttpStatusWithTextBody status = (HttpStatusWithTextBody) parseError.getReasons().get(0);

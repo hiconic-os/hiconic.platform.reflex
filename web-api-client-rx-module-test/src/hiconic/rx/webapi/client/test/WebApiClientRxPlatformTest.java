@@ -17,6 +17,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Test;
 
+import com.braintribe.exception.HttpException;
+import com.braintribe.gm.model.reason.essential.InvalidArgument;
+import com.braintribe.gm.model.reason.essential.ParseError;
 import com.braintribe.model.resource.Resource;
 import com.braintribe.model.service.api.result.Neutral;
 import com.sun.net.httpserver.HttpServer;
@@ -24,12 +27,15 @@ import com.sun.net.httpserver.HttpServer;
 import hiconic.rx.test.common.AbstractRxTest;
 import hiconic.rx.webapi.client.api.HttpClient;
 import hiconic.rx.webapi.client.api.HttpClientException;
+import hiconic.rx.webapi.client.api.HttpErrorResponse;
 import hiconic.rx.webapi.client.api.HttpMultipartFormData;
 import hiconic.rx.webapi.client.api.HttpMultipartPart;
 import hiconic.rx.webapi.client.api.HttpMultipartPartKind;
 import hiconic.rx.webapi.client.api.HttpRequestContext;
 import hiconic.rx.webapi.client.api.HttpRequestContextBuilder;
 import hiconic.rx.webapi.client.api.HttpResponse;
+import hiconic.rx.webapi.client.api.HttpResponseDecodingException;
+import hiconic.rx.webapi.client.api.HttpResponseMapping;
 import hiconic.rx.webapi.client.api.WebApiClientContract;
 import hiconic.rx.module.api.service.ServiceProcessorRegistration;
 import hiconic.rx.webapi.client.model.configuration.HttpUsernamePasswordCredentials;
@@ -75,6 +81,57 @@ public class WebApiClientRxPlatformTest extends AbstractRxTest {
 					.build();
 
 			assertThrows(HttpClientException.class, () -> client.sendRequest(context));
+		} finally {
+			server.stop(0);
+		}
+	}
+
+	@Test
+	public void preservesNativeParseReasonForMismatchingErrorBodies() throws Exception {
+		for (String body : new String[] {
+				"{\"httpCode\":\"400\",\"httpMessage\":\"Bad Request\",\"moreInformation\":\"The request URI was invalid.\"}",
+				"{not-json" }) {
+			HttpServer server = server(400, "application/problem+json", body);
+			try {
+				HttpClient client = platformClient(server);
+				HttpRequestContext context = HttpRequestContextBuilder.instance(client)
+						.requestPath("/problem")
+						.produces("application/json")
+						.addResponseMapping(new HttpResponseMapping("400", HttpResponseMapping.Kind.STATUS, InvalidArgument.T, false, false))
+						.addResponseMapping(new HttpResponseMapping("4xx", HttpResponseMapping.Kind.BODY_DETAIL,
+								WebApiRemoteProcessor.T, false, false))
+						.build();
+
+				HttpException failure = assertThrows(HttpException.class, () -> client.sendRequest(context));
+				assertTrue(failure.getPayload() instanceof HttpErrorResponse);
+				HttpErrorResponse response = (HttpErrorResponse) failure.getPayload();
+				assertEquals(body, response.textBody());
+				assertTrue(response.decodingReason() instanceof ParseError);
+				assertTrue(response.decodingFailure().contains(WebApiRemoteProcessor.T.getTypeSignature()));
+			} finally {
+				server.stop(0);
+			}
+		}
+	}
+
+	@Test
+	public void preservesNativeParseReasonForMismatchingSuccessfulBody() throws Exception {
+		String body = "{\"unknownProperty\":\"value\"}";
+		HttpServer server = server(200, "application/json", body);
+		try {
+			HttpClient client = platformClient(server);
+			HttpRequestContext context = HttpRequestContextBuilder.instance(client)
+					.requestPath("/entity")
+					.produces("application/json")
+					.addSuccessCode(200)
+					.addResponseDecodingLenience(200, false)
+					.defaultSuccessResponseType(WebApiRemoteProcessor.T)
+					.build();
+
+			HttpResponseDecodingException failure = assertThrows(HttpResponseDecodingException.class,
+					() -> client.sendRequest(context));
+			assertEquals(body, failure.getResponse().textBody());
+			assertTrue(failure.getResponse().decodingReason() instanceof ParseError);
 		} finally {
 			server.stop(0);
 		}
@@ -187,6 +244,22 @@ public class WebApiClientRxPlatformTest extends AbstractRxTest {
 					throw new IOException(e);
 				}
 				exchange.sendResponseHeaders(responseStatus, -1);
+			} finally {
+				exchange.close();
+			}
+		});
+		server.start();
+		return server;
+	}
+
+	private HttpServer server(int responseStatus, String contentType, String body) throws Exception {
+		byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+		HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
+		server.createContext("/", exchange -> {
+			try {
+				exchange.getResponseHeaders().set("Content-Type", contentType);
+				exchange.sendResponseHeaders(responseStatus, bytes.length);
+				exchange.getResponseBody().write(bytes);
 			} finally {
 				exchange.close();
 			}
