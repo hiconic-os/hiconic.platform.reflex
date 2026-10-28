@@ -71,7 +71,7 @@ public enum CheckCoverage implements EnumBase<CheckCoverage> {
 	 * If all other checks pass, this should also pass, otherwise gives a more detailed overview of which functionality is affected by <i>vitality</i>
 	 * or <i>connectivity</i> problems.
 	 * <p>
-	 * <b>Failure implication:</b> Underlying <i>vitality</i> or <i>connectivity</i> issues, or a bug.
+	 * <b>Failure implication:</b> Underlying <i>vitality</i> or <i>connectivity</i> issues, mis-configuration, corrupt data or similar, or a bug .
 	 */
 	functional;
 

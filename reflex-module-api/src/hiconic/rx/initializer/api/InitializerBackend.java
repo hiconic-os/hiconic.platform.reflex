@@ -15,6 +15,7 @@ package hiconic.rx.initializer.api;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 import com.braintribe.gm.initializer.api.InitializerFingerprintResolver;
 import com.braintribe.gm.initializer.api.InitializerRegistry;
@@ -36,6 +37,11 @@ public interface InitializerBackend extends InitializerRegistry {
 			@Override
 			public void ensureOrder(String runsFirstName, String runsLaterName) {
 				registry.ensureOrder(runsFirstName, runsLaterName);
+			}
+
+			@Override
+			public Set<String> initializerNames() {
+				return registry.initializerNames();
 			}
 
 			@Override

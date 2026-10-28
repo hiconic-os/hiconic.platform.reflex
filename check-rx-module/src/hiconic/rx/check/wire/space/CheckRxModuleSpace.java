@@ -18,9 +18,13 @@ import hiconic.rx.check.api.CheckServiceDomain;
 import hiconic.rx.check.model.api.request.AuthorizedCheckRequest;
 import hiconic.rx.check.model.api.request.CheckRequest;
 import hiconic.rx.check.model.api.request.RunVitalityChecks;
+import hiconic.rx.check.model.aspect.CheckCoverage;
+import hiconic.rx.check.model.aspect.CheckLatency;
 import hiconic.rx.check.processing.BasicCheckProcessorRegistry;
 import hiconic.rx.check.processing.CheckResponseHtmlMarshaller;
 import hiconic.rx.check.processing.CheckRxProcessor;
+import hiconic.rx.check.processing.InitializerCheckProcessor;
+import hiconic.rx.initializer.api.InitializerContract;
 import hiconic.rx.module.api.config.RxPlatformConfigurator;
 import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
@@ -36,6 +40,22 @@ public class CheckRxModuleSpace implements RxModuleContract, CheckContract {
 
 	@Import
 	private RxPlatformContract platform;
+
+	@Import
+	private InitializerContract initializers;
+
+	@Override
+	public void onDeploy() {
+		checkProcessorRegistry().registerProcessor(InitializerCheckProcessor.symbol, //
+				initializerCheckProcessor(), CheckCoverage.functional, CheckLatency.moderate, "initializer");
+	}
+
+	@Managed
+	private InitializerCheckProcessor initializerCheckProcessor() {
+		InitializerCheckProcessor bean = new InitializerCheckProcessor();
+		bean.setRegistry(initializers.registry());
+		return bean;
+	}
 
 	// ###############################################
 	// ##. . . . . . . . Marshaller . . . . . . . . ##

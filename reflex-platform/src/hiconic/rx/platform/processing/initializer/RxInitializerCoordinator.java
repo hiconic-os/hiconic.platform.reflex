@@ -67,6 +67,12 @@ public class RxInitializerCoordinator implements InitializerRegistry {
 		backendExplicitlyConfigured = true;
 	}
 
+	/** The tasks registered with this coordinator, in the order of their registration. These are also the ones the backend runs. */
+	@Override
+	public synchronized Set<String> initializerNames() {
+		return new LinkedHashSet<>(tasks.keySet());
+	}
+
 	/**
 	 * Asks the backend. The backend only learns the registered tasks when the initializers run, so before that it would report every task as not
 	 * registered. This therefore fails until the initializers ran.
