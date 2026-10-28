@@ -15,6 +15,7 @@ package hiconic.rx.platform.configuration;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.UncheckedIOException;
@@ -49,6 +50,7 @@ import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.config.ConfigurationError;
+import com.braintribe.gm.model.reason.essential.InternalError;
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EssentialTypes;
@@ -101,7 +103,16 @@ public final class ConfigurationAssemblyWriter {
 			qualifyOnlyAmbiguousReferences(references, artifactCoordinates);
 
 			for (Map.Entry<ConfigurationKey, GenericEntity> entry : assembly.configurations().entrySet()) {
-				String yaml = serialize(entry.getValue(), entry.getKey().type());
+				String yaml;
+				try {
+					yaml = serialize(entry.getValue(), entry.getKey().type());
+				} catch (RuntimeException e) {
+					return Reasons.build(ConfigurationError.T)
+							.text("Could not serialize assembled configuration " + entry.getKey().displayName() + " to "
+									+ confDirectory.resolve(entry.getKey().fileName()) + ": " + e)
+							.cause(exceptionReason(e))
+							.toMaybe();
+				}
 				Maybe<Void> roundtripMaybe = verifyRoundtrip(entry.getKey(), yaml);
 				if (roundtripMaybe.isUnsatisfied())
 					return roundtripMaybe;
@@ -121,9 +132,17 @@ public final class ConfigurationAssemblyWriter {
 			return Maybe.complete(null);
 		} catch (Exception e) {
 			return Reasons.build(ConfigurationError.T)
-					.text("Could not write integral assembled configuration to " + confDirectory + ": " + e.getMessage())
+					.text("Could not write integral assembled configuration to " + confDirectory + ": " + e)
+					.cause(exceptionReason(e))
 					.toMaybe();
 		}
+	}
+
+	/** The stack trace is the only way to locate an unexpected failure, e.g. in a CI log. */
+	private static InternalError exceptionReason(Exception e) {
+		StringWriter stackTrace = new StringWriter();
+		e.printStackTrace(new PrintWriter(stackTrace));
+		return InternalError.from(e, stackTrace.toString());
 	}
 
 	private static List<ResourceReference> collectResourceReferences(ConfigurationAssembly assembly) {
