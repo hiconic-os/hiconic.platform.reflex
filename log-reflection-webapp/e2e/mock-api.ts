@@ -24,6 +24,9 @@ type QuerySnapshot = {
 class MockLogReflectionApi implements LogReflectionClient {
   private authenticated = true;
   private sequence = 0;
+  private immediateTailResponses = false;
+  private bundleDelayMillis = 0;
+  private bundleRequestCount = 0;
   private readonly pending = new Map<string, PendingTail[]>();
   private readonly queries: QuerySnapshot[] = [];
 
@@ -65,6 +68,8 @@ class MockLogReflectionApi implements LogReflectionClient {
     this.queries.push({ streamId, filter: snapshot, includeRotated, waitMillis });
     if (waitMillis <= 0)
       return page(streamId, [], this.sequence);
+    if (this.immediateTailResponses)
+      return page(streamId, [], this.sequence);
 
     return new Promise(resolve => {
       const queue = this.pending.get(streamId) ?? [];
@@ -87,7 +92,22 @@ class MockLogReflectionApi implements LogReflectionClient {
   async clearRuntimeLogLevels() {}
 
   async bundle(_download: RemoteLogDownload) {
+    this.bundleRequestCount++;
+    if (this.bundleDelayMillis > 0)
+      await new Promise(resolve => setTimeout(resolve, this.bundleDelayMillis));
     return { blob: new Blob(), name: "logs.zip" };
+  }
+
+  setImmediateTailResponses(value: boolean) {
+    this.immediateTailResponses = value;
+  }
+
+  setBundleDelay(milliseconds: number) {
+    this.bundleDelayMillis = milliseconds;
+  }
+
+  bundleRequests() {
+    return this.bundleRequestCount;
   }
 
   setAuthenticated(value: boolean) {

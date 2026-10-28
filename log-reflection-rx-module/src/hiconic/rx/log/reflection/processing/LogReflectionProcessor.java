@@ -311,7 +311,21 @@ public class LogReflectionProcessor extends AbstractDispatchingServiceProcessor<
 		Map<String, String> errors = new LinkedHashMap<>();
 		Map<String, com.braintribe.model.resource.Resource> contributions = successfulResponses(multicast,
 				com.braintribe.model.resource.Resource.class, errors);
+		if (!errors.isEmpty()) {
+			release(contributions.values());
+			throw new IllegalStateException("Could not create a complete log bundle; node failures: " + errors);
+		}
 		return bundleWriter.combine(contributions, errors, target.applicationId);
+	}
+
+	private static void release(Iterable<com.braintribe.model.resource.Resource> resources) {
+		for (com.braintribe.model.resource.Resource resource : resources) {
+			try (var ignored = resource.openStream()) {
+				// Closing a transient contribution stream releases its file-backed pipe.
+			} catch (Exception e) {
+				// The original cluster failure remains the actionable error.
+			}
+		}
 	}
 
 	private static CreateLocalLogBundle localBundleRequest(CreateLogBundle source) {

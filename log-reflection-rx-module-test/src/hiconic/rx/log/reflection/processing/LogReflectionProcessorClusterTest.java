@@ -1,6 +1,7 @@
 package hiconic.rx.log.reflection.processing;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -32,6 +33,7 @@ import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.model.service.api.UnicastRequest;
 import com.braintribe.model.service.api.result.MulticastResponse;
 import com.braintribe.model.service.api.result.ResponseEnvelope;
+import com.braintribe.model.service.api.result.Failure;
 import com.braintribe.model.usersession.UserSession;
 import com.braintribe.processing.async.api.AsyncCallback;
 
@@ -195,6 +197,29 @@ public class LogReflectionProcessorClusterTest {
 		assertThat(entries.keySet()).containsExactlyInAnyOrder(
 				"application_node-1.log", "application_node-2.log", "application_merged.log", "manifest.json");
 		assertThat(entries.get("application_merged.log")).isEqualTo("node one\nnode two\n");
+	}
+
+	@Test
+	public void rejectsIncompleteClusterBundlesInsteadOfReturningPartialSuccess() {
+		MulticastResponse multicastResponse = MulticastResponse.T.create();
+		multicastResponse.getResponses().put(InstanceId.of("node-1", "logs-app"),
+				envelope(zipResource(Map.of("application_node-1.log", "node one\n"))));
+		Failure failure = Failure.T.create();
+		failure.setType("Timeout");
+		failure.setMessage("node did not answer");
+		multicastResponse.getResponses().put(InstanceId.of("node-2", "logs-app"), failure);
+
+		CreateLogBundle request = CreateLogBundle.T.create();
+		request.setTarget(target("logs-app", null));
+		request.setStreamIds(Set.of("appender:application"));
+		request.setScope(LogBundleScope.ALL);
+
+		assertThatThrownBy(() -> processor(evaluator(ignored -> multicastResponse))
+				.process(context("log-reflection-reader"), request))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("complete log bundle")
+				.hasMessageContaining("logs-app@node-2")
+				.hasMessageContaining("Timeout: node did not answer");
 	}
 
 	private static LogReflectionProcessor processor(Evaluator<ServiceRequest> systemEvaluator) {

@@ -270,6 +270,11 @@ button { border: 0; cursor: pointer; }
 .error-toast strong { color: #ff91a0; font-size: 12px; }.error-toast span { grid-column: 1; color: #d8aab1; white-space: pre-line; font: 11px var(--mono); }.error-toast button { grid-column: 2; grid-row: 1 / span 2; background: transparent; color: #d8aab1; }
 .progress { position: fixed; left: 0; top: 0; height: 2px; width: 34%; background: linear-gradient(90deg, transparent, var(--cyan), transparent); animation: progress 1.2s infinite ease-in-out; }
 .modal-backdrop { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 28px; background: rgba(3,6,10,.76); backdrop-filter: blur(5px); }
+.operation-mask { position: fixed; z-index: 60; inset: 0; display: grid; place-items: center; background: rgba(3,6,10,.68); backdrop-filter: blur(3px); cursor: progress; }
+.operation-card { min-width: 310px; display: grid; grid-template-columns: 28px 1fr; column-gap: 14px; row-gap: 3px; align-items: center; padding: 20px 24px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); box-shadow: 0 20px 60px rgba(0,0,0,.45); }
+.operation-card i { grid-row: 1 / span 2; width: 22px; height: 22px; border: 2px solid rgba(94,211,255,.22); border-top-color: var(--cyan); border-radius: 50%; animation: operation-spin .8s linear infinite; }
+.operation-card strong { color: var(--text); font-size: 14px; }
+.operation-card small { color: var(--muted); }
 .bundle-dialog { width: min(760px, 100%); max-height: min(780px, 92vh); display: flex; flex-direction: column; overflow: hidden; border: 1px solid #303b4a; border-radius: 12px; background: #101720; box-shadow: 0 28px 90px #000c; }
 .bundle-dialog > header { padding: 18px 20px; display: flex; align-items: start; justify-content: space-between; border-bottom: 1px solid var(--line); }
 .bundle-dialog > header strong, .bundle-dialog > header small { display: block; }
@@ -301,6 +306,7 @@ button { border: 0; cursor: pointer; }
   .bundle-options { grid-template-columns: 1fr; overflow: auto; }
 }
 @keyframes progress { from { transform: translateX(-100%); } to { transform: translateX(400%); } }
+@keyframes operation-spin { to { transform: rotate(360deg); } }
 @media (max-width: 1050px) {
   .workspace { grid-template-columns: 270px minmax(0, 1fr); }
   .records-surface.detail-open { grid-template-columns: minmax(0, 1fr) minmax(300px, 42%); }

@@ -68,6 +68,9 @@ const columns: readonly ColumnDefinition[] = [
 
 const levels = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"];
 const newDefaultFilter = (): RecordFilter => ({ levels: [] });
+const fastTailResponseThresholdMillis = 500;
+const initialTailBackoffMillis = 250;
+const maximumTailBackoffMillis = 15_000;
 
 export interface AppProps {
   apiFactory?: (config: RuntimeConfig) => LogReflectionClient;
@@ -108,6 +111,7 @@ export function App(props: AppProps = {}) {
   const [bundleFormats, setBundleFormats] = createSignal<RemoteLogFormat[]>(["natural"]);
   const [bundleFrom, setBundleFrom] = createSignal("");
   const [bundleTo, setBundleTo] = createSignal("");
+  const [downloadActivity, setDownloadActivity] = createSignal<"view" | "bundle">();
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal<string>();
   let recordsViewport: HTMLDivElement | undefined;
@@ -467,6 +471,7 @@ export function App(props: AppProps = {}) {
       return;
     updateStreamTab(tab.id, current => ({ ...current, followTail: true }));
     requestAnimationFrame(() => scrollToLatest(true));
+    let immediateResponses = 0;
     while (!disposed && generation === tailGenerations.get(tab.id)) {
       if (document.visibilityState !== "visible" || accessState() !== "authenticated") {
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -478,9 +483,22 @@ export function App(props: AppProps = {}) {
       }
       const current = streamTabById(tab.id);
       if (!current?.tailing) break;
+      const started = performance.now();
       const succeeded = await loadRecords(current, "newer", 15_000, generation);
-      if (!succeeded && generation === tailGenerations.get(tab.id))
+      if (!succeeded && generation === tailGenerations.get(tab.id)) {
+        immediateResponses = 0;
         await new Promise(resolve => setTimeout(resolve, 1_000));
+      } else if (succeeded && generation === tailGenerations.get(tab.id)) {
+        const elapsed = performance.now() - started;
+        if (elapsed < fastTailResponseThresholdMillis) {
+          immediateResponses++;
+          const backoff = Math.min(maximumTailBackoffMillis,
+            initialTailBackoffMillis * 2 ** Math.min(immediateResponses - 1, 6));
+          await new Promise(resolve => setTimeout(resolve, backoff));
+        } else {
+          immediateResponses = 0;
+        }
+      }
     }
   }
 
@@ -590,18 +608,25 @@ export function App(props: AppProps = {}) {
       }));
   }
 
-  function exportView(format: TabExportFormat, menu?: HTMLElement) {
+  async function exportView(format: TabExportFormat, menu?: HTMLElement) {
+    if (downloadActivity()) return;
     const tab = activeStreamTab();
     if (!tab) return;
-    const selectedColumns = visibleColumnDefinitions().map(({ key, label }) => ({ key, label }));
-    const exported = createTabExport(tab.records, selectedColumns, format, tab.stream.displayName || tab.stream.streamId || "Logs");
-    const blob = new Blob([exported.content], { type: exported.mimeType });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `${safeName(tab.stream.displayName || tab.stream.streamId || "logs")}_${safeName(tab.target.nodeId || "merged")}_view.${exported.extension}`;
-    link.click();
-    window.setTimeout(() => URL.revokeObjectURL(link.href), 0);
     menu?.closest("details")?.removeAttribute("open");
+    setDownloadActivity("view");
+    try {
+      await nextPaint();
+      const selectedColumns = visibleColumnDefinitions().map(({ key, label }) => ({ key, label }));
+      const exported = createTabExport(tab.records, selectedColumns, format, tab.stream.displayName || tab.stream.streamId || "Logs");
+      const blob = new Blob([exported.content], { type: exported.mimeType });
+      triggerDownload(blob,
+        `${safeName(tab.stream.displayName || tab.stream.streamId || "logs")}_${safeName(tab.target.nodeId || "merged")}_view.${exported.extension}`);
+    } catch (caught) {
+      console.error("Exporting the current log view failed", caught);
+      handleOperationalFailure(caught);
+    } finally {
+      setDownloadActivity();
+    }
   }
 
   function openBundle() {
@@ -637,6 +662,7 @@ export function App(props: AppProps = {}) {
   }
 
   async function createBundle() {
+    if (downloadActivity()) return;
     const client = api();
     if (!client || !bundleApplication() || bundleStreams().length === 0)
       return;
@@ -654,7 +680,7 @@ export function App(props: AppProps = {}) {
         return;
       }
     }
-    setLoading(true);
+    setDownloadActivity("bundle");
     setError(undefined);
     try {
       const result = await client.bundle({
@@ -669,18 +695,13 @@ export function App(props: AppProps = {}) {
         from: bundleFrom(),
         to: bundleTo()
       });
-      const url = URL.createObjectURL(result.blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = result.name;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 0);
+      triggerDownload(result.blob, result.name);
       setBundleOpen(false);
     } catch (caught) {
       console.error("Creating log bundle failed", caught);
       handleOperationalFailure(caught);
     } finally {
-      setLoading(false);
+      setDownloadActivity();
     }
   }
 
@@ -974,11 +995,16 @@ export function App(props: AppProps = {}) {
             </div>
             <footer>
               <span>{bundleStreams().length} stream{bundleStreams().length === 1 ? "" : "s"} selected</span>
-              <div><button onClick={() => setBundleOpen(false)}>Cancel</button><button class="primary" onClick={createBundle}>Download ZIP</button></div>
+              <div><button disabled={Boolean(downloadActivity())} onClick={() => setBundleOpen(false)}>Cancel</button><button class="primary" disabled={Boolean(downloadActivity())} onClick={createBundle}>Download ZIP</button></div>
             </footer>
           </section>
         </div>
       </Show>
+      <Show when={downloadActivity()}>{activity =>
+        <div class="operation-mask" role="status" aria-live="polite" aria-busy="true">
+          <div class="operation-card"><i></i><strong>{activity() === "bundle" ? "Creating remote log archive…" : "Preparing view export…"}</strong><small>Please keep this page open.</small></div>
+        </div>
+      }</Show>
       <Show when={accessState() !== "authenticated"}><AccessOverlay state={accessState()} detail={accessDetail()}
         loginUrl={runtimeConfig ? loginUrl(runtimeConfig) : undefined} retry={retryAccess}/></Show>
     </div>
@@ -1530,4 +1556,24 @@ function mapEntries(value: unknown): [string, string][] {
 
 function safeName(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9._-]+/g, "-");
+}
+
+function nextPaint() {
+  return new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+}
+
+function triggerDownload(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.hidden = true;
+  document.body.append(link);
+  try {
+    link.click();
+  } finally {
+    link.remove();
+    // Revoking immediately races browser download managers, especially on a repeated export.
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  }
 }

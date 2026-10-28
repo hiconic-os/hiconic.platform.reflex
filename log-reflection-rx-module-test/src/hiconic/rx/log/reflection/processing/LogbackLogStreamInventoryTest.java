@@ -12,6 +12,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.zip.ZipEntry;
@@ -26,10 +27,17 @@ import com.braintribe.model.logging.LogLevel;
 
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.classic.util.LogbackMDCAdapter;
 import ch.qos.logback.core.FileAppender;
 import ch.qos.logback.core.rolling.RollingFileAppender;
+import ch.qos.logback.core.rolling.FixedWindowRollingPolicy;
+import ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy;
 import ch.qos.logback.core.rolling.TimeBasedRollingPolicy;
+import ch.qos.logback.core.read.ListAppender;
+import ch.qos.logback.core.util.FileSize;
 import hiconic.rx.log.reflection.model.LogCapability;
 import hiconic.rx.log.reflection.model.LogBundleFormat;
 import hiconic.rx.log.reflection.model.LogBundleLayout;
@@ -48,6 +56,7 @@ public class LogbackLogStreamInventoryTest {
 	@Before
 	public void setup() throws Exception {
 		context = new LoggerContext();
+		context.setMDCAdapter(new LogbackMDCAdapter());
 		context.start();
 		logFile = Files.createTempFile("log-reflection-", ".log");
 
@@ -68,6 +77,10 @@ public class LogbackLogStreamInventoryTest {
 	@After
 	public void cleanup() throws Exception {
 		context.stop();
+		try (var files = Files.list(logFile.getParent())) {
+			for (Path path : files.filter(path -> path.getFileName().toString().startsWith(logFile.getFileName() + ".")).toList())
+				Files.deleteIfExists(path);
+		}
 		Files.deleteIfExists(logFile);
 		if (archivedFile != null)
 			Files.deleteIfExists(archivedFile);
@@ -252,6 +265,78 @@ public class LogbackLogStreamInventoryTest {
 	}
 
 	@Test
+	public void setupStyleFanOutKeepsEveryConsoleEventInAllBundleRepresentations() throws Exception {
+		Logger root = context.getLogger(Logger.ROOT_LOGGER_NAME);
+		@SuppressWarnings("unchecked")
+		FileAppender<ILoggingEvent> original = (FileAppender<ILoggingEvent>) root.getAppender("application");
+		root.detachAppender(original);
+		original.stop();
+
+		ListAppender<ILoggingEvent> console = new ListAppender<>();
+		console.setContext(context);
+		console.setName("STDOUT_JSON_TEST_DOUBLE");
+		console.start();
+		root.addAppender(console);
+
+		RollingFileAppender<ILoggingEvent> rolling = fixedWindowAppender();
+		root.addAppender(rolling);
+		assertThat(rolling.isStarted()).as("rolling appender status: %s", context.getStatusManager().getCopyOfStatusList()).isTrue();
+		assertThat(rolling.isImmediateFlush()).isTrue();
+		root.setLevel(Level.INFO);
+		context.getLogger("tribefire").setLevel(Level.DEBUG);
+		context.getLogger("proventem").setLevel(Level.DEBUG);
+		context.getLogger("org.hibernate").setLevel(Level.DEBUG);
+
+		Map<String, String> markers = new LinkedHashMap<>();
+		markers.put("tribefire.extension.process.processing.mgt.processor.ReviveProcessesProcessor", "marker-revive");
+		markers.put("proventem.claims.generali.processing.TestProcessor", "marker-generali");
+		markers.put("org.hibernate.SQL", "marker-hibernate");
+		markers.put("unconfigured.root.Logger", "marker-root");
+		markers.forEach((logger, marker) -> {
+			if (marker.equals("marker-root"))
+				context.getLogger(logger).info(marker);
+			else
+				context.getLogger(logger).debug(marker);
+		});
+		List<String> consoleMessages = console.list.stream().map(ILoggingEvent::getFormattedMessage).toList();
+		for (String marker : markers.values())
+			assertThat(consoleMessages.stream().filter(marker::equals).count()).as("console occurrence of %s", marker).isEqualTo(1);
+
+		List<Path> physicalSegments;
+		try (var files = Files.list(logFile.getParent())) {
+			physicalSegments = files
+					.filter(path -> path.equals(logFile) || path.getFileName().toString().startsWith(logFile.getFileName() + "."))
+					.sorted()
+					.toList();
+		}
+		assertThat(physicalSegments).as("active Logback file before rotation").containsExactly(logFile);
+		String physical = readAll(physicalSegments);
+		for (String marker : markers.values())
+			assertThat(occurrences(physical, marker))
+					.as("physical Logback files %s contain %s", physicalSegments, marker)
+					.isEqualTo(1);
+
+		LogbackLogStreamInventory inventory = inventory();
+		List<Path> inventorySegments = inventory.fileStream("appender:application").segmentPaths();
+		assertThat(inventorySegments).containsExactlyInAnyOrderElementsOf(physicalSegments);
+		String inventoried = readAll(inventorySegments);
+		for (String marker : markers.values())
+			assertThat(occurrences(inventoried, marker)).as("inventory segments contain %s", marker).isEqualTo(1);
+
+		CreateLogBundle request = modernRequest(LogBundleScope.ALL,
+				Set.of(LogBundleLayout.SEPARATE, LogBundleLayout.MERGED), Set.of(LogBundleFormat.NATURAL));
+		Map<String, String> contents = zipContents(new LogBundleWriter().create(inventory, request, instanceId()));
+		String base = baseName(logFile);
+		String separate = contents.get(base + "_node-1_all.log");
+		String merged = contents.get(base + "_merged_all.log");
+
+		for (String marker : markers.values()) {
+			assertThat(occurrences(separate, marker)).as("separate occurrence of %s", marker).isEqualTo(1);
+			assertThat(occurrences(merged, marker)).as("merged occurrence of %s", marker).isEqualTo(1);
+		}
+	}
+
+	@Test
 	public void customRangeHasNoLossesMisassignmentsOrOverhangsAcrossAllRepresentations() throws Exception {
 		configureRollingAppender();
 		Files.writeString(archivedFile, """
@@ -367,6 +452,37 @@ public class LogbackLogStreamInventoryTest {
 		archivedFile = logFile.getParent().resolve("archive-2026-07-24.log");
 	}
 
+	private RollingFileAppender<ILoggingEvent> fixedWindowAppender() {
+		PatternLayoutEncoder encoder = new PatternLayoutEncoder();
+		encoder.setContext(context);
+		encoder.setPattern("%d{ISO8601} %-5level [%thread] %logger - %msg%n");
+		encoder.start();
+
+		RollingFileAppender<ILoggingEvent> rolling = new RollingFileAppender<>();
+		rolling.setContext(context);
+		rolling.setName("application");
+		rolling.setFile(logFile.toString());
+		rolling.setEncoder(encoder);
+
+		FixedWindowRollingPolicy policy = new FixedWindowRollingPolicy();
+		policy.setContext(context);
+		policy.setParent(rolling);
+		policy.setFileNamePattern(logFile + ".%i.log");
+		policy.setMinIndex(1);
+		policy.setMaxIndex(10);
+		policy.start();
+
+		SizeBasedTriggeringPolicy<ILoggingEvent> trigger = new SizeBasedTriggeringPolicy<>();
+		trigger.setContext(context);
+		trigger.setMaxFileSize(FileSize.valueOf("1KB"));
+		trigger.start();
+
+		rolling.setRollingPolicy(policy);
+		rolling.setTriggeringPolicy(trigger);
+		rolling.start();
+		return rolling;
+	}
+
 	private LogbackLogStreamInventory inventory() {
 		LogbackLogStreamInventory inventory = new LogbackLogStreamInventory();
 		inventory.setLoggerContext(context);
@@ -410,6 +526,20 @@ public class LogbackLogStreamInventoryTest {
 	private static String baseName(Path path) {
 		String name = path.getFileName().toString();
 		return name.substring(0, name.lastIndexOf('.'));
+	}
+
+	private static int occurrences(String text, String needle) {
+		int count = 0;
+		for (int offset = 0; (offset = text.indexOf(needle, offset)) >= 0; offset += needle.length())
+			count++;
+		return count;
+	}
+
+	private static String readAll(Iterable<Path> paths) throws Exception {
+		StringBuilder result = new StringBuilder();
+		for (Path path : paths)
+			result.append(Files.readString(path, StandardCharsets.UTF_8));
+		return result.toString();
 	}
 
 	private static InstanceId instanceId() {

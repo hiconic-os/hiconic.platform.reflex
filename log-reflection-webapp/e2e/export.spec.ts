@@ -64,3 +64,17 @@ test("exports an Excel-compatible XML table without losing multiline text", asyn
   expect(content).toContain("first line\nsecond &lt;&amp;&gt;");
   expect(content).not.toContain(">Node<");
 });
+
+test("masks view generation and supports repeated exports", async ({ page }) => {
+  async function maskedExport() {
+    await page.locator(".view-export summary").click();
+    const pending = page.waitForEvent("download");
+    await page.getByRole("menuitem", { name: "Plain text" }).click();
+    await expect(page.getByRole("status")).toContainText("Preparing view export");
+    await pending;
+    await expect(page.getByRole("status")).toHaveCount(0);
+  }
+
+  await maskedExport();
+  await maskedExport();
+});

@@ -138,3 +138,16 @@ test("pauses following when scrolled away and resumes on request", async ({ page
     element.scrollHeight - element.scrollTop - element.clientHeight
   )).toBeLessThan(2);
 });
+
+test("backs off when tail requests return immediately instead of self-exciting", async ({ page }) => {
+  await page.evaluate(() => window.logReflectionTestApi.setImmediateTailResponses(true));
+  await openStream(page, "Application log");
+  await tailButton(page).click();
+  await expect(tailButton(page)).toContainText("Tailing");
+
+  await page.waitForTimeout(2_100);
+  const queries = await page.evaluate(() => window.logReflectionTestApi.querySnapshots("application").length);
+  expect(queries).toBeLessThanOrEqual(6);
+
+  await tailButton(page).click();
+});
