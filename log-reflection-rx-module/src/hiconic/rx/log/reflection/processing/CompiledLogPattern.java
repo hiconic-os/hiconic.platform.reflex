@@ -95,6 +95,11 @@ final class CompiledLogPattern implements CanonicalLogParser {
 	}
 
 	@Override
+	public boolean recognizesRecordStarts() {
+		return recordStartPattern != null;
+	}
+
+	@Override
 	public LogRecord parse(String raw, long byteOffset) {
 		Matcher matcher = recordPattern.matcher(raw);
 		if (!matcher.matches())

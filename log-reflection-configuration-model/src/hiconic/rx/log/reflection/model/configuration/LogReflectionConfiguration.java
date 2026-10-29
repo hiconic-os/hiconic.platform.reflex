@@ -30,4 +30,28 @@ public interface LogReflectionConfiguration extends GenericEntity {
 	@Initializer("{'log-reflection-manager'}")
 	Set<String> getManagerRoles();
 	void setManagerRoles(Set<String> managerRoles);
+
+	/**
+	 * Cadence of non-blocking live log queries. A new query is only started after the previous one completed, so slow
+	 * responses are coalesced instead of accumulating.
+	 */
+	@Initializer("1000")
+	int getTailPollIntervalMillis();
+	void setTailPollIntervalMillis(int tailPollIntervalMillis);
+
+	/**
+	 * Maximum number of structured records retained per node while at least one live-log lease is active. The live
+	 * collector is detached when its lease expires and therefore has no permanent logging or heap cost.
+	 */
+	@Initializer("10000")
+	int getLiveLogCapacity();
+	void setLiveLogCapacity(int liveLogCapacity);
+
+	/**
+	 * Grace period after the latest structured-live query before the node detaches its collector and releases its
+	 * buffer. Polling renews the lease; a dropped browser therefore needs no explicit unsubscribe operation.
+	 */
+	@Initializer("30000L")
+	long getLiveLogLeaseMillis();
+	void setLiveLogLeaseMillis(long liveLogLeaseMillis);
 }

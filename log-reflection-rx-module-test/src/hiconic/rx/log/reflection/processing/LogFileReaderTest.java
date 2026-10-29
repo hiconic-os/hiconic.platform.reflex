@@ -1,12 +1,15 @@
 package hiconic.rx.log.reflection.processing;
 
 import static java.nio.file.StandardOpenOption.APPEND;
+import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
+import java.util.zip.GZIPOutputStream;
 
 import org.junit.After;
 import org.junit.Before;
@@ -190,6 +193,150 @@ public class LogFileReaderTest {
 	}
 
 	@Test
+	public void advancesByteCursorAcrossNonMatchingAppends() throws Exception {
+		String simplePattern = "%date %level %logger %msg%n";
+		write("2026-07-23 10:44:25,992 INFO dt1.Test initial-match\n");
+		LogFilter filter = LogFilter.T.create();
+		filter.setFulltext("match");
+		LogRecordPage initial = reader().query(stream(simplePattern), filter, null, 20, 0, false);
+
+		Files.writeString(file, "2026-07-23 10:44:26,000 INFO dt1.Test irrelevant\n", StandardCharsets.UTF_8, APPEND);
+		LogRecordPage empty = reader().query(stream(simplePattern), filter, initial.getNextCursor(), 20, 0, false);
+
+		assertThat(empty.getRecords()).isEmpty();
+		assertThat(empty.getNextCursor()).isNotEqualTo(initial.getNextCursor());
+
+		Files.writeString(file, "2026-07-23 10:44:27,000 INFO dt1.Test later-match\n", StandardCharsets.UTF_8, APPEND);
+		LogRecordPage matching = reader().query(stream(simplePattern), filter, empty.getNextCursor(), 20, 0, false);
+		assertThat(matching.getRecords()).extracting(r -> r.getMessage()).containsExactly("later-match");
+	}
+
+	@Test
+	public void pagesLargeSparseAppendsWithoutUnboundedReadsOrLosingTheMatch() throws Exception {
+		String simplePattern = "%date %level %logger %msg%n";
+		LogFileReader boundedReader = new LogFileReader(120);
+		write("2026-07-23 10:44:20,000 INFO dt1.Test baseline\n");
+		LogRecordPage baseline = boundedReader.query(stream(simplePattern), null, null, 20, 0, false);
+		Files.writeString(file, """
+				2026-07-23 10:44:21,000 INFO dt1.Test irrelevant-one
+				2026-07-23 10:44:22,000 INFO dt1.Test irrelevant-two
+				2026-07-23 10:44:23,000 INFO dt1.Test irrelevant-three
+				2026-07-23 10:44:24,000 INFO dt1.Test sought-match
+				""", StandardCharsets.UTF_8, APPEND);
+		LogFilter filter = LogFilter.T.create();
+		filter.setFulltext("sought-match");
+
+		String cursor = baseline.getNextCursor();
+		java.util.List<String> messages = new java.util.ArrayList<>();
+		boolean sawBacklog = false;
+		for (int pageNumber = 0; pageNumber < 10; pageNumber++) {
+			LogRecordPage page = boundedReader.query(stream(simplePattern), filter, cursor, 20, 0, false);
+			assertThat(page.getNextCursor()).isNotEqualTo(cursor);
+			messages.addAll(page.getRecords().stream().map(record -> record.getMessage()).toList());
+			sawBacklog |= page.getMoreAvailable();
+			cursor = page.getNextCursor();
+			if (!page.getMoreAvailable())
+				break;
+		}
+
+		assertThat(sawBacklog).isTrue();
+		assertThat(messages).containsExactly("sought-match");
+	}
+
+	@Test
+	public void doesNotConsumeAnIncompletePhysicalRecord() throws Exception {
+		String simplePattern = "%date %level %logger %msg%n";
+		String first = "2026-07-23 10:44:25,992 INFO dt1.Test first\n";
+		write(first + "2026-07-23 10:44:26,000 INFO dt1.Test sec");
+
+		LogRecordPage initial = reader().query(stream(simplePattern), null, null, 20, 0, false);
+		assertThat(initial.getRecords()).extracting(r -> r.getMessage()).containsExactly("first");
+
+		Files.writeString(file, "ond\n", StandardCharsets.UTF_8, APPEND);
+		LogRecordPage continued = reader().query(stream(simplePattern), null, initial.getNextCursor(), 20, 0, false);
+		assertThat(continued.getRecords()).extracting(r -> r.getMessage()).containsExactly("second");
+	}
+
+	@Test
+	public void alignsBoundedInitialReadsToTheNextRealRecord() throws Exception {
+		String simplePattern = "%date %level %logger %msg%n";
+		write("""
+				2026-07-23 10:44:25,992 ERROR dt1.Test failed
+				java.lang.IllegalStateException: %s
+				\tat dt1.Test.run(Test.java:1)
+				2026-07-23 10:44:26,000 INFO dt1.Test visible
+				""".formatted("x".repeat(160)));
+
+		LogRecordPage page = new LogFileReader(110).query(stream(simplePattern), null, null, 20, 0, false);
+
+		assertThat(page.getRecords()).extracting(r -> r.getMessage()).containsExactly("visible");
+		assertThat(page.getRecords()).noneSatisfy(record -> assertThat(record.getRawText()).startsWith("at dt1.Test"));
+	}
+
+	@Test
+	public void resetsAnAnchoredCursorAfterCopyTruncateAndFastRegrowth() throws Exception {
+		String simplePattern = "%date %level %logger %msg%n";
+		write("2026-07-23 10:44:25,992 INFO dt1.Test old-record\n");
+		LogRecordPage old = reader().query(stream(simplePattern), null, null, 20, 0, false);
+
+		Files.writeString(file, """
+				2026-07-23 10:44:26,000 INFO dt1.Test replacement-one
+				2026-07-23 10:44:27,000 INFO dt1.Test replacement-two
+				""", StandardCharsets.UTF_8, TRUNCATE_EXISTING);
+		LogRecordPage replaced = reader().query(stream(simplePattern), null, old.getNextCursor(), 20, 0, false);
+
+		assertThat(replaced.getRecords()).extracting(r -> r.getMessage())
+				.containsExactly("replacement-one", "replacement-two");
+	}
+
+	@Test
+	public void resumesAtTheBeginningOfANewActiveFileAfterRotation() throws Exception {
+		String simplePattern = "%date %level %logger %msg%n";
+		write("2026-07-23 10:44:25,992 INFO dt1.Test before-rotation\n");
+		LogRecordPage beforeRotation = reader().query(stream(simplePattern), null, null, 20, 0, false);
+		Files.writeString(file, "2026-07-23 10:44:25,999 INFO dt1.Test unseen-before-rotation\n", StandardCharsets.UTF_8, APPEND);
+		Path rotated = Files.createTempFile("log-reflection-reader-rotated-active-", ".log");
+		try {
+			Files.move(file, rotated, REPLACE_EXISTING);
+			write("""
+					2026-07-23 10:44:26,000 INFO dt1.Test after-rotation-one
+					2026-07-23 10:44:27,000 INFO dt1.Test after-rotation-two
+					""");
+
+			LogRecordPage afterRotation = reader().query(stream(simplePattern, java.util.List.of(rotated, file)), null,
+					beforeRotation.getNextCursor(), 20, 0, false);
+
+			assertThat(afterRotation.getRecords()).extracting(r -> r.getMessage())
+					.containsExactly("unseen-before-rotation", "after-rotation-one", "after-rotation-two");
+		} finally {
+			Files.deleteIfExists(rotated);
+		}
+	}
+
+	@Test
+	public void resumesAcrossAGzipCompressedRotation() throws Exception {
+		String simplePattern = "%date %level %logger %msg%n";
+		write("2026-07-23 10:44:25,992 INFO dt1.Test observed\n");
+		LogRecordPage observed = reader().query(stream(simplePattern), null, null, 20, 0, false);
+		Files.writeString(file, "2026-07-23 10:44:25,999 INFO dt1.Test unseen-in-gzip\n", StandardCharsets.UTF_8, APPEND);
+		Path gzip = Files.createTempFile("log-reflection-reader-rotated-", ".log.gz");
+		try {
+			try (GZIPOutputStream output = new GZIPOutputStream(Files.newOutputStream(gzip))) {
+				Files.copy(file, output);
+			}
+			write("2026-07-23 10:44:26,000 INFO dt1.Test new-active\n");
+
+			LogRecordPage continued = reader().query(stream(simplePattern, java.util.List.of(gzip, file)), null,
+					observed.getNextCursor(), 20, 0, false);
+
+			assertThat(continued.getRecords()).extracting(r -> r.getMessage())
+					.containsExactly("unseen-in-gzip", "new-active");
+		} finally {
+			Files.deleteIfExists(gzip);
+		}
+	}
+
+	@Test
 	public void includesRotatedSegmentsInTheBoundedInitialHistory() throws Exception {
 		String simplePattern = "%date %level %logger %msg%n";
 		Path rotated = Files.createTempFile("log-reflection-reader-rotated-", ".log");
@@ -213,8 +360,12 @@ public class LogFileReaderTest {
 	}
 
 	private LogbackFileStream stream(String pattern) {
+		return stream(pattern, java.util.List.of(file));
+	}
+
+	private LogbackFileStream stream(String pattern, java.util.List<Path> paths) {
 		descriptor.setPattern(pattern);
-		return new LogbackFileStream(file, java.util.List.of(file), descriptor,
+		return new LogbackFileStream(file, paths, descriptor,
 				CompiledLogPattern.compile(pattern, instanceId, descriptor.getStreamId()));
 	}
 

@@ -83,6 +83,8 @@ public class LogReflectionRxModuleSpace implements RxModuleContract {
 	private StructuredLiveLogCollector collector() {
 		StructuredLiveLogCollector bean = new StructuredLiveLogCollector();
 		bean.setInstanceId(platform.application().instanceId());
+		bean.setCapacity(configuration().getLiveLogCapacity());
+		bean.setLeaseMillis(configuration().getLiveLogLeaseMillis());
 		return bean;
 	}
 

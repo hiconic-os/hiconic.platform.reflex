@@ -51,6 +51,7 @@ public class StructuredLiveLogCollectorTest {
 
 	@Test
 	public void capturesCanonicalRecordsAndFiltersThem() {
+		activate();
 		logger.info("first message");
 		logger.warn("important warning");
 
@@ -71,6 +72,7 @@ public class StructuredLiveLogCollectorTest {
 
 	@Test
 	public void cursorContinuesAndRingBufferIsBounded() {
+		activate();
 		logger.info("one");
 		logger.info("two");
 		logger.info("three");
@@ -86,6 +88,7 @@ public class StructuredLiveLogCollectorTest {
 
 	@Test
 	public void pagesBackwardsIndependentlyFromTailing() {
+		activate();
 		logger.info("one");
 		logger.info("two");
 		logger.info("three");
@@ -106,6 +109,7 @@ public class StructuredLiveLogCollectorTest {
 
 	@Test
 	public void filtersLoggerByCaseInsensitiveSubstring() {
+		activate();
 		logger.info("matching");
 		context.getLogger("hiconic.other.component").info("not matching");
 
@@ -115,5 +119,71 @@ public class StructuredLiveLogCollectorTest {
 		LogRecordPage page = collector.query(filter, null, 10, 0);
 
 		assertThat(page.getRecords()).extracting(r -> r.getMessage()).containsExactly("matching");
+	}
+
+	@Test
+	public void advancesCursorAcrossNonMatchingRecords() {
+		activate();
+		logger.info("initial match");
+		LogFilter filter = LogFilter.T.create();
+		filter.setFulltext("match");
+		LogRecordPage initial = collector.query(filter, null, 10, 0);
+
+		logger.info("irrelevant one");
+		logger.info("irrelevant two");
+		LogRecordPage empty = collector.query(filter, initial.getNextCursor(), 10, 0);
+
+		assertThat(empty.getRecords()).isEmpty();
+		assertThat(empty.getNextCursor()).isNotEqualTo(initial.getNextCursor());
+
+		logger.info("later match");
+		LogRecordPage matching = collector.query(filter, empty.getNextCursor(), 10, 0);
+		assertThat(matching.getRecords()).extracting(r -> r.getMessage()).containsExactly("later match");
+	}
+
+	@Test
+	public void doesNotCollectBeforeFirstLiveQuery() {
+		logger.info("not observed");
+
+		LogRecordPage activated = collector.query(null, null, 10, 0);
+
+		assertThat(activated.getRecords()).isEmpty();
+		assertThat(activated.getNextCursor()).startsWith("live-v1:");
+	}
+
+	@Test
+	public void reportsGenerationGapAfterLeaseExpired() throws Exception {
+		collector.setLeaseMillis(25);
+		activate();
+		logger.info("observed");
+		String oldCursor = collector.query(null, null, 10, 0).getNextCursor();
+
+		Thread.sleep(100);
+		logger.info("not observed after expiry");
+		LogRecordPage restarted = collector.query(null, oldCursor, 10, 0);
+
+		assertThat(restarted.getRecords()).isEmpty();
+		assertThat(restarted.getContinuityGaps()).containsKey("test-app@node-1");
+		assertThat(restarted.getNextCursor()).isNotEqualTo(oldCursor);
+	}
+
+	@Test
+	public void reportsRetentionGapWhenCursorFellBehindRingBuffer() {
+		activate();
+		logger.info("one");
+		String oldCursor = collector.query(null, null, 10, 0).getNextCursor();
+		logger.info("two");
+		logger.info("three");
+		logger.info("four");
+		logger.info("five");
+
+		LogRecordPage continued = collector.query(null, oldCursor, 10, 0);
+
+		assertThat(continued.getRecords()).extracting(r -> r.getMessage()).containsExactly("three", "four", "five");
+		assertThat(continued.getContinuityGaps()).containsKey("test-app@node-1");
+	}
+
+	private void activate() {
+		collector.query(null, null, 10, 0);
 	}
 }

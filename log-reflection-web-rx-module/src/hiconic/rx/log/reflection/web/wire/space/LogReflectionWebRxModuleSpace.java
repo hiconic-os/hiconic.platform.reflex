@@ -44,8 +44,7 @@ public class LogReflectionWebRxModuleSpace implements RxModuleContract {
 	private ServiceAroundProcessor<QueryLogRecords, Object> tailRequestMetaLoggingInterceptor() {
 		return (context, request, proceed) -> {
 			Object response = proceed.proceed(request);
-			if (response instanceof LogRecordPage && request.getWaitMillis() > 0
-					&& request.getCursor() != null && !request.getCursor().isBlank()) {
+			if (response instanceof LogRecordPage && request.getCursor() != null && !request.getCursor().isBlank()) {
 				RequestMetaLoggingControl control = context.findOrNull(RequestMetaLoggingAttribute.class);
 				if (control != null)
 					control.suppress();
@@ -67,7 +66,12 @@ public class LogReflectionWebRxModuleSpace implements RxModuleContract {
 		result.put("loginUrl", loginUrl());
 		result.put("readerRoles", readerRoles());
 		result.put("managerRoles", managerRoles());
+		result.put("tailPollIntervalMillis", tailPollIntervalMillis());
 		return result;
+	}
+
+	private int tailPollIntervalMillis() {
+		return Math.max(100, configuration().getTailPollIntervalMillis());
 	}
 
 	private String loginUrl() {

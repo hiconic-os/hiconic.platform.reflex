@@ -29,6 +29,7 @@ export interface RuntimeConfig {
   loginUrl?: string;
   readerRoles?: readonly string[];
   managerRoles?: readonly string[];
+  tailPollIntervalMillis?: number;
 }
 
 export interface TargetSelection {
@@ -79,7 +80,6 @@ export interface LogReflectionClient {
     filter: RecordFilter,
     cursor: string | undefined,
     beforeCursor: string | undefined,
-    waitMillis: number,
     includeRotated?: boolean
   ): Promise<LogRecordPage>;
   bundle(download: RemoteLogDownload): Promise<{ blob: Blob; name: string }>;
@@ -151,7 +151,6 @@ export class LogReflectionApi implements LogReflectionClient {
     filter: RecordFilter,
     cursor: string | undefined,
     beforeCursor: string | undefined,
-    waitMillis: number,
     includeRotated = false
   ): Promise<LogRecordPage> {
     const request = QueryLogRecords.create();
@@ -161,7 +160,7 @@ export class LogReflectionApi implements LogReflectionClient {
     request.cursor = cursor ?? null;
     request.beforeCursor = beforeCursor ?? null;
     request.limit = 300;
-    request.waitMillis = BigInt(waitMillis);
+    request.waitMillis = 0n;
     request.includeRotated = includeRotated;
     return this.evaluate(request, this.loggingEvaluator);
   }

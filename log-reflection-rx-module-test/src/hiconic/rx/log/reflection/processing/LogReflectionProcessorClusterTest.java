@@ -61,6 +61,7 @@ public class LogReflectionProcessorClusterTest {
 		LogReflectionConfiguration configuration = LogReflectionConfiguration.T.create();
 		assertThat(configuration.getReaderRoles()).containsExactlyInAnyOrder("log-reflection-reader", "log-reflection-manager");
 		assertThat(configuration.getManagerRoles()).containsExactly("log-reflection-manager");
+		assertThat(configuration.getTailPollIntervalMillis()).isEqualTo(1_000);
 	}
 
 	@Test

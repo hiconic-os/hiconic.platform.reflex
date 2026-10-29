@@ -1,3 +1,4 @@
 {
-  "servicesUrl": "http://localhost:8080/services"
+  "servicesUrl": "http://localhost:8080/services",
+  "tailPollIntervalMillis": 1000
 }

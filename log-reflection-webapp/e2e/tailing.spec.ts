@@ -139,15 +139,100 @@ test("pauses following when scrolled away and resumes on request", async ({ page
   )).toBeLessThan(2);
 });
 
-test("backs off when tail requests return immediately instead of self-exciting", async ({ page }) => {
+test("paces non-blocking tail requests without self-exciting", async ({ page }) => {
   await page.evaluate(() => window.logReflectionTestApi.setImmediateTailResponses(true));
   await openStream(page, "Application log");
   await tailButton(page).click();
   await expect(tailButton(page)).toContainText("Tailing");
 
   await page.waitForTimeout(2_100);
-  const queries = await page.evaluate(() => window.logReflectionTestApi.querySnapshots("application").length);
-  expect(queries).toBeLessThanOrEqual(6);
+  const queries = await page.evaluate(() => window.logReflectionTestApi.querySnapshots("application"));
+  expect(queries.length).toBeLessThanOrEqual(4);
+  expect(queries.slice(1).every(query => query.waitMillis === 0)).toBe(true);
 
   await tailButton(page).click();
+});
+
+test("never overlaps tail requests when a response is slower than the poll interval", async ({ page }) => {
+  await page.evaluate(() => {
+    window.logReflectionTestApi.setImmediateTailResponses(true);
+    window.logReflectionTestApi.setTailResponseDelay(1_200);
+  });
+  await openStream(page, "Application log");
+  await tailButton(page).click();
+  await expect(tailButton(page)).toContainText("Tailing");
+
+  await page.waitForTimeout(2_700);
+  expect(await page.evaluate(() => window.logReflectionTestApi.maxConcurrentTailRequests())).toBe(1);
+
+  await tailButton(page).click();
+});
+
+test("catches up bounded backlog pages without waiting a full poll interval", async ({ page }) => {
+  await page.evaluate(() => {
+    window.logReflectionTestApi.setImmediateTailResponses(true);
+    window.logReflectionTestApi.setBacklogResponses(2);
+  });
+  await openStream(page, "Application log");
+  await tailButton(page).click();
+  await expect(tailButton(page)).toContainText("Tailing");
+
+  await expect.poll(
+    () => page.evaluate(() => window.logReflectionTestApi.querySnapshots("application").length),
+    { timeout: 700 }
+  ).toBeGreaterThanOrEqual(4);
+
+  await tailButton(page).click();
+});
+
+test("keeps an explicit warning after live continuity was lost", async ({ page }) => {
+  await openStream(page, "Application log");
+  await startTail(page, "application");
+
+  expect(await page.evaluate(() => window.logReflectionTestApi.emitContinuityGap("application", "collector lease expired"))).toBe(true);
+
+  await expect(page.getByText("Live continuity was lost.", { exact: true })).toBeVisible();
+  await expect(page.getByText(/test-app@node-a: collector lease expired/)).toBeVisible();
+});
+
+test("does not tail an interval whose upper bound has already passed", async ({ page }) => {
+  await openStream(page, "Application log");
+  await page.getByText("To", { exact: true }).locator("..").locator("input").fill("2000-01-01T00:00");
+
+  await expect(tailButton(page)).toBeDisabled();
+  await expect(tailButton(page)).toHaveAttribute("title", "The selected time interval has already ended");
+});
+
+test("creates a marked local snapshot and filters it without server queries", async ({ page }) => {
+  await openStream(page, "Application log");
+  await startTail(page, "application");
+  await emit(page, "application", ["snapshot alpha", "snapshot beta"]);
+  await expect(page.getByText("snapshot beta", { exact: true })).toBeVisible();
+  const queriesBeforeLocalFilter = await page.evaluate(() => window.logReflectionTestApi.querySnapshots("application").length);
+
+  await page.locator(".toolbar button").filter({ hasText: "Snapshot" }).click();
+
+  await expect(page.locator(".tabs button.tab.snapshot.active")).toContainText("Snapshot 1");
+  await expect(page.locator(".snapshot-notice")).toContainText("Captured 2 records from Application log");
+  await page.getByPlaceholder("Full text").fill("alpha");
+  await expect(page.getByText("snapshot alpha", { exact: true })).toBeVisible();
+  await expect(page.getByText("snapshot beta", { exact: true })).toHaveCount(0);
+  expect(await page.evaluate(() => window.logReflectionTestApi.querySnapshots("application").length)).toBe(queriesBeforeLocalFilter);
+});
+
+test("creates a descendant snapshot from the complete filtered projection", async ({ page }) => {
+  await openStream(page, "Application log");
+  await startTail(page, "application");
+  await emit(page, "application", ["keep this", "discard this"]);
+  await page.locator(".toolbar button").filter({ hasText: "Snapshot" }).click();
+  await page.getByPlaceholder("Full text").fill("keep");
+  await expect(page.getByText("discard this", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".toolbar button").filter({ hasText: "Snapshot" })).toBeEnabled();
+
+  await page.locator(".toolbar button").filter({ hasText: "Snapshot" }).click();
+
+  await expect(page.locator(".tabs button.tab.snapshot.active")).toContainText("Snapshot 2");
+  await expect(page.locator(".snapshot-notice")).toContainText("Captured 1 records from Snapshot 1");
+  await expect(page.getByText("keep this", { exact: true })).toBeVisible();
+  await expect(page.getByText("discard this", { exact: true })).toHaveCount(0);
 });

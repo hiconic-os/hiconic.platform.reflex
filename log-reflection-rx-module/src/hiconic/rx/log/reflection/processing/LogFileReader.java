@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
+import java.util.zip.CRC32;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -26,6 +27,17 @@ import hiconic.rx.log.reflection.model.api.LogRecordPage;
 /** Reads active UTF-8 log files and turns physical records into canonical records. */
 public class LogFileReader {
 	private static final long MAX_READ_BYTES = 64L * 1024 * 1024;
+	private static final int CURSOR_ANCHOR_BYTES = 64;
+
+	private final long maxReadBytes;
+
+	public LogFileReader() {
+		this(MAX_READ_BYTES);
+	}
+
+	LogFileReader(long maxReadBytes) {
+		this.maxReadBytes = Math.max(1, maxReadBytes);
+	}
 
 	public LogRecordPage query(LogbackFileStream stream, LogFilter filter, String cursor, int requestedLimit, long waitMillis,
 			boolean includeRotated) {
@@ -42,22 +54,30 @@ public class LogFileReader {
 			Path path = stream.path();
 			FileState state = state(path);
 			FileCursor parsedCursor = FileCursor.parse(cursor);
-			long offset = parsedCursor == null || parsedCursor.generation != state.generation ? 0 : parsedCursor.offset;
-			if (offset > state.size)
-				offset = 0;
+			if (parsedCursor != null && !valid(path, state, parsedCursor)) {
+				int segmentIndex = findCursorSegment(stream.segmentPaths(), path, parsedCursor);
+				if (segmentIndex >= 0)
+					return queryAcrossRotation(stream, filter, parsedCursor, segmentIndex, requestedLimit);
+			}
+			long offset = valid(path, state, parsedCursor) ? parsedCursor.offset : 0;
 
 			if (cursor != null && offset >= state.size && waitMillis > 0)
 				state = awaitGrowth(path, state, Math.min(waitMillis, 30_000));
-			if (parsedCursor != null && parsedCursor.generation != state.generation)
+			if (!valid(path, state, parsedCursor))
 				offset = 0;
 
 			long readStart = offset;
-			if (cursor == null && state.size - readStart > MAX_READ_BYTES)
-				readStart = state.size - MAX_READ_BYTES;
+			if (cursor == null && state.size - readStart > maxReadBytes)
+				readStart = state.size - maxReadBytes;
 
-			ReadSlice slice = read(path, readStart, state.size);
+			long readEnd = Math.min(state.size, readStart + maxReadBytes);
+			boolean unreadBytes = readEnd < state.size;
+			ReadSlice slice = read(path, readStart, readEnd);
+			slice = completePhysicalLines(slice);
+			if (unreadBytes && slice.bytes.length == 0)
+				throw new IOException("A single physical log record exceeds the " + maxReadBytes + " byte query window");
 			if (readStart > 0 && cursor == null)
-				slice = discardPartialFirstLine(slice);
+				slice = alignFirstRecord(path, slice, stream.parser());
 
 			List<PhysicalRecord> physicalRecords = records(slice.bytes, slice.absoluteStart, stream.parser());
 			List<PhysicalRecord> matches = physicalRecords.stream()
@@ -66,7 +86,7 @@ public class LogFileReader {
 
 			int limit = Math.max(1, Math.min(requestedLimit, 10_000));
 			boolean initial = cursor == null;
-			boolean moreAvailable = !initial && matches.size() > limit;
+			boolean moreAvailable = !initial && (matches.size() > limit || unreadBytes);
 			boolean moreBeforeAvailable = initial && (matches.size() > limit || readStart > 0);
 			List<PhysicalRecord> selected;
 			if (initial && matches.size() > limit)
@@ -82,19 +102,149 @@ public class LogFileReader {
 			response.setMoreBeforeAvailable(moreBeforeAvailable);
 			if (moreBeforeAvailable) {
 				long previousOffset = selected.isEmpty() ? slice.absoluteStart : startOffset(selected.get(0));
-				response.setPreviousCursor(new FileCursor(state.generation, previousOffset).externalForm());
+				response.setPreviousCursor(cursor(path, state, previousOffset).externalForm());
 			}
 
 			long nextOffset;
-			if (moreAvailable)
+			if (matches.size() > limit)
 				nextOffset = selected.get(selected.size() - 1).endOffset;
 			else
-				nextOffset = state.size;
-			response.setNextCursor(new FileCursor(state.generation, nextOffset).externalForm());
+				nextOffset = slice.absoluteStart + slice.bytes.length;
+			response.setNextCursor(cursor(path, state, nextOffset).externalForm());
 			return response;
 		} catch (IOException e) {
 			throw new IllegalStateException("Could not read log stream " + stream.descriptor().getStreamId(), e);
 		}
+	}
+
+	/**
+	 * Continues a cursor which used to point into the active file after that file became a rotated segment. This closes the
+	 * otherwise unavoidable gap between the last poll and Logback's rotation. Rotated segments are consulted only to resume
+	 * an existing cursor; they are not exposed as history unless the request explicitly asks for history.
+	 */
+	private LogRecordPage queryAcrossRotation(LogbackFileStream stream, LogFilter filter, FileCursor cursor, int segmentIndex,
+			int requestedLimit) throws IOException {
+		List<SegmentRecord> matches = new ArrayList<>();
+		List<Path> paths = stream.segmentPaths();
+		long remaining = maxReadBytes;
+		SegmentProgress progress = null;
+		boolean unread = false;
+
+		for (int i = segmentIndex; i < paths.size() && remaining > 0; i++) {
+			Path path = paths.get(i);
+			long start = i == segmentIndex ? cursor.offset : 0;
+			SegmentSlice segment = readSegment(path, start, remaining, path.equals(stream.path()));
+			ReadSlice slice = segment.slice;
+			remaining -= slice.bytes.length;
+			for (PhysicalRecord record : records(slice.bytes, slice.absoluteStart, stream.parser()))
+				if (LogRecordFiltering.matches(record.record, filter))
+					matches.add(new SegmentRecord(path, segment.state, record));
+			progress = new SegmentProgress(path, segment.state, slice.absoluteStart + slice.bytes.length);
+			unread = segment.more || i + 1 < paths.size();
+			if (segment.more)
+				break;
+		}
+
+		int limit = Math.max(1, Math.min(requestedLimit, 10_000));
+		boolean moreAvailable = matches.size() > limit || unread;
+		List<SegmentRecord> selected = matches.subList(0, Math.min(limit, matches.size()));
+		LogRecordPage response = LogRecordPage.T.create();
+		List<LogRecord> page = selected.stream().map(record -> record.record.record).toList();
+		response.setRecords(page);
+		response.setObservedProperties(LogRecordFiltering.observedProperties(page));
+		response.setMoreAvailable(moreAvailable);
+		response.setMoreBeforeAvailable(false);
+
+		if (matches.size() > limit) {
+			SegmentRecord last = selected.get(selected.size() - 1);
+			response.setNextCursor(cursor(last.path, last.state, last.record.endOffset).externalForm());
+		} else if (progress != null) {
+			response.setNextCursor(cursor(progress.path, progress.state, progress.offset).externalForm());
+		} else {
+			FileState active = state(stream.path());
+			response.setNextCursor(cursor(stream.path(), active, 0).externalForm());
+		}
+		return response;
+	}
+
+	private static int findCursorSegment(List<Path> paths, Path active, FileCursor cursor) throws IOException {
+		for (int i = paths.size() - 1; i >= 0; i--) {
+			Path candidate = paths.get(i);
+			if (!candidate.equals(active) && Files.isRegularFile(candidate) && matchesCursor(candidate, cursor))
+				return i;
+		}
+		return -1;
+	}
+
+	private static boolean matchesCursor(Path path, FileCursor cursor) throws IOException {
+		if (cursor.offset <= 0)
+			return false;
+		if (!compressed(path.getFileName().toString().toLowerCase(Locale.ROOT))) {
+			FileState state = state(path);
+			return cursor.offset <= state.size && cursor.anchor != null && cursor.anchor.equals(anchor(path, cursor.offset));
+		}
+		return cursor.anchor != null && cursor.anchor.equals(logicalAnchor(path, cursor.offset));
+	}
+
+	private static SegmentSlice readSegment(Path path, long start, long maximumBytes, boolean active) throws IOException {
+		FileState state = state(path);
+		String name = path.getFileName().toString().toLowerCase(Locale.ROOT);
+		ReadSlice slice;
+		boolean more;
+		if (compressed(name)) {
+			LogicalRead logical = readLogical(path, start, maximumBytes);
+			slice = new ReadSlice(start, logical.bytes);
+			more = !logical.eof;
+		} else {
+			long end = Math.min(state.size, start + maximumBytes);
+			slice = read(path, start, end);
+			more = end < state.size;
+		}
+		if (active || more) {
+			ReadSlice complete = completePhysicalLines(slice);
+			slice = complete;
+		}
+		if (more && slice.bytes.length == 0)
+			throw new IOException("A single physical log record exceeds the query window while resuming across rotation");
+		return new SegmentSlice(state, slice, more);
+	}
+
+	private static LogicalRead readLogical(Path path, long start, long maximumBytes) throws IOException {
+		int capacity = Math.toIntExact(Math.min(Integer.MAX_VALUE, maximumBytes));
+		ByteArrayOutputStream output = new ByteArrayOutputStream(Math.min(capacity, 64 * 1024));
+		try (InputStream input = openContent(path)) {
+			if (!skip(input, start))
+				return new LogicalRead(new byte[0], true);
+			byte[] buffer = new byte[64 * 1024];
+			int remaining = capacity;
+			while (remaining > 0) {
+				int read = input.read(buffer, 0, Math.min(buffer.length, remaining));
+				if (read < 0)
+					return new LogicalRead(output.toByteArray(), true);
+				if (read > 0) {
+					output.write(buffer, 0, read);
+					remaining -= read;
+				}
+			}
+			return new LogicalRead(output.toByteArray(), input.read() < 0);
+		}
+	}
+
+	private static boolean skip(InputStream input, long count) throws IOException {
+		long remaining = count;
+		byte[] buffer = new byte[64 * 1024];
+		while (remaining > 0) {
+			long skipped = input.skip(remaining);
+			if (skipped > 0) {
+				remaining -= skipped;
+				continue;
+			}
+			int read = input.read(buffer, 0, (int) Math.min(buffer.length, remaining));
+			if (read < 0)
+				return false;
+			remaining -= read;
+		}
+		return true;
 	}
 
 	private LogRecordPage queryBefore(LogbackFileStream stream, LogFilter filter, String beforeCursor, int requestedLimit) {
@@ -102,11 +252,11 @@ public class LogFileReader {
 			Path path = stream.path();
 			FileState state = state(path);
 			FileCursor cursor = FileCursor.parse(beforeCursor);
-			long end = cursor.generation == state.generation ? Math.min(cursor.offset, state.size) : state.size;
-			long start = Math.max(0, end - MAX_READ_BYTES);
+			long end = valid(path, state, cursor) ? cursor.offset : state.size;
+			long start = Math.max(0, end - maxReadBytes);
 			ReadSlice slice = read(path, start, end);
 			if (start > 0)
-				slice = discardPartialFirstLine(slice);
+				slice = alignFirstRecord(path, slice, stream.parser());
 
 			List<PhysicalRecord> matches = records(slice.bytes, slice.absoluteStart, stream.parser()).stream()
 					.filter(record -> LogRecordFiltering.matches(record.record, filter))
@@ -125,7 +275,7 @@ public class LogFileReader {
 			response.setMoreBeforeAvailable(moreBeforeAvailable);
 			if (moreBeforeAvailable) {
 				long previousOffset = selected.isEmpty() ? slice.absoluteStart : startOffset(selected.get(0));
-				response.setPreviousCursor(new FileCursor(state.generation, previousOffset).externalForm());
+				response.setPreviousCursor(cursor(path, state, previousOffset).externalForm());
 			}
 			return response;
 		} catch (IOException e) {
@@ -136,13 +286,16 @@ public class LogFileReader {
 	private LogRecordPage queryHistory(LogbackFileStream stream, LogFilter filter, int requestedLimit) {
 		try {
 			List<List<PhysicalRecord>> newestFirst = new ArrayList<>();
-			long remaining = MAX_READ_BYTES;
+			long remaining = maxReadBytes;
 			List<Path> paths = stream.segmentPaths();
 			for (int i = paths.size() - 1; i >= 0 && remaining > 0; i--) {
-				ReadSlice slice = readTail(paths.get(i), remaining);
+				Path path = paths.get(i);
+				ReadSlice slice = readTail(path, remaining);
 				remaining -= slice.bytes.length;
+				if (path.equals(stream.path()))
+					slice = completePhysicalLines(slice);
 				if (slice.absoluteStart > 0)
-					slice = discardPartialFirstLine(slice);
+					slice = alignFirstRecord(path, slice, stream.parser());
 				newestFirst.add(records(slice.bytes, slice.absoluteStart, stream.parser()));
 			}
 
@@ -164,7 +317,8 @@ public class LogFileReader {
 			response.setObservedProperties(LogRecordFiltering.observedProperties(page));
 			response.setMoreAvailable(matches.size() > limit);
 			response.setMoreBeforeAvailable(false);
-			response.setNextCursor(new FileCursor(active.generation, active.size).externalForm());
+			long activeOffset = completeOffset(stream.path(), active.size);
+			response.setNextCursor(cursor(stream.path(), active, activeOffset).externalForm());
 			return response;
 		} catch (IOException e) {
 			throw new IllegalStateException("Could not read log history " + stream.descriptor().getStreamId(), e);
@@ -310,6 +464,101 @@ public class LogFileReader {
 		return new ReadSlice(slice.absoluteStart + bytes.length, new byte[0]);
 	}
 
+	private static ReadSlice completePhysicalLines(ReadSlice slice) {
+		byte[] bytes = slice.bytes;
+		for (int i = bytes.length - 1; i >= 0; i--)
+			if (bytes[i] == '\n')
+				return new ReadSlice(slice.absoluteStart, Arrays.copyOf(bytes, i + 1));
+		return new ReadSlice(slice.absoluteStart, new byte[0]);
+	}
+
+	private static ReadSlice alignFirstRecord(Path path, ReadSlice slice, CanonicalLogParser parser) throws IOException {
+		ReadSlice aligned = startsAtLineBoundary(path, slice.absoluteStart) ? slice : discardPartialFirstLine(slice);
+		if (!parser.recognizesRecordStarts())
+			return aligned;
+		for (Line line : lines(aligned.bytes, aligned.absoluteStart))
+			if (parser.startsRecord(line.text)) {
+				int relativeStart = Math.toIntExact(line.startOffset - aligned.absoluteStart);
+				return new ReadSlice(line.startOffset, Arrays.copyOfRange(aligned.bytes, relativeStart, aligned.bytes.length));
+			}
+		return new ReadSlice(aligned.absoluteStart + aligned.bytes.length, new byte[0]);
+	}
+
+	private static boolean startsAtLineBoundary(Path path, long offset) throws IOException {
+		if (offset <= 0 || compressed(path.getFileName().toString().toLowerCase(Locale.ROOT)))
+			return offset <= 0;
+		ByteBuffer previous = ByteBuffer.allocate(1);
+		try (FileChannel channel = FileChannel.open(path, StandardOpenOption.READ)) {
+			channel.position(offset - 1);
+			return channel.read(previous) == 1 && previous.array()[0] == '\n';
+		}
+	}
+
+	private static long completeOffset(Path path, long size) throws IOException {
+		if (size <= 0)
+			return 0;
+		try (FileChannel channel = FileChannel.open(path, StandardOpenOption.READ)) {
+			ByteBuffer last = ByteBuffer.allocate(1);
+			channel.position(size - 1);
+			if (channel.read(last) == 1 && last.array()[0] == '\n')
+				return size;
+			long start = Math.max(0, size - 64 * 1024);
+			ReadSlice tail = read(path, start, size);
+			for (int i = tail.bytes.length - 1; i >= 0; i--)
+				if (tail.bytes[i] == '\n')
+					return tail.absoluteStart + i + 1;
+			return 0;
+		}
+	}
+
+	private static boolean valid(Path path, FileState state, FileCursor cursor) throws IOException {
+		if (cursor == null || cursor.generation != state.generation || cursor.offset < 0 || cursor.offset > state.size)
+			return false;
+		return cursor.anchor == null || cursor.anchor.equals(anchor(path, cursor.offset));
+	}
+
+	private static FileCursor cursor(Path path, FileState state, long offset) throws IOException {
+		String name = path.getFileName().toString().toLowerCase(Locale.ROOT);
+		return new FileCursor(state.generation, offset, compressed(name) ? logicalAnchor(path, offset) : anchor(path, offset));
+	}
+
+	private static String logicalAnchor(Path path, long offset) throws IOException {
+		int length = Math.toIntExact(Math.min(CURSOR_ANCHOR_BYTES, Math.max(0, offset)));
+		if (length == 0)
+			return "0";
+		byte[] bytes = new byte[length];
+		try (InputStream input = openContent(path)) {
+			if (!skip(input, offset - length))
+				return "";
+			int position = 0;
+			while (position < length) {
+				int read = input.read(bytes, position, length - position);
+				if (read < 0)
+					return "";
+				position += read;
+			}
+		}
+		CRC32 crc = new CRC32();
+		crc.update(bytes);
+		return Long.toUnsignedString(crc.getValue(), 16);
+	}
+
+	private static String anchor(Path path, long offset) throws IOException {
+		int length = Math.toIntExact(Math.min(CURSOR_ANCHOR_BYTES, Math.max(0, offset)));
+		if (length == 0)
+			return "0";
+		ByteBuffer buffer = ByteBuffer.allocate(length);
+		try (FileChannel channel = FileChannel.open(path, StandardOpenOption.READ)) {
+			channel.position(offset - length);
+			while (buffer.hasRemaining() && channel.read(buffer) > 0) {
+				// Keep reading the small cursor anchor until complete or EOF.
+			}
+		}
+		CRC32 crc = new CRC32();
+		crc.update(buffer.array(), 0, buffer.position());
+		return Long.toUnsignedString(crc.getValue(), 16);
+	}
+
 	private static List<PhysicalRecord> records(byte[] bytes, long absoluteStart, CanonicalLogParser parser) {
 		List<Line> lines = lines(bytes, absoluteStart);
 		if (parser == null)
@@ -366,19 +615,31 @@ public class LogFileReader {
 	private record ReadSlice(long absoluteStart, byte[] bytes) {
 	}
 
-	private record FileCursor(long generation, long offset) {
+	private record LogicalRead(byte[] bytes, boolean eof) {
+	}
+
+	private record SegmentSlice(FileState state, ReadSlice slice, boolean more) {
+	}
+
+	private record SegmentRecord(Path path, FileState state, PhysicalRecord record) {
+	}
+
+	private record SegmentProgress(Path path, FileState state, long offset) {
+	}
+
+	private record FileCursor(long generation, long offset, String anchor) {
 		private String externalForm() {
-			return generation + ":" + offset;
+			return generation + ":" + offset + ":" + anchor;
 		}
 
 		private static FileCursor parse(String cursor) {
 			if (cursor == null || cursor.isBlank())
 				return null;
-			int colon = cursor.indexOf(':');
+			String[] parts = cursor.split(":", 3);
 			try {
-				if (colon < 0)
-					return new FileCursor(-1, Long.parseLong(cursor));
-				return new FileCursor(Long.parseLong(cursor.substring(0, colon)), Long.parseLong(cursor.substring(colon + 1)));
+				if (parts.length == 1)
+					return new FileCursor(-1, Long.parseLong(parts[0]), null);
+				return new FileCursor(Long.parseLong(parts[0]), Long.parseLong(parts[1]), parts.length == 3 ? parts[2] : null);
 			} catch (NumberFormatException e) {
 				throw new IllegalArgumentException("Invalid file log cursor: " + cursor, e);
 			}

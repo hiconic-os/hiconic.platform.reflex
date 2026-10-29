@@ -25,6 +25,10 @@ class MockLogReflectionApi implements LogReflectionClient {
   private authenticated = true;
   private sequence = 0;
   private immediateTailResponses = false;
+  private tailResponseDelayMillis = 0;
+  private backlogResponses = 0;
+  private concurrentTailRequests = 0;
+  private maximumConcurrentTailRequests = 0;
   private bundleDelayMillis = 0;
   private bundleRequestCount = 0;
   private readonly pending = new Map<string, PendingTail[]>();
@@ -61,21 +65,32 @@ class MockLogReflectionApi implements LogReflectionClient {
     filter: RecordFilter,
     _cursor: string | undefined,
     _beforeCursor: string | undefined,
-    waitMillis: number,
     includeRotated = false
   ): Promise<LogRecordPage> {
     const snapshot = { ...filter, levels: [...filter.levels] };
-    this.queries.push({ streamId, filter: snapshot, includeRotated, waitMillis });
-    if (waitMillis <= 0)
+    this.queries.push({ streamId, filter: snapshot, includeRotated, waitMillis: 0 });
+    if (!_cursor)
       return page(streamId, [], this.sequence);
-    if (this.immediateTailResponses)
-      return page(streamId, [], this.sequence);
+    this.concurrentTailRequests++;
+    this.maximumConcurrentTailRequests = Math.max(this.maximumConcurrentTailRequests, this.concurrentTailRequests);
+    try {
+      if (this.tailResponseDelayMillis > 0)
+        await new Promise(resolve => setTimeout(resolve, this.tailResponseDelayMillis));
+      if (this.backlogResponses > 0) {
+        this.backlogResponses--;
+        return page(streamId, [], this.sequence, true);
+      }
+      if (this.immediateTailResponses)
+        return page(streamId, [], this.sequence);
 
-    return new Promise(resolve => {
-      const queue = this.pending.get(streamId) ?? [];
-      queue.push({ filter: snapshot, includeRotated, resolve });
-      this.pending.set(streamId, queue);
-    });
+      return await new Promise(resolve => {
+        const queue = this.pending.get(streamId) ?? [];
+        queue.push({ filter: snapshot, includeRotated, resolve });
+        this.pending.set(streamId, queue);
+      });
+    } finally {
+      this.concurrentTailRequests--;
+    }
   }
 
   async logLevelState(_applicationId: string): Promise<LogLevelStateView> {
@@ -100,6 +115,18 @@ class MockLogReflectionApi implements LogReflectionClient {
 
   setImmediateTailResponses(value: boolean) {
     this.immediateTailResponses = value;
+  }
+
+  setTailResponseDelay(milliseconds: number) {
+    this.tailResponseDelayMillis = milliseconds;
+  }
+
+  setBacklogResponses(count: number) {
+    this.backlogResponses = count;
+  }
+
+  maxConcurrentTailRequests() {
+    return this.maximumConcurrentTailRequests;
   }
 
   setBundleDelay(milliseconds: number) {
@@ -137,6 +164,15 @@ class MockLogReflectionApi implements LogReflectionClient {
     return true;
   }
 
+  emitContinuityGap(streamId: string, message: string) {
+    const queue = this.pending.get(streamId);
+    const pending = queue?.shift();
+    if (!pending)
+      return false;
+    pending.resolve(page(streamId, [], this.sequence, false, new Map([["test-app@node-a", message]])));
+    return true;
+  }
+
   private record(streamId: string, message: string): LogRecord {
     this.sequence++;
     return {
@@ -165,13 +201,21 @@ function stream(streamId: string, displayName: string, fileName: string) {
   };
 }
 
-function page(streamId: string, records: readonly LogRecord[], sequence: number) {
+function page(
+  streamId: string,
+  records: readonly LogRecord[],
+  sequence: number,
+  moreAvailable = false,
+  continuityGaps: ReadonlyMap<string, string> = new Map()
+) {
   return {
     records,
     nextCursor: `${streamId}:${sequence}`,
     previousCursor: null,
     moreBeforeAvailable: false,
-    errors: new Map()
+    moreAvailable,
+    errors: new Map(),
+    continuityGaps
   } as any as LogRecordPage;
 }
 

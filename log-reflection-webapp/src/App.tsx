@@ -4,6 +4,7 @@ import {
   type LogReflectionClient,
   type LogLevelStateView,
   type LogRecord,
+  type LogRecordPage,
   type LogSegmentDescriptor,
   type LogStreamDescriptor,
   type RecordFilter,
@@ -24,6 +25,7 @@ type StreamTab = {
   cursor?: string;
   previousCursor?: string;
   moreBefore: boolean;
+  continuityGaps: Record<string, string>;
   tailing: boolean;
   filter: RecordFilter;
   filterRevision: number;
@@ -38,7 +40,23 @@ type LogLevelsTab = {
   applicationId: string;
 };
 
-type Tab = StreamTab | LogLevelsTab;
+type SnapshotTab = {
+  kind: "snapshot";
+  id: string;
+  name: string;
+  sourceName: string;
+  capturedAt: Date;
+  sourceRecords: readonly LogRecord[];
+  records: LogRecord[];
+  continuityGaps: Record<string, string>;
+  filter: RecordFilter;
+  filterRevision: number;
+  filtering: boolean;
+  processedRecords: number;
+};
+
+type RecordTab = StreamTab | SnapshotTab;
+type Tab = RecordTab | LogLevelsTab;
 
 type TopologyInstance = {
   applicationId: string;
@@ -68,9 +86,11 @@ const columns: readonly ColumnDefinition[] = [
 
 const levels = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"];
 const newDefaultFilter = (): RecordFilter => ({ levels: [] });
-const fastTailResponseThresholdMillis = 500;
-const initialTailBackoffMillis = 250;
-const maximumTailBackoffMillis = 15_000;
+const defaultTailPollIntervalMillis = 1_000;
+const minimumTailPollIntervalMillis = 100;
+const localScanSliceMillis = 7;
+const continuationBatchRecords = 200;
+type LoadRecordsOutcome = "failed" | "complete" | "more";
 
 export interface AppProps {
   apiFactory?: (config: RuntimeConfig) => LogReflectionClient;
@@ -119,12 +139,18 @@ export function App(props: AppProps = {}) {
   const tailGenerations = new Map<string, number>();
   const filterReloadTimers = new Map<string, ReturnType<typeof setTimeout>>();
   const filterReloadPending = new Set<string>();
+  const localFilterGenerations = new Map<string, number>();
+  let snapshotSequence = 0;
   let disposed = false;
 
   const activeTab = createMemo(() => tabs().find(tab => tab.id === activeTabId()));
   const activeStreamTab = createMemo(() => {
     const tab = activeTab();
     return tab?.kind === "stream" ? tab : undefined;
+  });
+  const activeRecordTab = createMemo(() => {
+    const tab = activeTab();
+    return tab?.kind === "stream" || tab?.kind === "snapshot" ? tab : undefined;
   });
   const activeLogLevelsTab = createMemo(() => {
     const tab = activeTab();
@@ -152,8 +178,28 @@ export function App(props: AppProps = {}) {
     return tabs().find((candidate): candidate is StreamTab => candidate.kind === "stream" && candidate.id === id);
   }
 
+  function recordTabById(id: string) {
+    return tabs().find((candidate): candidate is RecordTab =>
+      (candidate.kind === "stream" || candidate.kind === "snapshot") && candidate.id === id);
+  }
+
+  function snapshotTabById(id: string) {
+    return tabs().find((candidate): candidate is SnapshotTab => candidate.kind === "snapshot" && candidate.id === id);
+  }
+
   function updateStreamTab(id: string, update: (tab: StreamTab) => StreamTab) {
     setTabs(current => current.map(candidate => candidate.kind === "stream" && candidate.id === id ? update(candidate) : candidate));
+  }
+
+  function updateRecordTab(id: string, update: (tab: RecordTab) => RecordTab) {
+    setTabs(current => current.map(candidate =>
+      (candidate.kind === "stream" || candidate.kind === "snapshot") && candidate.id === id
+        ? update(candidate)
+        : candidate));
+  }
+
+  function updateSnapshotTab(id: string, update: (tab: SnapshotTab) => SnapshotTab) {
+    setTabs(current => current.map(candidate => candidate.kind === "snapshot" && candidate.id === id ? update(candidate) : candidate));
   }
 
   function nextTailGeneration(id: string) {
@@ -213,6 +259,7 @@ export function App(props: AppProps = {}) {
   onCleanup(() => {
     disposed = true;
     tailGenerations.clear();
+	localFilterGenerations.clear();
     filterReloadTimers.forEach(timer => clearTimeout(timer));
     filterReloadTimers.clear();
     filterReloadPending.clear();
@@ -358,6 +405,7 @@ export function App(props: AppProps = {}) {
       target: selectedTarget,
       records: [],
       moreBefore: false,
+      continuityGaps: {},
       tailing: false,
       filter: newDefaultFilter(),
       filterRevision: 0,
@@ -397,19 +445,18 @@ export function App(props: AppProps = {}) {
   async function loadRecords(
     tab: StreamTab | undefined = activeStreamTab(),
     mode: "replace" | "newer" | "older" = "replace",
-    waitMillis = 0,
     expectedTailGeneration?: number
-  ) {
+  ): Promise<LoadRecordsOutcome> {
     const client = api();
-    if (!client || !tab) return false;
+    if (!client || !tab) return "failed";
     const streamId = tab.stream.streamId;
     if (!streamId) {
       setError("The selected log stream has no stream ID.");
-      return false;
+      return "failed";
     }
     const requestedFilterRevision = tab.filterRevision;
     const scrollHeightBefore = mode === "older" ? recordsViewport?.scrollHeight : undefined;
-    const backgroundTail = waitMillis > 0;
+    const backgroundTail = expectedTailGeneration != null;
     if (!backgroundTail)
       setLoading(true);
     setError(undefined);
@@ -420,26 +467,19 @@ export function App(props: AppProps = {}) {
         tab.filter,
         mode === "newer" ? tab.cursor : undefined,
         mode === "older" ? tab.previousCursor : undefined,
-        waitMillis,
         tab.includeRotated
       );
       const latestTab = streamTabById(tab.id);
       if (!latestTab || requestedFilterRevision !== latestTab.filterRevision)
-        return false;
+        return "failed";
       if (expectedTailGeneration != null && (
         expectedTailGeneration !== tailGenerations.get(tab.id) || !latestTab.tailing
       ))
-        return false;
+        return "failed";
       const incoming = Array.from(page.records ?? []) as LogRecord[];
-      setTabs(current => current.map(candidate => candidate.kind === "stream" && candidate.id === tab.id ? {
-        ...candidate,
-        records: mode === "newer"
-          ? retainRecords([...candidate.records, ...incoming], candidate.tailing, candidate.tailBufferSize)
-          : mode === "older" ? [...incoming, ...candidate.records] : incoming,
-        cursor: mode === "older" ? candidate.cursor : page.nextCursor ?? undefined,
-        previousCursor: page.previousCursor ?? undefined,
-        moreBefore: Boolean(page.moreBeforeAvailable)
-      } : candidate));
+	  const incomingGaps = Object.fromEntries(mapEntries((page as LogRecordPage & { continuityGaps?: unknown }).continuityGaps));
+	  if (!await integrateServerPage(tab, mode, incoming, page, incomingGaps, requestedFilterRevision, expectedTailGeneration))
+		return "failed";
       if (mode === "newer" && incoming.length && tab.id === activeTabId() && streamTabById(tab.id)?.followTail)
         requestAnimationFrame(() => scrollToLatest());
       if (mode === "older" && incoming.length && scrollHeightBefore != null)
@@ -450,28 +490,68 @@ export function App(props: AppProps = {}) {
       const partialErrors = mapEntries(page.errors);
       if (partialErrors.length)
         setError(partialErrors.map(([origin, message]) => `${origin}: ${message}`).join("\n"));
-      return true;
+      return page.moreAvailable ? "more" : "complete";
     } catch (caught) {
       console.error("Loading log records failed", caught);
       handleOperationalFailure(caught);
-      return false;
+      return "failed";
     } finally {
       if (!backgroundTail)
         setLoading(false);
     }
   }
 
+  async function integrateServerPage(
+	tab: StreamTab,
+	mode: "replace" | "newer" | "older",
+	incoming: readonly LogRecord[],
+	page: LogRecordPage,
+	incomingGaps: Record<string, string>,
+	requestedFilterRevision: number,
+	expectedTailGeneration?: number
+  ) {
+	const recordsBefore = streamTabById(tab.id)?.records ?? [];
+	let index = 0;
+	do {
+	  const end = Math.min(incoming.length, index + continuationBatchRecords);
+	  const batch = incoming.slice(index, end);
+	  index = end;
+	  const latest = streamTabById(tab.id);
+	  if (!latest || latest.filterRevision !== requestedFilterRevision || (expectedTailGeneration != null && (
+		expectedTailGeneration !== tailGenerations.get(tab.id) || !latest.tailing
+	  )))
+		return false;
+
+	  updateStreamTab(tab.id, candidate => ({
+		...candidate,
+		records: mode === "newer"
+		  ? retainRecords([...candidate.records, ...batch], candidate.tailing, candidate.tailBufferSize)
+		  : mode === "older" ? [...incoming.slice(0, index), ...recordsBefore] : incoming.slice(0, index),
+		cursor: mode === "older" ? candidate.cursor : page.nextCursor ?? undefined,
+		previousCursor: page.previousCursor ?? undefined,
+		moreBefore: Boolean(page.moreBeforeAvailable),
+		continuityGaps: mode === "replace"
+		  ? incomingGaps
+		  : { ...candidate.continuityGaps, ...incomingGaps }
+	  }));
+	  if (index < incoming.length)
+		await continuationYield();
+	} while (index < incoming.length);
+	return true;
+  }
+
   async function toggleTail() {
     const tab = activeStreamTab();
     if (!tab) return;
     const tailing = !tab.tailing;
+	if (tailing && tailEndReached(tab.filter.to))
+	  return;
     setTabs(current => current.map(candidate => candidate.kind === "stream" && candidate.id === tab.id ? { ...candidate, tailing } : candidate));
     const generation = nextTailGeneration(tab.id);
     if (!tailing)
       return;
     updateStreamTab(tab.id, current => ({ ...current, followTail: true }));
     requestAnimationFrame(() => scrollToLatest(true));
-    let immediateResponses = 0;
     while (!disposed && generation === tailGenerations.get(tab.id)) {
       if (document.visibilityState !== "visible" || accessState() !== "authenticated") {
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -483,27 +563,34 @@ export function App(props: AppProps = {}) {
       }
       const current = streamTabById(tab.id);
       if (!current?.tailing) break;
+	  if (tailEndReached(current.filter.to)) {
+		stopTail(tab.id);
+		break;
+	  }
       const started = performance.now();
-      const succeeded = await loadRecords(current, "newer", 15_000, generation);
-      if (!succeeded && generation === tailGenerations.get(tab.id)) {
-        immediateResponses = 0;
-        await new Promise(resolve => setTimeout(resolve, 1_000));
-      } else if (succeeded && generation === tailGenerations.get(tab.id)) {
-        const elapsed = performance.now() - started;
-        if (elapsed < fastTailResponseThresholdMillis) {
-          immediateResponses++;
-          const backoff = Math.min(maximumTailBackoffMillis,
-            initialTailBackoffMillis * 2 ** Math.min(immediateResponses - 1, 6));
-          await new Promise(resolve => setTimeout(resolve, backoff));
-        } else {
-          immediateResponses = 0;
-        }
-      }
+      const outcome = await loadRecords(current, "newer", generation);
+      if (generation !== tailGenerations.get(tab.id))
+        break;
+      const elapsed = performance.now() - started;
+      const interval = tailPollIntervalMillis();
+      const delay = outcome === "more"
+        ? 0
+        : outcome === "complete" ? Math.max(0, interval - elapsed) : Math.max(1_000, interval);
+      if (delay > 0)
+        await new Promise(resolve => setTimeout(resolve, delay));
     }
+  }
+
+  function tailPollIntervalMillis() {
+    const configured = runtimeConfig?.tailPollIntervalMillis;
+    return Number.isFinite(configured)
+      ? Math.max(minimumTailPollIntervalMillis, Math.trunc(configured!))
+      : defaultTailPollIntervalMillis;
   }
 
   function closeTab(id: string) {
     stopTail(id);
+	localFilterGenerations.set(id, (localFilterGenerations.get(id) ?? 0) + 1);
     const reloadTimer = filterReloadTimers.get(id);
     if (reloadTimer)
       clearTimeout(reloadTimer);
@@ -528,13 +615,18 @@ export function App(props: AppProps = {}) {
   }
 
   function changeFilter(update: (current: RecordFilter) => RecordFilter, delay = 280) {
-    const tab = activeStreamTab();
+    const tab = activeRecordTab();
     if (!tab) return;
-    updateStreamTab(tab.id, current => ({
-      ...current,
-      filter: update(current.filter),
-      filterRevision: current.filterRevision + 1
-    }));
+	updateRecordTab(tab.id, current => {
+	  const changed = {
+		...current,
+		filter: update(current.filter),
+		filterRevision: current.filterRevision + 1
+	  };
+	  return current.kind === "snapshot"
+		? { ...changed, records: [], filtering: true, processedRecords: 0 }
+		: changed;
+	});
     scheduleFilterReload(tab.id, delay);
   }
 
@@ -545,16 +637,18 @@ export function App(props: AppProps = {}) {
       clearTimeout(previousTimer);
     const timer = setTimeout(async () => {
       filterReloadTimers.delete(tabId);
-      const tab = streamTabById(tabId);
-      if (tab)
-        await loadRecords(tab, "replace");
+	  const tab = recordTabById(tabId);
+	  if (tab?.kind === "stream")
+		await loadRecords(tab, "replace");
+	  else if (tab?.kind === "snapshot")
+		await filterSnapshot(tab.id);
       filterReloadPending.delete(tabId);
     }, delay);
     filterReloadTimers.set(tabId, timer);
   }
 
   function levelRange(): string {
-    const selected = levels.filter(level => activeStreamTab()?.filter.levels.includes(level));
+	const selected = levels.filter(level => activeRecordTab()?.filter.levels.includes(level));
     if (selected.length === 0)
       return "all";
     const threshold = levels.slice(levels.length - selected.length);
@@ -608,19 +702,86 @@ export function App(props: AppProps = {}) {
       }));
   }
 
+  function createSnapshot() {
+	const sourceTab = activeRecordTab();
+	if (!sourceTab || (sourceTab.kind === "snapshot" && sourceTab.filtering))
+	  return;
+
+	const sourceRecords = Array.from(sourceTab.records);
+	const sourceName = recordTabName(sourceTab);
+	const id = `snapshot:${Date.now()}:${++snapshotSequence}`;
+	const snapshot: SnapshotTab = {
+	  kind: "snapshot",
+	  id,
+	  name: `Snapshot ${snapshotSequence}`,
+	  sourceName,
+	  capturedAt: new Date(),
+	  sourceRecords,
+	  records: [],
+	  continuityGaps: { ...sourceTab.continuityGaps },
+	  filter: newDefaultFilter(),
+	  filterRevision: 0,
+	  filtering: true,
+	  processedRecords: 0
+	};
+	setTabs(current => [...current, snapshot]);
+	activateTab(id);
+	void filterSnapshot(id);
+  }
+
+  async function filterSnapshot(id: string) {
+	const tab = snapshotTabById(id);
+	if (!tab)
+	  return;
+	const generation = (localFilterGenerations.get(id) ?? 0) + 1;
+	localFilterGenerations.set(id, generation);
+	const revision = tab.filterRevision;
+	const filter = { ...tab.filter, levels: [...tab.filter.levels] };
+	const source = tab.sourceRecords;
+	const matches: LogRecord[] = [];
+	let index = 0;
+	updateSnapshotTab(id, current => ({ ...current, records: [], filtering: true, processedRecords: 0 }));
+
+	while (index < source.length) {
+	  const deadline = performance.now() + localScanSliceMillis;
+	  const sliceStart = index;
+	  do {
+		const record = source[index++];
+		if (matchesLocalFilter(record, filter))
+		  matches.push(record);
+	  } while (index < source.length && index - sliceStart < continuationBatchRecords && performance.now() < deadline);
+
+	  const current = snapshotTabById(id);
+	  if (!current || current.filterRevision !== revision || localFilterGenerations.get(id) !== generation)
+		return;
+	  updateSnapshotTab(id, candidate => ({
+		...candidate,
+		records: matches.slice(),
+		filtering: index < source.length,
+		processedRecords: index
+	  }));
+	  if (index < source.length)
+		await continuationYield();
+	}
+
+	if (source.length === 0)
+	  updateSnapshotTab(id, current => ({ ...current, records: [], filtering: false, processedRecords: 0 }));
+  }
+
   async function exportView(format: TabExportFormat, menu?: HTMLElement) {
     if (downloadActivity()) return;
-    const tab = activeStreamTab();
+	const tab = activeRecordTab();
     if (!tab) return;
     menu?.closest("details")?.removeAttribute("open");
     setDownloadActivity("view");
     try {
       await nextPaint();
       const selectedColumns = visibleColumnDefinitions().map(({ key, label }) => ({ key, label }));
-      const exported = createTabExport(tab.records, selectedColumns, format, tab.stream.displayName || tab.stream.streamId || "Logs");
+	  const displayName = recordTabName(tab);
+	  const exported = createTabExport(tab.records, selectedColumns, format, displayName);
       const blob = new Blob([exported.content], { type: exported.mimeType });
       triggerDownload(blob,
-        `${safeName(tab.stream.displayName || tab.stream.streamId || "logs")}_${safeName(tab.target.nodeId || "merged")}_view.${exported.extension}`);
+		`${safeName(displayName)}_${safeName(tab.kind === "stream" ? tab.target.nodeId || "merged" : "local")}_view.${exported.extension}`);
     } catch (caught) {
       console.error("Exporting the current log view failed", caught);
       handleOperationalFailure(caught);
@@ -768,12 +929,12 @@ export function App(props: AppProps = {}) {
           <section class="log-panel">
             <div class="tabs">
               <For each={tabs()} fallback={<div class="tab-placeholder">Open a stream to begin</div>}>
-                {tab => <button classList={{ tab: true, active: tab.id === activeTabId(), tailing: tab.kind === "stream" && tab.tailing }} onClick={() => activateTab(tab.id)}>
-                  <span class={`tab-kind-icon ${tab.kind}`}>{tab.kind === "stream" ? "≋" : "L"}</span>
-                  <span>{tab.kind === "stream" ? tab.stream.displayName || tab.stream.streamId : "Log levels"}</span>
+                {tab => <button classList={{ tab: true, snapshot: tab.kind === "snapshot", active: tab.id === activeTabId(), tailing: tab.kind === "stream" && tab.tailing }} onClick={() => activateTab(tab.id)}>
+				  <span class={`tab-kind-icon ${tab.kind}`}>{tab.kind === "stream" ? "≋" : tab.kind === "snapshot" ? "▣" : "L"}</span>
+				  <span>{tab.kind === "stream" ? tab.stream.displayName || tab.stream.streamId : tab.kind === "snapshot" ? tab.name : "Log levels"}</span>
                   <small>{tab.kind === "stream"
                     ? `${tab.target.applicationId || "local"} · ${tab.target.nodeId || "all nodes"}`
-                    : tab.applicationId}</small>
+					: tab.kind === "snapshot" ? `local snapshot · ${tab.sourceRecords.length.toLocaleString()} records` : tab.applicationId}</small>
                   <i onClick={event => { event.stopPropagation(); closeTab(tab.id); }}>×</i>
                 </button>}
               </For>
@@ -787,7 +948,7 @@ export function App(props: AppProps = {}) {
               </div>
             }</For>
 
-            <Show when={activeStreamTab()} fallback={
+			<Show when={activeRecordTab()} fallback={
               <Show when={!activeLogLevelsTab()}><Welcome /></Show>
             }>
               {tab => <>
@@ -816,7 +977,12 @@ export function App(props: AppProps = {}) {
                   <label><span>To</span><input type="datetime-local" value={tab().filter.to ?? ""} onChange={e => changeFilter(f => ({ ...f, to: e.currentTarget.value }), 0)} /></label>
                 </div>
                 <div class="toolbar">
-                  <span><strong>{tab().records.length.toLocaleString()}</strong> records</span>
+				  <span>
+					<strong>{tab().records.length.toLocaleString()}</strong> records
+					<Show when={tab().kind === "snapshot" && (tab() as SnapshotTab).filtering}>
+					  {` · scanning ${(tab() as SnapshotTab).processedRecords.toLocaleString()}/${(tab() as SnapshotTab).sourceRecords.length.toLocaleString()}`}
+					</Show>
+				  </span>
                   <div>
                     <div class="view-switch" role="group" aria-label="Log presentation">
                       <button classList={{ active: viewMode() === "structured" }} onClick={() => setViewMode("structured")}>Table</button>
@@ -833,21 +999,22 @@ export function App(props: AppProps = {}) {
                         }</For>
                       </div>
                     </details>
-                    <label class="tail-buffer" title="Maximum records retained while tailing">
+					<Show when={tab().kind === "stream" ? tab() as StreamTab : undefined}>{streamTab => <>
+					<label class="tail-buffer" title="Maximum records retained while tailing">
                       Buffer
                       <input
                         type="number"
                         min="100"
                         max="20000"
                         step="100"
-                        value={tab().tailBufferSize}
+						value={streamTab().tailBufferSize}
                         onChange={event => updateTailBuffer(event.currentTarget.value)}
                       />
                     </label>
                     <label class="history-scope" title="Include files discovered from the appender rolling policy">
                       History
-                      <select value={tab().includeRotated ? "rotated" : "active"} onChange={event => {
-                        const tabId = tab().id;
+					  <select value={streamTab().includeRotated ? "rotated" : "active"} onChange={event => {
+						const tabId = streamTab().id;
                         const includeRotatedHistory = event.currentTarget.value === "rotated";
                         updateStreamTab(tabId, current => ({
                           ...current,
@@ -860,18 +1027,31 @@ export function App(props: AppProps = {}) {
                         <option value="rotated">Current + rotated</option>
                       </select>
                     </label>
-                    <button classList={{ tail: true, active: tab().tailing }} onClick={toggleTail}><i></i>{tab().tailing ? "Tailing" : "Tail"}</button>
-                    <Show when={tab().tailing}>
-                      <button classList={{ follow: true, active: tab().followTail }} onClick={resumeFollowing}>
-                        {tab().followTail ? "Following" : "Resume"}
+                    <button
+					  classList={{ tail: true, active: streamTab().tailing }}
+					  disabled={!streamTab().tailing && tailEndReached(streamTab().filter.to)}
+					  title={tailEndReached(streamTab().filter.to) ? "The selected time interval has already ended" : "Continuously observe new records"}
+					  onClick={toggleTail}
+					><i></i>{streamTab().tailing ? "Tailing" : "Tail"}</button>
+					<Show when={streamTab().tailing}>
+					  <button classList={{ follow: true, active: streamTab().followTail }} onClick={resumeFollowing}>
+						{streamTab().followTail ? "Following" : "Resume"}
                       </button>
                     </Show>
                     <button
-                      disabled={!tab().moreBefore || !tab().previousCursor}
-                      title={tab().moreBefore ? "Load the preceding log page" : "The beginning of the available history is visible"}
-                      onClick={() => loadRecords(tab(), "older")}
+					  disabled={!streamTab().moreBefore || !streamTab().previousCursor}
+					  title={streamTab().moreBefore ? "Load the preceding log page" : "The beginning of the available history is visible"}
+					  onClick={() => loadRecords(streamTab(), "older")}
                     >Load older</button>
-                    <button onClick={() => loadRecords(tab(), "replace")}>Refresh</button>
+					<button onClick={() => loadRecords(streamTab(), "replace")}>Refresh</button>
+					</>}</Show>
+					<button
+					  title={tab().kind === "snapshot" && (tab() as SnapshotTab).filtering
+						? "Wait until the local filter has completely scanned its source"
+						: "Freeze the records represented by this tab into a local snapshot"}
+					  disabled={tab().kind === "snapshot" && (tab() as SnapshotTab).filtering}
+					  onClick={createSnapshot}
+					>Snapshot</button>
                     <details class="view-export" data-popup>
                       <summary>Export view ↓</summary>
                       <div role="menu" aria-label="Export current view">
@@ -886,9 +1066,24 @@ export function App(props: AppProps = {}) {
                         </button>
                       </div>
                     </details>
-                    <button onClick={openBundle}>Download logs ↓</button>
+					<Show when={tab().kind === "stream"}><button onClick={openBundle}>Download logs ↓</button></Show>
                   </div>
                 </div>
+				<Show when={tab().kind === "snapshot"}>
+				  <div class="snapshot-notice">
+					<strong>Local snapshot</strong>
+					<span>{`Captured ${(tab() as SnapshotTab).sourceRecords.length.toLocaleString()} records from ${(tab() as SnapshotTab).sourceName} at ${(tab() as SnapshotTab).capturedAt.toLocaleString()}. Filters run only in this browser.`}</span>
+				  </div>
+				</Show>
+				<Show when={Object.entries(tab().continuityGaps)}>{gaps =>
+				  <Show when={gaps().length > 0}>
+					<div class="warning">
+					  <strong>{tab().kind === "snapshot" ? "The snapshot source was already incomplete." : "Live continuity was lost."}</strong>{"\n"}
+					  The records shown after the gap are valid, but this view is not a complete continuation.{"\n"}
+					  {gaps().map(([origin, message]) => `${origin}: ${message}`).join("\n")}
+					</div>
+				  </Show>
+				}</Show>
                 <div classList={{ "records-surface": true, "detail-open": Boolean(selectedRecord()) }}>
                   <Show when={viewMode() === "structured"} fallback={
                     <div
@@ -1534,6 +1729,47 @@ function oneLine(value: string | null | undefined) {
 
 function retainRecords(records: LogRecord[], tailing: boolean, capacity: number) {
   return tailing && records.length > capacity ? records.slice(-capacity) : records;
+}
+
+function recordTabName(tab: RecordTab) {
+  return tab.kind === "snapshot" ? tab.name : tab.stream.displayName || tab.stream.streamId || "Logs";
+}
+
+function matchesLocalFilter(record: LogRecord, filter: RecordFilter) {
+  const timestamp = record.timestamp == null ? undefined : new Date(record.timestamp as unknown as string | number | Date).getTime();
+  const from = filter.from ? Date.parse(filter.from) : undefined;
+  const to = filter.to ? Date.parse(filter.to) : undefined;
+  if (from != null && (!Number.isFinite(timestamp) || timestamp! < from)) return false;
+  if (to != null && (!Number.isFinite(timestamp) || timestamp! > to)) return false;
+  const level = enumName(record.level).toUpperCase();
+  if (filter.levels.length > 0 && !filter.levels.includes(level)) return false;
+  if (filter.logger && !containsIgnoreCase(record.loggerName, filter.logger)) return false;
+  if (filter.fulltext) {
+	const needle = filter.fulltext.trim().toLowerCase();
+	if (needle && ![record.message, record.throwable, record.rawText, record.loggerName]
+		.some(value => typeof value === "string" && value.toLowerCase().includes(needle)))
+	  return false;
+  }
+  return true;
+}
+
+function containsIgnoreCase(value: string | null | undefined, query: string) {
+  return !query.trim() || Boolean(value?.toLowerCase().includes(query.trim().toLowerCase()));
+}
+
+function continuationYield() {
+  if (document.visibilityState !== "visible")
+	return new Promise<void>(resolve => setTimeout(resolve, 0));
+
+  return new Promise<void>(resolve => {
+	requestAnimationFrame(() => setTimeout(resolve, 0));
+  });
+}
+
+function tailEndReached(to: string | undefined) {
+  if (!to) return false;
+  const end = Date.parse(to);
+  return Number.isFinite(end) && end <= Date.now();
 }
 
 function shortLogger(value: string | null | undefined) {

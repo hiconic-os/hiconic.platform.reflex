@@ -37,4 +37,12 @@ public interface LogRecordPage extends GenericEntity {
 	/** Per-instance errors for partial cluster responses, keyed by {@code applicationId@nodeId}. */
 	Map<String, String> getErrors();
 	void setErrors(Map<String, String> errors);
+
+	/**
+	 * Per-instance discontinuities, keyed by {@code applicationId@nodeId}. A discontinuity means that the requested
+	 * cursor can no longer be continued without a gap, for example because a live collector lease expired or its ring
+	 * buffer evicted records. Records in this page are valid, but must not be presented as a complete continuation.
+	 */
+	Map<String, String> getContinuityGaps();
+	void setContinuityGaps(Map<String, String> continuityGaps);
 }

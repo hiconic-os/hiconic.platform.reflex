@@ -24,6 +24,7 @@ public class LogClusterSupportTest {
 		LogRecordPage node2 = page(record("app", "node-2", 100, 7, "earlier"), "cursor-2", true, "requestId");
 		node1.setPreviousCursor("previous-1");
 		node1.setMoreBeforeAvailable(true);
+		node2.setContinuityGaps(Map.of("app@node-2", "live generation changed"));
 
 		Map<String, LogRecordPage> responses = new LinkedHashMap<>();
 		responses.put("app@node-1", node1);
@@ -38,6 +39,7 @@ public class LogClusterSupportTest {
 		assertThat(merged.getMoreAvailable()).isTrue();
 		assertThat(merged.getMoreBeforeAvailable()).isTrue();
 		assertThat(merged.getErrors()).containsEntry("app@node-3", "timeout");
+		assertThat(merged.getContinuityGaps()).containsEntry("app@node-2", "live generation changed");
 
 		Map<String, String> cursors = LogClusterSupport.decodeCursor(merged.getNextCursor());
 		assertThat(cursors).containsEntry("app@node-1", "cursor-1")
@@ -68,6 +70,7 @@ public class LogClusterSupportTest {
 		page.setMoreAvailable(more);
 		page.setObservedProperties(Set.of(property));
 		page.setErrors(new LinkedHashMap<>());
+		page.setContinuityGaps(new LinkedHashMap<>());
 		return page;
 	}
 

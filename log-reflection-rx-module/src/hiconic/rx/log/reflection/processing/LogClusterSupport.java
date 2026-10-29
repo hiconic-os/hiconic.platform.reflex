@@ -65,6 +65,7 @@ final class LogClusterSupport {
 		boolean moreAvailable = false;
 		boolean moreBeforeAvailable = false;
 		LinkedHashSet<String> observedProperties = new LinkedHashSet<>();
+		Map<String, String> continuityGaps = new TreeMap<>();
 		for (Map.Entry<String, LogRecordPage> entry : responses.entrySet()) {
 			LogRecordPage page = entry.getValue();
 			if (page.getNextCursor() != null)
@@ -75,6 +76,8 @@ final class LogClusterSupport {
 			moreBeforeAvailable |= page.getMoreBeforeAvailable();
 			if (page.getObservedProperties() != null)
 				observedProperties.addAll(page.getObservedProperties());
+			if (page.getContinuityGaps() != null)
+				continuityGaps.putAll(page.getContinuityGaps());
 		}
 
 		LogRecordPage result = LogRecordPage.T.create();
@@ -86,6 +89,7 @@ final class LogClusterSupport {
 		result.setMoreBeforeAvailable(moreBeforeAvailable);
 		result.setObservedProperties(observedProperties);
 		result.setErrors(new LinkedHashMap<>(errors));
+		result.setContinuityGaps(new LinkedHashMap<>(continuityGaps));
 		return result;
 	}
 
