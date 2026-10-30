@@ -1795,7 +1795,7 @@ function safeName(value: string) {
 }
 
 function nextPaint() {
-  return new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+  return new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
 }
 
 function triggerDownload(blob: Blob, fileName: string) {
