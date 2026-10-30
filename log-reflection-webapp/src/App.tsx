@@ -158,6 +158,7 @@ export function App(props: AppProps = {}) {
   });
   const logLevelTabs = createMemo(() => tabs().filter((tab): tab is LogLevelsTab => tab.kind === "log-levels"));
   const applications = createMemo(() => [...new Set(topology().map(instance => instance.applicationId))]);
+  const nodeAliases = createMemo(() => createNodeAliases(topology()));
   const nodes = createMemo(() => [...new Set(topology()
     .filter(instance => applicationId() === "*" || instance.applicationId === applicationId())
     .map(instance => instance.nodeId)
@@ -897,7 +898,7 @@ export function App(props: AppProps = {}) {
               <label>Node
                 <select value={nodeId()} onChange={event => selectNode(event.currentTarget.value)}>
                   <option value="">All nodes</option>
-                  <For each={nodes()}>{node => <option value={node}>{node}</option>}</For>
+                  <For each={nodes()}>{node => <option value={node}>{nodeLegendLabel(node, nodeAliases())}</option>}</For>
                 </select>
               </label>
             </div>
@@ -1095,6 +1096,7 @@ export function App(props: AppProps = {}) {
                         {record => <TextLogRecord
                           record={record}
                           columns={visibleColumnDefinitions()}
+                          nodeAliases={nodeAliases()}
                           onSelect={() => setSelectedRecord(record)}
                         />}
                       </For>
@@ -1113,6 +1115,7 @@ export function App(props: AppProps = {}) {
                           record={record}
                           columns={visibleColumnDefinitions()}
                           template={columnTemplate()}
+                          nodeAliases={nodeAliases()}
                           selected={record === selectedRecord()}
                           onSelect={() => setSelectedRecord(record)}
                         />}
@@ -1120,7 +1123,7 @@ export function App(props: AppProps = {}) {
                     </div>
                   </Show>
                   <Show when={selectedRecord()}>
-                    {record => <LogRecordDetail record={record()} onClose={() => setSelectedRecord(undefined)} />}
+                    {record => <LogRecordDetail record={record()} nodeAliases={nodeAliases()} onClose={() => setSelectedRecord(undefined)} />}
                   </Show>
                 </div>
               </>}
@@ -1149,7 +1152,7 @@ export function App(props: AppProps = {}) {
               <label>Node
                 <select value={bundleNode()} onChange={event => setBundleNode(event.currentTarget.value)}>
                   <option value="">All nodes</option>
-                  <For each={bundleNodes()}>{node => <option value={node}>{node}</option>}</For>
+                  <For each={bundleNodes()}>{node => <option value={node}>{nodeLegendLabel(node, nodeAliases())}</option>}</For>
                 </select>
               </label>
             </div>
@@ -1412,6 +1415,7 @@ function LogRow(props: {
   record: LogRecord;
   columns: readonly ColumnDefinition[];
   template: string;
+  nodeAliases: ReadonlyMap<string, number>;
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -1420,43 +1424,45 @@ function LogRow(props: {
     style={`grid-template-columns: ${props.template}`}
     onClick={props.onSelect}
   >
-    <For each={props.columns}>{column => <LogCell record={props.record} column={column.key} />}</For>
+    <For each={props.columns}>{column => <LogCell record={props.record} column={column.key} nodeAliases={props.nodeAliases} />}</For>
   </div>;
 }
 
-function LogCell(props: { record: LogRecord; column: ColumnKey }) {
+function LogCell(props: { record: LogRecord; column: ColumnKey; nodeAliases: ReadonlyMap<string, number> }) {
   const level = () => enumName(props.record.level);
   if (props.column === "level")
     return <span><b class={`level ${level().toLowerCase()}`}>{level()}</b></span>;
 
-  const value = columnValue(props.record, props.column);
-  return <span class={props.column} title={value}>{value}</span>;
+  const value = columnValue(props.record, props.column, props.nodeAliases);
+  const title = props.column === "node" ? props.record.origin?.nodeId || value : value;
+  return <span class={props.column} title={title}>{value}</span>;
 }
 
 function TextLogRecord(props: {
   record: LogRecord;
   columns: readonly ColumnDefinition[];
+  nodeAliases: ReadonlyMap<string, number>;
   onSelect: () => void;
 }) {
   const level = () => enumName(props.record.level).toLowerCase();
   const fields = () => props.columns
-    .map(column => ({ column, value: textColumnValue(props.record, column.key) }))
+    .map(column => ({ column, value: textColumnValue(props.record, column.key, props.nodeAliases) }))
     .filter(field => field.value !== "");
   return <span class="text-log-record" onClick={props.onSelect}><For each={fields()}>{(field, index) => <><Show when={index() > 0}><span class="text-separator">{"  "}</span></Show><span class={`text-field ${field.column.key} ${field.column.key === "level" ? level() : ""}`}>{field.value}</span></>}</For>{"\n"}</span>;
 }
 
-function textColumnValue(record: LogRecord, column: ColumnKey): string {
+function textColumnValue(record: LogRecord, column: ColumnKey, nodeAliases: ReadonlyMap<string, number>): string {
   switch (column) {
     case "message":
       return record.message || "—";
     case "raw":
       return record.rawText || "—";
     default:
-      return columnValue(record, column);
+      return columnValue(record, column, nodeAliases);
   }
 }
 
-function columnValue(record: LogRecord, column: ColumnKey): string {
+function columnValue(record: LogRecord, column: ColumnKey, nodeAliases: ReadonlyMap<string, number>): string {
   switch (column) {
     case "timestamp":
       return formatTimestamp(record.timestamp);
@@ -1465,7 +1471,7 @@ function columnValue(record: LogRecord, column: ColumnKey): string {
     case "application":
       return record.origin?.applicationId || "—";
     case "node":
-      return record.origin?.nodeId || "local";
+      return nodeDisplay(record.origin?.nodeId, nodeAliases);
     case "stream":
       return record.streamId || "—";
     case "position":
@@ -1485,7 +1491,7 @@ function columnValue(record: LogRecord, column: ColumnKey): string {
   }
 }
 
-function LogRecordDetail(props: { record: LogRecord; onClose: () => void }) {
+function LogRecordDetail(props: { record: LogRecord; nodeAliases: ReadonlyMap<string, number>; onClose: () => void }) {
   const properties = () => mapEntries(props.record.properties);
 
   return <aside class="record-detail">
@@ -1495,7 +1501,7 @@ function LogRecordDetail(props: { record: LogRecord; onClose: () => void }) {
     </header>
     <div class="detail-properties">
       <DetailProperty name="Application" value={props.record.origin?.applicationId} />
-      <DetailProperty name="Node" value={props.record.origin?.nodeId || "local"} />
+      <DetailProperty name="Node" value={nodeLegendLabel(props.record.origin?.nodeId, props.nodeAliases)} />
       <DetailProperty name="Stream" value={props.record.streamId} />
       <DetailProperty name="Logger" value={props.record.loggerName} />
       <DetailProperty name="Thread" value={props.record.threadName} />
@@ -1611,6 +1617,26 @@ function streamDetails(stream: LogStreamDescriptor) {
   const segments = Array.from(stream.segments as unknown as Iterable<LogSegmentDescriptor>);
   const fileName = (segments.find(segment => segment.active) ?? segments[0])?.fileName;
   return [fileName, enumName(stream.format)].filter(Boolean).join(" · ");
+}
+
+function createNodeAliases(topology: readonly TopologyInstance[]): ReadonlyMap<string, number> {
+  const nodeIds = [...new Set(topology.map(instance => instance.nodeId).filter(Boolean))]
+    .sort((left, right) => left.localeCompare(right));
+  return new Map(nodeIds.map((nodeId, index) => [nodeId, index + 1]));
+}
+
+function nodeDisplay(nodeId: string | null | undefined, aliases: ReadonlyMap<string, number>): string {
+  if (!nodeId)
+    return "local";
+  const alias = aliases.get(nodeId);
+  return alias == null ? nodeId : `#${alias}`;
+}
+
+function nodeLegendLabel(nodeId: string | null | undefined, aliases: ReadonlyMap<string, number>): string {
+  if (!nodeId)
+    return "local";
+  const alias = aliases.get(nodeId);
+  return alias == null ? nodeId : `#${alias} · ${nodeId}`;
 }
 
 function uniqueStreams(streams: readonly LogStreamDescriptor[]): LogStreamDescriptor[] {

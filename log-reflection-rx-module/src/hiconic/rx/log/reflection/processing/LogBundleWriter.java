@@ -452,20 +452,21 @@ public class LogBundleWriter {
 
 		String baseName = "log-export_" + safe(applicationId) + "_merged_" + stamp.format(Instant.now());
 		StreamPipe pipe = StreamPipes.fileBackedFactory().newPipe(baseName);
-		Map<String, List<StreamPipe>> merged = new TreeMap<>();
+		Map<String, Integer> nodeIndexes = nodeIndexes(contributions.keySet());
+		Map<String, List<MergedContribution>> merged = new TreeMap<>();
 		try (OutputStream output = pipe.openOutputStream(); ZipOutputStream zip = new ZipOutputStream(output)) {
-			writeClusterManifest(zip, contributions.keySet(), errors);
+			writeClusterManifest(zip, nodeIndexes, errors);
 			Set<String> names = new HashSet<>();
 			names.add("manifest.json");
 			for (Map.Entry<String, Resource> contribution : new TreeMap<>(contributions).entrySet())
-				copyContribution(zip, names, contribution.getKey(), contribution.getValue(), merged);
+				copyContribution(zip, names, contribution.getKey(), nodeIndexes.get(contribution.getKey()), contribution.getValue(), merged);
 			writeMergedContributions(zip, names, merged);
 			zip.finish();
 		} catch (IOException e) {
 			pipe.close();
 			throw new IllegalStateException("Could not combine node log bundles", e);
 		} finally {
-			merged.values().stream().flatMap(List::stream).forEach(StreamPipe::close);
+			merged.values().stream().flatMap(List::stream).map(MergedContribution::content).forEach(StreamPipe::close);
 		}
 
 		Resource resource = Resource.createTransient(() -> new FilterInputStream(pipe.openInputStream()) {
@@ -483,8 +484,8 @@ public class LogBundleWriter {
 		return resource;
 	}
 
-	private static void copyContribution(ZipOutputStream target, Set<String> names, String origin, Resource contribution,
-			Map<String, List<StreamPipe>> merged) throws IOException {
+	private static void copyContribution(ZipOutputStream target, Set<String> names, String origin, int nodeIndex,
+			Resource contribution, Map<String, List<MergedContribution>> merged) throws IOException {
 		try (InputStream input = contribution.openStream(); ZipInputStream source = new ZipInputStream(input)) {
 			ZipEntry sourceEntry;
 			while ((sourceEntry = source.getNextEntry()) != null) {
@@ -499,7 +500,8 @@ public class LogBundleWriter {
 						try (OutputStream output = spool.openOutputStream()) {
 							source.transferTo(output);
 						}
-						merged.computeIfAbsent(name, ignored -> new ArrayList<>()).add(spool);
+						merged.computeIfAbsent(name, ignored -> new ArrayList<>())
+								.add(new MergedContribution(nodeIndex, spool));
 						retained = true;
 					} finally {
 						if (!retained)
@@ -522,15 +524,25 @@ public class LogBundleWriter {
 	}
 
 	private static void writeMergedContributions(ZipOutputStream target, Set<String> names,
-			Map<String, List<StreamPipe>> merged) throws IOException {
-		for (Map.Entry<String, List<StreamPipe>> entry : merged.entrySet()) {
+			Map<String, List<MergedContribution>> merged) throws IOException {
+		for (Map.Entry<String, List<MergedContribution>> entry : merged.entrySet()) {
 			target.putNextEntry(new ZipEntry(unique(names, entry.getKey())));
-			for (StreamPipe spool : entry.getValue())
-				try (InputStream input = spool.openInputStream()) {
+			boolean jsonl = entry.getKey().endsWith(".jsonl");
+			for (MergedContribution contribution : entry.getValue()) {
+				if (!jsonl)
+					target.write(("--- node #" + contribution.nodeIndex() + " ---\n").getBytes(StandardCharsets.UTF_8));
+				try (InputStream input = contribution.content().openInputStream()) {
 					input.transferTo(target);
 				}
+			}
 			target.closeEntry();
 		}
+	}
+
+	private static Map<String, Integer> nodeIndexes(Set<String> origins) {
+		Map<String, Integer> result = new LinkedHashMap<>();
+		new java.util.TreeSet<>(origins).forEach(origin -> result.put(origin, result.size() + 1));
+		return result;
 	}
 
 	private static String safeEntryName(String value) {
@@ -550,18 +562,21 @@ public class LogBundleWriter {
 		return String.join("/", parts);
 	}
 
-	private static void writeClusterManifest(ZipOutputStream zip, Set<String> origins, Map<String, String> errors)
+	private static void writeClusterManifest(ZipOutputStream zip, Map<String, Integer> nodeIndexes, Map<String, String> errors)
 			throws IOException {
 		Map<String, String> stableErrors = errors == null ? Map.of() : new LinkedHashMap<>(errors);
 		StringBuilder json = new StringBuilder();
 		json.append("{\n  \"createdAt\": \"").append(Instant.now()).append("\",\n  \"nodes\": [");
 		boolean first = true;
-		for (String origin : origins) {
+		for (Map.Entry<String, Integer> node : nodeIndexes.entrySet()) {
 			if (!first)
-				json.append(", ");
-			json.append('"').append(json(origin)).append('"');
+				json.append(',');
+			json.append("\n    {\"index\": ").append(node.getValue()).append(", \"origin\": \"")
+					.append(json(node.getKey())).append("\"}");
 			first = false;
 		}
+		if (!nodeIndexes.isEmpty())
+			json.append('\n').append("  ");
 		json.append("],\n  \"errors\": {");
 		first = true;
 		for (Map.Entry<String, String> error : stableErrors.entrySet()) {
@@ -666,6 +681,9 @@ public class LogBundleWriter {
 	}
 
 	private record BundleEntry(LogbackFileStream stream, Path path, boolean active) {
+	}
+
+	private record MergedContribution(int nodeIndex, StreamPipe content) {
 	}
 
 	private record SegmentStats(long totalRecords, long selectedRecords, long recordsWithoutTimestamp) {

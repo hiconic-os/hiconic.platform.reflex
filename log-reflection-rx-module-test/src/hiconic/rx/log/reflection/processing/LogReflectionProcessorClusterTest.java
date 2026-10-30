@@ -197,7 +197,11 @@ public class LogReflectionProcessorClusterTest {
 		assertThat(local.getTo()).isEqualTo(new Date(200));
 		assertThat(entries.keySet()).containsExactlyInAnyOrder(
 				"application_node-1.log", "application_node-2.log", "application_merged.log", "manifest.json");
-		assertThat(entries.get("application_merged.log")).isEqualTo("node one\nnode two\n");
+		assertThat(entries.get("application_merged.log")).isEqualTo(
+				"--- node #1 ---\nnode one\n--- node #2 ---\nnode two\n");
+		assertThat(entries.get("manifest.json"))
+				.contains("{\"index\": 1, \"origin\": \"logs-app@node-1\"}")
+				.contains("{\"index\": 2, \"origin\": \"logs-app@node-2\"}");
 	}
 
 	@Test

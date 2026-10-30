@@ -28,6 +28,19 @@ test.beforeEach(async ({ page }) => {
   await expect(streamButton(page, "Application log")).toBeVisible();
 });
 
+test("uses the node selector as a legend and renders compact node aliases", async ({ page }) => {
+  const nodeSelector = page.locator(".scope-panel label").filter({ hasText: "Node" }).locator("select");
+  await expect(nodeSelector.locator("option[value='node-a']")).toHaveText("#1 · node-a");
+
+  await openStream(page, "Application log");
+  await startTail(page, "application");
+  await emit(page, "application", "aliased node record");
+
+  const nodeCell = page.locator(".log-row .node").first();
+  await expect(nodeCell).toHaveText("#1");
+  await expect(nodeCell).toHaveAttribute("title", "node-a");
+});
+
 test("keeps a tail alive while switching tabs", async ({ page }) => {
   await openStream(page, "Application log");
   await startTail(page, "application");
