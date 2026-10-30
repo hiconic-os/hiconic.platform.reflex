@@ -375,7 +375,6 @@ public class MulticastRxProcessor implements ServiceProcessor<MulticastRequest, 
 	protected Message createRequestMessage(ServiceRequestContext requestContext, MulticastRequest request, boolean async) {
 		MulticastMsg msg = msg();
 
-		// We are maybe overwriting a session Id that has been set earlier
 		// TODO: Disk and Andre will review meta-data handling anyway
 		ServiceRequest serviceRequest = request.getServiceRequest();
 
