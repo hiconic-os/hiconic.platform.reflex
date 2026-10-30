@@ -13,7 +13,6 @@
 // ============================================================================
 package hiconic.rx.access.module.processing;
 
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 import com.braintribe.cfg.Required;
@@ -37,7 +36,7 @@ import hiconic.rx.module.api.service.ConfiguredModel;
 public class RxPersistenceGmSessionFactory implements PersistenceGmSessionFactory {
 	private Supplier<AttributeContext> attributeContextSupplier;
 	private RxAccesses accesses;
-	private Function<AttributeContext, Evaluator<ServiceRequest>> evaluatorSupplier;
+	private Evaluator<ServiceRequest> requestEvaluator;
 	private ResourceAccessFactory<PersistenceGmSession> resourceAccessFactory; 
 
 	@Required
@@ -56,8 +55,8 @@ public class RxPersistenceGmSessionFactory implements PersistenceGmSessionFactor
 	}
 
 	@Required
-	public void setEvaluatorSupplier(Function<AttributeContext, Evaluator<ServiceRequest>> evaluatorSupplier) {
-		this.evaluatorSupplier = evaluatorSupplier;
+	public void setRequestEvaluator(Evaluator<ServiceRequest> requestEvaluator) {
+		this.requestEvaluator = requestEvaluator;
 	}
 
 	@Override
@@ -70,21 +69,17 @@ public class RxPersistenceGmSessionFactory implements PersistenceGmSessionFactor
 		IncrementalAccess incrementalAccess = access.incrementalAccess();
 		ConfiguredModel configuredModel = access.configuredDataModel();
 		CmdResolver cmdResolver = configuredModel.cmdResolver(attributeContext);
+		UserSession userSession = attributeContext.findOrDefault(UserSessionAspect.class, null);
 
 		BasicPersistenceGmSession session = new BasicPersistenceGmSession();
 		session.setAccessId(accessId);
-		session.setIncrementalAccess(new ContextualizedIncrementalAccess(incrementalAccess, attributeContext));
-		// Equivalent sessions are frequently created on worker threads. Preserve the originating
-		// context instead of consulting the thread-local supplier again and losing authorization.
-		session.setEquivalentSessionFactory(() -> newSession(accessId, attributeContext));
+		session.setIncrementalAccess(new SessionIdentityIncrementalAccess(incrementalAccess, userSession));
 		session.setModelAccessory(new RxModelAccessory(cmdResolver));
 		session.setResourcesAccessFactory(resourceAccessFactory);
 
-		session.setRequestEvaluator(evaluatorSupplier.apply(attributeContext));
+		session.setRequestEvaluator(requestEvaluator);
 		session.setDescription("AccessContract PersistenceGmSession accessId=" + accessId + " model=" + configuredModel.name() + " accessType="
 				+ access.access().entityType().getTypeSignature());
-
-		UserSession userSession = attributeContext.findOrDefault(UserSessionAspect.class, null);
 
 		if (userSession != null) {
 			BasicSessionAuthorization sessionAuthorization = new BasicSessionAuthorization();
