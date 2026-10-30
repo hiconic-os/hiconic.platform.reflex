@@ -28,6 +28,7 @@ import hiconic.rx.access.model.md.InterceptAccessWith;
 import hiconic.rx.access.smood.module.test.context.AttributeContextMarker;
 import hiconic.rx.access.smood.module.test.context.AttributeContextProbeAspect;
 import hiconic.rx.access.smood.module.test.context.ReadAttributeContextMarker;
+import hiconic.rx.access.smood.module.test.context.ReadAttributeContextIdentity;
 import hiconic.rx.access.smood.module.test.wire.contract.SmoodAccessContextTestContract;
 import hiconic.rx.hibernate.model.test.Container;
 import hiconic.rx.hibernate.model.test.Element;
@@ -53,6 +54,16 @@ public class SmoodAccessTest extends AbstractRxTest {
 		String observed = withMarker(() -> evaluateMarker(equivalentSession));
 
 		Assertions.assertThat(observed).isEqualTo(DERIVED_MARKER);
+	}
+
+	@Test
+	public void sessionEvaluationCombinesCurrentContextWithSessionIdentity() {
+		assertEvaluationSeesCurrentContextAndSessionIdentity(false);
+	}
+
+	@Test
+	public void equivalentSessionEvaluationCombinesCurrentContextWithSessionIdentity() {
+		assertEvaluationSeesCurrentContextAndSessionIdentity(true);
 	}
 
 	@Test
@@ -130,6 +141,30 @@ public class SmoodAccessTest extends AbstractRxTest {
 		ReadAttributeContextMarker request = ReadAttributeContextMarker.T.create();
 		request.setDomainId("main-access");
 		return (String) request.eval(session).get();
+	}
+
+	private void assertEvaluationSeesCurrentContextAndSessionIdentity(boolean equivalent) {
+		User user = User.T.create();
+		user.setId("session-user");
+		user.setName("session-user");
+		UserSession userSession = UserSession.T.create();
+		userSession.setSessionId("session-id");
+		userSession.setUser(user);
+		userSession.getEffectiveRoles().add("session-role");
+
+		PersistenceGmSession session = AttributeContexts.derivePeek().set(UserSessionAspect.class, userSession).buildAnd()
+				.execute(this::contextSession);
+		if (equivalent)
+			session = session.newEquivalentSession();
+
+		PersistenceGmSession evaluatedSession = session;
+		String observed = withMarker(() -> {
+			ReadAttributeContextIdentity request = ReadAttributeContextIdentity.T.create();
+			request.setDomainId("main-access");
+			return (String) request.eval(evaluatedSession).get();
+		});
+
+		Assertions.assertThat(observed).isEqualTo(DERIVED_MARKER + ":session-user");
 	}
 
 	private void assertAccessSeesCurrentContext(PersistenceGmSession session) {

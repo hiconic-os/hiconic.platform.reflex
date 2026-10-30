@@ -15,9 +15,6 @@ package hiconic.rx.access.module.processing;
 
 import java.util.Set;
 
-import com.braintribe.common.attribute.AttributeContextBuilder;
-import com.braintribe.common.attribute.common.UserInfo;
-import com.braintribe.common.attribute.common.UserInfoAttribute;
 import com.braintribe.model.access.AbstractDelegatingAccess;
 import com.braintribe.model.access.IncrementalAccess;
 import com.braintribe.model.access.ModelAccessException;
@@ -27,12 +24,7 @@ import com.braintribe.model.accessapi.ManipulationResponse;
 import com.braintribe.model.accessapi.ReferencesRequest;
 import com.braintribe.model.accessapi.ReferencesResponse;
 import com.braintribe.model.meta.GmMetaModel;
-import com.braintribe.model.processing.securityservice.api.attributes.LenientAuthenticationFailure;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
-import com.braintribe.model.processing.service.api.aspect.IsAuthorizedAspect;
-import com.braintribe.model.processing.service.api.aspect.RequestorSessionIdAspect;
-import com.braintribe.model.processing.service.api.aspect.RequestorUserNameAspect;
-import com.braintribe.model.processing.service.common.context.UserSessionAspect;
 import com.braintribe.model.query.EntityQuery;
 import com.braintribe.model.query.EntityQueryResult;
 import com.braintribe.model.query.PropertyQuery;
@@ -122,15 +114,7 @@ public class SessionIdentityIncrementalAccess extends AbstractDelegatingAccess {
 	}
 
 	private com.braintribe.common.attribute.AttributeContext identityContext() {
-		AttributeContextBuilder builder = AttributeContexts.derivePeek();
-		builder.set(UserSessionAspect.class, userSession);
-		builder.set(IsAuthorizedAspect.class, true);
-		builder.set(RequestorSessionIdAspect.class, userSession.getSessionId());
-		String userName = userSession.getUser().getName();
-		builder.set(RequestorUserNameAspect.class, userName);
-		builder.set(UserInfoAttribute.class, UserInfo.of(userName, userSession.getEffectiveRoles()));
-		builder.set(LenientAuthenticationFailure.class, null);
-		return builder.build();
+		return SessionIdentityContext.derive(userSession);
 	}
 
 	@FunctionalInterface

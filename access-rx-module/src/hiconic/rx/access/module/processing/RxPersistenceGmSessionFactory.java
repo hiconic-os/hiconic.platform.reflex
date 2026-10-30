@@ -77,7 +77,7 @@ public class RxPersistenceGmSessionFactory implements PersistenceGmSessionFactor
 		session.setModelAccessory(new RxModelAccessory(cmdResolver));
 		session.setResourcesAccessFactory(resourceAccessFactory);
 
-		session.setRequestEvaluator(requestEvaluator);
+		session.setRequestEvaluator(new SessionIdentityServiceRequestEvaluator(requestEvaluator, userSession));
 		session.setDescription("AccessContract PersistenceGmSession accessId=" + accessId + " model=" + configuredModel.name() + " accessType="
 				+ access.access().entityType().getTypeSignature());
 

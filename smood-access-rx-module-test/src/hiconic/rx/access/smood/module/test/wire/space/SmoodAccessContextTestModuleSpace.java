@@ -16,6 +16,7 @@ package hiconic.rx.access.smood.module.test.wire.space;
 import java.util.List;
 
 import com.braintribe.model.service.api.ServiceRequest;
+import com.braintribe.model.processing.service.api.aspect.RequestorUserNameAspect;
 import com.braintribe.model.util.meta.NewMetaModelGeneration;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
@@ -24,6 +25,7 @@ import hiconic.rx.access.module.api.AccessContract;
 import hiconic.rx.access.smood.module.test.context.AttributeContextMarker;
 import hiconic.rx.access.smood.module.test.context.AttributeContextProbeAspect;
 import hiconic.rx.access.smood.module.test.context.ReadAttributeContextMarker;
+import hiconic.rx.access.smood.module.test.context.ReadAttributeContextIdentity;
 import hiconic.rx.access.smood.module.test.wire.contract.SmoodAccessContextTestContract;
 import hiconic.rx.module.api.service.ModelConfigurations;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
@@ -44,10 +46,13 @@ public class SmoodAccessContextTestModuleSpace implements RxModuleContract, Smoo
 	public void configureServiceDomains(ServiceDomainConfigurations configurations) {
 		var accessDomain = configurations.byId("main-access");
 		accessDomain.addModel(new NewMetaModelGeneration().buildMetaModel(
-				"hiconic.platform.reflex:attribute-context-test-model", List.of(ReadAttributeContextMarker.T),
+				"hiconic.platform.reflex:attribute-context-test-model", List.of(ReadAttributeContextMarker.T, ReadAttributeContextIdentity.T),
 				List.of(ServiceRequest.T.getModel().getMetaModel())));
 		accessDomain.bindRequest(ReadAttributeContextMarker.T,
 				() -> (context, request) -> context.findOrNull(AttributeContextMarker.class));
+		accessDomain.bindRequest(ReadAttributeContextIdentity.T,
+				() -> (context, request) -> context.findOrNull(AttributeContextMarker.class) + ":"
+						+ context.findOrNull(RequestorUserNameAspect.class));
 	}
 
 	@Managed
