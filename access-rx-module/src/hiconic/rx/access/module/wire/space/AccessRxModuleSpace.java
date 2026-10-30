@@ -453,7 +453,7 @@ public class AccessRxModuleSpace implements RxModuleContract, AccessContract, Ac
 
 	private void configure(RxPersistenceGmSessionFactory bean) {
 		bean.setAccesses(accesses());
-		bean.setEvaluatorSupplier(platform.serviceProcessing()::evaluator);
+		bean.setRequestEvaluator(platform.serviceProcessing().evaluator());
 	}
 
 	@Managed

@@ -20,7 +20,6 @@ import java.util.concurrent.SynchronousQueue;
 
 import com.braintribe.common.concurrent.TaskScheduler;
 import com.braintribe.common.concurrent.TaskSchedulerImpl;
-import com.braintribe.execution.ExtendedScheduledThreadPoolExecutor;
 import com.braintribe.execution.ExtendedThreadPoolExecutor;
 import com.braintribe.execution.ThreadPoolBuilder;
 import com.braintribe.execution.virtual.CountingVirtualThreadFactory;
@@ -35,6 +34,7 @@ import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.module.api.wire.RxExecutionContract;
 import hiconic.rx.platform.processing.thread.AttributeContextThreadContextScope;
+import hiconic.rx.platform.processing.thread.ContextTransferringScheduledThreadPoolExecutor;
 import hiconic.rx.platform.processing.worker.BasicRxWorkerManager;
 import hiconic.rx.platform.processing.worker.BasicWorkerAspectRegistry;
 
@@ -74,11 +74,12 @@ public class RxExecutionSpace implements RxExecutionContract {
 
 	@Override
 	@Managed
-	public ExtendedScheduledThreadPoolExecutor scheduledExecutorService() {
-		ExtendedScheduledThreadPoolExecutor bean = new ExtendedScheduledThreadPoolExecutor( //
+	public ContextTransferringScheduledThreadPoolExecutor scheduledExecutorService() {
+		ContextTransferringScheduledThreadPoolExecutor bean = new ContextTransferringScheduledThreadPoolExecutor( //
 				5, //
 				new CountingVirtualThreadFactory("rx.scheduled-") //
 		);
+		bean.setThreadContextScoping(threadContextScoping());
 		bean.setAddThreadContextToNdc(true);
 		bean.allowCoreThreadTimeOut(true);
 		bean.setDescription("Rx Platform Scheduled Thread-Pool");

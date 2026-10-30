@@ -15,8 +15,11 @@ package hiconic.rx.access.module.processing;
 
 import java.util.Set;
 
-import com.braintribe.common.attribute.AttributeContext;
+import com.braintribe.common.attribute.AttributeContextBuilder;
+import com.braintribe.common.attribute.common.UserInfo;
+import com.braintribe.common.attribute.common.UserInfoAttribute;
 import com.braintribe.model.access.AbstractDelegatingAccess;
+import com.braintribe.model.access.IncrementalAccess;
 import com.braintribe.model.access.ModelAccessException;
 import com.braintribe.model.accessapi.CustomPersistenceRequest;
 import com.braintribe.model.accessapi.ManipulationRequest;
@@ -24,27 +27,34 @@ import com.braintribe.model.accessapi.ManipulationResponse;
 import com.braintribe.model.accessapi.ReferencesRequest;
 import com.braintribe.model.accessapi.ReferencesResponse;
 import com.braintribe.model.meta.GmMetaModel;
+import com.braintribe.model.processing.securityservice.api.attributes.LenientAuthenticationFailure;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
+import com.braintribe.model.processing.service.api.aspect.IsAuthorizedAspect;
+import com.braintribe.model.processing.service.api.aspect.RequestorSessionIdAspect;
+import com.braintribe.model.processing.service.api.aspect.RequestorUserNameAspect;
+import com.braintribe.model.processing.service.common.context.UserSessionAspect;
 import com.braintribe.model.query.EntityQuery;
 import com.braintribe.model.query.EntityQueryResult;
 import com.braintribe.model.query.PropertyQuery;
 import com.braintribe.model.query.PropertyQueryResult;
 import com.braintribe.model.query.SelectQuery;
 import com.braintribe.model.query.SelectQueryResult;
+import com.braintribe.model.usersession.UserSession;
 import com.braintribe.utils.collection.impl.AttributeContexts;
 
 /**
- * Keeps the attribute context of a persistence session active while the underlying access is
- * called. This is essential for equivalent sessions used on worker threads: AOP accesses create
- * their interceptor sessions from the current attribute context.
+ * Makes the stable identity of a persistence session visible to nested access processing without
+ * freezing the complete attribute context that happened to exist when the session was created.
+ * Every invocation derives from the current context, so attributes introduced by the current
+ * invocation remain visible. In particular this also applies to equivalent sessions.
  */
-public class ContextualizedIncrementalAccess extends AbstractDelegatingAccess {
+public class SessionIdentityIncrementalAccess extends AbstractDelegatingAccess {
 
-	private final AttributeContext attributeContext;
+	private final UserSession userSession;
 
-	public ContextualizedIncrementalAccess(com.braintribe.model.access.IncrementalAccess delegate, AttributeContext attributeContext) {
+	public SessionIdentityIncrementalAccess(IncrementalAccess delegate, UserSession userSession) {
 		setDelegate(delegate);
-		this.attributeContext = attributeContext;
+		this.userSession = userSession;
 	}
 
 	@Override
@@ -88,7 +98,10 @@ public class ContextualizedIncrementalAccess extends AbstractDelegatingAccess {
 	}
 
 	private <T> T scoped(AccessOperation<T> operation) throws ModelAccessException {
-		AttributeContexts.push(attributeContext);
+		if (userSession == null)
+			return operation.get();
+
+		AttributeContexts.push(identityContext());
 		try {
 			return operation.get();
 		} finally {
@@ -97,12 +110,27 @@ public class ContextualizedIncrementalAccess extends AbstractDelegatingAccess {
 	}
 
 	private <T> T scopedUnchecked(UncheckedAccessOperation<T> operation) {
-		AttributeContexts.push(attributeContext);
+		if (userSession == null)
+			return operation.get();
+
+		AttributeContexts.push(identityContext());
 		try {
 			return operation.get();
 		} finally {
 			AttributeContexts.pop();
 		}
+	}
+
+	private com.braintribe.common.attribute.AttributeContext identityContext() {
+		AttributeContextBuilder builder = AttributeContexts.derivePeek();
+		builder.set(UserSessionAspect.class, userSession);
+		builder.set(IsAuthorizedAspect.class, true);
+		builder.set(RequestorSessionIdAspect.class, userSession.getSessionId());
+		String userName = userSession.getUser().getName();
+		builder.set(RequestorUserNameAspect.class, userName);
+		builder.set(UserInfoAttribute.class, UserInfo.of(userName, userSession.getEffectiveRoles()));
+		builder.set(LenientAuthenticationFailure.class, null);
+		return builder.build();
 	}
 
 	@FunctionalInterface

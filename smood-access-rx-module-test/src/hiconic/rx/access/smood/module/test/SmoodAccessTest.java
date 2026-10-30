@@ -25,18 +25,54 @@ import com.braintribe.utils.collection.impl.AttributeContexts;
 
 import hiconic.rx.access.module.api.AccessContract;
 import hiconic.rx.access.model.md.InterceptAccessWith;
+import hiconic.rx.access.smood.module.test.context.AttributeContextMarker;
+import hiconic.rx.access.smood.module.test.context.AttributeContextProbeAspect;
+import hiconic.rx.access.smood.module.test.context.ReadAttributeContextMarker;
+import hiconic.rx.access.smood.module.test.wire.contract.SmoodAccessContextTestContract;
 import hiconic.rx.hibernate.model.test.Container;
 import hiconic.rx.hibernate.model.test.Element;
 import hiconic.rx.hibernate.model.test.Person;
 import hiconic.rx.test.common.AbstractRxTest;
 
 public class SmoodAccessTest extends AbstractRxTest {
+	private static final String DERIVED_MARKER = "derived-invocation";
+
+	@Test
+	public void sessionEvaluationUsesCurrentDerivedAttributeContext() {
+		PersistenceGmSession session = contextSession();
+
+		String observed = withMarker(() -> evaluateMarker(session));
+
+		Assertions.assertThat(observed).isEqualTo(DERIVED_MARKER);
+	}
+
+	@Test
+	public void equivalentSessionEvaluationUsesCurrentDerivedAttributeContext() {
+		PersistenceGmSession equivalentSession = contextSession().newEquivalentSession();
+
+		String observed = withMarker(() -> evaluateMarker(equivalentSession));
+
+		Assertions.assertThat(observed).isEqualTo(DERIVED_MARKER);
+	}
+
+	@Test
+	public void accessInvocationUsesCurrentDerivedAttributeContext() {
+		assertAccessSeesCurrentContext(contextSession());
+	}
+
+	@Test
+	public void equivalentSessionAccessUsesCurrentDerivedAttributeContext() {
+		assertAccessSeesCurrentContext(contextSession().newEquivalentSession());
+	}
+
 	@Test
 	public void accessModelsRemainOpenWithoutSecurityFeature() {
 		AccessContract access = resolveExportContract(AccessContract.class);
 		var model = access.accessDomains().byId("main-access").configuredDataModel();
 
-		Assertions.assertThat(model.systemCmdResolver().getMetaData().meta(InterceptAccessWith.T).list()).isEmpty();
+		Assertions.assertThat(model.systemCmdResolver().getMetaData().meta(InterceptAccessWith.T).list())
+				.extracting(InterceptAccessWith::getAssociate)
+				.containsOnly(resolveExportContract(SmoodAccessContextTestContract.class).attributeContextProbeAspect());
 
 		PersistenceGmSession systemSession = access.systemSessionFactory().newSession("main-access");
 		Person person = systemSession.create(Person.T);
@@ -84,6 +120,29 @@ public class SmoodAccessTest extends AbstractRxTest {
 
 	private PersistenceGmSession newSession() {
 		return resolveExportContract(AccessContract.class).systemSessionFactory().newSession("main-access");
+	}
+
+	private PersistenceGmSession contextSession() {
+		return resolveExportContract(AccessContract.class).contextSessionFactory().newSession("main-access");
+	}
+
+	private String evaluateMarker(PersistenceGmSession session) {
+		ReadAttributeContextMarker request = ReadAttributeContextMarker.T.create();
+		request.setDomainId("main-access");
+		return (String) request.eval(session).get();
+	}
+
+	private void assertAccessSeesCurrentContext(PersistenceGmSession session) {
+		AttributeContextProbeAspect probe = resolveExportContract(SmoodAccessContextTestContract.class).attributeContextProbeAspect();
+		probe.reset();
+
+		withMarker(() -> session.query().entities(EntityQueryBuilder.from(Person.T).done()).list());
+
+		Assertions.assertThat(probe.observedMarker()).isEqualTo(DERIVED_MARKER);
+	}
+
+	private <T> T withMarker(java.util.function.Supplier<T> action) {
+		return AttributeContexts.derivePeek().set(AttributeContextMarker.class, DERIVED_MARKER).buildAnd().execute(action::get);
 	}
 
 }
