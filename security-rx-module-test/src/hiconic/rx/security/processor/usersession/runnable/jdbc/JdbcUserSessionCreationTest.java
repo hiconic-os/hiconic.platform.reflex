@@ -83,7 +83,8 @@ public class JdbcUserSessionCreationTest extends UserSessionServiceTestBase {
 
 	@Test
 	public void testCreation_InternalUserSessionType() throws Exception {
-		testCreation(UserConfig.user, UserSessionType.internal, null, null, null, null, null, null);
+		Assertions.assertThat(testCreation(UserConfig.user, UserSessionType.internal, null, null, null, null, null, null).isUnsatisfiedBy(InvalidArgument.T))
+				.isTrue();
 	}
 
 	@Test

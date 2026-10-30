@@ -23,6 +23,7 @@ import com.braintribe.model.usersession.UserSession;
 import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
+import hiconic.rx.module.api.wire.RxAuthContract;
 import hiconic.rx.security.processor.JdbcUserSessionService;
 
 @Managed
@@ -47,9 +48,11 @@ public class DbBasedTestSpace extends BaseTestSpace {
 		return bean;
 	}
 
-	private UserSession systemUserSession() {
+	@Override
+	@Managed
+	public UserSession systemUserSession() {
 		UserSession bean = UserSession.T.create();
-		bean.setSessionId(UUID.randomUUID().toString());
+		bean.setSessionId(RxAuthContract.INTERNAL_SESSION_ID_PREFIX + UUID.randomUUID().toString());
 		return bean;
 	}
 

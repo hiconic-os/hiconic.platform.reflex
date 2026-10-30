@@ -34,6 +34,7 @@ import com.braintribe.wire.api.annotation.Managed;
 import com.braintribe.wire.api.space.WireSpace;
 
 import hiconic.rx.db.module.api.DatabaseContract;
+import hiconic.rx.module.api.wire.RxAuthContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
 import hiconic.rx.security.api.UserService;
 import hiconic.rx.security.model.configuration.SecurityConfiguration;
@@ -141,6 +142,7 @@ public class UserServicesSpace implements WireSpace {
 		bean.setSessionIdProvider(userSessionIdFactory());
 		bean.setNodeId(platform.application().nodeId());
 		bean.setDefaultUserSessionMaxIdleTime(userSessionMaxIdleTime());
+		bean.setSystemUserSession(platform.auth().systemUserSession());
 		return bean;
 	}
 
@@ -172,7 +174,7 @@ public class UserServicesSpace implements WireSpace {
 	public UserSessionIdProvider userSessionIdFactory() {
 		UserSessionIdProvider bean = new UserSessionIdProvider();
 		bean.setTypePrefixes(Map.of( //
-				UserSessionType.internal, "i-", //
+				UserSessionType.internal, RxAuthContract.INTERNAL_SESSION_ID_PREFIX, //
 				UserSessionType.trusted, "t-" //
 		));
 		return bean;

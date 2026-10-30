@@ -30,6 +30,7 @@ import com.braintribe.exception.Exceptions;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
+import com.braintribe.gm.model.security.reason.InternalSessionRejected;
 import com.braintribe.gm.model.security.reason.InvalidCredentials;
 import com.braintribe.gm.model.usersession.PersistenceUserSession;
 import com.braintribe.logging.Logger;
@@ -41,6 +42,8 @@ import com.braintribe.model.user.Role;
 import com.braintribe.model.user.User;
 import com.braintribe.model.usersession.UserSession;
 import com.braintribe.model.usersession.UserSessionType;
+
+import hiconic.rx.module.api.wire.RxAuthContract;
 
 public abstract class AbstractUserSessionService implements UserSessionService {
 
@@ -183,17 +186,39 @@ public abstract class AbstractUserSessionService implements UserSessionService {
 			return Reasons.build(InvalidArgument.T).text("User and user id cannot be null").toMaybe();
 		}
 
+		// A stored internal session could never be found again, see findUserSession(String).
+		if (type == UserSessionType.internal) {
+			return Reasons.build(InvalidArgument.T).text("Internal user sessions are not created by the user session service").toMaybe();
+		}
+
 		log.debug(() -> "Creating a user session for user '" + user.getName() + "' connected from '" + internetAddress + "'");
 		PersistenceUserSession pUserSession = createPersistenceUserSession(user, additionalRoles, type, maxIdleTime, maxAge, fixedExpiryDate,
 				internetAddress, properties, acquirationKey, blocksAuthenticationAfterLogout);
 		return Maybe.complete(mapToUserSession(pUserSession));
 	}
 
+	/**
+	 * The system session of this node is found in memory. This lookup is needed in-process: a request evaluated on a system
+	 * {@code PersistenceGmSession} carries the system session id, and when the evaluating thread has another session (e.g. the one of
+	 * the current user), the id is validated through this method.
+	 * <p>
+	 * Any other internal session id (prefix {@link RxAuthContract#INTERNAL_SESSION_ID_PREFIX}) is rejected with
+	 * {@link InternalSessionRejected}. Internal sessions live only in the memory of the node that created them, so such an id comes from
+	 * another node, typically through an HTTP call that should have been evaluated in-process or sent via messaging.
+	 */
 	@Override
 	public Maybe<UserSession> findUserSession(String sessionId) {
 		if (systemUserSession.getSessionId().equals(sessionId)) {
 			log.trace(() -> "Fetching system session '" + sessionId + "'; Returning: " + systemUserSession);
 			return Maybe.complete(systemUserSession);
+		}
+
+		if (sessionId != null && sessionId.startsWith(RxAuthContract.INTERNAL_SESSION_ID_PREFIX)) {
+			log.warn(() -> "Rejected authentication with internal session id '" + sessionId
+					+ "' of another node. Internal sessions exist only on the node that created them.");
+			return Reasons.build(InternalSessionRejected.T) //
+					.text("Session id belongs to an internal session of another node, which cannot be used for authentication.") //
+					.toMaybe();
 		}
 
 		log.trace(() -> "Fetching user session '" + sessionId + "'");

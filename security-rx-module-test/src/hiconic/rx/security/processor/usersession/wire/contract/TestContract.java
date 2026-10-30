@@ -15,6 +15,7 @@ package hiconic.rx.security.processor.usersession.wire.contract;
 
 import com.braintribe.common.db.wire.contract.DbTestDataSourcesContract;
 import com.braintribe.model.processing.securityservice.api.UserSessionService;
+import com.braintribe.model.usersession.UserSession;
 import com.braintribe.wire.api.Wire;
 import com.braintribe.wire.api.context.WireContext;
 import com.braintribe.wire.api.space.WireSpace;
@@ -40,4 +41,6 @@ public interface TestContract extends WireSpace {
 	TestConfig testConfig();
 
 	UserSessionService userSessionService();
+
+	UserSession systemUserSession();
 }

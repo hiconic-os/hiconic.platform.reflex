@@ -16,16 +16,19 @@
 package hiconic.rx.security.processor.usersession.runnable.jdbc;
 
 import java.util.Set;
+import java.util.UUID;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.braintribe.gm.model.security.reason.InternalSessionRejected;
 import com.braintribe.gm.model.security.reason.SessionNotFound;
 import com.braintribe.model.processing.securityservice.api.UserSessionService;
 import com.braintribe.model.user.User;
 import com.braintribe.model.usersession.UserSession;
 import com.braintribe.model.usersession.UserSessionType;
 
+import hiconic.rx.module.api.wire.RxAuthContract;
 import hiconic.rx.security.processor.usersession.base.UserSessionServiceTestBase;
 
 /**
@@ -53,14 +56,28 @@ public class JdbcUserSessionRetrievalTest extends UserSessionServiceTestBase {
 		UserSession userSession1 = userSessionService
 				.createUserSession(user1, UserSessionType.normal, null, null, null, defaultInternetAddress, defaultProperties, null, false).get();
 		UserSession userSession2 = userSessionService
-				.createUserSession(user2, UserSessionType.internal, null, null, null, defaultInternetAddress, defaultProperties, null, false).get();
+				.createUserSession(user2, UserSessionType.trusted, null, null, null, defaultInternetAddress, defaultProperties, null, false).get();
 
 		UserSession foundUserSession1 = userSessionService.findUserSession(userSession1.getSessionId()).get();
 		UserSession foundUserSession2 = userSessionService.findUserSession(userSession2.getSessionId()).get();
 
 		assertUserSession(foundUserSession1, null, user1, UserSessionType.normal, defaultInternetAddress, expectedEffectiveRoles1, defaultProperties);
-		assertUserSession(foundUserSession2, null, user2, UserSessionType.internal, defaultInternetAddress, expectedEffectiveRoles2,
+		assertUserSession(foundUserSession2, null, user2, UserSessionType.trusted, defaultInternetAddress, expectedEffectiveRoles2,
 				defaultProperties);
+	}
+
+	@Test
+	public void testFindUserSession_OwnSystemSessionId() throws Exception {
+		UserSession systemUserSession = context.contract().systemUserSession();
+
+		Assert.assertSame(systemUserSession, userSessionService.findUserSession(systemUserSession.getSessionId()).get());
+	}
+
+	@Test
+	public void testFindUserSession_ForeignInternalSessionId() throws Exception {
+		String foreignInternalSessionId = RxAuthContract.INTERNAL_SESSION_ID_PREFIX + UUID.randomUUID();
+
+		Assert.assertTrue(userSessionService.findUserSession(foreignInternalSessionId).isUnsatisfiedBy(InternalSessionRejected.T));
 	}
 
 }

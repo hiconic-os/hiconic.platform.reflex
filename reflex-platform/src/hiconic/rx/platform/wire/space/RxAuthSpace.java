@@ -113,7 +113,10 @@ public class RxAuthSpace implements RxAuthContract {
 
 		Date now = new Date();
 
-		bean.setSessionId(UUID.randomUUID().toString());
+		// The system session is never stored, so other nodes cannot know this id. The prefix marks it as internal: another node that
+		// receives it, e.g. through an HTTP call to the own services URL, rejects it with the specific InternalSessionRejected instead of
+		// a generic "session not found". See RxAuthContract.systemUserSession().
+		bean.setSessionId(INTERNAL_SESSION_ID_PREFIX + UUID.randomUUID().toString());
 		bean.setType(UserSessionType.internal);
 		bean.setCreationInternetAddress("0:0:0:0:0:0:0:1");
 		bean.setCreationDate(now);

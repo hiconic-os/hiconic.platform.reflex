@@ -51,7 +51,7 @@ public class JdbcUserSessionTouchingTest extends UserSessionServiceTestBase {
 				.createUserSession(user1, UserSessionType.normal, maxIdleTime, null, null, defaultInternetAddress, defaultProperties, null, false)
 				.get();
 		UserSession userSession2 = userSessionService
-				.createUserSession(user2, UserSessionType.internal, maxIdleTime, null, null, defaultInternetAddress, defaultProperties, null, false)
+				.createUserSession(user2, UserSessionType.trusted, maxIdleTime, null, null, defaultInternetAddress, defaultProperties, null, false)
 				.get();
 
 		Thread.sleep(10);
