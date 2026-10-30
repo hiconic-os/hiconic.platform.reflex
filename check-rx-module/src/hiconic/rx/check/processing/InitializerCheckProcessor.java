@@ -26,6 +26,7 @@ import hiconic.rx.check.model.result.CheckStatus;
  * <li>failed - {@link CheckStatus#fail fail}, with the reason or the stack trace as message
  * <li>never run - {@link CheckStatus#warn warn}
  * </ul>
+ * The message of the entry is the first line of the persisted message. If that has more lines, the details show all of it as a code block.
  * The status is the persisted outcome of the last run of the task, on whichever node it ran. A task that was skipped because its fingerprint did not
  * change thus reports the run that produced that fingerprint.
  * <p>
@@ -70,24 +71,55 @@ public class InitializerCheckProcessor implements CheckProcessor {
 
 	private CheckResultEntry entryFor(InitializerStatus status) {
 		CheckResultEntry result = switch (status.state()) {
-			case SUCCEEDED -> entry(status.taskName(), CheckStatus.ok, status.message());
-			case FAILED -> entry(status.taskName(), CheckStatus.fail, status.message());
+			case SUCCEEDED -> entry(status.taskName(), CheckStatus.ok, firstLine(status.message()));
+			case FAILED -> entry(status.taskName(), CheckStatus.fail, firstLine(status.message()));
 			case NEVER_RUN -> entry(status.taskName(), CheckStatus.warn, "The task is registered, but it never ran.");
 			case NOT_REGISTERED -> entry(status.taskName(), CheckStatus.warn, "The task is not registered.");
 		};
 
-		if (status.updated() != null) {
+		String details = lastRunTable(status) + fullMessage(status.message());
+		if (!details.isEmpty()) {
 			result.setDetailsAsMarkdown(true);
-			result.setDetails(details(status));
+			result.setDetails(details);
 		}
 
 		return result;
 	}
 
-	private static String details(InitializerStatus status) {
+	/** The message is rendered as plain text, which shows line breaks as spaces, so a multi-line text is shown in full only in the details. */
+	private static String firstLine(String s) {
+		return s == null ? null : s.lines().findFirst().orElse("");
+	}
+
+	/** A table with the last run, or an empty string if the task never ran. */
+	private static String lastRunTable(InitializerStatus status) {
+		if (status.updated() == null)
+			return "";
+
 		return "Last run | Node | Fingerprint\n" //
 				+ "--- | --- | ---\n" //
-				+ format(status.updated()) + " | " + orDash(status.updatedBy()) + " | " + orDash(status.fingerprint()) + "\n";
+				+ format(status.updated()) + " | " + orDash(status.updatedBy()) + " | " + orDash(status.fingerprint()) + "\n\n";
+	}
+
+	/** The whole message as a code block, which keeps its line breaks and indentation, or an empty string if it has fewer than two lines. */
+	private static String fullMessage(String message) {
+		if (message == null || message.lines().count() < 2)
+			return "";
+
+		String fence = backtickFenceFor(message);
+		return fence + "\n" + message + "\n" + fence + "\n";
+	}
+
+	/** A backtick fence longer than any backtick run in the text, so the text cannot close the code block. */
+	private static String backtickFenceFor(String text) {
+		int longestRun = 0;
+		int run = 0;
+		for (char c : text.toCharArray()) {
+			run = c == '`' ? run + 1 : 0;
+			longestRun = Math.max(longestRun, run);
+		}
+
+		return "`".repeat(Math.max(3, longestRun + 1));
 	}
 
 	private static String format(Date date) {

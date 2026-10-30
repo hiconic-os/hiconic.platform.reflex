@@ -69,8 +69,9 @@ test("masks view generation and supports repeated exports", async ({ page }) => 
   async function maskedExport() {
     await page.locator(".view-export summary").click();
     const pending = page.waitForEvent("download");
+    const maskVisible = page.getByRole("status").filter({ hasText: "Preparing view export" }).waitFor({ state: "visible" });
     await page.getByRole("menuitem", { name: "Plain text" }).click();
-    await expect(page.getByRole("status")).toContainText("Preparing view export");
+    await maskVisible;
     await pending;
     await expect(page.getByRole("status")).toHaveCount(0);
   }
