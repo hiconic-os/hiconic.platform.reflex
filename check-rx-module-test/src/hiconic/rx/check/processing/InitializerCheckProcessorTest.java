@@ -78,6 +78,40 @@ public class InitializerCheckProcessorTest {
 		assertThat(entry.getDetails()).contains("1970-01-01T00:00:01Z", "node-1", "fp-task-a");
 	}
 
+	@Test
+	public void singleLineMessage_NotInDetails() {
+		addStatus("task-a", InitializerState.FAILED, "Failed with reason: broken");
+
+		CheckResultEntry entry = check().get(0);
+		assertThat(entry.getMessage()).isEqualTo("Failed with reason: broken");
+		assertThat(entry.getDetails()).doesNotContain("broken", "```");
+	}
+
+	@Test
+	public void multiLineMessage_FirstLineAsMessage_WholeInDetails() {
+		addStatus("task-a", InitializerState.FAILED, "Failed with reason: broken\n    [Type] problem 1\n    [Type] problem 2");
+
+		CheckResultEntry entry = check().get(0);
+		assertThat(entry.getMessage()).isEqualTo("Failed with reason: broken");
+		assertThat(entry.getDetails()).contains("fp-task-a", "```\nFailed with reason: broken\n    [Type] problem 1\n    [Type] problem 2\n```");
+	}
+
+	@Test
+	public void multiLineMessageWithoutLastRun_WholeInDetails() {
+		statuses.put("task-a", new InitializerStatus("task-a", InitializerState.FAILED, null, null, null, "Failed\n    problem"));
+
+		CheckResultEntry entry = check().get(0);
+		assertThat(entry.getDetailsAsMarkdown()).isTrue();
+		assertThat(entry.getDetails()).isEqualTo("```\nFailed\n    problem\n```\n");
+	}
+
+	@Test
+	public void multiLineMessageWithBackticks_LongerFence() {
+		addStatus("task-a", InitializerState.FAILED, "Failed\n```code```");
+
+		assertThat(check().get(0).getDetails()).contains("````\nFailed\n```code```\n````");
+	}
+
 	/** E.g. the RX registry, which knows the statuses only after the initializers ran. */
 	@Test
 	public void unreadableStatuses_SingleFailedEntry() {
