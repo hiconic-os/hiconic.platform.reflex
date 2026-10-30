@@ -39,6 +39,7 @@ import com.braintribe.model.processing.service.api.SessionIdAspect;
 import com.braintribe.model.processing.service.common.context.UserSessionAspect;
 import com.braintribe.model.processing.service.common.FailureCodec;
 import com.braintribe.model.processing.service.common.ServiceResults;
+import com.braintribe.model.service.api.AuthorizableRequest;
 import com.braintribe.model.service.api.ExecuteAuthorized;
 import com.braintribe.model.service.api.InstanceId;
 import com.braintribe.model.service.api.MulticastRequest;
@@ -59,6 +60,7 @@ import com.braintribe.transport.messaging.api.MessagingSessionProvider;
 import com.braintribe.utils.lcd.Lazy;
 import com.braintribe.utils.lcd.NullSafe;
 
+import hiconic.rx.module.api.wire.RxAuthContract;
 import hiconic.rx.topology.api.LiveInstances;
 
 /**
@@ -375,8 +377,7 @@ public class MulticastRxProcessor implements ServiceProcessor<MulticastRequest, 
 	protected Message createRequestMessage(ServiceRequestContext requestContext, MulticastRequest request, boolean async) {
 		MulticastMsg msg = msg();
 
-		// TODO: Disk and Andre will review meta-data handling anyway
-		ServiceRequest serviceRequest = request.getServiceRequest();
+		ServiceRequest serviceRequest = withoutInternalSession(request.getServiceRequest());
 
 		request.setSender(senderId);
 
@@ -392,6 +393,7 @@ public class MulticastRxProcessor implements ServiceProcessor<MulticastRequest, 
 		requestMessage.setCorrelationId(correlationId);
 		requestMessage.setDestination(msg.requestTopic);
 		requestContext.findAttribute(SessionIdAspect.class) //
+			.filter(sid -> !isInternalSession(sid)) //
 			.ifPresent(sid -> requestMessage.getProperties().put(MessageProperties.producerSessionId.getName(), sid));
 		if (!async) {
 			requestMessage.setReplyTo(msg.responseTopic);
@@ -436,13 +438,31 @@ public class MulticastRxProcessor implements ServiceProcessor<MulticastRequest, 
 	}
 
 	private boolean requiresAuthorizedWrapper(ServiceRequestContext requestContext, String requestSessionId) {
-		if (requestSessionId == null)
+		if (requestSessionId == null || isInternalSession(requestSessionId))
 			return false;
 
 		UserSession contextSession = requestContext.findAttribute(UserSessionAspect.class).orElse(null);
 		return contextSession == null //
 				|| contextSession.getType() != UserSessionType.internal //
 				|| !requestSessionId.equals(contextSession.getSessionId());
+	}
+
+	/** Returns a copy without the session id if the payload carries an internal session, otherwise the payload itself. */
+	private ServiceRequest withoutInternalSession(ServiceRequest payload) {
+		if (!(payload instanceof AuthorizableRequest authorizable) || !isInternalSession(authorizable.getSessionId()))
+			return payload;
+
+		AuthorizableRequest copy = authorizable.shallowCopy();
+		copy.setSessionId(null);
+		return copy;
+	}
+
+	/**
+	 * Internal sessions, such as the system session, exist only in the memory of this node, so their id is never sent: a request that carries
+	 * it runs as the system user of the receiving node instead.
+	 */
+	private static boolean isInternalSession(String sessionId) {
+		return sessionId != null && sessionId.startsWith(RxAuthContract.INTERNAL_SESSION_ID_PREFIX);
 	}
 
 	@Override
