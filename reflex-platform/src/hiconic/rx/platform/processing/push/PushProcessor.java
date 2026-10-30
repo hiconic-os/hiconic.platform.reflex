@@ -22,6 +22,7 @@ import com.braintribe.model.processing.service.api.ServiceRequestContext;
 import com.braintribe.model.processing.service.common.FailureCodec;
 import com.braintribe.model.processing.service.impl.AbstractDispatchingServiceProcessor;
 import com.braintribe.model.processing.service.impl.DispatchConfiguration;
+import com.braintribe.model.service.api.AuthorizableRequest;
 import com.braintribe.model.service.api.InstanceId;
 import com.braintribe.model.service.api.InternalPushRequest;
 import com.braintribe.model.service.api.MulticastRequest;
@@ -131,10 +132,15 @@ public class PushProcessor extends AbstractDispatchingServiceProcessor<PushReque
 		return result;
 	}
 
+	/**
+	 * The session id is not copied. The push was authorized here already (only the internal domain binds it), and the receiving nodes run the
+	 * internal request as their own system user. A copied id would be the system session of this node, which other nodes do not know.
+	 */
 	private InternalPushRequest cloneToInternalRequest(PushRequest request) {
 		InternalPushRequest internalPush = InternalPushRequest.T.create();
 		for (Property property : request.entityType().getProperties())
-			internalPush.write(property, request.read(property));
+			if (!property.getName().equals(AuthorizableRequest.sessionId))
+				internalPush.write(property, request.read(property));
 		return internalPush;
 	}
 }
