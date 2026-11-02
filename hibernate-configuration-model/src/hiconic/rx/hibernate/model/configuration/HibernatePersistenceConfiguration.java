@@ -16,6 +16,7 @@ package hiconic.rx.hibernate.model.configuration;
 import java.util.Map;
 
 import com.braintribe.model.generic.GenericEntity;
+import com.braintribe.model.generic.annotation.Initializer;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 
@@ -50,5 +51,14 @@ public interface HibernatePersistenceConfiguration extends GenericEntity {
 	/** If true, sets Hibernate's Environment.SHOW_SQL property to true. */
 	boolean getShowSql();
 	void setShowSql(boolean showSql);
+
+	/**
+	 * Value for Hibernate's Environment.HBM2DDL_AUTO property.
+	 *
+	 * @see SchemaUpdateMode
+	 */
+	@Initializer("update")
+	SchemaUpdateMode getSchemaUpdateMode();
+	void setSchemaUpdateMode(SchemaUpdateMode schemaUpdateMode);
 
 }

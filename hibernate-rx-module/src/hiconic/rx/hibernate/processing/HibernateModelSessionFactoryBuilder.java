@@ -48,6 +48,7 @@ import com.braintribe.utils.StringTools;
 import com.braintribe.utils.stream.ReaderInputStream;
 
 import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguration;
+import hiconic.rx.hibernate.model.configuration.SchemaUpdateMode;
 
 /* package */ class HibernateModelSessionFactoryBuilder {
 	private static final Logger log = Logger.getLogger(HibernateModelSessionFactoryBuilder.class);
@@ -63,6 +64,10 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 	private Integer defaultMappingVersion;
 	private String instanceId;
 	private Supplier<Locking> lockingSupplier;
+
+	// Results of build(), logged once it is done
+	private long mappingsGenerated;
+	private String schemaAction;
 
 	public HibernateModelSessionFactoryBuilder(SessionFactoryKey key) {
 		this.hpConfiguration = CommonTools.getValueOrSupplyDefault(key.configuration(), HibernatePersistenceConfiguration.T::create);
@@ -110,6 +115,12 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 
 	public SessionFactory build() {
 		long started = System.nanoTime();
+		SessionFactory result = buildSessionFactory();
+		logTimings(started);
+		return result;
+	}
+
+	private SessionFactory buildSessionFactory() {
 		Configuration configuration = new Configuration();
 
 		Properties properties = configuration.getProperties();
@@ -129,27 +140,31 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 		addConfigureadProperties(properties, hpConfiguration.getProperties());
 
 		MappingBundle mappings = generateMappings(configuration, mappingVersion);
-		long mappingsGenerated = System.nanoTime();
+		mappingsGenerated = System.nanoTime();
+
+		SchemaUpdateMode schemaUpdateMode = schemaUpdateMode();
+		if (schemaUpdateMode != SchemaUpdateMode.update) {
+			// No schema update, thus neither the gate nor the DbUpdateStatements, which only run together with a schema update.
+			setSchemaAction(properties, schemaUpdateMode.name());
+			return configuration.buildSessionFactory();
+		}
+
 		Locking locking = lockingSupplier == null ? null : lockingSupplier.get();
 		if (locking == null) {
 			log.warn("No platform Locking is available; Hibernate schema update cannot be coordinated across nodes and will run unconditionally for ["
 					+ schemaIdentity() + "]");
-			properties.put(Environment.HBM2DDL_AUTO, "update");
-			SessionFactory result = buildWithDbUpdateStatements(configuration, mappings);
-			logTimings(schemaIdentity(), true, started, mappingsGenerated);
-			return result;
+			setSchemaAction(properties, "update");
+			return buildWithDbUpdateStatements(configuration, mappings);
 		}
 
-		String schemaIdentity = schemaIdentity();
-		try (HibernateSchemaUpdateGate.Decision decision = new HibernateSchemaUpdateGate(dataSource, locking, schemaIdentity, physicalSchemaIdentity(),
+		try (HibernateSchemaUpdateGate.Decision decision = new HibernateSchemaUpdateGate(dataSource, locking, schemaIdentity(), physicalSchemaIdentity(),
 				mappings.fingerprint(), instanceId).decide()) {
-			properties.put(Environment.HBM2DDL_AUTO, decision.updateRequired() ? "update" : "none");
+			setSchemaAction(properties, decision.updateRequired() ? "update" : "none");
 			// The DbUpdateStatements are part of the fingerprint, thus they only run together with a schema update, under its lock.
 			SessionFactory result = decision.updateRequired() ? buildWithDbUpdateStatements(configuration, mappings)
 					: configuration.buildSessionFactory();
 			try {
 				decision.markSuccessful();
-				logTimings(schemaIdentity, decision.updateRequired(), started, mappingsGenerated);
 				return result;
 			} catch (RuntimeException e) {
 				result.close();
@@ -259,12 +274,22 @@ import hiconic.rx.hibernate.model.configuration.HibernatePersistenceConfiguratio
 				.orElse(List.of());
 	}
 
-	private void logTimings(String schemaIdentity, boolean schemaUpdate, long started, long mappingsGenerated) {
+	private SchemaUpdateMode schemaUpdateMode() {
+		SchemaUpdateMode result = hpConfiguration.getSchemaUpdateMode();
+		return result == null ? SchemaUpdateMode.update : result;
+	}
+
+	private void setSchemaAction(Properties properties, String schemaAction) {
+		this.schemaAction = schemaAction;
+		properties.put(Environment.HBM2DDL_AUTO, schemaAction);
+	}
+
+	private void logTimings(long started) {
 		long completed = System.nanoTime();
 		long mappingMillis = (mappingsGenerated - started) / 1_000_000;
 		long sessionFactoryMillis = (completed - mappingsGenerated) / 1_000_000;
-		log.info("Built Hibernate SessionFactory for [" + schemaIdentity + "] in " + ((completed - started) / 1_000_000)
-				+ " ms (mapping " + mappingMillis + " ms, schema action " + (schemaUpdate ? "update" : "none")
+		log.info("Built Hibernate SessionFactory for [" + schemaIdentity() + "] in " + ((completed - started) / 1_000_000)
+				+ " ms (mapping " + mappingMillis + " ms, schema action " + schemaAction
 				+ ", SessionFactory/gate " + sessionFactoryMillis + " ms)");
 	}
 
