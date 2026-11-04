@@ -1434,7 +1434,11 @@ function LogCell(props: { record: LogRecord; column: ColumnKey; nodeAliases: Rea
     return <span><b class={`level ${level().toLowerCase()}`}>{level()}</b></span>;
 
   const value = columnValue(props.record, props.column, props.nodeAliases);
-  const title = props.column === "node" ? props.record.origin?.nodeId || value : value;
+  const title = props.column === "node"
+    ? props.record.origin?.nodeId || value
+    : props.column === "logger"
+      ? props.record.loggerName || value
+      : value;
   return <span class={props.column} title={title}>{value}</span>;
 }
 
@@ -1446,9 +1450,13 @@ function TextLogRecord(props: {
 }) {
   const level = () => enumName(props.record.level).toLowerCase();
   const fields = () => props.columns
-    .map(column => ({ column, value: textColumnValue(props.record, column.key, props.nodeAliases) }))
+    .map(column => ({
+      column,
+      value: textColumnValue(props.record, column.key, props.nodeAliases),
+      title: column.key === "logger" ? props.record.loggerName || undefined : undefined,
+    }))
     .filter(field => field.value !== "");
-  return <span class="text-log-record" onClick={props.onSelect}><For each={fields()}>{(field, index) => <><Show when={index() > 0}><span class="text-separator">{"  "}</span></Show><span class={`text-field ${field.column.key} ${field.column.key === "level" ? level() : ""}`}>{field.value}</span></>}</For>{"\n"}</span>;
+  return <span class="text-log-record" onClick={props.onSelect}><For each={fields()}>{(field, index) => <><Show when={index() > 0}><span class="text-separator">{"  "}</span></Show><span class={`text-field ${field.column.key} ${field.column.key === "level" ? level() : ""}`} title={field.title}>{field.value}</span></>}</For>{"\n"}</span>;
 }
 
 function textColumnValue(record: LogRecord, column: ColumnKey, nodeAliases: ReadonlyMap<string, number>): string {
@@ -1477,7 +1485,7 @@ function columnValue(record: LogRecord, column: ColumnKey, nodeAliases: Readonly
     case "position":
       return formatPosition(record);
     case "logger":
-      return shortLogger(record.loggerName);
+      return simpleLoggerName(record.loggerName);
     case "thread":
       return record.threadName || "—";
     case "source":
@@ -1798,10 +1806,10 @@ function tailEndReached(to: string | undefined) {
   return Number.isFinite(end) && end <= Date.now();
 }
 
-function shortLogger(value: string | null | undefined) {
+function simpleLoggerName(value: string | null | undefined) {
   if (!value) return "—";
-  const parts = value.split(".");
-  return parts.length > 3 ? `…${parts.slice(-3).join(".")}` : value;
+  const separator = value.lastIndexOf(".");
+  return separator >= 0 && separator < value.length - 1 ? value.slice(separator + 1) : value;
 }
 
 function mapEntries(value: unknown): [string, string][] {
