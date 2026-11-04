@@ -1,8 +1,10 @@
 package hiconic.rx.log.reflection.processing;
 
+import java.io.BufferedReader;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -529,13 +531,29 @@ public class LogBundleWriter {
 			target.putNextEntry(new ZipEntry(unique(names, entry.getKey())));
 			boolean jsonl = entry.getKey().endsWith(".jsonl");
 			for (MergedContribution contribution : entry.getValue()) {
-				if (!jsonl)
-					target.write(("--- node #" + contribution.nodeIndex() + " ---\n").getBytes(StandardCharsets.UTF_8));
 				try (InputStream input = contribution.content().openInputStream()) {
-					input.transferTo(target);
+					writeNodeMarked(target, input, contribution.nodeIndex(), jsonl);
 				}
 			}
 			target.closeEntry();
+		}
+	}
+
+	private static void writeNodeMarked(ZipOutputStream target, InputStream input, int nodeIndex, boolean jsonl)
+			throws IOException {
+		try (BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
+			for (String line; (line = reader.readLine()) != null;) {
+				if (jsonl && !line.isBlank()) {
+					@SuppressWarnings("unchecked")
+					Map<String, Object> record = objectMapper.readValue(line, LinkedHashMap.class);
+					record.put("node", "#" + nodeIndex);
+					line = objectMapper.writeValueAsString(record);
+				} else if (!jsonl) {
+					line = "#" + nodeIndex + " " + line;
+				}
+				target.write(line.getBytes(StandardCharsets.UTF_8));
+				target.write('\n');
+			}
 		}
 	}
 

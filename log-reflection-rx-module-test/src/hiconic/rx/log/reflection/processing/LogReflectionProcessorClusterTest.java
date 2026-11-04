@@ -159,11 +159,13 @@ public class LogReflectionProcessorClusterTest {
 		multicastResponse.getResponses().put(InstanceId.of("node-1", "logs-app"),
 				envelope(zipResource(Map.of(
 						"application_node-1.log", "node one\n",
-						"__merged__/application_merged.log", "node one\n"))));
+						"__merged__/application_merged.log", "node one\n",
+						"__merged__/application_merged.jsonl", "{\"message\":\"one\"}\n"))));
 		multicastResponse.getResponses().put(InstanceId.of("node-2", "logs-app"),
 				envelope(zipResource(Map.of(
 						"application_node-2.log", "node two\n",
-						"__merged__/application_merged.log", "node two\n"))));
+						"__merged__/application_merged.log", "node two\n",
+						"__merged__/application_merged.jsonl", "{\"message\":\"two\"}\n"))));
 
 		Evaluator<ServiceRequest> evaluator = evaluator(request -> {
 			dispatched.set((MulticastRequest) request);
@@ -196,9 +198,12 @@ public class LogReflectionProcessorClusterTest {
 		assertThat(local.getFrom()).isEqualTo(new Date(100));
 		assertThat(local.getTo()).isEqualTo(new Date(200));
 		assertThat(entries.keySet()).containsExactlyInAnyOrder(
-				"application_node-1.log", "application_node-2.log", "application_merged.log", "manifest.json");
+				"application_node-1.log", "application_node-2.log", "application_merged.log",
+				"application_merged.jsonl", "manifest.json");
 		assertThat(entries.get("application_merged.log")).isEqualTo(
-				"--- node #1 ---\nnode one\n--- node #2 ---\nnode two\n");
+				"#1 node one\n#2 node two\n");
+		assertThat(entries.get("application_merged.jsonl")).isEqualTo(
+				"{\"message\":\"one\",\"node\":\"#1\"}\n{\"message\":\"two\",\"node\":\"#2\"}\n");
 		assertThat(entries.get("manifest.json"))
 				.contains("{\"index\": 1, \"origin\": \"logs-app@node-1\"}")
 				.contains("{\"index\": 2, \"origin\": \"logs-app@node-2\"}");

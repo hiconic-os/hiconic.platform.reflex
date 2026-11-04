@@ -14,6 +14,7 @@
 package hiconic.rx.web.server.model.config;
 
 import java.util.Map;
+import java.util.Set;
 
 import com.braintribe.model.generic.GenericEntity;
 import com.braintribe.model.generic.annotation.Initializer;
@@ -45,6 +46,7 @@ public interface WebServerConfiguration extends GenericEntity {
 	String exposeHealthEndpointsAtDefaultEndpointsBasePath = "exposeHealthEndpointsAtDefaultEndpointsBasePath";
 	String accessLogEnabled = "accessLogEnabled";
 	String accessLogFormat = "accessLogFormat";
+	String accessLogExcludes = "accessLogExcludes";
 	String pushSseEndpointPath = "pushSseEndpointPath";
 	String pushSseHeartbeatIntervalMillis = "pushSseHeartbeatIntervalMillis";
 	String pushSseReplayCapacity = "pushSseReplayCapacity";
@@ -158,10 +160,16 @@ public interface WebServerConfiguration extends GenericEntity {
 	boolean getAccessLogEnabled();
 	void setAccessLogEnabled(boolean accessLogEnabled);
 
-	@Description("Undertow access-log pattern used when accessLogEnabled is true.")
-	@Initializer("'%h %l %u \"%r\" %s %b %Dms'")
+	@Description("Undertow access-log pattern used when accessLogEnabled is true. The hiconic.accessLogOutcome request attribute contains "
+			+ "the sent status, NO_RESPONSE, or a failure marker with an optional traceback ID.")
+	@Initializer("'%h %l %u \"%r\" %{r,hiconic.accessLogOutcome} %b %Dms'")
 	String getAccessLogFormat();
 	void setAccessLogFormat(String accessLogFormat);
+
+	@Description("Glob patterns for request paths omitted from the access log after a successful response has started and its status is below 400. "
+			+ "'*' matches within one path segment and '**' across path segments. Errors and exchanges without a started response are always logged.")
+	Set<String> getAccessLogExcludes();
+	void setAccessLogExcludes(Set<String> accessLogExcludes);
 
 	@Description("Path of the SSE transport endpoint for platform push, relative to defaultEndpointsBasePath. The value must not end with '/'.")
 	@Pattern(".*[^\\/]$")

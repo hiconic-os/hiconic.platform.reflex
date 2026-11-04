@@ -45,6 +45,8 @@ import com.braintribe.wire.api.context.WireContextConfiguration;
 
 import dev.hiconic.servlet.api.remote.RemoteClientAddressResolver;
 import dev.hiconic.servlet.impl.remote.StandardRemoteClientAddressResolver;
+import hiconic.platform.reflex.web_server.processing.AccessLogExclusionPredicate;
+import hiconic.platform.reflex.web_server.processing.AccessLogFailureTrackingHandler;
 import hiconic.platform.reflex.web_server.processing.ApplicationStateGateHandler;
 import hiconic.platform.reflex.web_server.processing.DelegatingAuthenticationContextFilter;
 import hiconic.platform.reflex.web_server.processing.DefaultRxServlet;
@@ -688,10 +690,12 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 
 	@Managed
 	private AccessLogHandler accessLogHandler() {
-		AccessLogHandler bean = new AccessLogHandler(applicationStateGateHandler(), logReceiver(), configuration().getAccessLogFormat(),
-				Undertow.class.getClassLoader(), exchange -> {
+		var excludes = new AccessLogExclusionPredicate(configuration().getAccessLogExcludes());
+		var tracked = new AccessLogFailureTrackingHandler(applicationStateGateHandler());
+		AccessLogHandler bean = new AccessLogHandler(tracked, logReceiver(), configuration().getAccessLogFormat(),
+				WebServerRxModuleSpace.class.getClassLoader(), exchange -> {
 					var control = RequestMetaLoggingHandler.control(exchange);
-					return control == null || !control.isSuppressed();
+					return (control == null || !control.isSuppressed()) && excludes.resolve(exchange);
 				});
 		return bean;
 	}

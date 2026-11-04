@@ -21,6 +21,8 @@ import java.util.UUID;
 import com.braintribe.cfg.Configurable;
 import com.braintribe.logging.Logger;
 
+import hiconic.platform.reflex.web_server.processing.AccessLogOutcome;
+
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.FilterConfig;
@@ -48,6 +50,7 @@ public class ExceptionFilter implements Filter {
 		}
 		catch(Throwable t) {
 			String tracebackId = UUID.randomUUID().toString();
+			AccessLogOutcome.recordFailure(request, tracebackId);
 
 			ExceptionHandlingContext context = new ExceptionHandlingContext(tracebackId, request, response, t);
 			if (response.isCommitted()) {
