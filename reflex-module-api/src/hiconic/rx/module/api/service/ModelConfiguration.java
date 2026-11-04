@@ -76,9 +76,10 @@ public interface ModelConfiguration extends ModelSymbol {
 	InterceptorBuilder bindInterceptor(String identification);
 
 	/**
-	 * Declares the execution order independently from interceptor registration. A later call replaces the previously declared order. Identifiers
-	 * which are not registered on this configured model are ignored; registered interceptors not mentioned here retain their registration order
-	 * behind the explicitly ordered interceptors.
+	 * Declares an interceptor-chain constraint independently from interceptor registration. Calls are cumulative and resolved after all modules have
+	 * configured this model. Each adjacent pair declares an outer/before to inner/after relation. Identifiers which are not effective for a request
+	 * are ignored. Interceptors not constrained explicitly retain the legacy-compatible pre/around/post behavior as far as possible. Since post
+	 * processors execute while the chain unwinds, their response-side execution order is naturally the reverse of their chain order.
 	 */
 	void orderInterceptors(String... identifications);
 

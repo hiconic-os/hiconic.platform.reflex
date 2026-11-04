@@ -15,12 +15,13 @@ package hiconic.rx.platform.models;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
-import java.util.NoSuchElementException;
+import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -38,17 +39,18 @@ import com.braintribe.model.processing.meta.editor.BasicModelMetaDataEditor;
 import com.braintribe.model.processing.meta.editor.ModelMetaDataEditor;
 import com.braintribe.model.processing.meta.oracle.BasicModelOracle;
 import com.braintribe.model.processing.meta.oracle.ModelOracle;
-import com.braintribe.model.processing.service.api.InterceptorKind;
 import com.braintribe.model.processing.service.api.MappingServiceProcessor;
+import com.braintribe.model.processing.service.api.ServiceAroundProcessor;
 import com.braintribe.model.processing.service.api.ServiceInterceptorProcessor;
+import com.braintribe.model.processing.service.api.ServicePostProcessor;
+import com.braintribe.model.processing.service.api.ServicePreProcessor;
 import com.braintribe.model.processing.service.api.ServiceProcessor;
 import com.braintribe.model.processing.service.impl.ServiceProcessors;
 import com.braintribe.model.service.api.ServiceRequest;
+import com.braintribe.model.service.api.result.OverridingPostProcessResponse;
 
 import hiconic.rx.model.service.processing.md.AroundProcessWith;
 import hiconic.rx.model.service.processing.md.InterceptWith;
-import hiconic.rx.model.service.processing.md.PostProcessWith;
-import hiconic.rx.model.service.processing.md.PreProcessWith;
 import hiconic.rx.model.service.processing.md.ProcessWith;
 import hiconic.rx.module.api.service.InterceptorBuilder;
 import hiconic.rx.module.api.service.ModelConfiguration;
@@ -63,7 +65,8 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 	private final List<Consumer<ModelMetaDataEditor>> modelConfigurers = Collections.synchronizedList(new ArrayList<>());
 	private final Set<GmMetaModel> models = new LinkedHashSet<>();
 	private final List<InterceptorEntry> interceptors = Collections.synchronizedList(new ArrayList<>());
-	private volatile List<String> interceptorOrdering = List.of();
+	private final List<InterceptorOrdering> interceptorOrderings = Collections.synchronizedList(new ArrayList<>());
+	private volatile List<InterceptorOrdering> effectiveInterceptorOrderings;
 
 	private boolean configuringModels = true;
 
@@ -117,27 +120,22 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 	}
 
 	private void configureInterceptors(ModelMetaDataEditor editor) {
-		List<InterceptorEntry> orderedInterceptors = orderedInterceptors();
-		int prio = orderedInterceptors.size();
-		for (InterceptorEntry entry : orderedInterceptors) {
-			final InterceptWith interceptWith;
-			ServiceInterceptorProcessor processor = entry.interceptorSupplier.get();
-			InterceptorKind kind = processor.getKind();
-			switch (kind) {
-				case around:
-					interceptWith = AroundProcessWith.T.create();
-					break;
-				case post:
-					interceptWith = PostProcessWith.T.create();
-					break;
-				case pre:
-					interceptWith = PreProcessWith.T.create();
-					break;
-				default:
-					throw new UnsupportedOperationException("Unsupported interception kind " + kind);
-			}
+		List<InterceptorEntry> entries;
+		synchronized (interceptors) {
+			entries = new ArrayList<>(interceptors);
+		}
 
-			RxInterceptor interceptor = new RxInterceptor(processor, entry.predicate);
+		Set<String> identifications = new LinkedHashSet<>();
+		for (InterceptorEntry entry : entries)
+			if (!identifications.add(entry.identification))
+				throw new IllegalStateException("Duplicate service interceptor identification: '" + entry.identification + "'");
+
+		int prio = entries.size();
+		for (InterceptorEntry entry : entries) {
+			ServiceInterceptorProcessor processor = entry.processor();
+			InterceptWith interceptWith = AroundProcessWith.T.create();
+
+			RxInterceptor interceptor = new RxInterceptor(entry.identification, processor.getKind(), asAroundProcessor(processor), entry.predicate);
 
 			interceptWith.setAssociate(interceptor);
 			// CMD returns multi metadata by descending conflict priority. The first
@@ -148,53 +146,148 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 		}
 	}
 
-	private List<InterceptorEntry> orderedInterceptors() {
-		List<InterceptorEntry> entries;
-		synchronized (interceptors) {
-			entries = new ArrayList<>(interceptors);
-		}
+	@SuppressWarnings({ "unchecked", "deprecation" })
+	static ServiceAroundProcessor<ServiceRequest, Object> asAroundProcessor(ServiceInterceptorProcessor processor) {
+		switch (processor.getKind()) {
+			case around:
+				return (ServiceAroundProcessor<ServiceRequest, Object>) processor;
+			case pre:
+				ServicePreProcessor<ServiceRequest> preProcessor = (ServicePreProcessor<ServiceRequest>) processor;
+				return (context, request, proceedContext) -> proceedContext.proceed(preProcessor.process(context, request));
+			case post:
+				ServicePostProcessor<Object> postProcessor = (ServicePostProcessor<Object>) processor;
+				return (context, request, proceedContext) -> {
+					Object response = proceedContext.proceed(request);
+					Object postProcessorResponse = postProcessor.process(context, response);
 
-		Map<String, InterceptorEntry> byIdentification = new LinkedHashMap<>();
-		for (InterceptorEntry entry : entries) {
-			if (byIdentification.putIfAbsent(entry.identification, entry) != null)
-				throw new IllegalStateException("Duplicate service interceptor identification: '" + entry.identification + "'");
-		}
+					if (response != postProcessorResponse) {
+						if (postProcessorResponse instanceof OverridingPostProcessResponse)
+							response = ((OverridingPostProcessResponse) postProcessorResponse).getResponse();
+						else
+							response = postProcessorResponse;
+					}
 
-		List<InterceptorEntry> result = new ArrayList<>(entries.size());
-		Set<String> explicitlyOrdered = new LinkedHashSet<>();
-		for (String identification : interceptorOrdering) {
-			InterceptorEntry entry = byIdentification.get(identification);
-			if (entry != null && explicitlyOrdered.add(identification))
-				result.add(entry);
+					return response;
+				};
+			default:
+				throw new UnsupportedOperationException("Unsupported interception kind " + processor.getKind());
 		}
-		for (InterceptorEntry entry : entries)
-			if (!explicitlyOrdered.contains(entry.identification))
-				result.add(entry);
-
-		return result;
 	}
 
-	private ListIterator<InterceptorEntry> requireInterceptorIterator(String identification, boolean before) {
-		ListIterator<InterceptorEntry> iterator = find(identification, before);
-
-		if (!iterator.hasNext())
-			throw new NoSuchElementException("No processor found with identification: '" + identification + "'");
-
-		return iterator;
+	/* package */ void finalizeInterceptorOrderings() {
+		List<InterceptorOrdering> orderings;
+		orderings = new ArrayList<>();
+		modelOracle().getDependencies().includeSelf().transitive().asGmMetaModels().forEach(model -> {
+			RxConfiguredModel configuredModel = configuredModels.findConfiguredModel(model);
+			if (configuredModel != null)
+				orderings.addAll(configuredModel.localInterceptorOrderings());
+		});
+		effectiveInterceptorOrderings = List.copyOf(orderings);
 	}
 
-	private ListIterator<InterceptorEntry> find(String identification, boolean before) {
-		ListIterator<InterceptorEntry> it = interceptors.listIterator();
-		while (it.hasNext()) {
-			InterceptorEntry entry = it.next();
-			if (entry.identification.equals(identification)) {
-				if (before)
-					it.previous();
-				break;
+	private List<InterceptorOrdering> localInterceptorOrderings() {
+		synchronized (interceptorOrderings) {
+			return new ArrayList<>(interceptorOrderings);
+		}
+	}
+
+	public List<RxInterceptor> orderedInterceptors(List<RxInterceptor> interceptors) {
+		List<RxInterceptor> legacyCompatibleOrder = legacyCompatibleOrder(interceptors);
+		Map<String, RxInterceptor> byIdentification = new LinkedHashMap<>();
+		for (RxInterceptor interceptor : legacyCompatibleOrder) {
+			String identification = interceptor.identification();
+			if (identification == null)
+				throw new IllegalStateException("Service interceptor without identification: " + interceptor.processor());
+			if (byIdentification.putIfAbsent(identification, interceptor) != null)
+				throw new IllegalStateException("Duplicate effective service interceptor identification: '" + identification + "'");
+		}
+
+		List<InterceptorOrdering> orderings = effectiveInterceptorOrderings;
+		if (orderings == null)
+			orderings = localInterceptorOrderings();
+
+		return applyExplicitOrderings(legacyCompatibleOrder, byIdentification, orderings);
+	}
+
+	private static List<RxInterceptor> legacyCompatibleOrder(List<RxInterceptor> interceptors) {
+		List<RxInterceptor> pre = new ArrayList<>();
+		List<RxInterceptor> around = new ArrayList<>();
+		List<RxInterceptor> post = new ArrayList<>();
+
+		for (RxInterceptor interceptor : interceptors) {
+			switch (interceptor.originalKind()) {
+				case pre:
+					pre.add(interceptor);
+					break;
+				case around:
+					around.add(interceptor);
+					break;
+				case post:
+					post.add(interceptor);
+					break;
+				default:
+					throw new UnsupportedOperationException("Unsupported interception kind");
 			}
 		}
 
-		return it;
+		// Post processors become around processors and therefore execute on unwind.
+		// Reversing their nesting keeps their former registration/execution order.
+		Collections.reverse(post);
+
+		List<RxInterceptor> result = new ArrayList<>(interceptors.size());
+		result.addAll(pre);
+		result.addAll(post);
+		result.addAll(around);
+		return result;
+	}
+
+	private static List<RxInterceptor> applyExplicitOrderings(List<RxInterceptor> baseline,
+			Map<String, RxInterceptor> byIdentification, List<InterceptorOrdering> orderings) {
+		Map<String, Set<String>> successors = new HashMap<>();
+		Map<String, Integer> predecessorCounts = new HashMap<>();
+		Map<String, Integer> baselineIndexes = new HashMap<>();
+
+		for (int i = 0; i < baseline.size(); i++) {
+			String identification = baseline.get(i).identification();
+			successors.put(identification, new LinkedHashSet<>());
+			predecessorCounts.put(identification, 0);
+			baselineIndexes.put(identification, i);
+		}
+
+		for (InterceptorOrdering ordering : orderings) {
+			if (!byIdentification.containsKey(ordering.before) || !byIdentification.containsKey(ordering.after))
+				continue;
+			if (successors.get(ordering.before).add(ordering.after))
+				predecessorCounts.compute(ordering.after, (key, count) -> count + 1);
+		}
+
+		PriorityQueue<String> ready = new PriorityQueue<>(Comparator.comparingInt(baselineIndexes::get));
+		predecessorCounts.forEach((identification, count) -> {
+			if (count == 0)
+				ready.add(identification);
+		});
+
+		List<RxInterceptor> result = new ArrayList<>(baseline.size());
+		while (!ready.isEmpty()) {
+			String identification = ready.remove();
+			result.add(byIdentification.get(identification));
+			for (String successor : successors.get(identification)) {
+				int remaining = predecessorCounts.compute(successor, (key, count) -> count - 1);
+				if (remaining == 0)
+					ready.add(successor);
+			}
+		}
+
+		if (result.size() != baseline.size()) {
+			Set<String> cyclic = new LinkedHashSet<>();
+			predecessorCounts.forEach((identification, count) -> {
+				if (count > 0)
+					cyclic.add(identification);
+			});
+			throw new IllegalStateException("Cyclic service interceptor ordering involving: " + cyclic);
+		}
+
+		return result;
 	}
 
 	@Override
@@ -344,21 +437,41 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 				addModelIfNotNull(interceptorEntry.requestType.getModel());
 
 				synchronized (interceptors) {
-					if (insertIdentification != null)
-						requireInterceptorIterator(insertIdentification, before).add(interceptorEntry);
-					else
-						interceptors.add(interceptorEntry);
+					interceptors.add(interceptorEntry);
 
 					if (interceptors.size() == 1)
 						configureModel(RxConfiguredModel.this::configureInterceptors);
 				}
+
+				if (insertIdentification != null)
+					addOrdering(before ? interceptorEntry.identification : insertIdentification,
+							before ? insertIdentification : interceptorEntry.identification);
 			}
 		};
 	}
 
 	@Override
 	public void orderInterceptors(String... identifications) {
-		interceptorOrdering = List.of(identifications.clone());
+		for (int i = 1; i < identifications.length; i++)
+			addOrdering(identifications[i - 1], identifications[i]);
+	}
+
+	private void addOrdering(String before, String after) {
+		if (before == null || after == null)
+			throw new IllegalArgumentException("Service interceptor ordering identifiers must not be null");
+		if (before.equals(after))
+			throw new IllegalArgumentException("A service interceptor cannot be ordered relative to itself: '" + before + "'");
+		interceptorOrderings.add(new InterceptorOrdering(before, after));
+	}
+
+	private static class InterceptorOrdering {
+		final String before;
+		final String after;
+
+		InterceptorOrdering(String before, String after) {
+			this.before = before;
+			this.after = after;
+		}
 	}
 
 	private static class InterceptorEntry {
@@ -366,6 +479,7 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 		Supplier<ServiceInterceptorProcessor> interceptorSupplier;
 		EntityType<? extends ServiceRequest> requestType;
 		Predicate<ServiceRequest> predicate;
+		private ServiceInterceptorProcessor processor;
 
 		public InterceptorEntry(String identifier, EntityType<? extends ServiceRequest> requestType, Predicate<ServiceRequest> predicate,
 				Supplier<ServiceInterceptorProcessor> interceptorSupplier) {
@@ -374,6 +488,12 @@ public class RxConfiguredModel extends AbstractRxConfiguredModel implements Mode
 			this.predicate = predicate;
 			this.interceptorSupplier = interceptorSupplier;
 			this.requestType = requestType;
+		}
+
+		ServiceInterceptorProcessor processor() {
+			if (processor == null)
+				processor = interceptorSupplier.get();
+			return processor;
 		}
 	}
 }

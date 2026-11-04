@@ -148,6 +148,10 @@ public class RxServiceDomain implements ServiceDomain, ServiceDomainConfiguratio
 		return systemCmdResolver().getModelOracle();
 	}
 
+	List<RxInterceptor> orderInterceptors(List<RxInterceptor> interceptors) {
+		return modelConfiguration.orderedInterceptors(interceptors);
+	}
+
 	@Override
 	public Evaluator<ServiceRequest> evaluator() {
 		return evaluator;

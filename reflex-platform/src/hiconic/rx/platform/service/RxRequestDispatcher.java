@@ -14,10 +14,13 @@
 package hiconic.rx.platform.service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.braintribe.cfg.Required;
 import com.braintribe.model.generic.eval.Evaluator;
+import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.processing.meta.cmd.builders.EntityMdResolver;
 import com.braintribe.model.processing.service.api.InterceptingServiceProcessorBuilder;
 import com.braintribe.model.processing.service.api.ServiceInterceptionChainBuilder;
@@ -27,7 +30,6 @@ import com.braintribe.model.processing.service.common.ServiceProcessingChain;
 import com.braintribe.model.service.api.ServiceRequest;
 
 import hiconic.rx.model.service.processing.md.InterceptWith;
-import hiconic.rx.model.service.processing.md.InterceptionType;
 import hiconic.rx.model.service.processing.md.ProcessWith;
 import hiconic.rx.module.api.service.ServiceDomain;
 
@@ -38,11 +40,12 @@ import hiconic.rx.module.api.service.ServiceDomain;
  */
 public class RxRequestDispatcher implements ServiceProcessor<ServiceRequest, Object> {
 
-	private ServiceDomain serviceDomain;
+	private RxServiceDomain serviceDomain;
 	private ServiceProcessor<ServiceRequest, Object> fallbackProcessor;
+	private final Map<EntityType<? extends ServiceRequest>, List<RxInterceptor>> orderedInterceptorsByRequestType = new ConcurrentHashMap<>();
 
 	@Required
-	public void setServiceDomain(ServiceDomain serviceDomain) {
+	public void setServiceDomain(RxServiceDomain serviceDomain) {
 		this.serviceDomain = serviceDomain;
 	}
 
@@ -82,28 +85,24 @@ public class RxRequestDispatcher implements ServiceProcessor<ServiceRequest, Obj
 	}
 
 	private void enrichWithInterceptors(ServiceRequest request, EntityMdResolver mdResolver, ServiceInterceptionChainBuilder interceptionBuilder) {
-		List<InterceptWith> interceptWiths = mdResolver.meta(InterceptWith.T).list();
+		List<RxInterceptor> interceptors = orderedInterceptorsByRequestType.computeIfAbsent(request.entityType(),
+				requestType -> resolveInterceptors(request, mdResolver));
 
-		for (InterceptWith interceptWith : interceptWiths) {
-			RxInterceptor interceptor = Objects.requireNonNull(interceptWith.getAssociate(),
-					() -> "Corrupt " + interceptWith.entityType().getShortName() + " configured on request " + request.entityType().getShortName());
-
+		for (RxInterceptor interceptor : interceptors) {
 			if (interceptor.predicate().test(request)) {
-				InterceptionType interceptionType = interceptWith.interceptionType();
-				switch (interceptionType) {
-					case preProcess:
-						interceptionBuilder.preProcessWith(interceptor.processor());
-						break;
-					case aroundProcess:
-						interceptionBuilder.aroundProcessWith(interceptor.processor());
-						break;
-					case postProcess:
-						interceptionBuilder.postProcessWith(interceptor.processor());
-						break;
-					default:
-						throw new UnsupportedOperationException("Unsupported InterceptorKind: " + interceptionType);
-				}
+				interceptionBuilder.aroundProcessWith(interceptor.processor());
 			}
 		}
+	}
+
+	private List<RxInterceptor> resolveInterceptors(ServiceRequest request, EntityMdResolver mdResolver) {
+		List<InterceptWith> interceptWiths = mdResolver.meta(InterceptWith.T).list();
+		List<RxInterceptor> interceptors = interceptWiths.stream() //
+				.map(interceptWith -> (RxInterceptor) Objects.requireNonNull(interceptWith.getAssociate(),
+						() -> "Corrupt " + interceptWith.entityType().getShortName() + " configured on request "
+								+ request.entityType().getShortName())) //
+				.toList();
+
+		return serviceDomain.orderInterceptors(interceptors);
 	}
 }

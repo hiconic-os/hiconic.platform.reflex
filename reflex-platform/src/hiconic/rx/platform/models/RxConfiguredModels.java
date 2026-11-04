@@ -153,6 +153,12 @@ public class RxConfiguredModels implements ConfiguredModels {
 	/* package */ void finalizeModelConfiguration() {
 		for (RxConfiguredModel configuredModel : models.values())
 			configuredModel.finalizeModelConfiguration();
+		for (RxConfiguredModel configuredModel : models.values())
+			configuredModel.finalizeInterceptorOrderings();
+	}
+
+	/* package */ RxConfiguredModel findConfiguredModel(GmMetaModel model) {
+		return models.get(model.getName());
 	}
 
 }

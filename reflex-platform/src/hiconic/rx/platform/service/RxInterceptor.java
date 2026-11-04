@@ -15,24 +15,38 @@ package hiconic.rx.platform.service;
 
 import java.util.function.Predicate;
 
-import com.braintribe.model.processing.service.api.ServiceInterceptorProcessor;
+import com.braintribe.model.processing.service.api.InterceptorKind;
+import com.braintribe.model.processing.service.api.ServiceAroundProcessor;
 import com.braintribe.model.service.api.ServiceRequest;
 
 public class RxInterceptor {
 
-	private final ServiceInterceptorProcessor processor;
+	private final ServiceAroundProcessor<?, ?> processor;
 	private final Predicate<ServiceRequest> predicate;
+	private final String identification;
+	private final InterceptorKind originalKind;
 
-	public RxInterceptor(ServiceInterceptorProcessor processor) {
-		this(processor, r -> true);
+	public RxInterceptor(ServiceAroundProcessor<?, ?> processor) {
+		this(null, InterceptorKind.around, processor, r -> true);
 	}
 
-	public RxInterceptor(ServiceInterceptorProcessor processor, Predicate<ServiceRequest> predicate) {
+	public RxInterceptor(String identification, InterceptorKind originalKind, ServiceAroundProcessor<?, ?> processor,
+			Predicate<ServiceRequest> predicate) {
+		this.identification = identification;
+		this.originalKind = originalKind;
 		this.processor = processor;
 		this.predicate = predicate;
 	}
 
-	public <I extends ServiceInterceptorProcessor> I processor() {
+	public String identification() {
+		return identification;
+	}
+
+	public InterceptorKind originalKind() {
+		return originalKind;
+	}
+
+	public <I extends ServiceAroundProcessor<?, ?>> I processor() {
 		return (I) processor;
 	}
 
