@@ -24,6 +24,8 @@ import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.module.api.wire.RxServiceProcessingContract;
 import hiconic.rx.module.api.service.ServiceProcessorRegistry;
+import hiconic.rx.module.api.service.ServiceRequestContextualizerRegistry;
+import hiconic.rx.platform.service.BasicServiceRequestContextualizerRegistry;
 import hiconic.rx.platform.service.BasicServiceProcessorRegistry;
 import hiconic.rx.platform.service.ContextualizingServiceRequestEvaluator;
 import hiconic.rx.platform.service.FallbackServiceProcessor;
@@ -58,6 +60,12 @@ public class RxServiceProcessingSpace implements RxServiceProcessingContract {
 	@Managed
 	public ServiceProcessorRegistry serviceProcessorRegistry() {
 		return new BasicServiceProcessorRegistry();
+	}
+
+	@Override
+	@Managed
+	public ServiceRequestContextualizerRegistry requestContextualizers() {
+		return new BasicServiceRequestContextualizerRegistry();
 	}
 
 	@Override

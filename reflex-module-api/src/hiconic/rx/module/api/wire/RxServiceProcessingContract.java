@@ -19,6 +19,7 @@ import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.wire.api.space.WireSpace;
 
 import hiconic.rx.module.api.service.ServiceDomains;
+import hiconic.rx.module.api.service.ServiceRequestContextualizerRegistry;
 import hiconic.rx.module.api.service.ServiceProcessorRegistry;
 
 public interface RxServiceProcessingContract extends WireSpace {
@@ -42,5 +43,8 @@ public interface RxServiceProcessingContract extends WireSpace {
 
 	/** Named processor components contributed by platform modules and application modules. */
 	ServiceProcessorRegistry serviceProcessorRegistry();
+
+	/** Contexts that wrap transport-side processing after a request has been decoded. */
+	ServiceRequestContextualizerRegistry requestContextualizers();
 
 }

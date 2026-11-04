@@ -11,6 +11,7 @@ import com.braintribe.wire.api.annotation.Managed;
 import hiconic.rx.log.reflection.model.api.LogReflectionRequest;
 import hiconic.rx.log.reflection.model.configuration.LogReflectionConfiguration;
 import hiconic.rx.log.reflection.processing.LogReflectionProcessor;
+import hiconic.rx.log.reflection.processing.LogReflectionRequestLoggingContextualizer;
 import hiconic.rx.log.reflection.processing.LogbackLogStreamInventory;
 import hiconic.rx.log.reflection.processing.LogFileReader;
 import hiconic.rx.log.reflection.processing.LogBundleWriter;
@@ -34,6 +35,12 @@ public class LogReflectionRxModuleSpace implements RxModuleContract {
 		var logging = configurations.byId(LOGGING_DOMAIN);
 		logging.setDisplayName("Logging");
 		logging.bindRequest(LogReflectionRequest.T, this::processor);
+	}
+
+	@Override
+	public void onDeploy() {
+		platform.serviceProcessing().requestContextualizers()
+				.register(new LogReflectionRequestLoggingContextualizer(platform.application().logManager()));
 	}
 
 	@Managed
