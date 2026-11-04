@@ -40,7 +40,10 @@ public class RxLogManagerImplTest {
 
 	@Test
 	public void suppressesRoutineLevelsButPreservesWarningsAndErrors() throws Exception {
+		assertThat(context.getTurboFilterList()).isEmpty();
+
 		manager.suppressRoutineLogging(() -> {
+			assertThat(context.getTurboFilterList()).hasSize(1);
 			logger.trace("trace");
 			logger.debug("debug");
 			logger.info("info");
@@ -51,17 +54,23 @@ public class RxLogManagerImplTest {
 		logger.info("outside");
 
 		assertThat(appender.list).extracting(ILoggingEvent::getFormattedMessage).containsExactly("warn", "error", "outside");
+		assertThat(context.getTurboFilterList()).isEmpty();
 	}
 
 	@Test
 	public void nestedScopesAndExceptionsRestoreLogging() throws Exception {
 		assertThatThrownBy(() -> manager.suppressRoutineLogging(() -> {
-			manager.suppressRoutineLogging(() -> logger.info("nested"));
+			manager.suppressRoutineLogging(() -> {
+				assertThat(context.getTurboFilterList()).hasSize(1);
+				logger.info("nested");
+			});
+			assertThat(context.getTurboFilterList()).hasSize(1);
 			throw new IllegalStateException("expected");
 		})).isInstanceOf(IllegalStateException.class).hasMessage("expected");
 
 		logger.info("restored");
 
 		assertThat(appender.list).extracting(ILoggingEvent::getFormattedMessage).containsExactly("restored");
+		assertThat(context.getTurboFilterList()).isEmpty();
 	}
 }

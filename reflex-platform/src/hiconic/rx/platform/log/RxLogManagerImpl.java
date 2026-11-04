@@ -16,6 +16,9 @@ public class RxLogManagerImpl implements RxLogManager {
 	private static final ThreadLocal<Boolean> ROUTINE_LOGGING_SUPPRESSED = new ThreadLocal<>();
 
 	private final LoggerContext ctx;
+	private final RoutineLoggingSuppressionFilter routineLoggingSuppressionFilter = new RoutineLoggingSuppressionFilter();
+	private final Object routineLoggingSuppressionMonitor = new Object();
+	private int activeRoutineLoggingSuppressionScopes;
 
 	public RxLogManagerImpl() {
 		this((LoggerContext) LoggerFactory.getILoggerFactory());
@@ -23,9 +26,7 @@ public class RxLogManagerImpl implements RxLogManager {
 
 	RxLogManagerImpl(LoggerContext ctx) {
 		this.ctx = ctx;
-		RoutineLoggingSuppressionFilter filter = new RoutineLoggingSuppressionFilter();
-		filter.start();
-		this.ctx.addTurboFilter(filter);
+		routineLoggingSuppressionFilter.start();
 	}
 
 	@Override
@@ -43,6 +44,7 @@ public class RxLogManagerImpl implements RxLogManager {
 
 	@Override
 	public void suppressRoutineLogging(ServiceRequestExecution execution) throws Exception {
+		enterRoutineLoggingSuppressionScope();
 		Boolean previousValue = ROUTINE_LOGGING_SUPPRESSED.get();
 		ROUTINE_LOGGING_SUPPRESSED.set(true);
 		try {
@@ -52,9 +54,24 @@ public class RxLogManagerImpl implements RxLogManager {
 				ROUTINE_LOGGING_SUPPRESSED.remove();
 			else
 				ROUTINE_LOGGING_SUPPRESSED.set(previousValue);
+			leaveRoutineLoggingSuppressionScope();
 		}
 	}
 	
+	private void enterRoutineLoggingSuppressionScope() {
+		synchronized (routineLoggingSuppressionMonitor) {
+			if (activeRoutineLoggingSuppressionScopes++ == 0)
+				ctx.addTurboFilter(routineLoggingSuppressionFilter);
+		}
+	}
+
+	private void leaveRoutineLoggingSuppressionScope() {
+		synchronized (routineLoggingSuppressionMonitor) {
+			if (--activeRoutineLoggingSuppressionScopes == 0)
+				ctx.getTurboFilterList().remove(routineLoggingSuppressionFilter);
+		}
+	}
+
 	public static ch.qos.logback.classic.Level toLogbackLevel(Level level) {
         if (level == null) {
             return null; // Logback: null = inherit
