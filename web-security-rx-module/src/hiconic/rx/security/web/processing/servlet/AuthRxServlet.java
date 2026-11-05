@@ -54,7 +54,7 @@ import dev.hiconic.servlet.api.remote.RemoteAddressInformation;
 import dev.hiconic.servlet.api.remote.RemoteClientAddressResolver;
 import dev.hiconic.servlet.impl.remote.DefaultRemoteClientAddressResolver;
 import hiconic.rx.security.web.api.CookieHandler;
-import hiconic.rx.security.web.api.LoginFlowExtension;
+import hiconic.rx.security.web.api.LoginFlow;
 import hiconic.rx.security.web.api.LoginIntervention;
 import hiconic.rx.security.web.api.WebSecurityRequestContextContributor;
 import hiconic.rx.security.web.api.WebSecurityConstants;
@@ -84,7 +84,7 @@ public class AuthRxServlet extends HttpServlet {
 	private Evaluator<ServiceRequest> requestEvaluator;
 	private Function<HttpServletRequest, String> entryPointProvider = r -> null;
 	private List<WebSecurityRequestContextContributor> requestContextContributors = List.of();
-	private List<LoginFlowExtension> loginFlowExtensions = List.of();
+	private LoginFlow loginFlow;
 	private final JwtCredentialsProvider jwtCredentialsProvider = new JwtCredentialsProvider();
 
 	private record LoginAttempt(Credentials credentials, OpenUserSessionWithUserAndPassword passwordRequest, String identity,
@@ -97,8 +97,8 @@ public class AuthRxServlet extends HttpServlet {
 	}
 
 	@Configurable
-	public void setLoginFlowExtensions(List<LoginFlowExtension> extensions) {
-		this.loginFlowExtensions = extensions;
+	public void setLoginFlow(LoginFlow loginFlow) {
+		this.loginFlow = loginFlow;
 	}
 
 	@Configurable
@@ -132,20 +132,13 @@ public class AuthRxServlet extends HttpServlet {
 		OpenUserSession openUserSession = createOpenUserSession(req, loginAttempt);
 		var attributeContextBuilder = buildAttributeContextBuilder(req, resp, openUserSession, loginAttempt.passwordRequest());
 		String actionId = req.getHeader(WebSecurityConstants.HEADER_LOGIN_ACTION);
-		LoginFlowExtension actionExtension = null;
-		if (actionId != null && !actionId.isBlank()) {
-			actionExtension = loginFlowExtensions.stream().filter(e -> e.supportsAction(actionId)).findFirst().orElse(null);
-			if (actionExtension == null) {
-				writeFailure(resp, Reasons.build(InvalidArgument.T).text("Unsupported login action: " + actionId).toReason());
-				return;
-			}
-		}
+		boolean performAction = actionId != null && !actionId.isBlank();
 		AttributeContext attributeContext = attributeContextBuilder.build();
 
 		AttributeContexts.push(attributeContext);
 		try {
-			if (actionExtension != null) {
-				Maybe<LoginIntervention> actionResult = actionExtension.performAction(actionId, loginAttempt.credentials(),
+			if (performAction) {
+				Maybe<LoginIntervention> actionResult = loginFlow.performAction(actionId, loginAttempt.credentials(),
 						openUserSession.getEntryPoint());
 				if (actionResult.isUnsatisfied()) {
 					writeFailure(resp, actionResult.whyUnsatisfied());
@@ -201,7 +194,7 @@ public class AuthRxServlet extends HttpServlet {
 	}
 
 	private void writeFailure(HttpServletResponse response, Reason reason) throws IOException {
-		LoginIntervention intervention = loginFlowExtensions.stream().map(e -> e.describe(reason)).filter(i -> i != null).findFirst().orElse(null);
+		LoginIntervention intervention = loginFlow.describe(reason);
 		if (intervention != null)
 			writeInterventionHeaders(response, intervention);
 

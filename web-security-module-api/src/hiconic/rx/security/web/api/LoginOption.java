@@ -24,12 +24,18 @@ public final class LoginOption {
 	private final String id;
 	private final String label;
 	private final String targetPath;
+	private final String actionTargetPath;
 	private final String iconPath;
 
 	public LoginOption(String id, String label, String targetPath, String iconPath) {
+		this(id, label, targetPath, null, iconPath);
+	}
+
+	public LoginOption(String id, String label, String targetPath, String actionTargetPath, String iconPath) {
 		this.id = requireText(id, "id");
 		this.label = requireText(label, "label");
 		this.targetPath = requireText(targetPath, "targetPath");
+		this.actionTargetPath = actionTargetPath;
 		this.iconPath = iconPath;
 	}
 
@@ -43,6 +49,10 @@ public final class LoginOption {
 
 	public String getTargetPath() {
 		return targetPath;
+	}
+
+	public String getActionTargetPath() {
+		return actionTargetPath;
 	}
 
 	public String getIconPath() {

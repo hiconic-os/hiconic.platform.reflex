@@ -24,6 +24,12 @@ public interface WebSecurityConstants {
 	public static String REQUEST_PARAM_MESSAGE = "message";
 	public static String REQUEST_PARAM_MESSAGESTATUS = "messageStatus";
 	public static String REQUEST_PARAM_STAYSIGNED = "staySigned";
+	public static String REQUEST_PARAM_LOGIN_OPTION = "loginOption";
+	public static String REQUEST_PARAM_LOGIN_ACTION = "loginAction";
+	public static String REQUEST_PARAM_LOGIN_INTERVENTION_STATE = "loginInterventionState";
+	public static String REQUEST_PARAM_LOGIN_INTERVENTION_TITLE = "loginInterventionTitle";
+	public static String REQUEST_PARAM_LOGIN_INTERVENTION_MESSAGE = "loginInterventionMessage";
+	public static String REQUEST_PARAM_LOGIN_INTERVENTION_ACTION_LABEL = "loginInterventionActionLabel";
 
 	public static String REQUEST_VALUE_MESSAGESTATUS_OK = "OK";
 	public static String REQUEST_VALUE_MESSAGESTATUS_ERROR = "ERROR";

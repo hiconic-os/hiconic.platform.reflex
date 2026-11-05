@@ -61,11 +61,22 @@ public class LoginRxServlet extends BasicTemplateBasedServlet implements Initial
 	protected VelocityContext createContext(HttpServletRequest request,HttpServletResponse repsonse) {
 		VelocityContext context = new VelocityContext();
 		String continueUrl = request.getParameter(WebSecurityConstants.REQUEST_PARAM_CONTINUE);
+		String interventionAction = request.getParameter(WebSecurityConstants.REQUEST_PARAM_LOGIN_ACTION);
+		String loginOptionId = request.getParameter(WebSecurityConstants.REQUEST_PARAM_LOGIN_OPTION);
+		String interventionActionUrl = actionTargetUrl(loginOptionId, interventionAction, continueUrl);
+		if (!localLoginEnabled && interventionActionUrl == null)
+			interventionAction = null;
 		context.put("continue", continueUrl);
 		context.put("message", request.getParameter(WebSecurityConstants.REQUEST_PARAM_MESSAGE));
 		context.put("messageStatus", request.getParameter(WebSecurityConstants.REQUEST_PARAM_MESSAGESTATUS));
 		context.put("localLoginEnabled", localLoginEnabled);
 		context.put("loginOptions", loginOptionViews(continueUrl));
+		context.put("interventionState", request.getParameter(WebSecurityConstants.REQUEST_PARAM_LOGIN_INTERVENTION_STATE));
+		context.put("interventionTitle", request.getParameter(WebSecurityConstants.REQUEST_PARAM_LOGIN_INTERVENTION_TITLE));
+		context.put("interventionMessage", request.getParameter(WebSecurityConstants.REQUEST_PARAM_LOGIN_INTERVENTION_MESSAGE));
+		context.put("interventionAction", interventionAction);
+		context.put("interventionActionLabel", request.getParameter(WebSecurityConstants.REQUEST_PARAM_LOGIN_INTERVENTION_ACTION_LABEL));
+		context.put("interventionActionUrl", interventionActionUrl);
 		// context.put("tribefireRuntime", TribefireRuntime.class);
 		
 		if (AuthRxServlet.offerStaySigned()) {
@@ -80,7 +91,8 @@ public class LoginRxServlet extends BasicTemplateBasedServlet implements Initial
 	private boolean shouldRedirectDirectly(HttpServletRequest request) {
 		return !localLoginEnabled && loginOptions.size() == 1
 				&& request.getParameter(WebSecurityConstants.REQUEST_PARAM_MESSAGE) == null
-				&& request.getParameter(WebSecurityConstants.REQUEST_PARAM_MESSAGESTATUS) == null;
+				&& request.getParameter(WebSecurityConstants.REQUEST_PARAM_MESSAGESTATUS) == null
+				&& request.getParameter(WebSecurityConstants.REQUEST_PARAM_LOGIN_INTERVENTION_STATE) == null;
 	}
 
 	private List<Map<String, String>> loginOptionViews(String continueUrl) {
@@ -103,6 +115,24 @@ public class LoginRxServlet extends BasicTemplateBasedServlet implements Initial
 		String separator = option.getTargetPath().contains("?") ? "&" : "?";
 		return option.getTargetPath() + separator + WebSecurityConstants.REQUEST_PARAM_CONTINUE + "="
 				+ URLEncoder.encode(continueUrl, StandardCharsets.UTF_8);
+	}
+
+	private String actionTargetUrl(String loginOptionId, String actionId, String continueUrl) {
+		if (loginOptionId == null || actionId == null || actionId.isBlank())
+			return null;
+
+		LoginOption option = loginOptions.stream().filter(o -> o.getId().equals(loginOptionId)).findFirst().orElse(null);
+		if (option == null || option.getActionTargetPath() == null || option.getActionTargetPath().isBlank())
+			return null;
+
+		StringBuilder result = new StringBuilder(option.getActionTargetPath());
+		result.append(option.getActionTargetPath().contains("?") ? '&' : '?');
+		result.append(WebSecurityConstants.REQUEST_PARAM_LOGIN_ACTION).append('=')
+				.append(URLEncoder.encode(actionId, StandardCharsets.UTF_8));
+		if (continueUrl != null && !continueUrl.isBlank())
+			result.append('&').append(WebSecurityConstants.REQUEST_PARAM_CONTINUE).append('=')
+					.append(URLEncoder.encode(continueUrl, StandardCharsets.UTF_8));
+		return result.toString();
 	}
 
 	@Configurable

@@ -176,11 +176,16 @@ function bindForm() {
 		login();
 	});
 
+	#end
 	document.getElementById("loginAction").addEventListener("click", function () {
+		var actionUrl = this.getAttribute("data-action-url");
+		if (actionUrl) {
+			window.location = actionUrl;
+			return;
+		}
 		var action = this.getAttribute("data-action");
 		if (action) login(action);
 	});
-	#end
 }
 
 function login(action) {
@@ -275,6 +280,7 @@ function renderMessage(title, message, action, actionLabel) {
 	if (action && actionLabel) {
 		actionButton.textContent = actionLabel;
 		actionButton.setAttribute("data-action", action);
+		actionButton.removeAttribute("data-action-url");
 		actionButton.style.display = "inline-block";
 	} else {
 		actionButton.removeAttribute("data-action");
@@ -347,11 +353,13 @@ function setBusy(busy) {
 				#else
 					<div class="errorMessage" align="center">
 				#end
-					<strong id="loginMessageTitle"></strong>
+					<strong id="loginMessageTitle">#if($interventionTitle)$tools.escape($interventionTitle)#end</strong>
 					<span id="loginMessageText">
-						#if($message)$tools.escape($message)#else&nbsp;#end
+						#if($interventionMessage)$tools.escape($interventionMessage)#elseif($message)$tools.escape($message)#else&nbsp;#end
 					</span>
-					<button id="loginAction" type="button" style="display:none"></button>
+					<button id="loginAction" type="button"
+						#if($interventionActionUrl) data-action-url="$tools.escape($interventionActionUrl)"#elseif($interventionAction) data-action="$tools.escape($interventionAction)"#end
+						#if(!$interventionAction || !$interventionActionLabel) style="display:none"#end>#if($interventionActionLabel)$tools.escape($interventionActionLabel)#end</button>
 				</div>
 			</div>
 

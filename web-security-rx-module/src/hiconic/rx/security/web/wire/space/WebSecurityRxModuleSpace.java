@@ -3,8 +3,13 @@ package hiconic.rx.security.web.wire.space;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.braintribe.gm.model.reason.Maybe;
+import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.gm.model.reason.meta.HttpStatusCode;
+import com.braintribe.gm.model.reason.Reasons;
+import com.braintribe.gm.model.reason.essential.InvalidArgument;
 import com.braintribe.gm.model.security.reason.AuthenticationFailure;
+import com.braintribe.model.securityservice.credentials.Credentials;
 import com.braintribe.model.securityservice.web.GetWebAuthorization;
 import com.braintribe.model.securityservice.web.UserPassWebAuthenticate;
 import com.braintribe.model.securityservice.web.WebAuthorizationRequest;
@@ -20,7 +25,9 @@ import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.security.model.configuration.SecurityConfiguration;
 import hiconic.rx.security.web.api.AuthFilters;
 import hiconic.rx.security.web.api.CookieHandler;
+import hiconic.rx.security.web.api.LoginFlow;
 import hiconic.rx.security.web.api.LoginFlowExtension;
+import hiconic.rx.security.web.api.LoginIntervention;
 import hiconic.rx.security.web.api.LoginOption;
 import hiconic.rx.security.web.api.WebSecurityConfigurationContract;
 import hiconic.rx.security.web.api.WebSecurityConstants;
@@ -151,7 +158,7 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 		bean.setRequestEvaluator(platform.serviceProcessing().systemEvaluator());
 		bean.setEntryPointProvider(http.openUserSessionConfigurationProvider()::findEntryPointName);
 		bean.setRequestContextContributors(requestContextContributors());
-		bean.setLoginFlowExtensions(loginFlowExtensions());
+		bean.setLoginFlow(loginFlow());
 
 		return bean;
 	}
@@ -273,6 +280,26 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 	@Managed
 	private List<LoginFlowExtension> loginFlowExtensions() {
 		return new ArrayList<>();
+	}
+
+	@Override
+	@Managed
+	public LoginFlow loginFlow() {
+		return new LoginFlow() {
+			@Override
+			public LoginIntervention describe(Reason reason) {
+				return loginFlowExtensions().stream().map(e -> e.describe(reason)).filter(i -> i != null).findFirst().orElse(null);
+			}
+
+			@Override
+			public Maybe<LoginIntervention> performAction(String actionId, Credentials credentials, String entryPoint) {
+				LoginFlowExtension extension = loginFlowExtensions().stream().filter(e -> e.supportsAction(actionId)).findFirst().orElse(null);
+				if (extension == null)
+					return Reasons.build(InvalidArgument.T).text("Unsupported login action: " + actionId).toMaybe();
+
+				return extension.performAction(actionId, credentials, entryPoint);
+			}
+		};
 	}
 
 	@Managed

@@ -10,6 +10,9 @@ public interface WebSecurityContract extends RxExportContract {
 
 	CookieHandler cookieHandler();
 
+	/** Shared login intervention flow used by native and contributed authentication mechanisms. */
+	LoginFlow loginFlow();
+
 	/** Resolves the configured {@code OpenUserSession} entry point for the given HTTP request. */
 	String openUserSessionEntryPointName(HttpServletRequest request);
 
