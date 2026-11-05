@@ -47,6 +47,7 @@ import hiconic.rx.webapi.model.meta.HttpRequestMethod;
 import hiconic.rx.webapi.model.meta.RequestMapping;
 import hiconic.rx.web.server.api.WebServerContract;
 import jakarta.servlet.DispatcherType;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * This module's javadoc is yet to be written.
@@ -314,6 +315,11 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 	@Override
 	public CookieHandler cookieHandler() {
 		return http.cookieHandler();
+	}
+
+	@Override
+	public String openUserSessionEntryPointName(HttpServletRequest request) {
+		return http.openUserSessionConfigurationProvider().findEntryPointName(request);
 	}
 
 	@Managed
