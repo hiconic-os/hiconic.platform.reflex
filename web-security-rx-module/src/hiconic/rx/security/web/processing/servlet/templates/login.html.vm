@@ -5,46 +5,61 @@
 <title>tribefire Login</title>
 <meta name="viewport" content="initial-scale=1, width=device-width, maximum-scale=1, minimum-scale=1, user-scalable=no">
 <style>
-div.loginContent {
-	margin: 0;
-	padding: 0;
-	background-color: white;
-	background-repeat: no-repeat;
-	background-position: 100% 100%;
-	height: 100%;
+html, body {
 	min-height: 100%;
-	font-family: 'Open Sans', sans-serif;
-	font-weight: 300;
-	font-size: medium;
-	color: gray;
-	font-smoothing: antialiased;
-	-webkit-font-smoothing: antialiased;
-	text-shadow: 1px 1px 1px rgba(0,0,0,0.004);
-	text-align: center;
+	margin: 0;
 }
-*.loginContent input, *.loginContent textarea, *.loginContent button {
-	font-family: 'Open Sans', sans-serif;
-	font-weight: 300;
-	font-size: medium;
-	outline: none;
+body {
+	background: #f5f7fa;
+}
+div.loginContent {
+	min-height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	box-sizing: border-box;
-	-moz-box-sizing: border-box;
+	padding: 32px 16px;
+	font-family: 'Open Sans', sans-serif;
+	font-weight: 400;
+	font-size: 16px;
+	color: #283341;
+	-webkit-font-smoothing: antialiased;
 }
-*.loginContent img {
-	margin-top: 100px;
+.loginPanel {
+	width: min(100%, 420px);
+}
+*.loginContent input, *.loginContent button {
+	font-family: 'Open Sans', sans-serif;
+	font-size: 15px;
+	box-sizing: border-box;
 }
 *.loginContent h1 {
-	margin: 0px auto 20px auto;
-	padding: 100px 0 0 0;
-	font-size: 24px;
-	color: orange;
+	margin: 0 0 8px;
+	font-size: 28px;
+	font-weight: 600;
+	letter-spacing: -0.02em;
+	color: #1f2937;
+	text-align: center;
+}
+.loginSubtitle {
+	margin: 0 0 24px;
+	color: #6b7280;
+	font-size: 14px;
+	line-height: 1.5;
+	text-align: center;
 }
 form.loginForm {
 	position: relative;
-	width: 210px;
-	margin: 20px auto 0 auto;
-	padding: 50px;
-	background-color: rgba(0,0,0,0.05);
+	box-sizing: border-box;
+	width: 100%;
+	margin: 0;
+	padding: 32px;
+	background: #fff;
+	border: 1px solid #e2e8f0;
+	border-radius: 14px;
+	box-shadow: 0 16px 40px rgba(15, 23, 42, 0.10);
+	overflow: hidden;
+	animation: loginAppear 180ms ease-out;
 }
 form.loginForm.loginFormBusy {
 	cursor: wait;
@@ -57,7 +72,8 @@ form.loginForm .loginBusyMask {
 	align-items: center;
 	justify-content: center;
 	margin: 0;
-	background: rgba(255, 255, 255, 0.86);
+	background: rgba(255, 255, 255, 0.90);
+	backdrop-filter: blur(2px);
 	opacity: 0;
 	visibility: hidden;
 	pointer-events: none;
@@ -77,7 +93,9 @@ form.loginForm .loginBusyIndicator {
 	align-items: center;
 	gap: 12px;
 	margin: 0;
-	color: #666;
+	color: #475569;
+	font-size: 14px;
+	font-weight: 500;
 }
 form.loginForm .loginBusySpinner {
 	width: 28px;
@@ -87,6 +105,10 @@ form.loginForm .loginBusySpinner {
 	border-radius: 50%;
 	animation: loginBusySpin 700ms linear infinite;
 }
+@keyframes loginAppear {
+	from { opacity: 0; transform: translateY(4px); }
+	to { opacity: 1; transform: translateY(0); }
+}
 @keyframes loginBusySpin {
 	to { transform: rotate(360deg); }
 }
@@ -94,35 +116,65 @@ form.loginForm .loginBusySpinner {
 	form.loginForm .loginBusyMask {
 		transition-duration: 1ms;
 	}
-	form.loginForm .loginBusySpinner {
-		animation-duration: 1400ms;
-	}
+	form.loginForm, form.loginForm .loginBusyMask { animation: none; transition: none; }
 }
-*.loginContent div {
-	margin-bottom: 15px;
+.loginField {
+	margin-bottom: 14px;
 }
 *.loginContent input[type="text"], *.loginContent input[type="password"] {
-	width: 100% !important;
-	padding: 10px !important;
-	height: 35px !important;
-	border: 0;
-	background-color: white;
-	color: gray;
-	border-radius: 0px;
+	width: 100%;
+	height: 44px;
+	padding: 0 13px;
+	border: 1px solid #cbd5e1;
+	border-radius: 8px;
+	background: #fff;
+	color: #1f2937;
+	transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+*.loginContent input[type="text"]:focus, *.loginContent input[type="password"]:focus {
+	border-color: #f59e0b;
+	box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.16);
+	outline: none;
 }
 *.loginContent input[type="checkbox"] {
-	height: 12px;
-	width: 12px;
+	height: 15px;
+	width: 15px;
+	accent-color: #f59e0b;
 }
 *.loginContent button {
-	padding: 5px 30px !important;
-	font-size: 16px !important;
-	background-color: #ffa500 !important;
-	border: 0 !important;
-	cursor: pointer !important;
-	height: 35px !important;
-	width: 100% !important;
+	width: 100%;
+	min-height: 44px;
+	padding: 9px 16px;
+	border: 1px solid #e69000;
+	border-radius: 8px;
+	background: #f59e0b;
+	font-weight: 600;
 	color: white;
+	cursor: pointer;
+	transition: background-color 120ms ease, box-shadow 120ms ease, transform 80ms ease;
+}
+*.loginContent button:hover:not(:disabled) {
+	background: #e69000;
+}
+*.loginContent button:focus-visible, *.loginContent a.loginOption:focus-visible {
+	outline: 3px solid rgba(245, 158, 11, 0.28);
+	outline-offset: 2px;
+}
+*.loginContent button:active:not(:disabled) {
+	transform: translateY(1px);
+}
+*.loginContent button:disabled {
+	opacity: 0.58;
+	cursor: not-allowed;
+}
+.loginStaySigned {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 7px;
+	margin: 2px 0 18px;
+	font-size: 13px;
+	color: #64748b;
 }
 *.loginContent a.loginOption {
 	display: flex;
@@ -131,34 +183,85 @@ form.loginForm .loginBusySpinner {
 	gap: 10px;
 	box-sizing: border-box;
 	width: 100%;
-	min-height: 35px;
-	padding: 5px 12px;
+	min-height: 44px;
+	padding: 8px 12px;
 	background-color: white;
-	color: gray;
+	color: #334155;
 	text-decoration: none;
-	border: 1px solid rgba(0,0,0,0.15);
+	font-weight: 600;
+	border: 1px solid #cbd5e1;
+	border-radius: 8px;
+	transition: border-color 120ms ease, background-color 120ms ease;
 }
 *.loginContent a.loginOption:hover {
-	border-color: #ffa500;
+	border-color: #f59e0b;
+	background: #fffbeb;
 }
 *.loginContent a.loginOption img {
 	width: 24px;
 	height: 24px;
-	margin-top: 0;
+	margin: 0;
 	object-fit: contain;
 }
-*.loginContent .errorMessage {
-	font-size: small;
-	color: red;
+.loginMessage {
+	display: block;
+	box-sizing: border-box;
+	margin: 18px 0;
+	padding: 12px 14px;
+	border: 1px solid #fecaca;
+	border-radius: 8px;
+	background: #fff7f7;
+	color: #9f1239;
+	font-size: 14px;
+	line-height: 1.45;
+	text-align: left;
+	overflow-wrap: anywhere;
 }
-*.loginContent .okMessage {
-	font-size: small;
-	color: green;
+.loginMessage[hidden] {
+	display: none;
 }
-.mycheckbox {
-	width: 10px;
-	height: 10px;
-	margin-top: 5px;
+.loginMessageTitle {
+	display: block;
+	margin-bottom: 3px;
+	font-weight: 700;
+	color: #881337;
+}
+.loginMessageText {
+	display: block;
+}
+.loginMessageOk {
+	border-color: #bbf7d0;
+	background: #f0fdf4;
+	color: #166534;
+}
+.loginMessageOk .loginMessageTitle {
+	color: #14532d;
+}
+.loginMessageAction {
+	margin-top: 12px;
+}
+.loginOptionRow {
+	margin-top: 12px;
+}
+.loginDivider {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin: 20px 0 8px;
+	color: #94a3b8;
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+}
+.loginDivider::before, .loginDivider::after {
+	content: "";
+	flex: 1;
+	height: 1px;
+	background: #e2e8f0;
+}
+@media (max-width: 480px) {
+	div.loginContent { align-items: flex-start; padding: 20px 12px; }
+	form.loginForm { padding: 24px 20px; }
 }
 </style>
 
@@ -185,6 +288,9 @@ function bindForm() {
 		}
 		var action = this.getAttribute("data-action");
 		if (action) login(action);
+	});
+	document.querySelectorAll("a.loginOption").forEach(function (option) {
+		option.addEventListener("click", function () { setBusy(true, "Continuing to sign in…"); });
 	});
 }
 
@@ -274,6 +380,9 @@ function renderIntervention(request, state) {
 }
 
 function renderMessage(title, message, action, actionLabel) {
+	var messageBox = document.getElementById("loginMessage");
+	messageBox.hidden = false;
+	messageBox.classList.remove("loginMessageOk");
 	document.getElementById("loginMessageTitle").textContent = title || "";
 	document.getElementById("loginMessageText").textContent = message || "";
 	var actionButton = document.getElementById("loginAction");
@@ -288,19 +397,26 @@ function renderMessage(title, message, action, actionLabel) {
 	}
 }
 
-function setBusy(busy) {
+function setBusy(busy, label) {
 	var form = document.getElementById("signinForm");
 	var mask = document.getElementById("loginBusyMask");
 	clearTimeout(busyRevealTimer);
 
 	form.classList.toggle("loginFormBusy", busy);
 	form.setAttribute("aria-busy", busy ? "true" : "false");
-	document.getElementById("signInButton").disabled = busy;
-	document.getElementById("loginAction").disabled = busy;
-	document.getElementById("input_user").readOnly = busy;
-	document.getElementById("input_password").readOnly = busy;
+	var busyLabel = document.getElementById("loginBusyLabel");
+	if (busyLabel) busyLabel.textContent = label || "Signing in…";
+	var signInButton = document.getElementById("signInButton");
+	if (signInButton) signInButton.disabled = busy;
+	var loginAction = document.getElementById("loginAction");
+	if (loginAction) loginAction.disabled = busy;
+	var userInput = document.getElementById("input_user");
+	if (userInput) userInput.readOnly = busy;
+	var passwordInput = document.getElementById("input_password");
+	if (passwordInput) passwordInput.readOnly = busy;
 	#if($offerStaySigned)
-	document.getElementById("staySigned").disabled = busy;
+	var staySigned = document.getElementById("staySigned");
+	if (staySigned) staySigned.disabled = busy;
 	#end
 
 	if (busy) {
@@ -320,52 +436,50 @@ function setBusy(busy) {
 <body onLoad="bindForm()">
 
   <div class="loginContent">
-	<h1>Welcome</h1>
-	
-	<form id="signinForm" class="loginForm" accept-charset="UTF-8">
-			#if($localLoginEnabled)
+	<div class="loginPanel">
+		<h1>Welcome</h1>
+		<p class="loginSubtitle">Sign in to continue.</p>
+		<form id="signinForm" class="loginForm" accept-charset="UTF-8">
 			<div id="loginBusyMask" class="loginBusyMask" aria-hidden="true">
 				<div class="loginBusyIndicator" role="status" aria-live="polite">
 					<span class="loginBusySpinner" aria-hidden="true"></span>
-					<span>Signing in&hellip;</span>
+					<span id="loginBusyLabel">Signing in&hellip;</span>
 				</div>
 			</div>
-			<div>				
+			#if($localLoginEnabled)
+			<div class="loginField">
 				<input id="input_user" type="text" name="user" placeholder="Username" autofocus>
 			</div>
-			<div>
+			<div class="loginField">
 				<input id="input_password" type="password" name="password" placeholder="Password">
 			</div>
-			<div>
+			<div class="loginField">
 				<button id="signInButton" type="submit">Sign in</button>
 			</div>
 			#if($offerStaySigned)
-			<div>
-				<input id="staySigned" type="checkbox" name="staySigned" checked="checked" value="true" class="mycheckbox" />
-				<span style="font-size:12px">Stay signed in</span>
+			<div class="loginStaySigned">
+				<input id="staySigned" type="checkbox" name="staySigned" checked="checked" value="true" />
+				<label for="staySigned">Stay signed in</label>
 			</div>
 			#end
 			#end
 
-			<div>
-				#if ($messageStatus == "OK")
-					<div class="okMessage" align="center">
-				#else
-					<div class="errorMessage" align="center">
-				#end
-					<strong id="loginMessageTitle">#if($interventionTitle)$tools.escape($interventionTitle)#end</strong>
-					<span id="loginMessageText">
-						#if($interventionMessage)$tools.escape($interventionMessage)#elseif($message)$tools.escape($message)#else&nbsp;#end
-					</span>
-					<button id="loginAction" type="button"
+			<div id="loginMessage" role="alert" aria-live="polite"
+				class="loginMessage#if($messageStatus == 'OK') loginMessageOk#end"
+				#if(!$interventionTitle && !$interventionMessage && !$message) hidden#end>
+				<strong id="loginMessageTitle" class="loginMessageTitle">#if($interventionTitle)$tools.escape($interventionTitle)#elseif($message)Sign in failed#end</strong>
+				<span id="loginMessageText" class="loginMessageText">
+					#if($interventionMessage)$tools.escape($interventionMessage)#elseif($message)$tools.escape($message)#end
+				</span>
+				<button id="loginAction" class="loginMessageAction" type="button"
 						#if($interventionActionUrl) data-action-url="$tools.escape($interventionActionUrl)"#elseif($interventionAction) data-action="$tools.escape($interventionAction)"#end
 						#if(!$interventionAction || !$interventionActionLabel) style="display:none"#end>#if($interventionActionLabel)$tools.escape($interventionActionLabel)#end</button>
-				</div>
 			</div>
 
 			#if($loginOptions && !$loginOptions.isEmpty())
+				#if($localLoginEnabled)<div class="loginDivider"><span>or</span></div>#end
 				#foreach($loginOption in $loginOptions)
-				<div>
+				<div class="loginOptionRow">
 					<a id="loginOption-$tools.escape($loginOption.id)" class="loginOption" href="$tools.escape($loginOption.url)">
 						#if($loginOption.iconPath)
 							<img src="$tools.escape($loginOption.iconPath)" alt="">
@@ -375,13 +489,14 @@ function setBusy(busy) {
 				</div>
 				#end
 			#elseif(!$localLoginEnabled && !$externalIntervention)
-				<div class="errorMessage">No login method is configured.</div>
+				<div class="loginMessage">No login method is configured.</div>
 			#end
 			
 			#if ($continue)
 				<input type="hidden" name="continue" value="$tools.escape($continue)" />
 			#end
-	</form>
+		</form>
+	</div>
   </div>
   
 

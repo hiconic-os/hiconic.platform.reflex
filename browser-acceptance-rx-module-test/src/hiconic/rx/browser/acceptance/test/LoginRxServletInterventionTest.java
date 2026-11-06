@@ -17,10 +17,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.io.InputStream;
+import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.velocity.VelocityContext;
+import org.apache.velocity.app.VelocityEngine;
 import org.junit.Test;
 
 import hiconic.rx.security.web.api.LoginOption;
@@ -69,6 +73,16 @@ public class LoginRxServletInterventionTest {
 		assertThat(context.get("externalIntervention")).isEqualTo(true);
 		assertThat(context.get("localLoginEnabled")).isEqualTo(false);
 		assertThat((List<?>) context.get("loginOptions")).isEmpty();
+	}
+
+	@Test
+	public void loginTemplateParses() throws Exception {
+		String resource = "/hiconic/rx/security/web/processing/servlet/templates/login.html.vm";
+		try (InputStream in = LoginRxServlet.class.getResourceAsStream(resource)) {
+			assertThat(in).as("login template resource").isNotNull();
+			String template = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+			assertThat(new VelocityEngine().evaluate(new VelocityContext(), new StringWriter(), resource, template)).isTrue();
+		}
 	}
 
 	private TestLoginRxServlet servlet() {
