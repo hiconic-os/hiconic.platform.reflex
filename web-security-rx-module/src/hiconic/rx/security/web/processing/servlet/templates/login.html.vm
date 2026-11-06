@@ -374,7 +374,7 @@ function setBusy(busy) {
 					</a>
 				</div>
 				#end
-			#elseif(!$localLoginEnabled)
+			#elseif(!$localLoginEnabled && !$externalIntervention)
 				<div class="errorMessage">No login method is configured.</div>
 			#end
 			

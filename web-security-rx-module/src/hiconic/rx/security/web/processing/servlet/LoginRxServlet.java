@@ -63,15 +63,19 @@ public class LoginRxServlet extends BasicTemplateBasedServlet implements Initial
 		String continueUrl = request.getParameter(WebSecurityConstants.REQUEST_PARAM_CONTINUE);
 		String interventionAction = request.getParameter(WebSecurityConstants.REQUEST_PARAM_LOGIN_ACTION);
 		String loginOptionId = request.getParameter(WebSecurityConstants.REQUEST_PARAM_LOGIN_OPTION);
+		String interventionState = request.getParameter(WebSecurityConstants.REQUEST_PARAM_LOGIN_INTERVENTION_STATE);
+		LoginOption interventionLoginOption = loginOption(loginOptionId);
+		boolean externalIntervention = interventionState != null && interventionLoginOption != null;
 		String interventionActionUrl = actionTargetUrl(loginOptionId, interventionAction, continueUrl);
 		if (!localLoginEnabled && interventionActionUrl == null)
 			interventionAction = null;
 		context.put("continue", continueUrl);
 		context.put("message", request.getParameter(WebSecurityConstants.REQUEST_PARAM_MESSAGE));
 		context.put("messageStatus", request.getParameter(WebSecurityConstants.REQUEST_PARAM_MESSAGESTATUS));
-		context.put("localLoginEnabled", localLoginEnabled);
-		context.put("loginOptions", loginOptionViews(continueUrl));
-		context.put("interventionState", request.getParameter(WebSecurityConstants.REQUEST_PARAM_LOGIN_INTERVENTION_STATE));
+		context.put("localLoginEnabled", localLoginEnabled && !externalIntervention);
+		context.put("loginOptions", externalIntervention ? List.of() : loginOptionViews(continueUrl));
+		context.put("externalIntervention", externalIntervention);
+		context.put("interventionState", interventionState);
 		context.put("interventionTitle", request.getParameter(WebSecurityConstants.REQUEST_PARAM_LOGIN_INTERVENTION_TITLE));
 		context.put("interventionMessage", request.getParameter(WebSecurityConstants.REQUEST_PARAM_LOGIN_INTERVENTION_MESSAGE));
 		context.put("interventionAction", interventionAction);
@@ -121,7 +125,7 @@ public class LoginRxServlet extends BasicTemplateBasedServlet implements Initial
 		if (loginOptionId == null || actionId == null || actionId.isBlank())
 			return null;
 
-		LoginOption option = loginOptions.stream().filter(o -> o.getId().equals(loginOptionId)).findFirst().orElse(null);
+		LoginOption option = loginOption(loginOptionId);
 		if (option == null || option.getActionTargetPath() == null || option.getActionTargetPath().isBlank())
 			return null;
 
@@ -133,6 +137,12 @@ public class LoginRxServlet extends BasicTemplateBasedServlet implements Initial
 			result.append('&').append(WebSecurityConstants.REQUEST_PARAM_CONTINUE).append('=')
 					.append(URLEncoder.encode(continueUrl, StandardCharsets.UTF_8));
 		return result.toString();
+	}
+
+	private LoginOption loginOption(String loginOptionId) {
+		if (loginOptionId == null)
+			return null;
+		return loginOptions.stream().filter(o -> o.getId().equals(loginOptionId)).findFirst().orElse(null);
 	}
 
 	@Configurable
