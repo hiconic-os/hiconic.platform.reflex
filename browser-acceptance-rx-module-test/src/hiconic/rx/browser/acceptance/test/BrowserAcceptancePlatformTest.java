@@ -14,10 +14,14 @@ import com.braintribe.gm.model.security.reason.InvalidCredentials;
 import com.braintribe.model.processing.securityservice.api.attributes.OpenUserSessionEntryPointAttribute;
 import com.braintribe.model.processing.service.api.SessionIdAspect;
 import com.braintribe.model.security.service.config.OpenUserSessionEntryPoint;
+import com.braintribe.model.securityservice.OpenUserSession;
 import com.braintribe.model.securityservice.OpenUserSessionResponse;
 import com.braintribe.model.securityservice.OpenUserSessionWithUserAndPassword;
 import com.braintribe.model.securityservice.ValidateUserSession;
+import com.braintribe.model.securityservice.credentials.ExistingSessionCredentials;
+import com.braintribe.model.securityservice.credentials.GrantedCredentials;
 import com.braintribe.model.securityservice.credentials.UserPasswordCredentials;
+import com.braintribe.model.securityservice.credentials.identification.UserNameIdentification;
 import com.braintribe.utils.collection.impl.AttributeContexts;
 
 import hiconic.rx.browser.acceptance.model.BrowserAcceptance;
@@ -39,6 +43,37 @@ import hiconic.rx.test.common.AbstractRxTest;
 public class BrowserAcceptancePlatformTest extends AbstractRxTest {
 	private static final OpenUserSessionEntryPoint CLAIMSDESK_ENTRY_POINT = entryPoint("claimsdesk", "claimsdesk-user");
 	private static final OpenUserSessionEntryPoint PLATFORM_ENTRY_POINT = entryPoint("platform", "platform-user");
+	private static final OpenUserSessionEntryPoint INTERNAL_ENTRY_POINT = entryPoint("internal-test", "internal");
+
+	@Test
+	public void grantedCredentialsPreserveApprovalReasonForExternalLogin() {
+		Maybe<? extends OpenUserSessionResponse> grantorLogin = login(INTERNAL_ENTRY_POINT, "grantor", "grantor-password");
+		assertThat(grantorLogin.isSatisfied())
+				.withFailMessage(() -> "Grantor login failed: " + grantorLogin.whyUnsatisfied().stringify())
+				.isTrue();
+
+		ExistingSessionCredentials grantingCredentials = ExistingSessionCredentials.T.create();
+		grantingCredentials.setExistingSessionId(grantorLogin.get().getUserSession().getSessionId());
+		grantingCredentials.setReuseSession(false);
+
+		GrantedCredentials credentials = GrantedCredentials.T.create();
+		credentials.setGrantingCredentials(grantingCredentials);
+		credentials.setUserIdentification(UserNameIdentification.of("subject"));
+
+		OpenUserSession request = OpenUserSession.T.create();
+		request.setCredentials(credentials);
+
+		Maybe<? extends OpenUserSessionResponse> result = AttributeContexts.derivePeek()
+				.set(OpenUserSessionEntryPointAttribute.class, PLATFORM_ENTRY_POINT)
+				.buildAnd()
+				.execute(() -> withBrowser("external-login-browser", () -> request.eval(evaluator).getReasoned()));
+		assertThat(result.isUnsatisfiedBy(ApprovalRequired.T))
+				.withFailMessage(() -> result.isSatisfied()
+						? "External login unexpectedly opened a session"
+						: "Unexpected external login failure: " + result.whyUnsatisfied().stringify())
+				.isTrue();
+		assertThat(result.whyUnsatisfied().entityType()).isEqualTo(ApprovalRequired.T);
+	}
 
     @Test
     public void requiresApprovalOnlyAfterValidCredentialsAndAllowsLoginAfterApproval() {

@@ -10,6 +10,7 @@ import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
 import com.braintribe.gm.model.security.reason.AuthenticationFailure;
 import com.braintribe.model.securityservice.credentials.Credentials;
+import com.braintribe.model.security.service.config.OpenUserSessionEntryPoint;
 import com.braintribe.model.securityservice.web.GetWebAuthorization;
 import com.braintribe.model.securityservice.web.UserPassWebAuthenticate;
 import com.braintribe.model.securityservice.web.WebAuthorizationRequest;
@@ -347,6 +348,11 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 	@Override
 	public String openUserSessionEntryPointName(HttpServletRequest request) {
 		return http.openUserSessionConfigurationProvider().findEntryPointName(request);
+	}
+
+	@Override
+	public OpenUserSessionEntryPoint openUserSessionEntryPoint(HttpServletRequest request) {
+		return http.openUserSessionConfigurationProvider().findEntryPoint(request);
 	}
 
 	@Managed

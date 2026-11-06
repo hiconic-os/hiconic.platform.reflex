@@ -13,6 +13,8 @@ roles:
   name: platform-user
 - &api-user
   name: api-user
+- &internal
+  name: internal
 users:
 - id: subject-id
   name: subject
@@ -21,6 +23,11 @@ users:
   - *subject
   - *platform-user
   - *api-user
+- id: grantor
+  name: grantor
+  password: grantor-password
+  roles:
+  - *internal
 - id: claimsdesk-subject
   name: claimsdesk-subject
   password: claimsdesk-password
