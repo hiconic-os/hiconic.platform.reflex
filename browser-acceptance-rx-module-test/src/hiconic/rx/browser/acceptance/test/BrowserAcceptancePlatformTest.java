@@ -17,6 +17,8 @@ import com.braintribe.model.security.service.config.OpenUserSessionEntryPoint;
 import com.braintribe.model.securityservice.OpenUserSession;
 import com.braintribe.model.securityservice.OpenUserSessionResponse;
 import com.braintribe.model.securityservice.OpenUserSessionWithUserAndPassword;
+import com.braintribe.model.securityservice.AuthenticateCredentials;
+import com.braintribe.model.securityservice.AuthenticateCredentialsResponse;
 import com.braintribe.model.securityservice.ValidateUserSession;
 import com.braintribe.model.securityservice.credentials.ExistingSessionCredentials;
 import com.braintribe.model.securityservice.credentials.GrantedCredentials;
@@ -38,12 +40,35 @@ import hiconic.rx.browser.acceptance.processing.BrowserRequestInformationAttribu
 import hiconic.rx.browser.acceptance.processing.BrowserAcceptanceLoginFlowExtension;
 import hiconic.rx.security.web.api.LoginIntervention;
 import hiconic.rx.security.web.api.LoginInterventionState;
+import hiconic.rx.security.api.AuthenticatedCredentialsAttribute;
 import hiconic.rx.test.common.AbstractRxTest;
 
 public class BrowserAcceptancePlatformTest extends AbstractRxTest {
 	private static final OpenUserSessionEntryPoint CLAIMSDESK_ENTRY_POINT = entryPoint("claimsdesk", "claimsdesk-user");
 	private static final OpenUserSessionEntryPoint PLATFORM_ENTRY_POINT = entryPoint("platform", "platform-user");
 	private static final OpenUserSessionEntryPoint INTERNAL_ENTRY_POINT = entryPoint("internal-test", "internal");
+
+	@Test
+	public void trustedAuthenticatedIdentityCanRequestApprovalWithoutOpeningSession() {
+		String browserToken = "external-authenticated-browser";
+		AuthenticateCredentials authenticate = AuthenticateCredentials.T.create();
+		authenticate.setCredentials(UserPasswordCredentials.forUserName("subject", "subject-password"));
+		AuthenticateCredentialsResponse authenticated = authenticate.eval(evaluator).get();
+
+		RequestBrowserAcceptance request = RequestBrowserAcceptance.T.create();
+		request.setEntryPoint(PLATFORM_ENTRY_POINT.getName());
+		Maybe<BrowserAcceptance> result = AttributeContexts.derivePeek()
+				.set(BrowserContextIdAttribute.class, browserToken)
+				.set(AuthenticatedCredentialsAttribute.class, authenticated)
+				.buildAnd()
+				.execute(() -> request.eval(evaluator).getReasoned());
+
+		assertThat(result.isSatisfied())
+				.withFailMessage(() -> result.isUnsatisfied() ? result.whyUnsatisfied().stringify() : "")
+				.isTrue();
+		assertThat(result.get().getState()).isEqualTo(BrowserAcceptanceState.PENDING);
+		assertThat(result.get().getUserId()).isEqualTo("subject-id");
+	}
 
 	@Test
 	public void grantedCredentialsPreserveApprovalReasonForExternalLogin() {

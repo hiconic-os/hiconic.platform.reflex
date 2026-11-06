@@ -31,6 +31,7 @@ import hiconic.rx.browser.acceptance.model.api.ListBrowserAcceptances;
 import hiconic.rx.browser.acceptance.model.api.RejectBrowserAcceptance;
 import hiconic.rx.browser.acceptance.model.api.RevokeBrowserAcceptance;
 import hiconic.rx.browser.acceptance.model.api.RequestBrowserAcceptance;
+import hiconic.rx.security.api.AuthenticatedCredentialsAttribute;
 
 public class BrowserAcceptanceProcessor extends AbstractDispatchingServiceProcessor<BrowserAcceptanceRequest, Object> {
 	private final BrowserAcceptanceStore store;
@@ -46,14 +47,9 @@ public class BrowserAcceptanceProcessor extends AbstractDispatchingServiceProces
 		this.evaluator = evaluator;
 	}
 
-	/** This unauthenticated request performs its own credential authentication before creating any persistent state. */
+	/** This unauthenticated request requires either explicit credentials or a trusted request-local authentication result. */
 	public Maybe<BrowserAcceptance> request(ServiceRequestContext context, RequestBrowserAcceptance request) {
-		if (request.getCredentials() == null)
-			return Reasons.build(InvalidArgument.T).text("RequestBrowserAcceptance.credentials must not be null").toMaybe();
-
-		AuthenticateCredentials authentication = AuthenticateCredentials.T.create();
-		authentication.setCredentials(request.getCredentials());
-		Maybe<? extends AuthenticateCredentialsResponse> authenticationResult = authentication.eval(evaluator).getReasoned();
+		Maybe<? extends AuthenticateCredentialsResponse> authenticationResult = authenticate(context, request);
 		if (authenticationResult.isUnsatisfied())
 			return authenticationResult.propagateReason();
 
@@ -73,6 +69,22 @@ public class BrowserAcceptanceProcessor extends AbstractDispatchingServiceProces
 		BrowserAcceptance acceptance = store.findOrRequest(rawToken, userId, user.getName(), request.getEntryPoint(),
 				context.getRequestorAddress(), context.findOrNull(BrowserRequestInformationAttribute.class));
 		return Maybe.complete(acceptance);
+	}
+
+	private Maybe<? extends AuthenticateCredentialsResponse> authenticate(ServiceRequestContext context, RequestBrowserAcceptance request) {
+		if (request.getCredentials() != null) {
+			AuthenticateCredentials authentication = AuthenticateCredentials.T.create();
+			authentication.setCredentials(request.getCredentials());
+			return authentication.eval(evaluator).getReasoned();
+		}
+
+		AuthenticateCredentialsResponse authenticated = context.findOrNull(AuthenticatedCredentialsAttribute.class);
+		if (authenticated != null)
+			return Maybe.complete(authenticated);
+
+		return Reasons.build(InvalidArgument.T)
+				.text("RequestBrowserAcceptance requires credentials or a trusted authenticated identity")
+				.toMaybe();
 	}
 
 	private static User authenticatedUser(AuthenticateCredentialsResponse response) {

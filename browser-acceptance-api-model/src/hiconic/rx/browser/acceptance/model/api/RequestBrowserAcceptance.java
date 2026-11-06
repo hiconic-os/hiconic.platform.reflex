@@ -1,6 +1,5 @@
 package hiconic.rx.browser.acceptance.model.api;
 
-import com.braintribe.model.generic.annotation.meta.Mandatory;
 import com.braintribe.model.generic.eval.EvalContext;
 import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.generic.reflection.EntityType;
@@ -10,11 +9,15 @@ import com.braintribe.model.service.api.ServiceRequest;
 
 import hiconic.rx.browser.acceptance.model.BrowserAcceptance;
 
-/** Explicitly requests approval for the current browser context after authenticating the supplied credentials. */
+/**
+ * Explicitly requests approval for the current browser context.
+ *
+ * <p>Credentials are required for ordinary callers. A trusted server-side authentication transport may instead
+ * provide its already authenticated result through the request attribute context.</p>
+ */
 public interface RequestBrowserAcceptance extends ServiceRequest {
 	EntityType<RequestBrowserAcceptance> T = EntityTypes.T(RequestBrowserAcceptance.class);
 
-	@Mandatory
 	Credentials getCredentials();
 	void setCredentials(Credentials credentials);
 

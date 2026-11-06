@@ -10,6 +10,9 @@ public interface LoginFlow {
 	/** Returns a presentation for a supported reason, or {@code null}. */
 	LoginIntervention describe(Reason reason);
 
-	/** Performs a registered login action with freshly obtained credentials. */
+	/**
+	 * Performs a registered login action. Credentials may be {@code null} when a trusted authentication transport
+	 * supplies an already authenticated identity through the request attribute context.
+	 */
 	Maybe<LoginIntervention> performAction(String actionId, Credentials credentials, String entryPoint);
 }
