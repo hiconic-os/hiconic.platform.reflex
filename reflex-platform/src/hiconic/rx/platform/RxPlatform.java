@@ -16,6 +16,7 @@ package hiconic.rx.platform;
 import static com.braintribe.console.ConsoleOutputs.cyan;
 import static com.braintribe.console.ConsoleOutputs.green;
 import static com.braintribe.console.ConsoleOutputs.magenta;
+import static com.braintribe.console.ConsoleOutputs.red;
 import static com.braintribe.console.ConsoleOutputs.sequence;
 import static com.braintribe.console.ConsoleOutputs.text;
 
@@ -255,6 +256,7 @@ public class RxPlatform implements AutoCloseable {
 					String msg = "Error while starting application";
 					logger.log(Level.ERROR, msg, e);
 				}
+				printStartupFailure(e, reason);
 				exitCode = 1;
 			}
 		} finally {
@@ -263,6 +265,27 @@ public class RxPlatform implements AutoCloseable {
 
 		if (exitCode != 0)
 			System.exit(exitCode);
+	}
+
+	private static void printStartupFailure(Throwable throwable, Reason reason) {
+		String details = reason != null ? reason.stringify(true) : causeMessages(throwable);
+
+		ConsoleOutputs.println(sequence( //
+				red("Error occurred:"), //
+				text("\n" + details + "\n\nSee the application log for more details.") //
+		));
+	}
+
+	private static String causeMessages(Throwable throwable) {
+		StringBuilder sb = new StringBuilder();
+		for (Throwable cause = throwable; cause != null; cause = cause.getCause()) {
+			if (!sb.isEmpty())
+				sb.append("\n  caused by: ");
+			sb.append(cause.getClass().getName());
+			if (cause.getMessage() != null)
+				sb.append(": ").append(cause.getMessage());
+		}
+		return sb.toString();
 	}
 
 	static Reason reasonFrom(Throwable throwable) {
