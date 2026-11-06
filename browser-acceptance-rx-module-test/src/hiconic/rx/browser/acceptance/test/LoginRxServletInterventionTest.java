@@ -76,6 +76,20 @@ public class LoginRxServletInterventionTest {
 	}
 
 	@Test
+	public void unknownExternalOptionCanNeverFallBackToNativeCredentials() {
+		VelocityContext context = servlet().context(request(Map.of(
+				WebSecurityConstants.REQUEST_PARAM_LOGIN_INTERVENTION_STATE, "ACTION_REQUIRED",
+				WebSecurityConstants.REQUEST_PARAM_LOGIN_OPTION, "unregistered-external-login",
+				WebSecurityConstants.REQUEST_PARAM_LOGIN_ACTION, "request-device-browser-approval")));
+
+		assertThat(context.get("externalIntervention")).isEqualTo(true);
+		assertThat(context.get("localLoginEnabled")).isEqualTo(false);
+		assertThat((List<?>) context.get("loginOptions")).isEmpty();
+		assertThat(context.get("interventionAction")).isNull();
+		assertThat(context.get("interventionActionUrl")).isNull();
+	}
+
+	@Test
 	public void loginTemplateParses() throws Exception {
 		String resource = "/hiconic/rx/security/web/processing/servlet/templates/login.html.vm";
 		try (InputStream in = LoginRxServlet.class.getResourceAsStream(resource)) {

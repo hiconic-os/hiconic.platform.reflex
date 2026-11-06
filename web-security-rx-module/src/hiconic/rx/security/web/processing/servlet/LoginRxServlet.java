@@ -64,10 +64,9 @@ public class LoginRxServlet extends BasicTemplateBasedServlet implements Initial
 		String interventionAction = request.getParameter(WebSecurityConstants.REQUEST_PARAM_LOGIN_ACTION);
 		String loginOptionId = request.getParameter(WebSecurityConstants.REQUEST_PARAM_LOGIN_OPTION);
 		String interventionState = request.getParameter(WebSecurityConstants.REQUEST_PARAM_LOGIN_INTERVENTION_STATE);
-		LoginOption interventionLoginOption = loginOption(loginOptionId);
-		boolean externalIntervention = interventionState != null && interventionLoginOption != null;
+		boolean externalIntervention = interventionState != null && loginOptionId != null;
 		String interventionActionUrl = actionTargetUrl(loginOptionId, interventionAction, continueUrl);
-		if (!localLoginEnabled && interventionActionUrl == null)
+		if (externalIntervention && interventionActionUrl == null)
 			interventionAction = null;
 		context.put("continue", continueUrl);
 		context.put("message", request.getParameter(WebSecurityConstants.REQUEST_PARAM_MESSAGE));
