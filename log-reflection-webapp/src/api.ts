@@ -13,6 +13,8 @@ import {
   QueryLogRecords,
   UpdateLogLevelProfileCascade,
   UpdateRuntimeLogLevels,
+  type LogLevelProfile,
+  type LogLevelState,
   type LogRecord,
   type LogReflectionCapabilities,
   type LogRecordPage,
@@ -74,24 +76,6 @@ export interface LogLevelStateView {
   profileSupport: boolean;
 }
 
-interface LogLevelStateResponse {
-  effectiveLevels?: ReadonlyMap<string, string> | null;
-  runtimeLevels?: ReadonlyMap<string, string> | null;
-  packagedLevels?: ReadonlyMap<string, string> | null;
-  knownLoggerNames?: Iterable<string> | null;
-  packagedProfiles?: Iterable<LogLevelProfileResponse> | null;
-  runtimeProfiles?: Iterable<LogLevelProfileResponse> | null;
-  packagedProfileCascade?: Iterable<string> | null;
-  runtimeProfileCascade?: Iterable<string> | null;
-  effectiveProfileCascade?: Iterable<string> | null;
-  profileSupport?: boolean | null;
-}
-
-interface LogLevelProfileResponse {
-  name?: string | null;
-  levels?: ReadonlyMap<string, string> | null;
-}
-
 export interface LogReflectionClient {
   capabilities(): Promise<LogReflectionCapabilities>;
   streams(target: TargetSelection): Promise<LogStreams>;
@@ -139,7 +123,7 @@ export class LogReflectionApi implements LogReflectionClient {
   async logLevelState(applicationId: string): Promise<LogLevelStateView> {
     const request = GetLogLevelState.create();
     request.applicationId = applicationId;
-    const state = await this.evaluate<LogLevelStateResponse>(request, this.loggingEvaluator);
+    const state = await this.evaluate<LogLevelState>(request, this.loggingEvaluator);
     return {
       effectiveLevels: new Map(state.effectiveLevels?.entries() ?? []),
       runtimeLevels: new Map(state.runtimeLevels?.entries() ?? []),
@@ -265,7 +249,7 @@ export class LogReflectionApi implements LogReflectionClient {
   }
 }
 
-function profileMap(profiles: Iterable<LogLevelProfileResponse> | null | undefined) {
+function profileMap(profiles: Iterable<LogLevelProfile> | null | undefined) {
   const result = new Map<string, ReadonlyMap<string, string>>();
   for (const profile of Array.from(profiles ?? []))
     result.set(profile.name ?? "", new Map(profile.levels?.entries() ?? []));
