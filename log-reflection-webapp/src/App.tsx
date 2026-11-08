@@ -1,18 +1,17 @@
 import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
-import {
-  LogReflectionApi,
-  type LogReflectionClient,
-  type LogLevelStateView,
-  type LogRecord,
-  type LogRecordPage,
-  type LogSegmentDescriptor,
-  type LogStreamDescriptor,
-  type RecordFilter,
-  type RemoteLogFormat,
-  type RemoteLogLayout,
-  type RemoteLogScope,
-  type RuntimeConfig,
-  type TargetSelection
+import type {
+  LogReflectionClient,
+  LogLevelStateView,
+  LogRecord,
+  LogRecordPage,
+  LogSegmentDescriptor,
+  LogStreamDescriptor,
+  RecordFilter,
+  RemoteLogFormat,
+  RemoteLogLayout,
+  RemoteLogScope,
+  RuntimeConfig,
+  TargetSelection
 } from "./api";
 import { createTabExport, type TabExportColumnKey, type TabExportFormat } from "./tab-export";
 
@@ -88,12 +87,13 @@ const levels = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"];
 const newDefaultFilter = (): RecordFilter => ({ levels: [] });
 const defaultTailPollIntervalMillis = 1_000;
 const minimumTailPollIntervalMillis = 100;
+const minimumOperationMaskMillis = 250;
 const localScanSliceMillis = 7;
 const continuationBatchRecords = 200;
 type LoadRecordsOutcome = "failed" | "complete" | "more";
 
 export interface AppProps {
-  apiFactory?: (config: RuntimeConfig) => LogReflectionClient;
+  apiFactory: (config: RuntimeConfig) => LogReflectionClient;
   configLoader?: () => Promise<RuntimeConfig>;
 }
 
@@ -104,7 +104,7 @@ function LogLevelValue(props: { level?: string; effective?: boolean; emptyLabel?
   </span>;
 }
 
-export function App(props: AppProps = {}) {
+export function App(props: AppProps) {
   let runtimeConfig: RuntimeConfig | undefined;
   let accessRefreshInFlight: Promise<void> | undefined;
   const [api, setApi] = createSignal<LogReflectionClient>();
@@ -226,7 +226,7 @@ export function App(props: AppProps = {}) {
     setAccessState("checking");
     try {
       runtimeConfig = await (props.configLoader?.() ?? loadConfig());
-      const client = props.apiFactory?.(runtimeConfig) ?? new LogReflectionApi(runtimeConfig);
+      const client = props.apiFactory(runtimeConfig);
       setApi(client);
       await refreshAccess(true);
     } catch (caught) {
@@ -784,6 +784,7 @@ export function App(props: AppProps = {}) {
 	const tab = activeRecordTab();
     if (!tab) return;
     menu?.closest("details")?.removeAttribute("open");
+    const activityStartedAt = performance.now();
     setDownloadActivity("view");
     try {
       await nextPaint();
@@ -797,6 +798,9 @@ export function App(props: AppProps = {}) {
       console.error("Exporting the current log view failed", caught);
       handleOperationalFailure(caught);
     } finally {
+      const remainingMaskMillis = minimumOperationMaskMillis - (performance.now() - activityStartedAt);
+      if (remainingMaskMillis > 0)
+        await delay(remainingMaskMillis);
       setDownloadActivity();
     }
   }
@@ -1891,6 +1895,10 @@ function safeName(value: string) {
 
 function nextPaint() {
   return new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+}
+
+function delay(milliseconds: number) {
+  return new Promise<void>(resolve => setTimeout(resolve, milliseconds));
 }
 
 function triggerDownload(blob: Blob, fileName: string) {
