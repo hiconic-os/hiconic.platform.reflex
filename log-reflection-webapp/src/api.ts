@@ -13,7 +13,6 @@ import {
   QueryLogRecords,
   UpdateLogLevelProfileCascade,
   UpdateRuntimeLogLevels,
-  type LogLevelProfile,
   type LogRecord,
   type LogReflectionCapabilities,
   type LogRecordPage,
@@ -80,12 +79,17 @@ interface LogLevelStateResponse {
   runtimeLevels?: ReadonlyMap<string, string> | null;
   packagedLevels?: ReadonlyMap<string, string> | null;
   knownLoggerNames?: Iterable<string> | null;
-  packagedProfiles?: Iterable<LogLevelProfile> | null;
-  runtimeProfiles?: Iterable<LogLevelProfile> | null;
+  packagedProfiles?: Iterable<LogLevelProfileResponse> | null;
+  runtimeProfiles?: Iterable<LogLevelProfileResponse> | null;
   packagedProfileCascade?: Iterable<string> | null;
   runtimeProfileCascade?: Iterable<string> | null;
   effectiveProfileCascade?: Iterable<string> | null;
   profileSupport?: boolean | null;
+}
+
+interface LogLevelProfileResponse {
+  name?: string | null;
+  levels?: ReadonlyMap<string, string> | null;
 }
 
 export interface LogReflectionClient {
@@ -261,7 +265,7 @@ export class LogReflectionApi implements LogReflectionClient {
   }
 }
 
-function profileMap(profiles: Iterable<LogLevelProfile> | null | undefined) {
+function profileMap(profiles: Iterable<LogLevelProfileResponse> | null | undefined) {
   const result = new Map<string, ReadonlyMap<string, string>>();
   for (const profile of Array.from(profiles ?? []))
     result.set(profile.name ?? "", new Map(profile.levels?.entries() ?? []));
