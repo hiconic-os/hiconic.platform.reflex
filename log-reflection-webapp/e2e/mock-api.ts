@@ -98,13 +98,21 @@ class MockLogReflectionApi implements LogReflectionClient {
       effectiveLevels: new Map(),
       runtimeLevels: new Map(),
       packagedLevels: new Map(),
-      knownLoggerNames: []
+      knownLoggerNames: [],
+      packagedProfiles: new Map([["packaged-default", new Map()]]),
+      runtimeProfiles: new Map(),
+      packagedProfileCascade: ["packaged-default"],
+      runtimeProfileCascade: [],
+      effectiveProfileCascade: ["packaged-default"],
+      profileSupport: true
     };
   }
 
   async setRuntimeLogLevel() {}
   async resetRuntimeLogLevel() {}
   async clearRuntimeLogLevels() {}
+  async setLogLevelProfileCascade() {}
+  async resetLogLevelProfileCascade() {}
 
   async bundle(_download: RemoteLogDownload) {
     this.bundleRequestCount++;

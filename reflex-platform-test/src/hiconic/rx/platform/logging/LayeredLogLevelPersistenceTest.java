@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
@@ -21,6 +22,14 @@ public class LayeredLogLevelPersistenceTest {
 			Files.write(configFolder.resolve("log-levels.properties"), (
 					"hiconic.rx.test.packaged=ERROR\n" +
 					"hiconic.rx.test.filesystem=INFO\n").getBytes(StandardCharsets.UTF_8));
+			Files.writeString(configFolder.resolve("log-levels.ini"), """
+					[packaged-default]
+					hiconic.rx.test.ini=DEBUG
+
+					[platform-debug]
+					tribefire=DEBUG
+					com.braintribe=${test.log.level}
+					""", StandardCharsets.UTF_8);
 
 			LayeredLogLevelPersistence persistence = new LayeredLogLevelPersistence(
 					new ClasspathIndex(getClass().getClassLoader()), "HICONIC-CONF/", configFolder.toFile(),
@@ -32,7 +41,12 @@ public class LayeredLogLevelPersistenceTest {
 					.containsEntry("hiconic.rx.test.packaged", "ERROR")
 					.containsEntry("hiconic.rx.test.module", "WARN")
 					.containsEntry("hiconic.rx.test.filesystem", "INFO")
-					.containsEntry("hiconic.rx.test.placeholder", "ERROR");
+					.containsEntry("hiconic.rx.test.placeholder", "ERROR")
+					.containsEntry("hiconic.rx.test.ini", "DEBUG");
+			assertThat(persistence.getProfiles().get("platform-debug"))
+					.containsEntry("tribefire", "DEBUG")
+					.containsEntry("com.braintribe", "ERROR");
+			assertThat(persistence.getProfileCascade()).isEqualTo(List.of("packaged-default"));
 		} finally {
 			try (var paths = Files.walk(configFolder)) {
 				for (Path path : (Iterable<Path>) paths.sorted(Comparator.reverseOrder())::iterator)

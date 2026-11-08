@@ -7,7 +7,7 @@ import com.braintribe.model.generic.reflection.EntityTypes;
 import com.braintribe.model.service.api.ServiceRequest;
 
 /** Reflects the applications and nodes currently visible to cluster routing. */
-public interface GetLogTopology extends AuthorizedLogReflectionRequest {
+public interface GetLogTopology extends ReadLogReflectionRequest {
 	EntityType<GetLogTopology> T = EntityTypes.T(GetLogTopology.class);
 
 	@Override

@@ -61,6 +61,7 @@ public class LogbackLogLevelFrameworkTest {
 					parentName, LogbackLogLevelFramework.LEVEL_DEBUG));
 
 			assertThat(logback.getLogger(childName).getEffectiveLevel()).isEqualTo(ch.qos.logback.classic.Level.DEBUG);
+			assertThat(framework.getEffectiveLogLevel(childName)).isEqualTo(LogbackLogLevelFramework.LEVEL_DEBUG);
 			assertThat(julRoot.getLevel()).isEqualTo(Level.INFO);
 			assertThat(julParent.getLevel()).isEqualTo(Level.FINE);
 			assertThat(julChild.getLevel()).isNull();

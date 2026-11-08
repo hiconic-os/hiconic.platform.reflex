@@ -1,17 +1,18 @@
 package hiconic.rx.log.reflection.processing;
 
+import static com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling.getOrTunnel;
+
 import java.util.LinkedHashMap;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import com.braintribe.cfg.Configurable;
 import com.braintribe.cfg.Required;
-import com.braintribe.gm.model.reason.Maybe;
-import com.braintribe.gm.model.reason.Reasons;
-import com.braintribe.gm.model.reason.UnsatisfiedMaybeTunneling;
-import com.braintribe.gm.model.security.reason.Forbidden;
+import com.braintribe.logging.level.LogLevelManager;
+import com.braintribe.logging.level.LogLevelRuntimeUpdater;
 import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.processing.service.common.context.UserSessionAspect;
 import com.braintribe.model.processing.service.impl.AbstractDispatchingServiceProcessor;
@@ -23,14 +24,19 @@ import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.model.service.api.UnicastRequest;
 import com.braintribe.model.service.api.result.Failure;
 import com.braintribe.model.service.api.result.MulticastResponse;
+import com.braintribe.model.service.api.result.Neutral;
 import com.braintribe.model.service.api.result.ServiceResult;
-import com.braintribe.model.usersession.UserSession;
 
+import hiconic.rx.log.reflection.model.LogLevelProfile;
+import hiconic.rx.log.reflection.model.LogLevelState;
 import hiconic.rx.log.reflection.model.LogReflectionCapabilities;
 import hiconic.rx.log.reflection.model.LogTarget;
 import hiconic.rx.log.reflection.model.LogOrigin;
+import hiconic.rx.log.reflection.model.api.ApplyEffectiveLogLevels;
 import hiconic.rx.log.reflection.model.api.GetLogTopology;
 import hiconic.rx.log.reflection.model.api.GetLogReflectionCapabilities;
+import hiconic.rx.log.reflection.model.api.GetLocalLogLevelState;
+import hiconic.rx.log.reflection.model.api.GetLogLevelState;
 import hiconic.rx.log.reflection.model.api.CreateLogBundle;
 import hiconic.rx.log.reflection.model.api.CreateLocalLogBundle;
 import hiconic.rx.log.reflection.model.api.ListLogStreams;
@@ -41,6 +47,11 @@ import hiconic.rx.log.reflection.model.api.LogStreams;
 import hiconic.rx.log.reflection.model.api.LogTopology;
 import hiconic.rx.log.reflection.model.api.QueryLocalLogRecords;
 import hiconic.rx.log.reflection.model.api.QueryLogRecords;
+import hiconic.rx.log.reflection.model.api.UpdateLocalLogLevelProfileCascade;
+import hiconic.rx.log.reflection.model.api.UpdateLocalRuntimeLogLevels;
+import hiconic.rx.log.reflection.model.api.UpdateLogLevelProfileCascade;
+import hiconic.rx.log.reflection.model.api.UpdateRuntimeLogLevels;
+import hiconic.rx.module.api.auth.RoleAuthorization;
 import hiconic.rx.topology.api.LiveInstances;
 
 public class LogReflectionProcessor extends AbstractDispatchingServiceProcessor<LogReflectionRequest, Object> {
@@ -53,9 +64,11 @@ public class LogReflectionProcessor extends AbstractDispatchingServiceProcessor<
 	private long clusterTimeoutMillis = 10_000;
 	private long bundleClusterTimeoutMillis = 120_000;
 	private LogBundleWriter bundleWriter;
+	private LogLevelManager logLevelManager;
+	private LogLevelRuntimeUpdater logLevelRuntimeUpdater;
+	private RoleAuthorization roleAuthorization;
 	private Set<String> readerRoles = Set.of();
 	private Set<String> managerRoles = Set.of();
-	private String internalRole;
 
 	@Configurable
 	@Required
@@ -115,6 +128,24 @@ public class LogReflectionProcessor extends AbstractDispatchingServiceProcessor<
 
 	@Configurable
 	@Required
+	public void setLogLevelManager(LogLevelManager logLevelManager) {
+		this.logLevelManager = logLevelManager;
+	}
+
+	@Configurable
+	@Required
+	public void setLogLevelRuntimeUpdater(LogLevelRuntimeUpdater logLevelRuntimeUpdater) {
+		this.logLevelRuntimeUpdater = logLevelRuntimeUpdater;
+	}
+
+	@Configurable
+	@Required
+	public void setRoleAuthorization(RoleAuthorization roleAuthorization) {
+		this.roleAuthorization = roleAuthorization;
+	}
+
+	@Configurable
+	@Required
 	public void setReaderRoles(Set<String> readerRoles) {
 		this.readerRoles = Set.copyOf(readerRoles);
 	}
@@ -125,52 +156,134 @@ public class LogReflectionProcessor extends AbstractDispatchingServiceProcessor<
 		this.managerRoles = Set.copyOf(managerRoles);
 	}
 
-	@Configurable
-	@Required
-	public void setInternalRole(String internalRole) {
-		this.internalRole = internalRole;
-	}
-
 	@Override
 	protected void configureDispatching(DispatchConfiguration<LogReflectionRequest, Object> dispatching) {
 		dispatching.register(GetLogReflectionCapabilities.T, this::capabilities);
-		dispatching.register(ListLogStreams.T, (context, request) -> withRead(context, () -> listStreams(context, request)));
-		dispatching.register(GetLogTopology.T, (context, request) -> withRead(context, this::topology));
-		dispatching.register(QueryLogRecords.T, (context, request) -> withRead(context, () -> queryRecords(context, request)));
-		dispatching.register(CreateLogBundle.T, (context, request) -> withRead(context, () -> createBundle(context, request)));
-		dispatching.register(CreateLocalLogBundle.T,
-				(context, request) -> withRead(context, () -> bundleWriter.create(inventory, request, instanceId)));
-		dispatching.register(ListLocalLogStreams.T, (context, request) -> withRead(context, this::listLocalStreams));
-		dispatching.register(QueryLocalLogRecords.T, (context, request) -> withRead(context, () -> queryLocalRecords(request)));
+		dispatching.register(ListLogStreams.T, this::listStreams);
+		dispatching.register(GetLogTopology.T, (context, request) -> topology());
+		dispatching.register(QueryLogRecords.T, this::queryRecords);
+		dispatching.register(CreateLogBundle.T, this::createBundle);
+		dispatching.register(CreateLocalLogBundle.T, (context, request) -> bundleWriter.create(inventory, request, instanceId));
+		dispatching.register(ListLocalLogStreams.T, (context, request) -> listLocalStreams());
+		dispatching.register(QueryLocalLogRecords.T, (context, request) -> queryLocalRecords(request));
+		dispatching.register(GetLogLevelState.T, this::logLevelState);
+		dispatching.register(GetLocalLogLevelState.T, (context, request) -> localLogLevelState());
+		dispatching.register(UpdateRuntimeLogLevels.T, this::updateRuntimeLogLevels);
+		dispatching.register(UpdateLocalRuntimeLogLevels.T, (context, request) -> updateLocalRuntimeLogLevels(request));
+		dispatching.register(UpdateLogLevelProfileCascade.T, this::updateLogLevelProfileCascade);
+		dispatching.register(UpdateLocalLogLevelProfileCascade.T, (context, request) -> updateLocalLogLevelProfileCascade(request));
+		dispatching.register(ApplyEffectiveLogLevels.T, (context, request) -> applyEffectiveLogLevels());
 	}
 
 	private LogReflectionCapabilities capabilities(ServiceRequestContext context, GetLogReflectionCapabilities request) {
 		LogReflectionCapabilities result = LogReflectionCapabilities.T.create();
-		result.setAuthenticated(context.findOrNull(UserSessionAspect.class) != null);
-		result.setCanRead(hasAnyRole(context, readerRoles));
-		result.setCanManageLevels(hasAnyRole(context, managerRoles));
+		boolean securityActive = roleAuthorization.securityActive();
+		result.setAuthenticated(!securityActive || context.findOrNull(UserSessionAspect.class) != null);
+		result.setCanRead(!securityActive || roleAuthorization.hasAnyRole(readerRoles));
+		result.setCanManageLevels(!securityActive || roleAuthorization.hasAnyRole(managerRoles));
 		return result;
 	}
 
-	private <T> T withRead(ServiceRequestContext context, java.util.function.Supplier<T> operation) {
-		if (!hasAnyRole(context, readerRoles) && !hasRole(context, internalRole))
-			throw forbidden("A log reflection reader role is required.");
-		return operation.get();
+	private LogLevelState logLevelState(ServiceRequestContext context, GetLogLevelState request) {
+		InstanceId target = resolveApplication(request.getApplicationId());
+		if (sameApplication(target, instanceId))
+			return localLogLevelState();
+		return unicast(context, GetLocalLogLevelState.T.create(), target, LogLevelState.class, clusterTimeoutMillis);
 	}
 
-	private static boolean hasAnyRole(ServiceRequestContext context, Set<String> required) {
-		UserSession session = context.findOrNull(UserSessionAspect.class);
-		Set<String> effective = session == null ? null : session.getEffectiveRoles();
-		return effective != null && required != null && effective.stream().anyMatch(required::contains);
+	private LogLevelState localLogLevelState() {
+		LogLevelState state = LogLevelState.T.create();
+		state.setEffectiveLevels(logLevelManager.getEffectiveLogLevels());
+		state.setRuntimeLevels(logLevelManager.getRuntimeLogLevels());
+		state.setPackagedLevels(logLevelManager.getPackagedLogLevels());
+		state.setKnownLoggerNames(logLevelManager.getKnownLoggerNames());
+		state.setPackagedProfiles(profiles(logLevelManager.getPackagedProfiles()));
+		state.setRuntimeProfiles(profiles(logLevelManager.getRuntimeProfiles()));
+		state.setPackagedProfileCascade(logLevelManager.getPackagedProfileOrder());
+		state.setRuntimeProfileCascade(logLevelManager.getRuntimeProfileOrder());
+		state.setEffectiveProfileCascade(logLevelManager.getEffectiveProfileOrder());
+		state.setProfileSupport(true);
+		return state;
 	}
 
-	private static boolean hasRole(ServiceRequestContext context, String required) {
-		return required != null && hasAnyRole(context, Set.of(required));
+	private Neutral updateRuntimeLogLevels(ServiceRequestContext context, UpdateRuntimeLogLevels request) {
+		InstanceId target = resolveApplication(request.getApplicationId());
+		UpdateLocalRuntimeLogLevels local = UpdateLocalRuntimeLogLevels.T.create();
+		local.setProfile(request.getProfile());
+		local.setLevels(request.getLevels());
+		local.setNamesToRemove(request.getNamesToRemove());
+		local.setClearAll(request.getClearAll());
+		if (sameApplication(target, instanceId))
+			return updateLocalRuntimeLogLevels(local);
+		return unicast(context, local, target, Neutral.class, clusterTimeoutMillis);
 	}
 
-	private static UnsatisfiedMaybeTunneling forbidden(String message) {
-		Maybe<Object> maybe = Reasons.build(Forbidden.T).text(message).toMaybe();
-		return new UnsatisfiedMaybeTunneling(maybe);
+	private Neutral updateLocalRuntimeLogLevels(UpdateLocalRuntimeLogLevels request) {
+		String profile = request.getProfile();
+		if (Boolean.TRUE.equals(request.getClearAll())) {
+			Map<String, String> current = logLevelManager.getRuntimeProfiles().get(profile);
+			Set<String> namesToRemove = current == null ? Set.of() : current.keySet();
+			getOrTunnel(logLevelRuntimeUpdater.updateRuntimeProfile(profile, Map.of(), namesToRemove));
+		} else {
+			getOrTunnel(logLevelRuntimeUpdater.updateRuntimeProfile(profile, request.getLevels(), request.getNamesToRemove()));
+		}
+		return Neutral.NEUTRAL;
+	}
+
+	private Neutral updateLogLevelProfileCascade(ServiceRequestContext context, UpdateLogLevelProfileCascade request) {
+		InstanceId target = resolveApplication(request.getApplicationId());
+		UpdateLocalLogLevelProfileCascade local = UpdateLocalLogLevelProfileCascade.T.create();
+		local.setProfiles(request.getProfiles());
+		local.setReset(request.getReset());
+		if (sameApplication(target, instanceId))
+			return updateLocalLogLevelProfileCascade(local);
+		return unicast(context, local, target, Neutral.class, clusterTimeoutMillis);
+	}
+
+	private Neutral updateLocalLogLevelProfileCascade(UpdateLocalLogLevelProfileCascade request) {
+		if (Boolean.TRUE.equals(request.getReset())) {
+			getOrTunnel(logLevelRuntimeUpdater.mutateProfileOrder(
+					com.braintribe.gm.model.logging.level.api.LogLevelProfileOrderMutation.RESET, null, null));
+			return Neutral.NEUTRAL;
+		}
+
+		getOrTunnel(logLevelRuntimeUpdater.mutateProfileOrder(
+				com.braintribe.gm.model.logging.level.api.LogLevelProfileOrderMutation.RESET, null, null));
+		for (String profile : request.getProfiles() == null ? List.<String>of() : request.getProfiles())
+			getOrTunnel(logLevelRuntimeUpdater.mutateProfileOrder(
+					com.braintribe.gm.model.logging.level.api.LogLevelProfileOrderMutation.APPEND, profile, null));
+		return Neutral.NEUTRAL;
+	}
+
+	private Neutral applyEffectiveLogLevels() {
+		logLevelManager.applyEffectiveLogLevels();
+		return Neutral.NEUTRAL;
+	}
+
+	private static List<LogLevelProfile> profiles(Map<String, Map<String, String>> source) {
+		List<LogLevelProfile> profiles = new ArrayList<>();
+		for (Map.Entry<String, Map<String, String>> entry : source.entrySet()) {
+			LogLevelProfile profile = LogLevelProfile.T.create();
+			profile.setName(entry.getKey());
+			profile.setLevels(entry.getValue());
+			profiles.add(profile);
+		}
+		return profiles;
+	}
+
+	private InstanceId resolveApplication(String requestedApplicationId) {
+		String applicationId = normalize(requestedApplicationId);
+		if (applicationId == null || applicationId.equals(instanceId.getApplicationId()))
+			return instanceId;
+
+		Set<String> candidates = liveInstances.liveInstances(InstanceId.of(null, applicationId));
+		if (candidates == null || candidates.isEmpty())
+			throw new IllegalArgumentException("No live instance found for application: " + applicationId);
+		return InstanceId.parse(candidates.iterator().next());
+	}
+
+	private static boolean sameApplication(InstanceId left, InstanceId right) {
+		return left != null && right != null && java.util.Objects.equals(left.getApplicationId(), right.getApplicationId());
 	}
 
 	private LogTopology topology() {

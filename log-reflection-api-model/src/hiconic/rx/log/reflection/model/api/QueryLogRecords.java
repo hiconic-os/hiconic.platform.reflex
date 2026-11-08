@@ -10,7 +10,7 @@ import com.braintribe.model.service.api.ServiceRequest;
 import hiconic.rx.log.reflection.model.LogFilter;
 import hiconic.rx.log.reflection.model.LogTarget;
 
-public interface QueryLogRecords extends AuthorizedLogReflectionRequest {
+public interface QueryLogRecords extends ReadLogReflectionRequest {
 	EntityType<QueryLogRecords> T = EntityTypes.T(QueryLogRecords.class);
 
 	LogTarget getTarget();

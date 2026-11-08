@@ -8,7 +8,7 @@ import com.braintribe.model.service.api.ServiceRequest;
 
 import hiconic.rx.log.reflection.model.LogTarget;
 
-public interface ListLogStreams extends AuthorizedLogReflectionRequest {
+public interface ListLogStreams extends ReadLogReflectionRequest {
 	EntityType<ListLogStreams> T = EntityTypes.T(ListLogStreams.class);
 
 	LogTarget getTarget();

@@ -68,7 +68,6 @@ public class RxInitializerCoordinator implements InitializerRegistry {
 	}
 
 	/** The tasks registered with this coordinator, in the order of their registration. These are also the ones the backend runs. */
-	@Override
 	public synchronized Set<String> initializerNames() {
 		return new LinkedHashSet<>(tasks.keySet());
 	}

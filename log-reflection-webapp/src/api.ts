@@ -1,5 +1,6 @@
 import {
   CreateLogBundle,
+  GetLogLevelState,
   GetLogReflectionCapabilities,
   GetLogTopology,
   ListLogStreams,
@@ -10,6 +11,10 @@ import {
   LogPropertyFilter,
   LogTarget,
   QueryLogRecords,
+  UpdateLogLevelProfileCascade,
+  UpdateRuntimeLogLevels,
+  type LogLevelProfile,
+  type LogLevelState,
   type LogRecord,
   type LogReflectionCapabilities,
   type LogRecordPage,
@@ -19,7 +24,6 @@ import {
   type LogStreams
 } from "@dev.hiconic/platform.reflex_log-reflection-api-model";
 import { LogLevel } from "@dev.hiconic/gm_logging-model";
-import { GetLogLevelState, UpdateRuntimeLogLevels, type LogLevelState } from "@dev.hiconic/gm_log-level-api-model";
 import type { Resource } from "@dev.hiconic/gm_resource-model";
 import { TransientSource } from "@dev.hiconic/gm_transient-resource-model";
 import { T, hc, remote } from "@dev.hiconic/tf.js_hc-js-api";
@@ -64,6 +68,12 @@ export interface LogLevelStateView {
   runtimeLevels: ReadonlyMap<string, string>;
   packagedLevels: ReadonlyMap<string, string>;
   knownLoggerNames: readonly string[];
+  packagedProfiles: ReadonlyMap<string, ReadonlyMap<string, string>>;
+  runtimeProfiles: ReadonlyMap<string, ReadonlyMap<string, string>>;
+  packagedProfileCascade: readonly string[];
+  runtimeProfileCascade: readonly string[];
+  effectiveProfileCascade: readonly string[];
+  profileSupport: boolean;
 }
 
 export interface LogReflectionClient {
@@ -71,9 +81,11 @@ export interface LogReflectionClient {
   streams(target: TargetSelection): Promise<LogStreams>;
   topology(): Promise<LogTopology>;
   logLevelState(applicationId: string): Promise<LogLevelStateView>;
-  setRuntimeLogLevel(applicationId: string, loggerName: string, level: string): Promise<void>;
-  resetRuntimeLogLevel(applicationId: string, loggerName: string): Promise<void>;
-  clearRuntimeLogLevels(applicationId: string): Promise<void>;
+  setRuntimeLogLevel(applicationId: string, loggerName: string, level: string, profile?: string): Promise<void>;
+  resetRuntimeLogLevel(applicationId: string, loggerName: string, profile?: string): Promise<void>;
+  clearRuntimeLogLevels(applicationId: string, profile?: string): Promise<void>;
+  setLogLevelProfileCascade(applicationId: string, profiles: readonly string[]): Promise<void>;
+  resetLogLevelProfileCascade(applicationId: string): Promise<void>;
   records(
     streamId: string,
     target: TargetSelection,
@@ -116,32 +128,58 @@ export class LogReflectionApi implements LogReflectionClient {
       effectiveLevels: new Map(state.effectiveLevels?.entries() ?? []),
       runtimeLevels: new Map(state.runtimeLevels?.entries() ?? []),
       packagedLevels: new Map(state.packagedLevels?.entries() ?? []),
-      knownLoggerNames: (Array.from(state.knownLoggerNames ?? []) as string[]).sort()
+      knownLoggerNames: (Array.from(state.knownLoggerNames ?? []) as string[]).sort(),
+      packagedProfiles: profileMap(state.packagedProfiles),
+      runtimeProfiles: profileMap(state.runtimeProfiles),
+      packagedProfileCascade: Array.from(state.packagedProfileCascade ?? []),
+      runtimeProfileCascade: Array.from(state.runtimeProfileCascade ?? []),
+      effectiveProfileCascade: Array.from(state.effectiveProfileCascade ?? []),
+      profileSupport: Boolean(state.profileSupport)
     };
   }
 
-  async setRuntimeLogLevel(applicationId: string, loggerName: string, level: string): Promise<void> {
+  async setRuntimeLogLevel(applicationId: string, loggerName: string, level: string, profile?: string): Promise<void> {
     const request = UpdateRuntimeLogLevels.create();
     request.applicationId = applicationId;
     request.levels = stringMap([[loggerName, level]]);
     request.namesToRemove = stringSet([]);
+    request.profile = profile ?? null;
     await this.evaluate(request, this.loggingEvaluator);
   }
 
-  async resetRuntimeLogLevel(applicationId: string, loggerName: string): Promise<void> {
+  async resetRuntimeLogLevel(applicationId: string, loggerName: string, profile?: string): Promise<void> {
     const request = UpdateRuntimeLogLevels.create();
     request.applicationId = applicationId;
     request.levels = stringMap([]);
     request.namesToRemove = stringSet([loggerName]);
+    request.profile = profile ?? null;
     await this.evaluate(request, this.loggingEvaluator);
   }
 
-  async clearRuntimeLogLevels(applicationId: string): Promise<void> {
+  async clearRuntimeLogLevels(applicationId: string, profile?: string): Promise<void> {
     const request = UpdateRuntimeLogLevels.create();
     request.applicationId = applicationId;
     request.clearAll = true;
     request.levels = stringMap([]);
     request.namesToRemove = stringSet([]);
+    request.profile = profile ?? null;
+    await this.evaluate(request, this.loggingEvaluator);
+  }
+
+  async setLogLevelProfileCascade(applicationId: string, profiles: readonly string[]): Promise<void> {
+    const request = UpdateLogLevelProfileCascade.create();
+    request.applicationId = applicationId;
+    const cascade = new T.Array(hc.reflection.STRING);
+    profiles.forEach(profile => cascade.push(profile));
+    request.profiles = cascade;
+    await this.evaluate(request, this.loggingEvaluator);
+  }
+
+  async resetLogLevelProfileCascade(applicationId: string): Promise<void> {
+    const request = UpdateLogLevelProfileCascade.create();
+    request.applicationId = applicationId;
+    request.reset = true;
+    request.profiles = new T.Array(hc.reflection.STRING);
     await this.evaluate(request, this.loggingEvaluator);
   }
 
@@ -209,6 +247,13 @@ export class LogReflectionApi implements LogReflectionClient {
     }
     return result.get() as T;
   }
+}
+
+function profileMap(profiles: Iterable<LogLevelProfile> | null | undefined) {
+  const result = new Map<string, ReadonlyMap<string, string>>();
+  for (const profile of Array.from(profiles ?? []))
+    result.set(profile.name ?? "", new Map(profile.levels?.entries() ?? []));
+  return result;
 }
 
 function toTarget(selection: TargetSelection) {

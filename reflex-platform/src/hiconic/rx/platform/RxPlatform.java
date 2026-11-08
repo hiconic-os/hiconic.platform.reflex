@@ -421,6 +421,7 @@ public class RxPlatform implements AutoCloseable {
 		LogLevelSetup setup = new LogLevelSetup();
 		setup.setConfDir(confDir);
 		setup.setLogLevelFramework(new LogbackLogLevelFramework());
+		setup.setProfilesEnabled(true);
 		setup.setPackagedLogLevelPersistence(
 				new LayeredLogLevelPersistence(classpathIndex, RxConfigurationConstants.CLASSPATH_CONF_PATH, confDir, propertyResolver::resolve));
 		setup.setPropertyLookup(propertyResolver::resolve);

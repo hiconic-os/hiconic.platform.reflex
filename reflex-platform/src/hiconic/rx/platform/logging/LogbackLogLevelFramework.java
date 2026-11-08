@@ -52,6 +52,11 @@ public class LogbackLogLevelFramework implements LogLevelFramework {
 	}
 
 	@Override
+	public String getEffectiveLogLevel(String loggerName) {
+		return fromLogbackLevel(loggerContext().getLogger(toLogbackLoggerName(loggerName)).getEffectiveLevel());
+	}
+
+	@Override
 	public Set<String> getKnownLoggerNames() {
 		Set<String> loggerNames = new TreeSet<>(new StructuredPackageComparator());
 

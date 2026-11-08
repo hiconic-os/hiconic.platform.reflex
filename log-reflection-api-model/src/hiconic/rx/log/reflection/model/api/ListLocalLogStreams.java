@@ -9,7 +9,7 @@ import com.braintribe.model.service.api.ServiceRequest;
 /**
  * Internal cluster payload. Unlike {@link ListLogStreams}, evaluating this request never causes another cluster dispatch.
  */
-public interface ListLocalLogStreams extends AuthorizedLogReflectionRequest {
+public interface ListLocalLogStreams extends InternalLogReflectionRequest {
 	EntityType<ListLocalLogStreams> T = EntityTypes.T(ListLocalLogStreams.class);
 
 	@Override

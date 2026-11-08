@@ -82,18 +82,15 @@ public class LogReflectionWebRxModuleSpace implements RxModuleContract {
 	private Set<String> readerRoles() {
 		Set<String> roles = new LinkedHashSet<>(configured(configuration().getReaderRoles()));
 		roles.addAll(configured(configuration().getManagerRoles()));
-		roles.addAll(platform.auth().roleAuthorization().adminRoles());
 		return roles;
 	}
 
 	private Set<String> managerRoles() {
-		Set<String> roles = new LinkedHashSet<>(configured(configuration().getManagerRoles()));
-		roles.addAll(platform.auth().roleAuthorization().adminRoles());
-		return roles;
+		return configured(configuration().getManagerRoles());
 	}
 
 	private static Set<String> configured(Set<String> roles) {
-		return roles == null ? Set.of() : roles;
+		return roles == null ? Set.of() : Set.copyOf(roles);
 	}
 
 	@Managed

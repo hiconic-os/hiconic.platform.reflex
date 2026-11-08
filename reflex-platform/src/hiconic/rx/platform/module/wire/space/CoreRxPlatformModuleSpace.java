@@ -15,10 +15,8 @@ package hiconic.rx.platform.module.wire.space;
 
 import java.io.File;
 import java.nio.file.Path;
-import java.util.HashSet;
 import java.util.Set;
 
-import com.braintribe.gm.model.logging.level.api.LogLevelRequest;
 import com.braintribe.gm.initializer.api.InitializerRegistry;
 import com.braintribe.gm.initializer.jdbc.processing.FileSystemInitializerManager;
 import com.braintribe.gm.model.reason.Maybe;
@@ -28,7 +26,6 @@ import com.braintribe.model.processing.securityservice.commons.service.ExecuteAu
 import com.braintribe.model.processing.service.common.CompositeServiceProcessor;
 import com.braintribe.model.processing.service.common.UnicastProcessor;
 import com.braintribe.model.resource.source.FileSystemSource;
-import com.braintribe.model.service.api.AuthorizedRequest;
 import com.braintribe.model.service.api.CompositeRequest;
 import com.braintribe.model.service.api.ExecuteAuthorized;
 import com.braintribe.model.service.api.InternalPushRequest;
@@ -50,7 +47,6 @@ import hiconic.rx.module.api.service.ModelSymbol;
 import hiconic.rx.module.api.service.ServiceDomainConfiguration;
 import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.module.api.wire.RxModuleContract;
-import hiconic.rx.platform.processing.auth.RoleAuthorizationInterceptor;
 import hiconic.rx.platform.processing.cluster.SingleInstanceMulticastProcessor;
 import hiconic.rx.platform.processing.initializer.RxInitializerCoordinator;
 import hiconic.rx.platform.processing.push.PushChannelLifecycleHub;
@@ -78,7 +74,6 @@ public class CoreRxPlatformModuleSpace implements RxModuleContract, PushContract
 	
 	// @formatter:off
 	@Import private ExtendedRxPlatformContract platform;
-	@Import private LogLevelSpace logLevels;
 	// @formatter:on
 
 
@@ -98,7 +93,6 @@ public class CoreRxPlatformModuleSpace implements RxModuleContract, PushContract
 		configurations.main().setDisplayName("Main");
 		configureInternalDomain(configurations);
 		configureSystemDomain(configurations);
-		configureLoggingDomain(configurations);
 	}
 
 	// ################################################
@@ -158,29 +152,6 @@ public class CoreRxPlatformModuleSpace implements RxModuleContract, PushContract
 		systemSd.bindRequest(CompositeRequest.T, this::compositeProcessor);
 	}
 	
-	private void configureLoggingDomain(ServiceDomainConfigurations configurations) {
-		ServiceDomainConfiguration loggingSd = configurations.byId("logging");
-		loggingSd.setDisplayName("Logging");
-		loggingSd.addModel(LogLevelRequest.T.getModel());
-		loggingSd.bindInterceptor("role-authorization").forType(AuthorizedRequest.T).bind(this::logLevelAuthorizationInterceptor);
-		loggingSd.bindRequest(LogLevelRequest.T, logLevels::logLevelProcessor);
-	}
-
-	@Managed
-	private RoleAuthorizationInterceptor logLevelAuthorizationInterceptor() {
-		RoleAuthorizationInterceptor bean = new RoleAuthorizationInterceptor();
-		bean.setRoleAuthorization(platform.auth().roleAuthorization());
-		bean.setRoles(logLevelAuthorizedRoles());
-		bean.setMessage("Insufficient privileges to manage log levels");
-		return bean;
-	}
-
-	private Set<String> logLevelAuthorizedRoles() {
-		Set<String> roles = new HashSet<>(platform.auth().roleAuthorization().adminRoles());
-		roles.add("internal");
-		return roles;
-	}
-
 	@Managed
 	private UnicastProcessor unicastProcessor() {
 		UnicastProcessor bean = new UnicastProcessor();

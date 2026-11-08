@@ -98,8 +98,7 @@ import hiconic.rx.explorer.processing.platformreflection.ReflectionResponseAsync
 import hiconic.rx.explorer.processing.platformreflection.system.ProcessesProvider;
 import hiconic.rx.explorer.processing.platformreflection.system.StandardSystemInformationProvider;
 import hiconic.rx.explorer.processing.platformreflection.system.SystemInformationProvider;
-import hiconic.rx.logs.model.api.GetLogs;
-import hiconic.rx.logs.model.api.Logs;
+import hiconic.rx.log.reflection.model.api.CreateLocalLogBundle;
 import hiconic.rx.module.api.common.RxPlatform;
 import hiconic.rx.reflection.model.api.AccessDataFolder;
 import hiconic.rx.reflection.model.api.CollectDiagnosticPackages;
@@ -652,12 +651,10 @@ public class PlatformReflectionProcessor extends AbstractDispatchingServiceProce
 		}
 
 		if (includeLogs) {
-			GetLogs gl = GetLogs.T.create();
-			gl.setFilename("*");
-			EvalContext<? extends Logs> logsEval = gl.eval(context);
-			logsEval.get(new LogsAsyncCallback(dpContext, countdown));
+			CreateLocalLogBundle bundle = CreateLocalLogBundle.T.create();
+			bundle.eval(systemEvaluator).get(new LogBundleAsyncCallback(dpContext, countdown));
 
-			logger.debug("getDiagnosticPackage: Issued an asynchronous GetLogs request.");
+			logger.debug("getDiagnosticPackage: Issued an asynchronous CreateLocalLogBundle request.");
 		}
 
 		stopWatch.intermediate("Triggered internal requests");

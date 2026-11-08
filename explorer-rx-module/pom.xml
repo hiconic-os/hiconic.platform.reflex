@@ -140,7 +140,7 @@
         </dependency>
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
-            <artifactId>logs-rx-module</artifactId>
+            <artifactId>log-reflection-rx-module</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
         <dependency>
@@ -197,7 +197,7 @@
         </dependency>
         <dependency>
             <groupId>hiconic.platform.reflex</groupId>
-            <artifactId>logs-api-model</artifactId>
+            <artifactId>log-reflection-api-model</artifactId>
             <version>${V.hiconic.platform.reflex}</version>
         </dependency>
         <!-- OpenApi V3 -->

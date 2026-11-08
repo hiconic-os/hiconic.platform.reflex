@@ -54,6 +54,7 @@ import hiconic.rx.log.reflection.model.api.LogStreams;
 import hiconic.rx.log.reflection.model.api.QueryLocalLogRecords;
 import hiconic.rx.log.reflection.model.api.QueryLogRecords;
 import hiconic.rx.log.reflection.model.configuration.LogReflectionConfiguration;
+import hiconic.rx.module.api.auth.RoleAuthorization;
 
 public class LogReflectionProcessorClusterTest {
 	@Test
@@ -66,20 +67,21 @@ public class LogReflectionProcessorClusterTest {
 
 	@Test
 	public void reportsAnonymousAndRoleSpecificCapabilities() {
-		LogReflectionProcessor processor = processor(failingEvaluator());
 		GetLogReflectionCapabilities request = GetLogReflectionCapabilities.T.create();
 
-		LogReflectionCapabilities anonymous = (LogReflectionCapabilities) processor.process(context(), request);
+		LogReflectionCapabilities anonymous = (LogReflectionCapabilities) processor(failingEvaluator(), Set.of()).process(context(), request);
 		assertThat(anonymous.getAuthenticated()).isFalse();
 		assertThat(anonymous.getCanRead()).isFalse();
 		assertThat(anonymous.getCanManageLevels()).isFalse();
 
-		LogReflectionCapabilities reader = (LogReflectionCapabilities) processor.process(context("log-reflection-reader"), request);
+		LogReflectionCapabilities reader = (LogReflectionCapabilities) processor(failingEvaluator(), Set.of("log-reflection-reader"))
+				.process(context("log-reflection-reader"), request);
 		assertThat(reader.getAuthenticated()).isTrue();
 		assertThat(reader.getCanRead()).isTrue();
 		assertThat(reader.getCanManageLevels()).isFalse();
 
-		LogReflectionCapabilities manager = (LogReflectionCapabilities) processor.process(context("log-reflection-manager"), request);
+		LogReflectionCapabilities manager = (LogReflectionCapabilities) processor(failingEvaluator(), Set.of("log-reflection-manager"))
+				.process(context("log-reflection-manager"), request);
 		assertThat(manager.getAuthenticated()).isTrue();
 		assertThat(manager.getCanManageLevels()).isTrue();
 	}
@@ -233,14 +235,34 @@ public class LogReflectionProcessorClusterTest {
 	}
 
 	private static LogReflectionProcessor processor(Evaluator<ServiceRequest> systemEvaluator) {
+		return processor(systemEvaluator, Set.of());
+	}
+
+	private static LogReflectionProcessor processor(Evaluator<ServiceRequest> systemEvaluator, Set<String> effectiveRoles) {
 		LogReflectionProcessor processor = new LogReflectionProcessor();
 		processor.setInstanceId(InstanceId.of("node-1", "logs-app"));
 		processor.setSystemEvaluator(systemEvaluator);
 		processor.setBundleWriter(new LogBundleWriter());
 		processor.setReaderRoles(Set.of("log-reflection-reader", "log-reflection-manager"));
 		processor.setManagerRoles(Set.of("log-reflection-manager"));
-		processor.setInternalRole("internal");
+		processor.setRoleAuthorization(new ContextRoleAuthorization(effectiveRoles));
 		return processor;
+	}
+
+	private record ContextRoleAuthorization(Set<String> effectiveRoles) implements RoleAuthorization {
+		@Override public boolean securityActive() { return true; }
+
+		@Override public boolean hasRole(String role) { return effectiveRoles().contains(role); }
+
+		@Override public boolean hasAnyRole(java.util.Collection<String> roles) {
+			return roles != null && roles.stream().anyMatch(this::hasRole);
+		}
+
+		@Override public boolean hasAllRoles(java.util.Collection<String> roles) {
+			return roles != null && !roles.isEmpty() && roles.stream().allMatch(this::hasRole);
+		}
+
+		@Override public Set<String> adminRoles() { return Set.of(); }
 	}
 
 	private static com.braintribe.model.processing.service.api.ServiceRequestContext context(String... roles) {
