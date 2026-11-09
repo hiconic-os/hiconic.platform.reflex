@@ -1,8 +1,10 @@
 package hiconic.rx.security.web.api;
 
 import hiconic.rx.module.api.wire.RxExportContract;
+import com.braintribe.common.attribute.AttributeContextBuilder;
 import com.braintribe.model.security.service.config.OpenUserSessionEntryPoint;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * @author peter.gazdik
@@ -13,6 +15,9 @@ public interface WebSecurityContract extends RxExportContract {
 
 	/** Shared login intervention flow used by native and contributed authentication mechanisms. */
 	LoginFlow loginFlow();
+
+	/** Applies registered HTTP request context contributors for login endpoints implemented by other modules. */
+	void contributeRequestContext(HttpServletRequest request, HttpServletResponse response, AttributeContextBuilder contextBuilder);
 
 	/** Resolves the configured {@code OpenUserSession} entry point for the given HTTP request. */
 	String openUserSessionEntryPointName(HttpServletRequest request);

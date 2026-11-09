@@ -3,6 +3,7 @@ package hiconic.rx.security.web.wire.space;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.braintribe.common.attribute.AttributeContextBuilder;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.gm.model.reason.meta.HttpStatusCode;
@@ -56,6 +57,7 @@ import hiconic.rx.webapi.model.meta.RequestMapping;
 import hiconic.rx.web.server.api.WebServerContract;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * This module's javadoc is yet to be written.
@@ -276,6 +278,11 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 	@Managed
 	private List<WebSecurityRequestContextContributor> requestContextContributors() {
 		return new ArrayList<>();
+	}
+
+	@Override
+	public void contributeRequestContext(HttpServletRequest request, HttpServletResponse response, AttributeContextBuilder contextBuilder) {
+		requestContextContributors().forEach(contributor -> contributor.contribute(request, response, contextBuilder));
 	}
 
 	@Managed
