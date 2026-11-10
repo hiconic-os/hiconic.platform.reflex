@@ -199,12 +199,12 @@ public abstract class AbstractUserSessionService implements UserSessionService {
 
 	/**
 	 * The system session of this node is found in memory. This lookup is needed in-process: a request evaluated on a system
-	 * {@code PersistenceGmSession} carries the system session id, and when the evaluating thread has another session (e.g. the one of
-	 * the current user), the id is validated through this method.
+	 * {@code PersistenceGmSession} carries the system session id, and when the evaluating thread has another session (e.g. the one of the current
+	 * user), the id is validated through this method.
 	 * <p>
-	 * Any other internal session id (prefix {@link RxAuthContract#INTERNAL_SESSION_ID_PREFIX}) is rejected with
-	 * {@link InternalSessionRejected}. Internal sessions live only in the memory of the node that created them, so such an id comes from
-	 * another node, typically through an HTTP call that should have been evaluated in-process or sent via messaging.
+	 * Any other internal session id (prefix {@link RxAuthContract#INTERNAL_SESSION_ID_PREFIX}) is rejected with {@link InternalSessionRejected}.
+	 * Internal sessions live only in the memory of the node that created them, so such an id comes from another node, typically through an HTTP call
+	 * that should have been evaluated in-process or sent via messaging.
 	 */
 	@Override
 	public Maybe<UserSession> findUserSession(String sessionId) {
@@ -244,8 +244,18 @@ public abstract class AbstractUserSessionService implements UserSessionService {
 			return Maybe.empty(pUserSessionMaybe.whyUnsatisfied());
 
 		PersistenceUserSession pUserSession = pUserSessionMaybe.get();
-		if (pUserSession.getClosed() && pUserSession.getBlocksAuthenticationAfterLogout())
-			return Reasons.build(InvalidCredentials.T).text("Credentials where already logged out").toMaybe();
+
+		if (pUserSession.getBlocksAuthenticationAfterLogout()) {
+			if ((pUserSession.getClosed() != null && pUserSession.getClosed().booleanValue())) {
+				return Reasons.build(InvalidCredentials.T).text("Credentials were already logged out").toMaybe();
+			}
+			Date now = new Date();
+			Date fixedExpiryDate = pUserSession.getFixedExpiryDate();
+			Date expiryDate = pUserSession.getExpiryDate();
+			if ((fixedExpiryDate != null && fixedExpiryDate.before(now)) || (expiryDate != null && expiryDate.before(now))) {
+				return Reasons.build(InvalidCredentials.T).text("Credentials were expired").toMaybe();
+			}
+		}
 
 		UserSession userSession = mapToUserSession(pUserSession);
 
