@@ -72,7 +72,9 @@ tools:
 The Compose service bind-mounts the host `fileSystemRoot` at
 `containerFileSystemRoot`. The backend projects workspace paths in arguments
 and the working directory into that container path and invokes
-`docker compose exec -T`. Thus an application can run and debug directly in an
+`docker compose exec -T`. The host-side Compose command runs from the application's
+launch directory, so relative paths built with `${reflex.app.dir}` do not resolve
+against the temporary tool workspace. Thus an application can run and debug directly in an
 IDE while native tools remain isolated in a reproducible toolbox image.
 
 The container must already be running. Its startup remains an application

@@ -87,31 +87,39 @@ public class ExternalToolsRxModuleSpace implements RxModuleContract, ExternalToo
 		String composeFile = trimToNull(backend.getComposeFile());
 		String projectDirectory = trimToNull(backend.getProjectDirectory());
 
-		return (ToolWorkspace workspace, List<String> arguments) -> {
-			Path relativeWorkspace = normalizedHostRoot.relativize(workspace.root().toAbsolutePath().normalize());
-			String containerWorkspace = containerPath(containerRoot, relativeWorkspace.toString());
-			List<String> result = new ArrayList<String>();
-			result.add(dockerCommand);
-			result.add("compose");
-			if (composeFile != null) {
-				result.add("--file");
-				result.add(composeFile);
+		return new ToolCommandLineBuilder() {
+			@Override
+			public Path workingDirectory(ToolWorkspace workspace) {
+				return Paths.get(".");
 			}
-			if (projectDirectory != null) {
-				result.add("--project-directory");
-				result.add(projectDirectory);
+
+			@Override
+			public List<String> build(ToolWorkspace workspace, List<String> arguments) {
+				Path relativeWorkspace = normalizedHostRoot.relativize(workspace.root().toAbsolutePath().normalize());
+				String containerWorkspace = containerPath(containerRoot, relativeWorkspace.toString());
+				List<String> result = new ArrayList<String>();
+				result.add(dockerCommand);
+				result.add("compose");
+				if (composeFile != null) {
+					result.add("--file");
+					result.add(composeFile);
+				}
+				if (projectDirectory != null) {
+					result.add("--project-directory");
+					result.add(projectDirectory);
+				}
+				result.add("exec");
+				result.add("-T");
+				result.add("--workdir");
+				result.add(containerWorkspace.toString());
+				result.add(service);
+				result.add(command);
+				for (String argument : fixedArguments)
+					result.add(projectPath(argument, normalizedHostRoot, containerRoot));
+				for (String argument : arguments)
+					result.add(projectPath(argument, normalizedHostRoot, containerRoot));
+				return result;
 			}
-			result.add("exec");
-			result.add("-T");
-			result.add("--workdir");
-			result.add(containerWorkspace.toString());
-			result.add(service);
-			result.add(command);
-			for (String argument : fixedArguments)
-				result.add(projectPath(argument, normalizedHostRoot, containerRoot));
-			for (String argument : arguments)
-				result.add(projectPath(argument, normalizedHostRoot, containerRoot));
-			return result;
 		};
 	}
 
