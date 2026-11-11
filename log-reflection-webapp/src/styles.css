@@ -221,7 +221,7 @@ button { border: 0; cursor: pointer; }
 .log-level-actions button { height: 34px; padding: 0 13px; border-radius: 7px; color: #c5ced9; background: #1c2632; font-size: 12px; }
 .log-level-actions button:disabled, .custom-level button:disabled { cursor: default; opacity: .45; }
 .log-level-actions .danger-subtle { color: #ff9ba7; background: #291a20; }
-.log-level-profiles { display: flex; flex-wrap: wrap; gap: 18px 32px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: #111821; }
+.log-level-profiles { display: flex; flex-wrap: wrap; gap: 18px 32px; padding: 10px 20px; border-bottom: 1px solid var(--line); background: #111821; }
 .log-level-profiles > div { min-width: 0; }
 .log-level-profiles small { display: block; margin-bottom: 7px; color: #8592a4; font: 10px var(--mono); text-transform: uppercase; letter-spacing: .08em; }
 .profile-badges { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -233,25 +233,27 @@ button { border: 0; cursor: pointer; }
 .profile-badge .profile-delete { padding: 0 7px; border-left: 1px solid #277a78; font-size: 17px; }
 .profile-badge .profile-delete:hover { color: #ff9ba7; }
 .profile-empty { color: var(--muted); font-size: 11px; }
-.log-level-toolbar { display: flex; align-items: center; gap: 14px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: #111821; }
+.log-level-toolbar { display: flex; align-items: center; gap: 14px; padding: 10px 20px; border-bottom: 1px solid var(--line); background: #111821; }
 .log-level-toolbar .search { width: min(320px, 35vw); margin-left: auto; }
 .log-level-toolbar .search input { margin: 0; }
 .log-level-actions .primary, .log-level-dialog .primary { color: #071211; background: var(--cyan); }
 .log-level-error { flex: 0 0 auto; padding: 10px 20px; color: #ff9ba7; background: #2a171d; font: 12px var(--mono); }
 .log-level-table { position: relative; flex: 1 1 auto; min-height: 0; overflow: auto; font-size: 13px; }
 .log-level-header, .log-level-row { display: grid; gap: 6px; align-items: center; padding: 0 14px; }
-.log-level-header { position: sticky; z-index: 2; top: 0; min-height: 54px; color: #8996a9; background: #0b1017; border-bottom: 1px solid var(--line); font: 11px var(--mono); }
+.log-level-header { position: sticky; z-index: 2; top: 0; min-height: 50px; color: #8996a9; background: #0b1017; border-bottom: 1px solid var(--line); font: 11px var(--mono); }
 .log-level-header .logger-column { position: relative; }
-.log-level-header .logger-resize { position: absolute; z-index: 1; top: -16px; right: -6px; width: 12px; height: 48px; cursor: col-resize; }
+.log-level-header .logger-resize { position: absolute; z-index: 1; top: -14px; right: -6px; width: 12px; height: 44px; cursor: col-resize; }
 .log-level-header .logger-resize:hover, .log-level-header .logger-resize:focus-visible { border-right: 2px solid var(--cyan); outline: none; }
 .log-level-header .profile-column { display: flex; min-width: 0; justify-content: center; cursor: grab; }
 .log-level-header .profile-column .profile-badge { display: flex; width: max-content; max-width: 100%; padding: 0 3px 0 7px; }
 .log-level-header .profile-column .profile-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .log-level-header .remove-profile { flex: 0 0 20px; width: 20px; height: 22px; border-radius: 4px; color: inherit; background: transparent; font-size: 18px; line-height: 1; cursor: pointer; }
 .log-level-header .remove-profile:hover { color: #ff9ba7; }
-.log-level-drop-guide { position: absolute; z-index: 5; top: 12px; width: 7px; height: 30px; overflow: visible; pointer-events: none; }
+.log-level-drop-guide { position: absolute; z-index: 5; top: 10px; width: 7px; height: 30px; overflow: visible; pointer-events: none; }
 .log-level-drop-guide path { fill: none; stroke: #6df5e8; stroke-width: 2; stroke-linejoin: round; }
-.log-level-row { min-height: 47px; border-bottom: 1px solid #19212b; }
+.log-level-header > :not(:first-child):not(.log-level-drop-guide), .log-level-row > :not(:first-child) { position: relative; }
+.log-level-header > :not(:first-child):not(.log-level-drop-guide)::before, .log-level-row > :not(:first-child)::before { content: ""; position: absolute; top: 50%; left: -4px; width: 1px; height: 28px; background: #263242; transform: translateY(-50%); pointer-events: none; }
+.log-level-row { min-height: 42px; border-bottom: 1px solid #19212b; }
 .log-level-row:hover { background: #141c26; }
 .log-level-row code { display: flex; min-width: 0; overflow: hidden; color: #cbd3dd; white-space: nowrap; font: 13px var(--mono); }
 .log-level-row .logger-prefix { min-width: 0; overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: left; }
