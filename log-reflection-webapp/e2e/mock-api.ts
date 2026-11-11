@@ -23,6 +23,14 @@ type QuerySnapshot = {
 
 class MockLogReflectionApi implements LogReflectionClient {
   private authenticated = true;
+  private manager = true;
+  private readonly packagedProfiles = new Map<string, Map<string, string>>([
+    ["packaged-default", new Map([["example.Logger", "INFO"], ["example.service", "INFO"]])],
+    ["platform-debug", new Map([["example.Logger", "DEBUG"], ["example.Other", "WARN"]])]
+  ]);
+  private readonly runtimeProfiles = new Map<string, Map<string, string>>();
+  private runtimeCascade: string[] = [];
+  private runtimeCascadeActive = false;
   private sequence = 0;
   private immediateTailResponses = false;
   private tailResponseDelayMillis = 0;
@@ -38,7 +46,7 @@ class MockLogReflectionApi implements LogReflectionClient {
     return {
       authenticated: this.authenticated,
       canRead: this.authenticated,
-      canManageLevels: this.authenticated
+      canManageLevels: this.authenticated && this.manager
     } as any;
   }
 
@@ -94,25 +102,50 @@ class MockLogReflectionApi implements LogReflectionClient {
   }
 
   async logLevelState(_applicationId: string): Promise<LogLevelStateView> {
+    const packaged = ["packaged-default"];
+    const cascade = this.runtimeCascadeActive ? this.runtimeCascade : packaged;
+    const effective = new Map<string, string>();
+    for (const profile of cascade)
+      for (const [name, level] of this.runtimeProfiles.get(profile) ?? this.packagedProfiles.get(profile) ?? [])
+        effective.set(name, level);
+    effective.set("ROOT", "INFO");
     return {
-      effectiveLevels: new Map(),
-      runtimeLevels: new Map(),
-      packagedLevels: new Map(),
-      knownLoggerNames: [],
-      packagedProfiles: new Map([["packaged-default", new Map()]]),
-      runtimeProfiles: new Map(),
-      packagedProfileCascade: ["packaged-default"],
-      runtimeProfileCascade: [],
-      effectiveProfileCascade: ["packaged-default"],
+      effectiveLevels: effective,
+      runtimeLevels: this.runtimeProfiles.get("runtime-default") ?? new Map(),
+      packagedLevels: this.packagedProfiles.get("packaged-default") ?? new Map(),
+      knownLoggerNames: ["example.Logger", "example.Other"],
+      packagedProfiles: new Map(this.packagedProfiles),
+      runtimeProfiles: new Map(this.runtimeProfiles),
+      packagedProfileCascade: packaged,
+      runtimeProfileCascade: [...this.runtimeCascade],
+      effectiveProfileCascade: [...cascade],
       profileSupport: true
     };
   }
 
-  async setRuntimeLogLevel() {}
-  async resetRuntimeLogLevel() {}
-  async clearRuntimeLogLevels() {}
-  async setLogLevelProfileCascade() {}
-  async resetLogLevelProfileCascade() {}
+  async setRuntimeLogLevel(_applicationId: string, logger: string, level: string, profile = "runtime-default") {
+    const values = this.runtimeProfiles.get(profile) ?? new Map<string, string>();
+    values.set(logger, level);
+    this.runtimeProfiles.set(profile, values);
+    if (!this.runtimeCascadeActive) { this.runtimeCascade = ["packaged-default"]; this.runtimeCascadeActive = true; }
+    if (!this.runtimeCascade.includes(profile)) this.runtimeCascade.push(profile);
+  }
+  async resetRuntimeLogLevel(_applicationId: string, logger: string, profile = "runtime-default") {
+    const values = this.runtimeProfiles.get(profile);
+    values?.delete(logger);
+    if (values && !values.size) this.runtimeProfiles.delete(profile);
+  }
+  async clearRuntimeLogLevels(_applicationId: string, profile = "runtime-default") {
+    this.runtimeProfiles.delete(profile);
+  }
+  async setLogLevelProfileCascade(_applicationId: string, profiles: readonly string[]) {
+    this.runtimeCascade = [...profiles];
+    this.runtimeCascadeActive = true;
+  }
+  async resetLogLevelProfileCascade() {
+    this.runtimeCascade = [];
+    this.runtimeCascadeActive = false;
+  }
 
   async bundle(_download: RemoteLogDownload) {
     this.bundleRequestCount++;
@@ -147,6 +180,10 @@ class MockLogReflectionApi implements LogReflectionClient {
 
   setAuthenticated(value: boolean) {
     this.authenticated = value;
+  }
+
+  setManager(value: boolean) {
+    this.manager = value;
   }
 
   pendingCount(streamId: string) {

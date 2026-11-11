@@ -12,6 +12,7 @@ import java.util.Set;
 import com.braintribe.cfg.Configurable;
 import com.braintribe.cfg.Required;
 import com.braintribe.logging.level.LogLevelManager;
+import com.braintribe.logging.level.LogLevelNames;
 import com.braintribe.logging.level.LogLevelRuntimeUpdater;
 import com.braintribe.model.generic.eval.Evaluator;
 import com.braintribe.model.processing.service.common.context.UserSessionAspect;
@@ -193,7 +194,10 @@ public class LogReflectionProcessor extends AbstractDispatchingServiceProcessor<
 
 	private LogLevelState localLogLevelState() {
 		LogLevelState state = LogLevelState.T.create();
-		state.setEffectiveLevels(logLevelManager.getEffectiveLogLevels());
+		Map<String, String> effectiveLevels = new LinkedHashMap<>(logLevelManager.getEffectiveLogLevels());
+		String rootLevel = logLevelManager.getRootLogLevel();
+		effectiveLevels.putIfAbsent(LogLevelNames.ROOT, rootLevel == null ? "INFO" : rootLevel);
+		state.setEffectiveLevels(effectiveLevels);
 		state.setRuntimeLevels(logLevelManager.getRuntimeLogLevels());
 		state.setPackagedLevels(logLevelManager.getPackagedLogLevels());
 		state.setKnownLoggerNames(logLevelManager.getKnownLoggerNames());
@@ -247,11 +251,7 @@ public class LogReflectionProcessor extends AbstractDispatchingServiceProcessor<
 			return Neutral.NEUTRAL;
 		}
 
-		getOrTunnel(logLevelRuntimeUpdater.mutateProfileOrder(
-				com.braintribe.gm.model.logging.level.api.LogLevelProfileOrderMutation.RESET, null, null));
-		for (String profile : request.getProfiles() == null ? List.<String>of() : request.getProfiles())
-			getOrTunnel(logLevelRuntimeUpdater.mutateProfileOrder(
-					com.braintribe.gm.model.logging.level.api.LogLevelProfileOrderMutation.APPEND, profile, null));
+		getOrTunnel(logLevelRuntimeUpdater.replaceProfileOrder(request.getProfiles()));
 		return Neutral.NEUTRAL;
 	}
 

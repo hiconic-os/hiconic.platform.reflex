@@ -243,10 +243,28 @@ export class LogReflectionApi implements LogReflectionClient {
     const result = await request.EvalAndGetReasoned(evaluator);
     if (result.isUnsatisfied()) {
       const reason = result.whyUnsatisfied();
-      throw new Error(reason?.Stringify?.() ?? reason?.asString?.() ?? String(reason));
+      throw new Error(describeReason(reason));
     }
     return result.get() as T;
   }
+}
+
+type VisibleReason = {
+  TypeSignature?: () => string;
+  text?: string | null;
+  tracebackId?: string | null;
+  reasons?: Iterable<VisibleReason> | null;
+};
+
+function describeReason(value: unknown): string {
+  if (!value || typeof value !== "object") return String(value);
+  const reason = value as VisibleReason;
+  const type = reason.TypeSignature?.().split(".").pop() || "Reason";
+  const text = reason.text?.trim();
+  const id = reason.tracebackId || /tracebackId=([^\s)]+)/.exec(text || "")?.[1];
+  const details = Array.from(reason.reasons ?? []).map(describeReason);
+  return [`${type}: ${text || "No details available"}`, ...(id && !text?.includes(id) ? [`Traceback ID: ${id}`] : []),
+    ...details.map(detail => `  ↳ ${detail}`)].join("\n");
 }
 
 function profileMap(profiles: Iterable<LogLevelProfile> | null | undefined) {

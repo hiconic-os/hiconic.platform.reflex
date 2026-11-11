@@ -14,6 +14,7 @@ import type {
   TargetSelection
 } from "./api";
 import { createTabExport, type TabExportColumnKey, type TabExportFormat } from "./tab-export";
+import { LogLevelEditor } from "./LogLevelEditor";
 
 type StreamTab = {
   kind: "stream";
@@ -82,8 +83,8 @@ const columns: readonly ColumnDefinition[] = [
   { key: "properties", label: "Properties", width: "260px" },
   { key: "raw", label: "Raw text", width: "minmax(280px, 1fr)" }
 ];
-
 const levels = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"];
+
 const newDefaultFilter = (): RecordFilter => ({ levels: [] });
 const defaultTailPollIntervalMillis = 1_000;
 const minimumTailPollIntervalMillis = 100;
@@ -95,13 +96,6 @@ type LoadRecordsOutcome = "failed" | "complete" | "more";
 export interface AppProps {
   apiFactory: (config: RuntimeConfig) => LogReflectionClient;
   configLoader?: () => Promise<RuntimeConfig>;
-}
-
-function LogLevelValue(props: { level?: string; effective?: boolean; emptyLabel?: string }) {
-  const normalizedLevel = () => props.level?.toLowerCase() || "unset";
-  return <span class={`log-level-value ${normalizedLevel()}${props.effective ? " effective" : ""}`}>
-    {props.level || props.emptyLabel || "—"}
-  </span>;
 }
 
 export function App(props: AppProps) {
@@ -1221,259 +1215,6 @@ export function App(props: AppProps) {
         loginUrl={runtimeConfig ? loginUrl(runtimeConfig) : undefined} retry={retryAccess}/></Show>
     </div>
   );
-}
-
-function LogLevelEditor(props: { client: LogReflectionClient; applicationId: string; canManage: boolean }) {
-  const [state, setState] = createSignal<LogLevelStateView>();
-  const [search, setSearch] = createSignal("");
-  const [customLogger, setCustomLogger] = createSignal("");
-  const [customLevel, setCustomLevel] = createSignal("DEBUG");
-  const [selectedProfile, setSelectedProfile] = createSignal("packaged-default");
-  const [cascadeDraft, setCascadeDraft] = createSignal("");
-  const [loggerSuggestionsOpen, setLoggerSuggestionsOpen] = createSignal(false);
-  const [busy, setBusy] = createSignal(false);
-  const [failure, setFailure] = createSignal<string>();
-  const profileNames = createMemo(() => {
-    const current = state();
-    if (!current) return ["packaged-default"];
-    return [...new Set([
-      ...current.packagedProfiles.keys(),
-      ...current.runtimeProfiles.keys(),
-      ...current.effectiveProfileCascade,
-      "packaged-default"
-    ])].filter(Boolean).sort();
-  });
-  const selectedRuntimeLevels = createMemo(() => state()?.runtimeProfiles.get(selectedProfile()) ?? new Map<string, string>());
-  const selectedPackagedLevels = createMemo(() => state()?.packagedProfiles.get(selectedProfile()) ?? new Map<string, string>());
-  const loggerSuggestions = createMemo(() => {
-    const current = state();
-    if (!current) return [];
-    return [...new Set([
-      ...current.knownLoggerNames,
-      ...selectedRuntimeLevels().keys(),
-      ...selectedPackagedLevels().keys()
-    ])].sort();
-  });
-  const matchingLoggerSuggestions = createMemo(() => {
-    const value = customLogger().trim();
-    const needle = value.toLocaleLowerCase();
-
-    return loggerSuggestions()
-      .filter(name => name !== value && (!needle || name.toLocaleLowerCase().includes(needle)))
-      .sort((left, right) => {
-        const leftStartsWith = left.toLocaleLowerCase().startsWith(needle);
-        const rightStartsWith = right.toLocaleLowerCase().startsWith(needle);
-        if (leftStartsWith !== rightStartsWith) return leftStartsWith ? -1 : 1;
-        return left.localeCompare(right);
-      })
-      .slice(0, 80);
-  });
-  const loggerNames = createMemo(() => {
-    const current = state();
-    if (!current) return [];
-    const names = new Set([
-      ...selectedRuntimeLevels().keys(),
-      ...selectedPackagedLevels().keys()
-    ]);
-    const needle = search().trim().toLowerCase();
-    return [...names].filter(name => !needle || name.toLowerCase().includes(needle)).sort();
-  });
-
-  onMount(refresh);
-
-  async function refresh() {
-    setBusy(true);
-    setFailure(undefined);
-    try {
-      const next = await props.client.logLevelState(props.applicationId);
-      setState(next);
-      setCascadeDraft(next.effectiveProfileCascade.join(", "));
-    } catch (caught) {
-      console.error("Loading log-level state failed", caught);
-      setFailure(messageOf(caught));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function updateLogger(name: string, level: string) {
-    setBusy(true);
-    setFailure(undefined);
-    try {
-      if (level)
-        await props.client.setRuntimeLogLevel(props.applicationId, name, level, selectedProfile());
-      else
-        await props.client.resetRuntimeLogLevel(props.applicationId, name, selectedProfile());
-      await refresh();
-    } catch (caught) {
-      console.error("Updating runtime log level failed", caught);
-      setFailure(messageOf(caught));
-      setBusy(false);
-    }
-  }
-
-  async function addCustomLogger() {
-    const name = customLogger().trim();
-    if (!name) return;
-    await updateLogger(name, customLevel());
-    setCustomLogger("");
-    setLoggerSuggestionsOpen(false);
-  }
-
-  async function clearRuntimeLevels() {
-    if (!window.confirm(`Remove every runtime log-level override from ${props.applicationId}?`)) return;
-    setBusy(true);
-    setFailure(undefined);
-    try {
-      await props.client.clearRuntimeLogLevels(props.applicationId, selectedProfile());
-      await refresh();
-    } catch (caught) {
-      console.error("Clearing runtime log levels failed", caught);
-      setFailure(messageOf(caught));
-      setBusy(false);
-    }
-  }
-
-  async function saveCascade() {
-    const profiles = cascadeDraft().split(",").map(profile => profile.trim()).filter(Boolean);
-    setBusy(true);
-    setFailure(undefined);
-    try {
-      await props.client.setLogLevelProfileCascade(props.applicationId, profiles);
-      await refresh();
-    } catch (caught) {
-      console.error("Updating log-level profile cascade failed", caught);
-      setFailure(messageOf(caught));
-      setBusy(false);
-    }
-  }
-
-  async function resetCascade() {
-    setBusy(true);
-    setFailure(undefined);
-    try {
-      await props.client.resetLogLevelProfileCascade(props.applicationId);
-      await refresh();
-    } catch (caught) {
-      console.error("Resetting log-level profile cascade failed", caught);
-      setFailure(messageOf(caught));
-      setBusy(false);
-    }
-  }
-
-  return <section class="log-level-workspace">
-    <header>
-      <div>
-        <small>Application configuration</small>
-        <h2>Log levels</h2>
-        <p>Packaged and runtime profiles for <strong>{props.applicationId}</strong>. Later profiles in the cascade override earlier profiles.</p>
-      </div>
-      <div class="log-level-actions">
-        <button onClick={refresh} disabled={busy()}>Refresh</button>
-        <button class="danger-subtle" onClick={clearRuntimeLevels} disabled={!props.canManage || busy() || !selectedRuntimeLevels().size}>Clear profile</button>
-      </div>
-    </header>
-    <div class="log-level-controls">
-      <div class="custom-level">
-        <label>Profile <input list={`profiles-${props.applicationId}`} value={selectedProfile()} onInput={event => setSelectedProfile(event.currentTarget.value.trim() || "packaged-default")} /></label>
-        <datalist id={`profiles-${props.applicationId}`}><For each={profileNames()}>{profile => <option value={profile} />}</For></datalist>
-        <label>Cascade <input value={cascadeDraft()} disabled={!props.canManage || busy()} onInput={event => setCascadeDraft(event.currentTarget.value)} placeholder="packaged-default, platform-debug" /></label>
-        <button disabled={!props.canManage || busy()} onClick={saveCascade}>Apply cascade</button>
-        <button disabled={!props.canManage || busy()} onClick={resetCascade}>Use packaged cascade</button>
-      </div>
-      <label class="search"><span>⌕</span><input placeholder="Filter logger names" value={search()} onInput={event => setSearch(event.currentTarget.value)} /></label>
-      <div class="custom-level">
-        <div class="logger-completion">
-          <input
-            placeholder="com.example.Logger"
-            disabled={!props.canManage}
-            spellcheck={false}
-            autocomplete="off"
-            value={customLogger()}
-            onFocus={() => setLoggerSuggestionsOpen(true)}
-            onInput={event => {
-              setCustomLogger(event.currentTarget.value);
-              setLoggerSuggestionsOpen(true);
-            }}
-            onKeyDown={event => {
-              if (event.key === "Escape") setLoggerSuggestionsOpen(false);
-              if (event.key === "Enter" && matchingLoggerSuggestions().length === 1) {
-                event.preventDefault();
-                setCustomLogger(matchingLoggerSuggestions()[0]);
-                setLoggerSuggestionsOpen(false);
-              }
-            }}
-            onBlur={() => window.setTimeout(() => setLoggerSuggestionsOpen(false), 120)}
-          />
-          <Show when={loggerSuggestionsOpen() && matchingLoggerSuggestions().length > 0}>
-            <div class="logger-suggestions" role="listbox" aria-label="Known logger names">
-              <For each={matchingLoggerSuggestions()}>{name =>
-                <button
-                  type="button"
-                  role="option"
-                  onPointerDown={event => event.preventDefault()}
-                  onClick={() => {
-                    setCustomLogger(name);
-                    setLoggerSuggestionsOpen(false);
-                  }}
-                >{name}</button>
-              }</For>
-            </div>
-          </Show>
-        </div>
-        <select disabled={!props.canManage} value={customLevel()} onChange={event => setCustomLevel(event.currentTarget.value)}>
-          <For each={["ALL", ...levels, "OFF"]}>{level => <option value={level}>{level}</option>}</For>
-        </select>
-        <button class="primary" disabled={!props.canManage || busy() || !customLogger().trim()} onClick={addCustomLogger}>Add override</button>
-      </div>
-    </div>
-    <Show when={failure()}>{message => <div class="log-level-error">{message()}</div>}</Show>
-    <div class="log-level-table">
-      <div class="log-level-header"><span>Logger</span><span>Packaged</span><span>Runtime</span><span>Effective</span></div>
-      <Show when={state()} fallback={<div class="empty records">{busy() ? "Loading log levels…" : "No log-level state available."}</div>}>
-        {current => <For each={loggerNames()} fallback={<div class="empty records">
-          {search().trim() ? "No explicitly configured logger matches this filter." : "No explicit log-level mappings configured."}
-        </div>}>
-          {name => <div class="log-level-row">
-            <code title={name}>{name || "<root>"}</code>
-            <LogLevelValue level={selectedPackagedLevels().get(name)} emptyLabel="inherited" />
-            <details class="runtime-level-menu" data-popup>
-              <summary aria-label={`Change runtime log level for ${name || "root logger"}`}>
-                <LogLevelValue level={selectedRuntimeLevels().get(name)} emptyLabel="no override" />
-                <svg class="runtime-menu-indicator" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M12 8.75A3.25 3.25 0 1 0 12 15.25 3.25 3.25 0 0 0 12 8.75Zm8.1 4.65-1.77 1.02c-.12.36-.27.71-.44 1.05l.53 1.98-1.97 1.97-1.98-.53c-.34.17-.69.32-1.05.44L12.4 21.1H9.6l-1.02-1.77a8.2 8.2 0 0 1-1.05-.44l-1.98.53-1.97-1.97.53-1.98a8.2 8.2 0 0 1-.44-1.05L1.9 13.4v-2.8l1.77-1.02c.12-.36.27-.71.44-1.05l-.53-1.98 1.97-1.97 1.98.53c.34-.17.69-.32 1.05-.44L9.6 1.9h2.8l1.02 1.77c.36.12.71.27 1.05.44l1.98-.53 1.97 1.97-.53 1.98c.17.34.32.69.44 1.05l1.77 1.02v2.8Z" />
-                </svg>
-              </summary>
-              <div class="runtime-level-options">
-                <For each={["ALL", ...levels, "OFF"]}>{level =>
-                  <button
-                    type="button"
-                    class={selectedRuntimeLevels().get(name) === level ? "selected" : ""}
-                    disabled={!props.canManage || busy()}
-                    onClick={event => {
-                      event.currentTarget.closest("details")?.removeAttribute("open");
-                      updateLogger(name, level);
-                    }}
-                  ><LogLevelValue level={level} /></button>
-                }</For>
-                <button
-                  type="button"
-                  class="reset-runtime-level"
-                  disabled={!props.canManage || busy() || !selectedRuntimeLevels().has(name)}
-                  onClick={event => {
-                    event.currentTarget.closest("details")?.removeAttribute("open");
-                    updateLogger(name, "");
-                  }}
-                >Reset to packaged</button>
-              </div>
-            </details>
-            <LogLevelValue level={current().effectiveLevels.get(name)} effective emptyLabel="inherited" />
-          </div>}
-        </For>}
-      </Show>
-    </div>
-    <Show when={busy()}><div class="log-level-progress"></div></Show>
-  </section>;
 }
 
 function LogRow(props: {

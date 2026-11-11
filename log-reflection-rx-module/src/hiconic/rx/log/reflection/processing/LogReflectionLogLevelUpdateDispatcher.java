@@ -48,7 +48,8 @@ public class LogReflectionLogLevelUpdateDispatcher implements LogLevelUpdateDisp
 
 			return validate(multicast.eval(evaluator).get());
 		} catch (Exception e) {
-			return InternalError.from(e, "Failed to multicast effective log level update").asMaybe();
+			return InternalError.createTraceback(InternalError.from(e, "Failed to multicast effective log level update"),
+					"Failed to multicast effective log level update", logger::error).asMaybe();
 		}
 	}
 
