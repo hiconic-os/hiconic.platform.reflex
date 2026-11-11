@@ -6,7 +6,7 @@ const newProfileChoice = "__new__";
 
 function LevelValue(props: { level?: string; empty?: string; effective?: boolean }) {
   return <span class={`log-level-value ${props.level?.toLowerCase() || "unset"}${props.effective ? " effective" : ""}`}>
-    {props.level || props.empty || "—"}
+    {props.level ?? props.empty ?? ""}
   </span>;
 }
 
@@ -321,30 +321,32 @@ export function LogLevelEditor(props: { client: LogReflectionClient; application
           <div class="log-level-row" style={`grid-template-columns: ${gridColumns()}; min-width: ${gridWidth()}`}>
             <LoggerName name={name} />
             <For each={cascade()}>{profile =>
-              <Show when={isRuntime(profile) && props.canManage} fallback={
-                <LevelValue level={profileLevels(profile)?.get(name)} empty="—" />
-              }>
-                <details class="runtime-level-menu" data-popup>
-                  <summary aria-label={`Change ${name || "root"} in runtime profile ${profile}`}>
-                    <LevelValue level={profileLevels(profile)?.get(name)} empty="—" />
-                  </summary>
-                  <div class="runtime-level-options">
-                    <For each={levels}>{level => <button type="button"
-                      class={profileLevels(profile)?.get(name) === level ? "selected" : ""}
-                      disabled={busy()} onClick={event => {
-                        event.currentTarget.closest("details")?.removeAttribute("open");
-                        void setLevel(profile, name, level);
-                      }}><LevelValue level={level} /></button>}</For>
-                    <button type="button" class="reset-runtime-level" disabled={busy() || !profileLevels(profile)?.has(name)}
-                      onClick={event => {
-                        event.currentTarget.closest("details")?.removeAttribute("open");
-                        void setLevel(profile, name, "");
-                      }}>Reset override</button>
-                  </div>
-                </details>
-              </Show>
+              <div class="log-level-cell">
+                <Show when={isRuntime(profile) && props.canManage} fallback={
+                  <LevelValue level={profileLevels(profile)?.get(name)} />
+                }>
+                  <details class="runtime-level-menu" data-popup>
+                    <summary aria-label={`Change ${name || "root"} in runtime profile ${profile}`}>
+                      <LevelValue level={profileLevels(profile)?.get(name)} />
+                    </summary>
+                    <div class="runtime-level-options">
+                      <For each={levels}>{level => <button type="button"
+                        class={profileLevels(profile)?.get(name) === level ? "selected" : ""}
+                        disabled={busy()} onClick={event => {
+                          event.currentTarget.closest("details")?.removeAttribute("open");
+                          void setLevel(profile, name, level);
+                        }}><LevelValue level={level} /></button>}</For>
+                      <button type="button" class="reset-runtime-level" disabled={busy() || !profileLevels(profile)?.has(name)}
+                        onClick={event => {
+                          event.currentTarget.closest("details")?.removeAttribute("open");
+                          void setLevel(profile, name, "");
+                        }}>Reset override</button>
+                    </div>
+                  </details>
+                </Show>
+              </div>
             }</For>
-            <LevelValue level={resolvedLevel(name, current().effectiveLevels)} effective empty="unknown" />
+            <div class="log-level-cell"><LevelValue level={resolvedLevel(name, current().effectiveLevels)} effective empty="unknown" /></div>
           </div>}
         </For>}
       </Show>

@@ -100,6 +100,8 @@ test("shows resolved root level and keeps logger suffixes visible in a resizable
   await expect(editor.locator(".log-level-header")).toHaveAttribute("style", /396px/);
   await expect(editor.locator(".log-level-row").filter({ hasText: "example.Other" }).locator(".log-level-value.effective"))
     .toHaveText("INFO");
+  await expect(editor.locator(".log-level-row").filter({ hasText: "example.Other" })
+    .locator(".log-level-cell .log-level-value").first()).toHaveText("");
 });
 
 test("can remove the sole packaged profile and restore it", async ({ page }) => {
