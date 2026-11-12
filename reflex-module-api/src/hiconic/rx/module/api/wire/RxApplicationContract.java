@@ -13,6 +13,7 @@
 // ============================================================================
 package hiconic.rx.module.api.wire;
 
+import com.braintribe.common.artifact.ArtifactReflection;
 import com.braintribe.model.service.api.InstanceId;
 import com.braintribe.wire.api.space.WireSpace;
 
@@ -31,6 +32,9 @@ public interface RxApplicationContract extends WireSpace {
 
 	/** The technical application id. */
 	String applicationId();
+
+	/** The artifact selected as the identity of this application, including its resolved version. */
+	ArtifactReflection applicationArtifactReflection();
 
 	/** The nodeId of this instance in distributed systems */
 	String nodeId();

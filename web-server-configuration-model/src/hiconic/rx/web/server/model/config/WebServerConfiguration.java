@@ -54,6 +54,7 @@ public interface WebServerConfiguration extends GenericEntity {
 	String redirects = "redirects";
 	String forwards = "forwards";
 	String usePublicUrlAsOrigin = "usePublicUrlAsOrigin";
+	String serverHeader = "serverHeader";
 
 	@Initializer("'localhost'")
 	String getHostName();
@@ -126,6 +127,10 @@ public interface WebServerConfiguration extends GenericEntity {
 	@Pattern(".*[^\\/]$")
 	String getPublicUrl();
 	void setPublicUrl(String publicUrl);
+
+	@Description("Value of the HTTP Server response header. If omitted, the application artifact's groupId, artifactId and version are used.")
+	String getServerHeader();
+	void setServerHeader(String serverHeader);
 
 	@Description("Whether the configured publicUrl is authoritative when resolving the externally visible origin of an incoming request. "
 			+ "If false, the origin is resolved from the live HTTP request, preferring forwarded information where available.")

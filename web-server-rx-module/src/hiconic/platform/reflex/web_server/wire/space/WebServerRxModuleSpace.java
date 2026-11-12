@@ -88,6 +88,7 @@ import io.undertow.servlet.api.DeploymentManager;
 import io.undertow.servlet.api.FilterInfo;
 import io.undertow.servlet.api.ServletInfo;
 import io.undertow.servlet.util.ImmediateInstanceFactory;
+import io.undertow.util.Headers;
 import io.undertow.util.URLUtils;
 import io.undertow.websockets.jsr.WebSocketDeploymentInfo;
 import jakarta.servlet.DispatcherType;
@@ -680,7 +681,24 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 	}
 
 	private HttpHandler rootHandler() {
-		return new RequestMetaLoggingHandler(configuration().getAccessLogEnabled() ? accessLogHandler() : applicationStateGateHandler());
+		String serverHeader = serverHeader();
+		HttpHandler next = new RequestMetaLoggingHandler(configuration().getAccessLogEnabled() ? accessLogHandler() : applicationStateGateHandler());
+		return exchange -> {
+			exchange.getResponseHeaders().put(Headers.SERVER, serverHeader);
+			next.handleRequest(exchange);
+		};
+	}
+
+	private String serverHeader() {
+		String configured = configuration().getServerHeader();
+		if (configured != null) {
+			if (configured.isBlank() || configured.indexOf('\r') >= 0 || configured.indexOf('\n') >= 0)
+				throw new IllegalStateException("Invalid WebServerConfiguration.serverHeader");
+			return configured;
+		}
+
+		var artifact = platform.application().applicationArtifactReflection();
+		return artifact.groupId() + "--" + artifact.artifactId() + "/" + artifact.version();
 	}
 
 	@Managed

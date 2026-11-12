@@ -15,6 +15,7 @@ package hiconic.rx.platform.wire.space;
 
 import java.util.UUID;
 
+import com.braintribe.common.artifact.ArtifactReflection;
 import com.braintribe.model.service.api.InstanceId;
 import com.braintribe.provider.Box;
 import com.braintribe.wire.api.annotation.Import;
@@ -23,6 +24,7 @@ import com.braintribe.wire.api.annotation.Managed;
 import hiconic.rx.module.api.log.RxLogManager;
 import hiconic.rx.module.api.wire.RxApplicationContract;
 import hiconic.rx.platform.log.RxLogManagerImpl;
+import hiconic.rx.platform.loading.ApplicationArtifactReflectionResolver;
 import hiconic.rx.platform.model.configuration.ReflexAppConfiguration;
 import hiconic.rx.platform.processing.cluster.SingleInstanceLiveInstances;
 import hiconic.rx.platform.processing.lifez.DeadlockChecker;
@@ -57,6 +59,12 @@ public class RxApplicationSpace implements RxApplicationContract {
 	@Override
 	public String applicationName() {
 		return config.properties().applicationName();
+	}
+
+	@Override
+	@Managed
+	public ArtifactReflection applicationArtifactReflection() {
+		return ApplicationArtifactReflectionResolver.resolve(config.propertyResolver());
 	}
 
 	@Override
