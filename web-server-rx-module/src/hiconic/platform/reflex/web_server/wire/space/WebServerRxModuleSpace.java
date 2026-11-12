@@ -698,6 +698,8 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 		}
 
 		var artifact = platform.application().applicationArtifactReflection();
+		if (artifact == null)
+			return platform.application().applicationId();
 		return artifact.groupId() + "--" + artifact.artifactId() + "/" + artifact.version();
 	}
 

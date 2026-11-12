@@ -58,6 +58,13 @@ public class ApplicationArtifactReflectionResolverTest {
 		}
 	}
 
+	@Test
+	public void embeddedApplicationMayHaveNoArtifactIdentity() throws Exception {
+		try (URLClassLoader classLoader = new URLClassLoader(new java.net.URL[0], null)) {
+			assertThat(ApplicationArtifactReflectionResolver.resolve(classLoader, null)).isNull();
+		}
+	}
+
 	private static Path artifactJar(boolean marker) throws Exception {
 		Path jar = Files.createTempFile("rx-application-identity", ".jar");
 		try (JarOutputStream out = new JarOutputStream(Files.newOutputStream(jar))) {

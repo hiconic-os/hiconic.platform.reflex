@@ -128,7 +128,7 @@ public interface WebServerConfiguration extends GenericEntity {
 	String getPublicUrl();
 	void setPublicUrl(String publicUrl);
 
-	@Description("Value of the HTTP Server response header. If omitted, the application artifact's groupId, artifactId and version are used.")
+	@Description("Value of the HTTP Server response header. If omitted, the application artifact's groupId, artifactId and version are used; embedded applications without an artifact selection use the applicationId.")
 	String getServerHeader();
 	void setServerHeader(String serverHeader);
 

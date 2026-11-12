@@ -51,7 +51,7 @@ public final class ApplicationArtifactReflectionResolver {
 		}
 
 		if (selection == null)
-			throw new IllegalStateException("No RX application artifact marker or " + ARTIFACT_PROPERTY + " property found");
+			return null;
 
 		return fromClasspathDescriptor(classLoader, selection);
 	}

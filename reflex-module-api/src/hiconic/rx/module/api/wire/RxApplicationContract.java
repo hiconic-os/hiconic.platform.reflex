@@ -33,7 +33,7 @@ public interface RxApplicationContract extends WireSpace {
 	/** The technical application id. */
 	String applicationId();
 
-	/** The artifact selected as the identity of this application, including its resolved version. */
+	/** The artifact selected as the identity of this application, including its resolved version; null for embedded applications without an identity selection. */
 	ArtifactReflection applicationArtifactReflection();
 
 	/** The nodeId of this instance in distributed systems */
