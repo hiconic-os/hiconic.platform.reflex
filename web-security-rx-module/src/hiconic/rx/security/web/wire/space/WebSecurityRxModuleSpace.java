@@ -6,13 +6,14 @@ import java.util.List;
 import com.braintribe.common.attribute.AttributeContextBuilder;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reason;
-import com.braintribe.gm.model.reason.meta.HttpStatusCode;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
+import com.braintribe.gm.model.reason.meta.HttpStatusCode;
 import com.braintribe.gm.model.security.reason.AuthenticationFailure;
-import com.braintribe.model.securityservice.credentials.Credentials;
 import com.braintribe.model.security.service.config.OpenUserSessionEntryPoint;
+import com.braintribe.model.securityservice.credentials.Credentials;
 import com.braintribe.model.securityservice.web.GetWebAuthorization;
+import com.braintribe.model.securityservice.web.JwtTokenWebAuthenticate;
 import com.braintribe.model.securityservice.web.UserPassWebAuthenticate;
 import com.braintribe.model.securityservice.web.WebAuthorizationRequest;
 import com.braintribe.utils.StringTools;
@@ -20,10 +21,10 @@ import com.braintribe.wire.api.annotation.Import;
 import com.braintribe.wire.api.annotation.Managed;
 
 import hiconic.rx.module.api.service.ServiceDomainConfiguration;
+import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.module.api.wire.RxConfigurationContract;
 import hiconic.rx.module.api.wire.RxModuleContract;
 import hiconic.rx.module.api.wire.RxPlatformContract;
-import hiconic.rx.module.api.service.ServiceDomainConfigurations;
 import hiconic.rx.security.model.configuration.SecurityConfiguration;
 import hiconic.rx.security.web.api.AuthFilters;
 import hiconic.rx.security.web.api.CookieHandler;
@@ -38,6 +39,7 @@ import hiconic.rx.security.web.api.WebSecurityExtensionContract;
 import hiconic.rx.security.web.api.WebSecurityRequestContextContributor;
 import hiconic.rx.security.web.api.WebSecurityServiceDomains;
 import hiconic.rx.security.web.model.configuration.WebSecurityConfiguration;
+import hiconic.rx.security.web.processing.WebAuthorizationServiceProcessor;
 import hiconic.rx.security.web.processing.credentials.extractor.BasicAuthCredentialsProvider;
 import hiconic.rx.security.web.processing.credentials.extractor.ExistingSessionFromCookieProvider;
 import hiconic.rx.security.web.processing.credentials.extractor.ExistingSessionFromHeaderParameterProvider;
@@ -51,10 +53,9 @@ import hiconic.rx.security.web.processing.servlet.LogoutRxServlet;
 import hiconic.rx.security.web.processing.servlet.ReasonedSecurityFailureResponse;
 import hiconic.rx.security.web.processing.servlet.SecurityFailureResponse;
 import hiconic.rx.security.web.processing.servlet.UiSecurityFailureResponse;
-import hiconic.rx.security.web.processing.WebAuthorizationServiceProcessor;
+import hiconic.rx.web.server.api.WebServerContract;
 import hiconic.rx.webapi.model.meta.HttpRequestMethod;
 import hiconic.rx.webapi.model.meta.RequestMapping;
-import hiconic.rx.web.server.api.WebServerContract;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -63,7 +64,8 @@ import jakarta.servlet.http.HttpServletResponse;
  * This module's javadoc is yet to be written.
  */
 @Managed
-public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityContract, WebSecurityConfigurationContract, WebSecurityExtensionContract {
+public class WebSecurityRxModuleSpace
+		implements RxModuleContract, WebSecurityContract, WebSecurityConfigurationContract, WebSecurityExtensionContract {
 	// @formatter:off
 	@Import private RxPlatformContract platform;
 	@Import private WebServerContract webServer;
@@ -80,15 +82,19 @@ public class WebSecurityRxModuleSpace implements RxModuleContract, WebSecurityCo
 		ServiceDomainConfiguration webAuth = configurations.byId(WebSecurityServiceDomains.webAuth);
 		webAuth.setDisplayName("Web authentication");
 		webAuth.bindRequest(WebAuthorizationRequest.T, this::webAuthorizationServiceProcessor);
+		//@formatter:off
 		webAuth.configureModel(editor -> {
 			editor.onEntityType(UserPassWebAuthenticate.T)
 					.addMetaData(webAuthMapping("user-pass-authenticate", HttpRequestMethod.POST));
+			editor.onEntityType(JwtTokenWebAuthenticate.T)
+					.addMetaData(webAuthMapping("jwt-authenticate", HttpRequestMethod.POST));
 			editor.onEntityType(GetWebAuthorization.T)
 					.addMetaData(webAuthMapping("authorization", HttpRequestMethod.GET))
 					.addMetaData(webAuthMapping("authorization", HttpRequestMethod.POST));
 			editor.onEntityType(AuthenticationFailure.T)
 					.addMetaData(httpStatus(401));
 		});
+		//@formatter:on
 	}
 
 	private HttpStatusCode httpStatus(int code) {

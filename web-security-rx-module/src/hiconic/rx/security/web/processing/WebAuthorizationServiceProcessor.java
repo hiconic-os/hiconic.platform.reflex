@@ -16,8 +16,10 @@ import com.braintribe.model.processing.service.impl.AbstractDispatchingServicePr
 import com.braintribe.model.processing.service.impl.DispatchConfiguration;
 import com.braintribe.model.securityservice.OpenUserSession;
 import com.braintribe.model.securityservice.OpenUserSessionResponse;
+import com.braintribe.model.securityservice.credentials.JwtTokenCredentials;
 import com.braintribe.model.securityservice.credentials.UserPasswordCredentials;
 import com.braintribe.model.securityservice.web.GetWebAuthorization;
+import com.braintribe.model.securityservice.web.JwtTokenWebAuthenticate;
 import com.braintribe.model.securityservice.web.UserPassWebAuthenticate;
 import com.braintribe.model.securityservice.web.WebAuthorization;
 import com.braintribe.model.securityservice.web.WebAuthorizationRequest;
@@ -32,11 +34,10 @@ import hiconic.rx.security.web.api.CookieHandler;
 /**
  * Cookie-oriented web authorization services.
  * <p>
- * The response deliberately contains no session id. Authentication state stays in the HTTP-only cookie while clients can still
- * reflect the current user and roles through {@link GetWebAuthorization}.
+ * The response deliberately contains no session id. Authentication state stays in the HTTP-only cookie while clients can still reflect the current
+ * user and roles through {@link GetWebAuthorization}.
  */
-public class WebAuthorizationServiceProcessor
-		extends AbstractDispatchingServiceProcessor<WebAuthorizationRequest, WebAuthorization> {
+public class WebAuthorizationServiceProcessor extends AbstractDispatchingServiceProcessor<WebAuthorizationRequest, WebAuthorization> {
 
 	private static final Logger logger = Logger.getLogger(WebAuthorizationServiceProcessor.class);
 
@@ -48,11 +49,12 @@ public class WebAuthorizationServiceProcessor
 
 	@Override
 	protected void configureDispatching(DispatchConfiguration<WebAuthorizationRequest, WebAuthorization> dispatching) {
-		dispatching.registerReasoned(UserPassWebAuthenticate.T, this::authenticate);
+		dispatching.registerReasoned(UserPassWebAuthenticate.T, this::authenticateUserPass);
+		dispatching.registerReasoned(JwtTokenWebAuthenticate.T, this::authenticateWithJwt);
 		dispatching.registerReasoned(GetWebAuthorization.T, this::currentAuthorization);
 	}
 
-	private Maybe<? extends WebAuthorization> authenticate(ServiceRequestContext context, UserPassWebAuthenticate request) {
+	private Maybe<? extends WebAuthorization> authenticateUserPass(ServiceRequestContext context, UserPassWebAuthenticate request) {
 		HttpServletArguments servlet = context.findOrNull(HttpServletArgumentsAttribute.class);
 		if (servlet == null)
 			return Reasons.build(UnsupportedOperation.T).text("Web authentication requires an HTTP endpoint.").toMaybe();
@@ -71,9 +73,34 @@ public class WebAuthorizationServiceProcessor
 			if (response.isUnsatisfiedBy(SecurityReason.T))
 				return response.propagateReason();
 
-			return InternalError
-					.createTraceback(response.whyUnsatisfied(), "Error while authenticating the web request", logger::error)
-					.asMaybe();
+			return InternalError.createTraceback(response.whyUnsatisfied(), "Error while authenticating the web request", logger::error).asMaybe();
+		}
+
+		UserSession session = response.get().getUserSession();
+		cookieHandler.ensureCookie(servlet.getRequest(), servlet.getResponse(), session.getSessionId(), request.getStaySignedIn());
+		return Maybe.complete(toAuthorization(session));
+	}
+
+	private Maybe<? extends WebAuthorization> authenticateWithJwt(ServiceRequestContext context, JwtTokenWebAuthenticate request) {
+		HttpServletArguments servlet = context.findOrNull(HttpServletArgumentsAttribute.class);
+		if (servlet == null)
+			return Reasons.build(UnsupportedOperation.T).text("Web authentication requires an HTTP endpoint.").toMaybe();
+
+		if (StringTools.isBlank(request.getToken()))
+			return Reasons.build(InvalidArgument.T).text("Property token must not be empty.").toMaybe();
+
+		OpenUserSession open = OpenUserSession.T.create();
+		open.setLocale(request.getLocale());
+		open.setMetaData(request.getMetaData());
+
+		open.setCredentials(JwtTokenCredentials.of(request.getToken()));
+
+		Maybe<? extends OpenUserSessionResponse> response = open.eval(context).getReasoned();
+		if (response.isUnsatisfied()) {
+			if (response.isUnsatisfiedBy(SecurityReason.T))
+				return response.propagateReason();
+
+			return InternalError.createTraceback(response.whyUnsatisfied(), "Error while authenticating the web request", logger::error).asMaybe();
 		}
 
 		UserSession session = response.get().getUserSession();
