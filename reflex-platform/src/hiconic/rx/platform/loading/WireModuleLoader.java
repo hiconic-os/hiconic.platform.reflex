@@ -26,14 +26,14 @@ import com.braintribe.gm.model.reason.essential.NotFound;
 
 import hiconic.rx.module.api.wire.RxModule;
 import hiconic.rx.module.api.wire.RxModuleContract;
-import hiconic.rx.platform.loading.RxArtifactDescriptorReader.OptionalModuleDescriptor;
-import hiconic.rx.platform.loading.RxArtifactDescriptorReader.RxArtifactDescriptor;
+import hiconic.rx.platform.loading.RxArtifactDefinitionReader.OptionalModuleDescriptor;
+import hiconic.rx.platform.loading.RxArtifactDefinitionReader.RxArtifactDescriptor;
 
 /** Discovers RX modules without loading descriptor classes and resolves the active module set. */
 /* package */ class WireModuleLoader {
 
 	private static final String LEGACY_DESCRIPTOR = "META-INF/rx-module.properties";
-	private static final String ARTIFACT_DESCRIPTOR = "rx/package-info.class";
+	private static final String ARTIFACT_DESCRIPTOR = RxArtifactDefinitionReader.RESOURCE;
 
 	public static Maybe<LoadedRxModules> loadWireModules() {
 		try {
@@ -49,7 +49,7 @@ import hiconic.rx.platform.loading.RxArtifactDescriptorReader.RxArtifactDescript
 
 		Enumeration<URL> descriptors = classLoader.getResources(ARTIFACT_DESCRIPTOR);
 		while (descriptors.hasMoreElements())
-			catalog.add(RxArtifactDescriptorReader.read(descriptors.nextElement()));
+			catalog.add(RxArtifactDefinitionReader.read(descriptors.nextElement()));
 
 		Enumeration<URL> legacyDescriptors = classLoader.getResources(LEGACY_DESCRIPTOR);
 		while (legacyDescriptors.hasMoreElements())

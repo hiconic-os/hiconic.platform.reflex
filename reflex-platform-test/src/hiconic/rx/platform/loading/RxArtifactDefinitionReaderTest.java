@@ -9,17 +9,18 @@ import org.junit.Test;
 
 import hiconic.rx.workbench.module.wire.WorkbenchRxModule;
 
-public class RxArtifactDescriptorReaderTest {
+public class RxArtifactDefinitionReaderTest {
 
 	@Test
-	public void readsFixedPackageDescriptorWithoutLoadingIt() throws Exception {
-		var resources = getClass().getClassLoader().getResources("rx/package-info.class");
+	public void readsFixedDefinitionWithArtifactIdentity() throws Exception {
+		var resources = getClass().getClassLoader().getResources(RxArtifactDefinitionReader.RESOURCE);
 		assertThat(resources.hasMoreElements()).isTrue();
 
-		var descriptor = RxArtifactDescriptorReader.read(resources.nextElement());
+		var descriptor = RxArtifactDefinitionReader.read(resources.nextElement());
 
 		assertThat(descriptor.modules()).contains(WorkbenchRxModule.class.getName());
 		assertThat(descriptor.optionalModules()).isEmpty();
+		assertThat(descriptor.identity().artifactId()).isEqualTo("workbench-rx-module");
 	}
 
 	@Test
