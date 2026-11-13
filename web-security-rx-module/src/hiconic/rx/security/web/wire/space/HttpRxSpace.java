@@ -37,8 +37,6 @@ public class HttpRxSpace implements WireSpace {
 		bean.setExternalSchemeProvider(webServer::externalRequestScheme);
 		// DEVCX-208: The Control Center cannot access the cookie anymore if the cookie is not reachable via JavaScript.
 		bean.setAddCookie(config.getCookieEnabled());
-
-		bean.setAddCookie(true);
 		bean.setEntryPointProvider(openUserSessionConfigurationProvider()::findEntryPoint);
 		return bean;
 	}
