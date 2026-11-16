@@ -93,7 +93,9 @@ public class WebAuthorizationServiceProcessor extends AbstractDispatchingService
 		open.setLocale(request.getLocale());
 		open.setMetaData(request.getMetaData());
 
-		open.setCredentials(JwtTokenCredentials.of(request.getToken()));
+		JwtTokenCredentials creds = JwtTokenCredentials.of(request.getToken());
+		creds.setAcquire(true);
+		open.setCredentials(creds);
 
 		Maybe<? extends OpenUserSessionResponse> response = open.eval(context).getReasoned();
 		if (response.isUnsatisfied()) {
