@@ -68,6 +68,7 @@ import com.braintribe.model.time.TimeSpan;
 import com.braintribe.model.user.User;
 import com.braintribe.model.usersession.UserSession;
 import com.braintribe.utils.lcd.Lazy;
+import com.braintribe.utils.lcd.StringTools;
 
 import hiconic.rx.security.api.UserService;
 import hiconic.rx.security.api.UserSessionAccessVerificationExpert;
@@ -91,7 +92,7 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 	private OpenUserSessionConfiguration openUserSessionConfiguration = OpenUserSessionConfiguration.T.create();
 	private Lazy<Map<String, OpenUserSessionEntryPoint>> entryPointsByName = new Lazy<>(this::indexEntryPointsByName);
 	private final CredentialsHasher credentialsHasher = new CredentialsHasher();
-	
+
 	@Required
 	@Configurable
 	public void setEvaluator(Evaluator<ServiceRequest> evaluator) {
@@ -103,7 +104,7 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 	public void setUserSessionService(UserSessionService userSessionService) {
 		this.userSessionService = userSessionService;
 	}
-	
+
 	@Required
 	@Configurable
 	public void setUserService(UserService userService) {
@@ -130,7 +131,7 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 	public void setUserSessionOpeningVerificationExperts(List<UserSessionOpeningVerificationExpert> experts) {
 		this.userSessionOpeningVerificationExperts = experts;
 	}
-	
+
 	@Configurable
 	public void setEnableUserStatistics(boolean enableUserStatistics) {
 		this.enableUserStatistics = enableUserStatistics;
@@ -138,8 +139,7 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 
 	/**
 	 * <p>
-	 * Sets the max idle time, as {@link TimeSpan}, to be set to the {@link UserSession} objects created by this
-	 * authentication expert
+	 * Sets the max idle time, as {@link TimeSpan}, to be set to the {@link UserSession} objects created by this authentication expert
 	 * 
 	 * @param sessionMaxIdleTime
 	 *            The max idle time to be set to the {@link UserSession} objects created by this authentication expert
@@ -151,12 +151,11 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 
 	/**
 	 * <p>
-	 * Sets the max age, as {@link TimeSpan}, to assist the generation of expiry dates for the {@link UserSession} objects
-	 * created by this authentication expert
+	 * Sets the max age, as {@link TimeSpan}, to assist the generation of expiry dates for the {@link UserSession} objects created by this
+	 * authentication expert
 	 * 
 	 * @param sessionMaxAge
-	 *            Sets the max age to base the expiry dates for the {@link UserSession} objects created by this
-	 *            authentication expert
+	 *            Sets the max age to base the expiry dates for the {@link UserSession} objects created by this authentication expert
 	 */
 	@Configurable
 	public void setSessionMaxAge(TimeSpan sessionMaxAge) {
@@ -211,39 +210,55 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 		ValidationResult validationResult = validationResultMaybe.get();
 		Credentials credentials = openUserSession.getCredentials();
 
-		String acquirationKey = null;
+		final String acquirationKey;
 
 		if (credentials.acquirationSupportive()) {
 			// The idea behind acquiring is that we don't open a new session but use an existing one in some cases
 			// E.g. when the client just always sends the same token (3rd party system)
 			// But when the requester address is different, i.e. it is the same user on a different device, we want a new session
-			acquirationKey = credentialsHasher.hash(credentials, m -> m.put("requestorAddress", requestContext.getRequestorAddress()));
+			final String requestorAddress = requestContext.getRequestorAddress();
+			acquirationKey = credentialsHasher.hash(credentials, m -> m.put("requestorAddress", requestorAddress));
 
 			Maybe<UserSession> acquiredUserSessionMaybe = acquireUserSession(requestContext, acquirationKey);
 
 			if (acquiredUserSessionMaybe.isSatisfied()) {
 				UserSession userSession = acquiredUserSessionMaybe.get();
+				log.debug(() -> "Was able to find an existing session for acquirationKey: " + acquirationKey
+						+ " (which includes the requestor address: " + StringTools.simpleObfuscatePassword(requestorAddress) + "): "
+						+ userSession.getSessionId());
 				Reason authorizationFailure = checkAuthorization(validationResult.entryPoint(), userSession.getEffectiveRoles());
 				if (authorizationFailure != null) {
+					log.debug(() -> "Re-acquired session " + userSession.getSessionId() + " cannot be used: " + authorizationFailure.stringify());
 					SecurityAudit.sessionOpeningFailed("ENTRY_POINT_FORBIDDEN", credentials, requestContext,
 							entryPointName(validationResult.entryPoint()));
 					return authorizationFailure.asMaybe();
 				}
 
-				return validateUserSession(requestContext, userSession).map(s -> createResponseFrom(s, true));
+				Maybe<OpenUserSessionResponse> maybe = validateUserSession(requestContext, userSession).map(s -> createResponseFrom(s, true));
+				if (maybe.isUnsatisfied()) {
+					log.debug(() -> "User session " + userSession.getSessionId() + " cannot be reused: " + maybe.whyUnsatisfied().stringify());
+				} else {
+					log.debug(() -> "User session " + userSession.getSessionId() + " can be reused");
+				}
+				return maybe;
+			} else {
+				log.debug(() -> "Could not find an existing session for acquirationKey: " + acquirationKey
+						+ " (which includes the requestor address: " + StringTools.simpleObfuscatePassword(requestorAddress) + "): "
+						+ acquiredUserSessionMaybe.whyUnsatisfied().stringify());
 			}
 
 			// TODO: rethink the responsibility for UserSession transcription and therefore the responsibility of acquiration
 			// blocking
 			if (acquiredUserSessionMaybe.isUnsatisfiedBy(InvalidCredentials.T)) {
 				// In this case the credentials are blocked via the acquiration mechanism and a reauthentication is not possible
-				SecurityAudit.sessionOpeningFailed("CREDENTIALS_BLOCKED", credentials, requestContext,
-						entryPointName(validationResult.entryPoint()));
+				SecurityAudit.sessionOpeningFailed("CREDENTIALS_BLOCKED", credentials, requestContext, entryPointName(validationResult.entryPoint()));
 				return acquiredUserSessionMaybe.whyUnsatisfied().asMaybe();
 
 			} else if (!acquiredUserSessionMaybe.isUnsatisfiedBy(SessionNotFound.T)) {
 				log.debug("Error while finding session via acquiration key: " + acquiredUserSessionMaybe.whyUnsatisfied().stringify());
 			}
+		} else {
+			acquirationKey = null;
 		}
 
 		AuthenticateCredentials authenticateCredentials = AuthenticateCredentials.T.create();
@@ -275,14 +290,13 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 		Set<String> effectiveRoles = Roles.authenticatedCredentialsEffectiveRoles(authenticatedCredentialsResponse);
 		Reason authorizationFailure = checkAuthorization(validationResult.entryPoint(), effectiveRoles);
 		if (authorizationFailure != null) {
-			SecurityAudit.sessionOpeningFailed("ENTRY_POINT_FORBIDDEN", credentials, requestContext,
-					entryPointName(validationResult.entryPoint()));
+			SecurityAudit.sessionOpeningFailed("ENTRY_POINT_FORBIDDEN", credentials, requestContext, entryPointName(validationResult.entryPoint()));
 			return authorizationFailure.asMaybe();
 		}
 
 		if (authenticatedCredentialsResponse instanceof AuthenticatedUser authenticatedUser) {
-			Reason verificationFailure = verifyUserSessionOpening(requestContext, validationResult.entryPoint(), authenticatedUser.getUser(), effectiveRoles,
-					credentials);
+			Reason verificationFailure = verifyUserSessionOpening(requestContext, validationResult.entryPoint(), authenticatedUser.getUser(),
+					effectiveRoles, credentials);
 			if (verificationFailure != null) {
 				SecurityAudit.sessionOpeningFailed("SESSION_OPENING_REJECTED", credentials, requestContext,
 						entryPointName(validationResult.entryPoint()));
