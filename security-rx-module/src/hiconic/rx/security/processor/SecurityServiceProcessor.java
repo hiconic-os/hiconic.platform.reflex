@@ -240,6 +240,9 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 				} else {
 					log.debug(() -> "User session " + userSession.getSessionId() + " can be reused");
 				}
+
+				touchUserSession(userSession);
+
 				return maybe;
 			} else {
 				log.debug(() -> "Could not find an existing session for acquirationKey: " + acquirationKey
