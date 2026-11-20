@@ -155,7 +155,8 @@ public class ResourcePayloadProcessor extends AbstractDispatchingServiceProcesso
 
 		if (storeWith == null) {
 			if (cmdResolver.getModelOracle().findEntityTypeOracle(sourceType) == null)
-				return error(InvalidArgument.T, "Source type [" + sourceType.getTypeSignature() + "] not part of service domain [" + domainId + "]");
+				return error(InvalidArgument.T, "ResourceSource type [" + sourceType.getTypeSignature() + "] not part of service model for domain ["
+						+ domainId + "]. ResourcStorage thus cannot be resolve.");
 
 			return defaultStorageFor(sourceType, domainId);
 		}
