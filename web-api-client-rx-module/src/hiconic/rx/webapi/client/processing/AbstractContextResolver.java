@@ -1,7 +1,6 @@
 // ============================================================================
 package hiconic.rx.webapi.client.processing;
 
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -42,7 +41,6 @@ import com.braintribe.model.processing.meta.cmd.builders.PropertyMdResolver;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
 import com.braintribe.model.resource.Resource;
 import com.braintribe.model.service.api.ServiceRequest;
-import com.braintribe.utils.DateTools;
 import com.braintribe.utils.StringTools;
 import com.braintribe.utils.lcd.NullSafe;
 
@@ -56,6 +54,7 @@ import hiconic.rx.webapi.client.api.HttpRequestContextBuilder;
 import hiconic.rx.webapi.client.api.HttpResponseMapping;
 import hiconic.rx.webapi.client.model.meta.HttpConsumes;
 import hiconic.rx.webapi.client.model.meta.HttpDateFormatting;
+import hiconic.rx.webapi.client.model.meta.HttpDateEncoding;
 import hiconic.rx.webapi.client.model.meta.HttpDefaultFailureResponseType;
 import hiconic.rx.webapi.client.model.meta.HttpDefaultSuccessResponseType;
 import hiconic.rx.webapi.client.model.meta.HttpMethod;
@@ -410,7 +409,7 @@ public abstract class AbstractContextResolver implements HttpContextResolver {
 				if (!metadata.getIgnoreEmptyValue()) addMultipartPart(property, metadata, "", HttpMultipartPartKind.TEXT);
 				return;
 			}
-			List<String> values = encodeValues(value);
+			List<String> values = encodeValues(value, metadata);
 			if (values.isEmpty() && !metadata.getIgnoreEmptyValue()) values = Collections.singletonList("");
 			for (String encodedValue : values) addMultipartPart(property, metadata, encodedValue, HttpMultipartPartKind.TEXT);
 		}
@@ -461,13 +460,13 @@ public abstract class AbstractContextResolver implements HttpContextResolver {
 			return (values.size() > 0) ? values.iterator().next() : null;
 		}
 		
-		private Collection<String> resolveParameterValues(Property p, @SuppressWarnings("unused") HttpParam restParam) {
+		private Collection<String> resolveParameterValues(Property p, HttpParam restParam) {
 			Object value = p.get(this.serviceRequest);
-			return (value != null) ? encodeValues(value) : Collections.emptyList(); // TODO: handle encoding
+			return (value != null) ? encodeValues(value, restParam) : Collections.emptyList(); // TODO: handle encoding
 		}
 		
 		@SuppressWarnings("fallthrough")
-		private List<String> encodeValues(Object value) {
+		private List<String> encodeValues(Object value, HttpParam parameter) {
 			if (value == null) {
 				return Collections.emptyList();
 			}
@@ -490,29 +489,16 @@ public abstract class AbstractContextResolver implements HttpContextResolver {
 				break;
 			}
 			case dateType: {
-				HttpDateFormatting dateFormatting = resolveDateFormatting();
-				if (dateFormatting != null) {
-					DateTimeFormatter formatter = DateTimeFormatter.ofPattern(dateFormatting.getDateFormat());
-					String encodedValue = DateTools.encode((Date) value, formatter);
-					encodedValues.add(encodedValue);
-				} else {
-					ScalarType scalarType = (ScalarType) type;
-					String encodedValue = scalarType.instanceToString(value);
-					encodedValues.add(encodedValue);
-				}
+				HttpDateEncoding encoding = parameter instanceof HttpDateEncoding dateEncoding ? dateEncoding : null;
+				encodedValues.add(HttpParameterDateEncoder.encode((Date) value, encoding, resolveDateFormatting()));
 				break;
-			}			case setType:
+			}
+			case setType:
 			case listType:
-				CollectionType collectionType = (CollectionType) type;
-				GenericModelType elementType = collectionType.getCollectionElementType();
-				if (elementType.isScalar()) {
-					@SuppressWarnings("unchecked")
-					Collection<Object> values = (Collection<Object>) value;
-					values.stream()
-					.map(this::encodeValues)
-					.forEach(encodedValues::addAll);
-					break;
-				}
+				// Runtime collections are often list<object>; encode their actual elements.
+				for (Object element : (Collection<?>) value)
+					encodedValues.addAll(encodeValues(element, parameter));
+				break;
 			default:
 				//TODO: we currently do not support anything else then scalar types or collections of scalar. 
 				// throw new HttpProcessingException("Unsupported parameter type: "+type.getTypeSignature());

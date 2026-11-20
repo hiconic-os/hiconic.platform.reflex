@@ -7,8 +7,10 @@ import com.braintribe.model.generic.annotation.Initializer;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 
+import hiconic.rx.webapi.client.model.meta.HttpDateEncoding;
+
 /** Maps a scalar, or every element of a scalar collection, to textual multipart parts. */
-public interface HttpMultipartTextPart extends HttpMultipartPart {
+public interface HttpMultipartTextPart extends HttpMultipartPart, HttpDateEncoding {
 	EntityType<HttpMultipartTextPart> T = EntityTypes.T(HttpMultipartTextPart.class);
 
 	@Override

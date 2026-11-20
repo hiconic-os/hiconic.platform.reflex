@@ -37,6 +37,39 @@ public class HttpMetadataAnnotationsTest {
 		Object details() { return null; }
 	}
 
+	private static class DateParameters {
+		@com.braintribe.model.deployment.http.annotation.HttpPathParam(globalId = "date-path", dateFormat = "yyyy-MM-dd", dateZone = "Europe/Berlin")
+		java.util.Date path() { return null; }
+
+		@com.braintribe.model.deployment.http.annotation.HttpQueryParam(globalId = "date-query", dateFormat = "yyyyMMdd", dateZone = "UTC")
+		java.util.Date query() { return null; }
+
+		@com.braintribe.model.deployment.http.annotation.HttpHeaderParam(globalId = "date-header", dateFormat = "EEE, dd MMM yyyy HH:mm:ss z", dateZone = "GMT")
+		java.util.Date header() { return null; }
+
+		@com.braintribe.model.deployment.http.annotation.HttpMultipartTextPart(globalId = "date-multipart", dateFormat = "dd.MM.yyyy", dateZone = "Europe/Berlin")
+		java.util.Date multipart() { return null; }
+
+		@com.braintribe.model.deployment.http.annotation.HttpPathParam(globalId = "date-legacy")
+		java.util.Date legacy() { return null; }
+	}
+
+	@Test
+	public void mapsDateFormatAndZoneOnEachTextualMapping() throws Exception {
+		assertDateEncoding("path", com.braintribe.model.deployment.http.annotation.HttpPathParam.class, "yyyy-MM-dd", "Europe/Berlin");
+		assertDateEncoding("query", com.braintribe.model.deployment.http.annotation.HttpQueryParam.class, "yyyyMMdd", "UTC");
+		assertDateEncoding("header", com.braintribe.model.deployment.http.annotation.HttpHeaderParam.class, "EEE, dd MMM yyyy HH:mm:ss z", "GMT");
+		assertDateEncoding("multipart", com.braintribe.model.deployment.http.annotation.HttpMultipartTextPart.class, "dd.MM.yyyy", "Europe/Berlin");
+		assertDateEncoding("legacy", com.braintribe.model.deployment.http.annotation.HttpPathParam.class, null, null);
+	}
+
+	private void assertDateEncoding(String method, Class<? extends Annotation> annotation, String format, String zone) throws Exception {
+		hiconic.rx.webapi.client.model.meta.HttpDateEncoding metadata = (hiconic.rx.webapi.client.model.meta.HttpDateEncoding)
+				build(DateParameters.class.getDeclaredMethod(method).getAnnotation(annotation));
+		assertEquals(format, metadata.getDateFormat());
+		assertEquals(zone, metadata.getDateZone());
+	}
+
 	@Test
 	public void mapsStatusReasoningAnnotationIncludingClassLiteral() {
 		hiconic.rx.webapi.client.model.meta.HttpStatusReasoning metadata = build(

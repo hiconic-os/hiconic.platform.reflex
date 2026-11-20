@@ -18,10 +18,11 @@ package hiconic.rx.webapi.client.model.meta.params;
 import com.braintribe.model.generic.reflection.EntityType;
 import com.braintribe.model.generic.reflection.EntityTypes;
 
+import hiconic.rx.webapi.client.model.meta.HttpDateEncoding;
 import hiconic.rx.webapi.client.model.meta.HttpParam;
 import hiconic.rx.webapi.client.model.meta.HttpParamType;
 
-public interface HttpHeaderParam extends HttpParam {
+public interface HttpHeaderParam extends HttpParam, HttpDateEncoding {
 
 	final EntityType<HttpHeaderParam> T = EntityTypes.T(HttpHeaderParam.class);
 	
