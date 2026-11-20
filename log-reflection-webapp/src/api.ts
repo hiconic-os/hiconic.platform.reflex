@@ -27,6 +27,7 @@ import { LogLevel } from "@dev.hiconic/gm_logging-model";
 import type { Resource } from "@dev.hiconic/gm_resource-model";
 import { TransientSource } from "@dev.hiconic/gm_transient-resource-model";
 import { T, hc, remote } from "@dev.hiconic/tf.js_hc-js-api";
+import { ReasonError } from "./reason-error";
 
 export interface RuntimeConfig {
   servicesUrl: string;
@@ -243,28 +244,10 @@ export class LogReflectionApi implements LogReflectionClient {
     const result = await request.EvalAndGetReasoned(evaluator);
     if (result.isUnsatisfied()) {
       const reason = result.whyUnsatisfied();
-      throw new Error(describeReason(reason));
+      throw new ReasonError(reason);
     }
     return result.get() as T;
   }
-}
-
-type VisibleReason = {
-  TypeSignature?: () => string;
-  text?: string | null;
-  tracebackId?: string | null;
-  reasons?: Iterable<VisibleReason> | null;
-};
-
-function describeReason(value: unknown): string {
-  if (!value || typeof value !== "object") return String(value);
-  const reason = value as VisibleReason;
-  const type = reason.TypeSignature?.().split(".").pop() || "Reason";
-  const text = reason.text?.trim();
-  const id = reason.tracebackId || /tracebackId=([^\s)]+)/.exec(text || "")?.[1];
-  const details = Array.from(reason.reasons ?? []).map(describeReason);
-  return [`${type}: ${text || "No details available"}`, ...(id && !text?.includes(id) ? [`Traceback ID: ${id}`] : []),
-    ...details.map(detail => `  ↳ ${detail}`)].join("\n");
 }
 
 function profileMap(profiles: Iterable<LogLevelProfile> | null | undefined) {

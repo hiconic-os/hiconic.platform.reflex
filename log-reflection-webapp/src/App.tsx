@@ -13,6 +13,8 @@ import type {
   RuntimeConfig,
   TargetSelection
 } from "./api";
+import { ReasonError } from "./reason-error";
+import { AuthenticationFailure, Forbidden, SessionExpired } from "@dev.hiconic/gm_security-reason-model";
 import { createTabExport, type TabExportColumnKey, type TabExportFormat } from "./tab-export";
 import { LogLevelEditor } from "./LogLevelEditor";
 
@@ -67,7 +69,7 @@ type ColumnKey = TabExportColumnKey;
 
 type ColumnDefinition = { key: ColumnKey; label: string; width: string };
 type ViewMode = "structured" | "text";
-type AccessState = "checking" | "authenticated" | "unauthenticated" | "denied" | "offline" | "error";
+type AccessState = "checking" | "authenticated" | "unauthenticated" | "expired" | "denied" | "offline" | "error";
 
 const columns: readonly ColumnDefinition[] = [
   { key: "timestamp", label: "Timestamp", width: "184px" },
@@ -339,8 +341,9 @@ export function App(props: AppProps) {
     setCanManageLevels(false);
     stopAllTails();
     if (isConnectivityFailure(message)) setAccessState("offline");
-    else if (isAuthorizationFailure(message)) setAccessState("denied");
-    else if (isAuthenticationFailure(message)) setAccessState("unauthenticated");
+    else if (isAuthorizationFailure(caught)) setAccessState("denied");
+    else if (isSessionExpiry(caught)) setAccessState("expired");
+    else if (isAuthenticationFailure(caught)) setAccessState("unauthenticated");
     else {
       const tracebackId = reportConsoleTraceback("Log Reflection access check failed", caught);
       setAccessDetail(`Console traceback ID: ${tracebackId}`);
@@ -350,7 +353,7 @@ export function App(props: AppProps) {
 
   function handleOperationalFailure(caught: unknown) {
     const message = messageOf(caught);
-    if (isAuthenticationFailure(message) || isAuthorizationFailure(message) || isConnectivityFailure(message))
+    if (isAuthenticationFailure(caught) || isAuthorizationFailure(caught) || isConnectivityFailure(message))
       applyAccessFailure(caught);
     else
       setError(message);
@@ -1373,12 +1376,17 @@ function loginUrl(config: RuntimeConfig) {
   return url.toString();
 }
 
-function isAuthenticationFailure(message: string) {
-  return /MissingSession|MissingCredentials|AuthenticationFailure|SessionNotFound|No authenticated web session|No credentials found in http request|Unauthorized|401/i.test(message);
+// AuthenticationFailure covers all its subtypes, e.g. MissingSession, SessionExpired and InvalidSession.
+function isAuthenticationFailure(caught: unknown) {
+  return caught instanceof ReasonError && AuthenticationFailure.isInstance(caught.reason);
 }
 
-function isAuthorizationFailure(message: string) {
-  return /Forbidden|Insufficient.*role|required role|403/i.test(message);
+function isSessionExpiry(caught: unknown) {
+  return caught instanceof ReasonError && SessionExpired.isInstance(caught.reason);
+}
+
+function isAuthorizationFailure(caught: unknown) {
+  return caught instanceof ReasonError && Forbidden.isInstance(caught.reason);
 }
 
 function isConnectivityFailure(message: string) {
@@ -1390,16 +1398,19 @@ function AccessOverlay(props: { state: AccessState; detail: string; loginUrl?: s
     : props.state === "offline" ? "Connection interrupted"
     : props.state === "denied" ? "Access denied"
     : props.state === "error" ? "Access check failed"
-    : "Session required";
+    : props.state === "expired" ? "Session expired"
+    : "Sign in required";
   const explanation = () => props.state === "offline" ? "The server cannot currently be reached. Filters and selections remain in this browser."
-    : props.state === "denied" ? "Your session is valid, but it has no Log Reflection reader role."
+    : props.state === "denied" ? "You are signed in, but you do not have the Log Reflection reader role."
     : props.state === "error" ? "A technical problem occurred while checking access."
-    : props.state === "unauthenticated" ? "Sign in to inspect logs. The current workspace remains available."
-    : "Verifying session and capabilities.";
+    : props.state === "expired" ? "Sign in again to inspect logs. The current workspace remains available."
+    : props.state === "unauthenticated" ? "Sign in to inspect logs."
+    : "Verifying access.";
+  const canSignIn = () => (props.state === "unauthenticated" || props.state === "expired") && props.loginUrl;
   return <div class="access-overlay" role="dialog" aria-live="polite"><div class="access-card"><strong>{title()}</strong><p>{explanation()}</p>
     <Show when={props.detail && props.state !== "checking"}><small>{props.detail}</small></Show>
     <div class="access-actions"><Show when={props.state === "offline" || props.state === "error"}><button onClick={props.retry}>Try again</button></Show>
-      <Show when={props.state === "unauthenticated" && props.loginUrl}><a class="login" href={props.loginUrl}>Sign in</a></Show></div>
+      <Show when={canSignIn()}><a class="login" href={props.loginUrl}>Sign in</a></Show></div>
   </div></div>;
 }
 

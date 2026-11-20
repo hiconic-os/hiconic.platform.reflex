@@ -7,6 +7,8 @@ import type {
   RemoteLogDownload,
   TargetSelection
 } from "../src/api";
+import { ReasonError } from "../src/reason-error";
+import { SessionExpired } from "@dev.hiconic/gm_security-reason-model";
 
 type PendingTail = {
   filter: RecordFilter;
@@ -23,6 +25,7 @@ type QuerySnapshot = {
 
 class MockLogReflectionApi implements LogReflectionClient {
   private authenticated = true;
+  private sessionExpired = false;
   private manager = true;
   private readonly packagedProfiles = new Map<string, Map<string, string>>([
     ["packaged-default", new Map([["example.Logger", "INFO"], ["example.service", "INFO"]])],
@@ -43,6 +46,12 @@ class MockLogReflectionApi implements LogReflectionClient {
   private readonly queries: QuerySnapshot[] = [];
 
   async capabilities() {
+    if (this.sessionExpired) {
+      // The server rejects a request with an expired session cookie, instead of returning authenticated = false.
+      const reason = SessionExpired.create();
+      reason.text = "User session 'expired-session' has expired.";
+      throw new ReasonError(reason);
+    }
     return {
       authenticated: this.authenticated,
       canRead: this.authenticated,
@@ -180,6 +189,10 @@ class MockLogReflectionApi implements LogReflectionClient {
 
   setAuthenticated(value: boolean) {
     this.authenticated = value;
+  }
+
+  setSessionExpired(value: boolean) {
+    this.sessionExpired = value;
   }
 
   setManager(value: boolean) {

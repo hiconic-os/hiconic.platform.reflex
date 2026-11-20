@@ -128,10 +128,20 @@ test("stops all tails and rejects pending results after access loss", async ({ p
     window.logReflectionTestApi.setAuthenticated(false);
     window.dispatchEvent(new Event("focus"));
   });
-  await expect(page.getByText("Session required", { exact: true })).toBeVisible();
+  await expect(page.getByText("Sign in required", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
   await expect(tab(page, "Application log")).not.toHaveClass(/tailing/);
   await emit(page, "application", "response after access loss");
   await expect(page.getByText("response after access loss", { exact: true })).toHaveCount(0);
+});
+
+test("offers sign-in when session expired", async ({ page }) => {
+  await page.evaluate(() => {
+    window.logReflectionTestApi.setSessionExpired(true);
+    window.dispatchEvent(new Event("focus"));
+  });
+  await expect(page.getByText("Session expired", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
 });
 
 test("pauses following when scrolled away and resumes on request", async ({ page }) => {
