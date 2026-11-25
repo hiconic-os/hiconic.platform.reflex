@@ -18,6 +18,7 @@ package hiconic.rx.security.web.processing.credentials.extractor;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.essential.NotFound;
+import com.braintribe.gm.model.security.reason.InvalidCredentials;
 
 import hiconic.rx.security.web.api.WebSecurityConstants;
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,8 +32,11 @@ public class ExistingSessionFromRequestParameterProvider implements ExistingSess
 	public Maybe<String> findSessionId(HttpServletRequest request) {
 		String sessionId = request.getParameter(WebSecurityConstants.REQUEST_PARAM_SESSIONID);
 
-		if (sessionId == null || sessionId.isEmpty())
+		if (sessionId == null)
 			return NOT_FOUND;
+		if (sessionId.isBlank())
+			return Reasons.build(InvalidCredentials.T)
+					.text("HTTP request parameter " + WebSecurityConstants.REQUEST_PARAM_SESSIONID + " is empty").toMaybe();
 
 		return Maybe.complete(sessionId);
 	}

@@ -20,10 +20,8 @@ import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.essential.InternalError;
-import com.braintribe.gm.model.reason.essential.NotFound;
 import com.braintribe.gm.model.security.reason.AuthenticationFailure;
 import com.braintribe.gm.model.security.reason.Forbidden;
-import com.braintribe.gm.model.security.reason.InvalidCredentials;
 import com.braintribe.gm.model.security.reason.MissingCredentials;
 import com.braintribe.gm.model.security.reason.SecurityReason;
 import com.braintribe.logging.Logger;
@@ -44,7 +42,6 @@ import com.braintribe.model.service.api.ServiceRequest;
 import com.braintribe.model.usersession.UserSession;
 import com.braintribe.utils.CollectionTools;
 import com.braintribe.utils.collection.impl.AttributeContexts;
-import com.braintribe.utils.lcd.Lazy;
 
 import dev.hiconic.servlet.api.HttpFilter;
 import hiconic.rx.security.web.api.WebSecurityRequestContextContributor;
@@ -269,35 +266,7 @@ public class AuthRxFilter implements HttpFilter, InitializationAware {
 		}
 
 		private Maybe<Credentials> findCredentials(HttpServletRequest request) {
-			Lazy<Reason> invalidCredentialProblems = new Lazy<>(
-					() -> Reasons.build(InvalidCredentials.T).text("Error while extracting credentials from http request").toReason());
-
-			for (Map.Entry<String, WebCredentialsProvider> entry : webCredentialProviders.entrySet()) {
-				WebCredentialsProvider webCredentialProvider = entry.getValue();
-
-				Maybe<Credentials> credentialsMaybe = webCredentialProvider.provideCredentials(request);
-
-				if (credentialsMaybe.isUnsatisfied()) {
-					if (credentialsMaybe.isUnsatisfiedBy(MissingCredentials.T) || credentialsMaybe.isUnsatisfiedBy(NotFound.T))
-						continue;
-
-					if (credentialsMaybe.isUnsatisfiedBy(InvalidCredentials.T)) {
-						invalidCredentialProblems.get().getReasons().add(credentialsMaybe.whyUnsatisfied());
-						continue;
-					}
-
-					log.error(credentialsMaybe.whyUnsatisfied().stringify());
-				} else {
-					return credentialsMaybe;
-				}
-			}
-
-			if (invalidCredentialProblems.isInitialized()) {
-				// TODO: wrap or don't wrap if there is only one invalid credentials
-				return invalidCredentialProblems.get().asMaybe();
-			}
-
-			return Reasons.build(MissingCredentials.T).text("No credentials found in http request").toMaybe();
+			return WebCredentialsResolver.resolve(request, webCredentialProviders.values());
 		}
 
 		/**

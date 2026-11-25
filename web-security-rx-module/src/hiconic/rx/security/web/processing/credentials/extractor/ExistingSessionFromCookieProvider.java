@@ -8,6 +8,7 @@ import com.braintribe.cfg.Configurable;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.essential.NotFound;
+import com.braintribe.gm.model.security.reason.InvalidCredentials;
 import com.braintribe.logging.Logger;
 
 import hiconic.rx.security.web.api.Cookies;
@@ -29,11 +30,15 @@ public class ExistingSessionFromCookieProvider implements ExistingSessionWebCred
 	public Maybe<String> findSessionId(HttpServletRequest request) {
 		String cookieName = sessionCookieNameProvider.apply(request);
 		
-		String sessionId  = Optional.ofNullable(Cookies.findCookie(request, cookieName)).map(Cookie::getValue).orElse(null);
+		Cookie cookie = Cookies.findCookie(request, cookieName);
 		
-		if (sessionId == null || sessionId.isEmpty())
+		if (cookie == null)
 			return Reasons.build(NotFound.T).text("HTTP cookie " + cookieName + " not present")
 					.toMaybe();
+
+		String sessionId = Optional.ofNullable(cookie.getValue()).orElse("");
+		if (sessionId.isBlank())
+			return Reasons.build(InvalidCredentials.T).text("HTTP cookie " + cookieName + " is empty").toMaybe();
 		
 		logger.debug(() -> "Found session cookie with name [" + cookieName + "]");
 

@@ -18,6 +18,7 @@ package hiconic.rx.security.web.processing.credentials.extractor;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.essential.NotFound;
+import com.braintribe.gm.model.security.reason.InvalidCredentials;
 import com.braintribe.logging.Logger;
 import com.braintribe.model.securityservice.credentials.Credentials;
 import com.braintribe.model.securityservice.credentials.JwtTokenCredentials;
@@ -33,15 +34,17 @@ public class JwtCredentialsProvider implements CredentialFromAuthorizationHeader
 	public Maybe<Credentials> provideCredentials(String authHeader) {
 		authHeader = authHeader.trim();
 
-		int typeSeparatorIndex = authHeader.indexOf(' ');
+		int typeSeparatorIndex = firstWhitespace(authHeader);
+		String tokenType = typeSeparatorIndex == -1 ? authHeader : authHeader.substring(0, typeSeparatorIndex);
 
-		if (typeSeparatorIndex == -1)
-			return JWT_TOKEN_NOT_FOUND;
+		if (tokenType.equalsIgnoreCase("bearer")) {
+			if (typeSeparatorIndex == -1)
+				return Reasons.build(InvalidCredentials.T).text("Bearer token is missing").toMaybe();
 
-		String tokenType = authHeader.substring(0, typeSeparatorIndex).toLowerCase();
-
-		if (tokenType.equals("bearer")) {
 			String encodedToken = authHeader.substring(typeSeparatorIndex + 1).trim();
+			if (encodedToken.isEmpty())
+				return Reasons.build(InvalidCredentials.T).text("Bearer token is empty").toMaybe();
+
 			logger.trace(() -> "Identified JWT token " + StringTools.simpleObfuscatePassword(encodedToken)
 					+ " in the Authorization header of the request.");
 
@@ -52,6 +55,13 @@ public class JwtCredentialsProvider implements CredentialFromAuthorizationHeader
 		}
 
 		return JWT_TOKEN_NOT_FOUND;
+	}
+
+	private static int firstWhitespace(String value) {
+		for (int i = 0; i < value.length(); i++)
+			if (Character.isWhitespace(value.charAt(i)))
+				return i;
+		return -1;
 	}
 
 }

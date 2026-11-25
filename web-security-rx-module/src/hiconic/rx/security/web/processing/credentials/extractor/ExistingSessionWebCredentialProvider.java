@@ -16,8 +16,6 @@
 package hiconic.rx.security.web.processing.credentials.extractor;
 
 import com.braintribe.gm.model.reason.Maybe;
-import com.braintribe.gm.model.reason.Reasons;
-import com.braintribe.gm.model.security.reason.MissingCredentials;
 import com.braintribe.model.securityservice.credentials.Credentials;
 import com.braintribe.model.securityservice.credentials.ExistingSessionCredentials;
 
@@ -33,7 +31,7 @@ public interface ExistingSessionWebCredentialProvider extends WebCredentialsProv
 		Maybe<String> sessionIdMaybe = findSessionId(request);
 
 		if (sessionIdMaybe.isUnsatisfied())
-			return Reasons.build(MissingCredentials.T).text("No session id found in http request").cause(sessionIdMaybe.whyUnsatisfied()).toMaybe();
+			return sessionIdMaybe.emptyCast();
 
 		ExistingSessionCredentials c = ExistingSessionCredentials.T.create();
 		c.setExistingSessionId(sessionIdMaybe.get());

@@ -36,12 +36,18 @@ public class BasicAuthCredentialsProvider implements CredentialFromAuthorization
 
 	@Override
 	public Maybe<Credentials> provideCredentials(String authHeader) {
-		String[] parts = authHeader.split("[ \\\r\\\n\\\t]");
-		if (parts.length == 2) {
-			String basic = parts[0].trim();
-			String base64Encoded = parts[1].trim();
+		authHeader = authHeader.trim();
+		int separatorIndex = firstWhitespace(authHeader);
+		String scheme = separatorIndex == -1 ? authHeader : authHeader.substring(0, separatorIndex);
 
-			if (basic.equalsIgnoreCase("Basic")) {
+		if (scheme.equalsIgnoreCase("Basic")) {
+			if (separatorIndex == -1)
+				return Reasons.build(InvalidCredentials.T).text("Basic authorization token is missing").toMaybe();
+
+			String base64Encoded = authHeader.substring(separatorIndex).trim();
+			if (base64Encoded.isEmpty())
+				return Reasons.build(InvalidCredentials.T).text("Basic authorization token is empty").toMaybe();
+
 				byte[] decodedBytes;
 				try {
 					decodedBytes = Base64.getDecoder().decode(base64Encoded);
@@ -67,10 +73,16 @@ public class BasicAuthCredentialsProvider implements CredentialFromAuthorization
 				} catch (UnsupportedEncodingException e) {
 					throw new UncheckedIOException(e);
 				}
-			}
 		}
 
 		return BASIC_TOKEN_NOT_FOUND;
+	}
+
+	private static int firstWhitespace(String value) {
+		for (int i = 0; i < value.length(); i++)
+			if (Character.isWhitespace(value.charAt(i)))
+				return i;
+		return -1;
 	}
 
 }

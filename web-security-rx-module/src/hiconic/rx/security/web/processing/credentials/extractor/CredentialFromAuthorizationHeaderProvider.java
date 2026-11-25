@@ -18,6 +18,7 @@ package hiconic.rx.security.web.processing.credentials.extractor;
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.essential.NotFound;
+import com.braintribe.gm.model.security.reason.InvalidCredentials;
 import com.braintribe.model.securityservice.credentials.Credentials;
 
 import hiconic.rx.security.web.processing.servlet.WebCredentialsProvider;
@@ -31,8 +32,10 @@ public interface CredentialFromAuthorizationHeaderProvider extends WebCredential
 	default Maybe<Credentials> provideCredentials(HttpServletRequest request) {
 		String authHeader = request.getHeader("Authorization");
 
-		if (authHeader == null || authHeader.isEmpty())
+		if (authHeader == null)
 			return HEADER_NOT_FOUND;
+		if (authHeader.isBlank())
+			return Reasons.build(InvalidCredentials.T).text("HTTP Authorization header is empty").toMaybe();
 
 		return provideCredentials(authHeader);
 	}
