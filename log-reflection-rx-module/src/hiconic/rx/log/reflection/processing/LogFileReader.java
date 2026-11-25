@@ -47,7 +47,7 @@ public class LogFileReader {
 	public LogRecordPage query(LogbackFileStream stream, LogFilter filter, String cursor, String beforeCursor, int requestedLimit,
 			long waitMillis, boolean includeRotated) {
 		if (beforeCursor != null && !beforeCursor.isBlank())
-			return queryBefore(stream, filter, beforeCursor, requestedLimit);
+			return queryBefore(stream, filter, beforeCursor, requestedLimit, includeRotated);
 		if (includeRotated && (cursor == null || cursor.isBlank()) && stream.segmentPaths().size() > 1)
 			return queryHistory(stream, filter, requestedLimit);
 		try {
@@ -177,7 +177,11 @@ public class LogFileReader {
 	}
 
 	private static boolean matchesCursor(Path path, FileCursor cursor) throws IOException {
-		if (cursor.offset <= 0)
+		if (cursor.offset == 0) {
+			FileState state = state(path);
+			return cursor.generation == state.generation && "0".equals(cursor.anchor);
+		}
+		if (cursor.offset < 0)
 			return false;
 		if (!compressed(path.getFileName().toString().toLowerCase(Locale.ROOT))) {
 			FileState state = state(path);
@@ -247,37 +251,26 @@ public class LogFileReader {
 		return true;
 	}
 
-	private LogRecordPage queryBefore(LogbackFileStream stream, LogFilter filter, String beforeCursor, int requestedLimit) {
+	private LogRecordPage queryBefore(LogbackFileStream stream, LogFilter filter, String beforeCursor, int requestedLimit,
+			boolean includeRotated) {
 		try {
-			Path path = stream.path();
-			FileState state = state(path);
 			FileCursor cursor = FileCursor.parse(beforeCursor);
-			long end = valid(path, state, cursor) ? cursor.offset : state.size;
-			long start = Math.max(0, end - maxReadBytes);
-			ReadSlice slice = read(path, start, end);
-			if (start > 0)
-				slice = alignFirstRecord(path, slice, stream.parser());
-
-			List<PhysicalRecord> matches = records(slice.bytes, slice.absoluteStart, stream.parser()).stream()
-					.filter(record -> LogRecordFiltering.matches(record.record, filter))
-					.toList();
-			int limit = Math.max(1, Math.min(requestedLimit, 10_000));
-			List<PhysicalRecord> selected = matches.size() > limit
-					? matches.subList(matches.size() - limit, matches.size())
-					: matches;
-			boolean moreBeforeAvailable = matches.size() > limit || start > 0;
-
-			LogRecordPage response = LogRecordPage.T.create();
-			List<LogRecord> page = selected.stream().map(record -> record.record).toList();
-			response.setRecords(page);
-			response.setObservedProperties(LogRecordFiltering.observedProperties(page));
-			response.setMoreAvailable(false);
-			response.setMoreBeforeAvailable(moreBeforeAvailable);
-			if (moreBeforeAvailable) {
-				long previousOffset = selected.isEmpty() ? slice.absoluteStart : startOffset(selected.get(0));
-				response.setPreviousCursor(cursor(path, state, previousOffset).externalForm());
+			List<Path> paths = stream.segmentPaths();
+			Path active = stream.path();
+			FileState activeState = state(active);
+			int segmentIndex = paths.size() - 1;
+			long end = activeState.size;
+			if (valid(active, activeState, cursor)) {
+				end = cursor.offset;
+			} else if (includeRotated) {
+				int rotatedIndex = findCursorSegment(paths, active, cursor);
+				if (rotatedIndex >= 0) {
+					segmentIndex = rotatedIndex;
+					end = cursor.offset;
+				}
 			}
-			return response;
+
+			return backwardsPage(stream, filter, paths, segmentIndex, end, requestedLimit, includeRotated);
 		} catch (IOException e) {
 			throw new IllegalStateException("Could not read earlier log records from " + stream.descriptor().getStreamId(), e);
 		}
@@ -285,38 +278,9 @@ public class LogFileReader {
 
 	private LogRecordPage queryHistory(LogbackFileStream stream, LogFilter filter, int requestedLimit) {
 		try {
-			List<List<PhysicalRecord>> newestFirst = new ArrayList<>();
-			long remaining = maxReadBytes;
 			List<Path> paths = stream.segmentPaths();
-			for (int i = paths.size() - 1; i >= 0 && remaining > 0; i--) {
-				Path path = paths.get(i);
-				ReadSlice slice = readTail(path, remaining);
-				remaining -= slice.bytes.length;
-				if (path.equals(stream.path()))
-					slice = completePhysicalLines(slice);
-				if (slice.absoluteStart > 0)
-					slice = alignFirstRecord(path, slice, stream.parser());
-				newestFirst.add(records(slice.bytes, slice.absoluteStart, stream.parser()));
-			}
-
-			List<PhysicalRecord> matches = new ArrayList<>();
-			for (int i = newestFirst.size() - 1; i >= 0; i--)
-				newestFirst.get(i).stream()
-						.filter(record -> LogRecordFiltering.matches(record.record, filter))
-						.forEach(matches::add);
-
-			int limit = Math.max(1, Math.min(requestedLimit, 10_000));
-			List<PhysicalRecord> selected = matches.size() > limit
-					? matches.subList(matches.size() - limit, matches.size())
-					: matches;
-			List<LogRecord> page = selected.stream().map(record -> record.record).toList();
-
 			FileState active = state(stream.path());
-			LogRecordPage response = LogRecordPage.T.create();
-			response.setRecords(page);
-			response.setObservedProperties(LogRecordFiltering.observedProperties(page));
-			response.setMoreAvailable(matches.size() > limit);
-			response.setMoreBeforeAvailable(false);
+			LogRecordPage response = backwardsPage(stream, filter, paths, paths.size() - 1, active.size, requestedLimit, true);
 			long activeOffset = completeOffset(stream.path(), active.size);
 			response.setNextCursor(cursor(stream.path(), active, activeOffset).externalForm());
 			return response;
@@ -325,26 +289,93 @@ public class LogFileReader {
 		}
 	}
 
+	private LogRecordPage backwardsPage(LogbackFileStream stream, LogFilter filter, List<Path> paths, int segmentIndex,
+			long firstEnd, int requestedLimit, boolean includeRotated) throws IOException {
+		List<SegmentRecord> matches = new ArrayList<>();
+		long remaining = maxReadBytes;
+		SegmentProgress boundary = null;
+		boolean unread = false;
+		int oldestIndex = includeRotated ? 0 : segmentIndex;
+
+		for (int i = segmentIndex; i >= oldestIndex && remaining > 0; i--) {
+			Path path = paths.get(i);
+			FileState state = state(path);
+			long end = i == segmentIndex ? firstEnd : Long.MAX_VALUE;
+			ReadSlice raw = readTailBefore(path, end, remaining);
+			remaining -= raw.bytes.length;
+			ReadSlice slice = path.equals(stream.path()) ? completePhysicalLines(raw) : raw;
+			if (slice.absoluteStart > 0)
+				slice = alignFirstRecord(path, slice, stream.parser());
+
+			List<SegmentRecord> segmentMatches = records(slice.bytes, slice.absoluteStart, stream.parser()).stream()
+					.filter(record -> LogRecordFiltering.matches(record.record, filter))
+					.map(record -> new SegmentRecord(path, state, record))
+					.toList();
+			matches.addAll(0, segmentMatches);
+			boundary = new SegmentProgress(path, state, slice.absoluteStart);
+
+			boolean unreadInSegment = raw.absoluteStart > 0;
+			unread = unreadInSegment || i > oldestIndex;
+			if (unreadInSegment)
+				break;
+		}
+
+		int limit = Math.max(1, Math.min(requestedLimit, 10_000));
+		List<SegmentRecord> selected = matches.size() > limit
+				? matches.subList(matches.size() - limit, matches.size())
+				: matches;
+		boolean moreBeforeAvailable = matches.size() > limit || unread;
+		List<LogRecord> page = selected.stream().map(record -> record.record.record).toList();
+
+		LogRecordPage response = LogRecordPage.T.create();
+		response.setRecords(page);
+		response.setObservedProperties(LogRecordFiltering.observedProperties(page));
+		response.setMoreAvailable(false);
+		response.setMoreBeforeAvailable(moreBeforeAvailable);
+		if (moreBeforeAvailable) {
+			if (!selected.isEmpty()) {
+				SegmentRecord first = selected.get(0);
+				response.setPreviousCursor(cursor(first.path, first.state, startOffset(first.record)).externalForm());
+			} else if (boundary != null) {
+				response.setPreviousCursor(cursor(boundary.path, boundary.state, boundary.offset).externalForm());
+			}
+		}
+		return response;
+	}
+
 	private static long startOffset(PhysicalRecord record) {
 		Long offset = record.record.getPosition().getByteOffset();
 		return offset == null ? 0 : offset;
 	}
 
 	private static ReadSlice readTail(Path path, long maximumBytes) throws IOException {
+		return readTailBefore(path, Long.MAX_VALUE, maximumBytes);
+	}
+
+	private static ReadSlice readTailBefore(Path path, long requestedEnd, long maximumBytes) throws IOException {
 		String name = path.getFileName().toString().toLowerCase(Locale.ROOT);
 		if (!compressed(name)) {
 			long size = Files.size(path);
-			long start = Math.max(0, size - maximumBytes);
-			return read(path, start, size);
+			long end = Math.min(size, requestedEnd);
+			long start = Math.max(0, end - maximumBytes);
+			return read(path, start, end);
 		}
 
 		int capacity = Math.toIntExact(Math.min(MAX_READ_BYTES, maximumBytes));
 		TailBytes tail = new TailBytes(capacity);
 		try (InputStream content = openContent(path)) {
 			byte[] buffer = new byte[64 * 1024];
-			for (int read; (read = content.read(buffer)) >= 0;)
-				if (read > 0)
+			long remaining = requestedEnd;
+			while (remaining > 0) {
+				int requested = (int) Math.min(buffer.length, remaining);
+				int read = content.read(buffer, 0, requested);
+				if (read < 0)
+					break;
+				if (read > 0) {
 					tail.write(buffer, 0, read);
+					remaining -= read;
+				}
+			}
 		}
 		return new ReadSlice(tail.discarded(), tail.bytes());
 	}

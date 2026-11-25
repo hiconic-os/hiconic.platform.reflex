@@ -14,7 +14,7 @@ import hiconic.rx.module.api.log.RxLogManager;
 public class LogReflectionRequestLoggingContextualizerTest {
 
 	@Test
-	public void suppressesOnlyLongPollingPublicAndClusterRequests() throws Exception {
+	public void suppressesAllPublicAndClusterLogQueries() throws Exception {
 		CountingLogManager logManager = new CountingLogManager();
 		LogReflectionRequestLoggingContextualizer contextualizer = new LogReflectionRequestLoggingContextualizer(logManager);
 
@@ -30,7 +30,7 @@ public class LogReflectionRequestLoggingContextualizerTest {
 		contextualizer.contextualize(immediateQuery, () -> logManager.executions++);
 		contextualizer.contextualize(ListLogStreams.T.create(), () -> logManager.executions++);
 
-		assertThat(logManager.suppressions).isEqualTo(2);
+		assertThat(logManager.suppressions).isEqualTo(3);
 		assertThat(logManager.executions).isEqualTo(4);
 	}
 

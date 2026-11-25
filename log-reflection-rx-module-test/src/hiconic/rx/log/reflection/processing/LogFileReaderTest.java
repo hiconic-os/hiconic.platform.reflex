@@ -355,6 +355,70 @@ public class LogFileReaderTest {
 		}
 	}
 
+	@Test
+	public void pagesBackwardsAcrossRotatedSegments() throws Exception {
+		String simplePattern = "%date %level %logger %msg%n";
+		Path oldest = Files.createTempFile("log-reflection-reader-oldest-", ".log");
+		Path rotated = Files.createTempFile("log-reflection-reader-rotated-", ".log");
+		try {
+			Files.writeString(oldest, """
+					2026-07-21 10:44:21,000 INFO dt1.Test one
+					2026-07-21 10:44:22,000 INFO dt1.Test two
+					""", StandardCharsets.UTF_8);
+			Files.writeString(rotated, """
+					2026-07-22 10:44:23,000 INFO dt1.Test three
+					2026-07-22 10:44:24,000 INFO dt1.Test four
+					""", StandardCharsets.UTF_8);
+			write("""
+					2026-07-23 10:44:25,000 INFO dt1.Test five
+					2026-07-23 10:44:26,000 INFO dt1.Test six
+					""");
+			LogbackFileStream stream = stream(simplePattern, java.util.List.of(oldest, rotated, file));
+
+			LogRecordPage latest = reader().query(stream, null, null, null, 2, 0, true);
+			assertThat(latest.getRecords()).extracting(r -> r.getMessage()).containsExactly("five", "six");
+			assertThat(latest.getMoreBeforeAvailable()).isTrue();
+
+			LogRecordPage middle = reader().query(stream, null, null, latest.getPreviousCursor(), 2, 0, true);
+			assertThat(middle.getRecords()).extracting(r -> r.getMessage()).containsExactly("three", "four");
+			assertThat(middle.getMoreBeforeAvailable()).isTrue();
+
+			LogRecordPage first = reader().query(stream, null, null, middle.getPreviousCursor(), 2, 0, true);
+			assertThat(first.getRecords()).extracting(r -> r.getMessage()).containsExactly("one", "two");
+			assertThat(first.getMoreBeforeAvailable()).isFalse();
+		} finally {
+			Files.deleteIfExists(oldest);
+			Files.deleteIfExists(rotated);
+		}
+	}
+
+	@Test
+	public void pagesBackwardsIntoAGzipSegment() throws Exception {
+		String simplePattern = "%date %level %logger %msg%n";
+		Path gzip = Files.createTempFile("log-reflection-reader-history-", ".log.gz");
+		try {
+			try (GZIPOutputStream output = new GZIPOutputStream(Files.newOutputStream(gzip))) {
+				output.write("""
+						2026-07-22 10:44:21,000 INFO dt1.Test one
+						2026-07-22 10:44:22,000 INFO dt1.Test two
+						""".getBytes(StandardCharsets.UTF_8));
+			}
+			write("""
+					2026-07-23 10:44:23,000 INFO dt1.Test three
+					2026-07-23 10:44:24,000 INFO dt1.Test four
+					""");
+			LogbackFileStream stream = stream(simplePattern, java.util.List.of(gzip, file));
+
+			LogRecordPage latest = reader().query(stream, null, null, null, 2, 0, true);
+			LogRecordPage previous = reader().query(stream, null, null, latest.getPreviousCursor(), 2, 0, true);
+
+			assertThat(previous.getRecords()).extracting(r -> r.getMessage()).containsExactly("one", "two");
+			assertThat(previous.getMoreBeforeAvailable()).isFalse();
+		} finally {
+			Files.deleteIfExists(gzip);
+		}
+	}
+
 	private LogFileReader reader() {
 		return new LogFileReader();
 	}

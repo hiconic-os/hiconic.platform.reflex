@@ -21,7 +21,7 @@ import hiconic.rx.log.reflection.model.api.QueryLocalLogRecords;
 import hiconic.rx.log.reflection.model.api.QueryLogRecords;
 import hiconic.rx.module.api.log.RxLogManager;
 
-/** Suppresses routine logs produced while a long-polling log observation request is being processed. */
+/** Suppresses routine logs produced while a log observation request is being processed. */
 public class LogReflectionRequestLoggingContextualizer implements ServiceRequestContextualizer {
 
 	private final RxLogManager logManager;
@@ -32,19 +32,13 @@ public class LogReflectionRequestLoggingContextualizer implements ServiceRequest
 
 	@Override
 	public void contextualize(ServiceRequest request, ServiceRequestExecution execution) throws Exception {
-		if (isLongPollingLogRequest(request))
+		if (isLogObservationRequest(request))
 			logManager.suppressRoutineLogging(execution);
 		else
 			execution.execute();
 	}
 
-	static boolean isLongPollingLogRequest(ServiceRequest request) {
-		if (request instanceof QueryLogRecords query)
-			return query.getWaitMillis() > 0;
-
-		if (request instanceof QueryLocalLogRecords query)
-			return query.getWaitMillis() > 0;
-
-		return false;
+	static boolean isLogObservationRequest(ServiceRequest request) {
+		return request instanceof QueryLogRecords || request instanceof QueryLocalLogRecords;
 	}
 }
