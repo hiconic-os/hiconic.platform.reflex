@@ -15,7 +15,9 @@ import com.braintribe.gm.config.yaml.index.ClasspathIndex;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.core.FileAppender;
+import ch.qos.logback.core.rolling.RollingFileAppender;
+import ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy;
+import ch.qos.logback.core.status.StatusUtil;
 
 public class LayeredLogbackConfigurationTest {
 	private static final String CLASSPATH_CONF_PATH = "HICONIC-CONF/";
@@ -34,9 +36,16 @@ public class LayeredLogbackConfigurationTest {
 					configFolder.toFile()).configure(context);
 
 			assertThat(configured).isTrue();
+			assertThat(new StatusUtil(context).isErrorFree(0)).isTrue();
 			var root = context.getLogger(Logger.ROOT_LOGGER_NAME);
 			assertThat(root.getLevel()).isEqualTo(Level.INFO);
-			assertThat(root.getAppender("FILE")).isInstanceOf(FileAppender.class);
+			assertThat(root.getAppender("FILE")).isInstanceOfSatisfying(RollingFileAppender.class, appender -> {
+				assertThat(appender.getRollingPolicy()).isInstanceOfSatisfying(SizeAndTimeBasedRollingPolicy.class, policy -> {
+					assertThat(policy.getFileNamePattern()).endsWith("reflex.%d{yyyy-MM-dd}.%i.log");
+					assertThat(policy.getMaxHistory()).isEqualTo(7);
+					assertThat(policy.isCleanHistoryOnStart()).isTrue();
+				});
+			});
 		} finally {
 			context.stop();
 			if (previousAppDirectory == null)
