@@ -212,6 +212,57 @@ public class LogReflectionProcessorClusterTest {
 	}
 
 	@Test
+	public void mergedClusterBundleOrdersWholeRecordsChronologicallyAcrossNodes() throws Exception {
+		Resource nodeOne = zipResource(Map.of(
+				"__merged__/application_merged.log", """
+						2026-11-26T11:22:06.210+0000 INFO node-one-start
+						node-one continuation
+						2026-11-26T13:04:36.000+0000 INFO node-one-end
+						""",
+				"__merged__/application_merged.jsonl", """
+						{"timestamp":"2026-11-26T11:22:06.210Z","message":"node-one-start"}
+						{"timestamp":"2026-11-26T13:04:36Z","message":"node-one-end"}
+						"""));
+		Resource nodeTwo = zipResource(Map.of(
+				"__merged__/application_merged.log", """
+						2026-11-26T10:45:45.307+0000 INFO node-two-start
+						2026-11-26T12:00:00.000+0000 ERROR node-two-failure
+						java.lang.IllegalStateException: detail
+						2026-11-26T13:04:36.000+0000 INFO node-two-end
+						""",
+				"__merged__/application_merged.jsonl", """
+						{"timestamp":"2026-11-26T10:45:45.307Z","message":"node-two-start"}
+						{"timestamp":"2026-11-26T12:00:00Z","message":"node-two-failure","throwable":"detail"}
+						{"timestamp":"2026-11-26T13:04:36Z","message":"node-two-end"}
+						"""));
+
+		Resource result = new LogBundleWriter().combine(Map.of(
+				"logs-app@node-1", nodeOne,
+				"logs-app@node-2", nodeTwo), Map.of(), "logs-app");
+		Map<String, String> entries = new LinkedHashMap<>();
+		try (ZipInputStream zip = new ZipInputStream(result.openStream())) {
+			for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry())
+				entries.put(entry.getName(), new String(zip.readAllBytes(), StandardCharsets.UTF_8));
+		}
+
+		assertThat(entries.get("application_merged.log")).isEqualTo("""
+				#2 2026-11-26T10:45:45.307+0000 INFO node-two-start
+				#1 2026-11-26T11:22:06.210+0000 INFO node-one-start
+				#1 node-one continuation
+				#2 2026-11-26T12:00:00.000+0000 ERROR node-two-failure
+				#2 java.lang.IllegalStateException: detail
+				#1 2026-11-26T13:04:36.000+0000 INFO node-one-end
+				#2 2026-11-26T13:04:36.000+0000 INFO node-two-end
+				""");
+		assertThat(entries.get("application_merged.jsonl").lines()).containsExactly(
+				"{\"timestamp\":\"2026-11-26T10:45:45.307Z\",\"message\":\"node-two-start\",\"node\":\"#2\"}",
+				"{\"timestamp\":\"2026-11-26T11:22:06.210Z\",\"message\":\"node-one-start\",\"node\":\"#1\"}",
+				"{\"timestamp\":\"2026-11-26T12:00:00Z\",\"message\":\"node-two-failure\",\"throwable\":\"detail\",\"node\":\"#2\"}",
+				"{\"timestamp\":\"2026-11-26T13:04:36Z\",\"message\":\"node-one-end\",\"node\":\"#1\"}",
+				"{\"timestamp\":\"2026-11-26T13:04:36Z\",\"message\":\"node-two-end\",\"node\":\"#2\"}");
+	}
+
+	@Test
 	public void rejectsIncompleteClusterBundlesInsteadOfReturningPartialSuccess() {
 		MulticastResponse multicastResponse = MulticastResponse.T.create();
 		multicastResponse.getResponses().put(InstanceId.of("node-1", "logs-app"),

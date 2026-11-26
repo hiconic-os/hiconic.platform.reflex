@@ -13,15 +13,20 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.EnumSet;
-import java.util.LinkedHashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -49,6 +54,8 @@ public class LogBundleWriter {
 	private static final DateTimeFormatter stamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneOffset.UTC);
 	private static final DateTimeFormatter rangeStamp = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmssSSS'Z'").withZone(ZoneOffset.UTC);
 	private static final String MERGE_CONTRIBUTION_PREFIX = "__merged__/";
+	private static final Pattern leadingTimestamp = Pattern.compile(
+			"^(\\d{4}-\\d{2}-\\d{2}(?:T| )\\d{2}:\\d{2}:\\d{2}(?:[.,]\\d{1,9})?(?:Z|[+-]\\d{2}:?\\d{2})?)");
 	private static final ObjectMapper objectMapper = new ObjectMapper();
 	private final LogFileReader fileReader = new LogFileReader();
 
@@ -529,31 +536,77 @@ public class LogBundleWriter {
 			Map<String, List<MergedContribution>> merged) throws IOException {
 		for (Map.Entry<String, List<MergedContribution>> entry : merged.entrySet()) {
 			target.putNextEntry(new ZipEntry(unique(names, entry.getKey())));
-			boolean jsonl = entry.getKey().endsWith(".jsonl");
-			for (MergedContribution contribution : entry.getValue()) {
-				try (InputStream input = contribution.content().openInputStream()) {
-					writeNodeMarked(target, input, contribution.nodeIndex(), jsonl);
-				}
-			}
+			writeChronologically(target, entry.getValue(), entry.getKey().endsWith(".jsonl"));
 			target.closeEntry();
 		}
 	}
 
-	private static void writeNodeMarked(ZipOutputStream target, InputStream input, int nodeIndex, boolean jsonl)
+	private static void writeChronologically(ZipOutputStream target, List<MergedContribution> contributions, boolean jsonl)
 			throws IOException {
-		try (BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
-			for (String line; (line = reader.readLine()) != null;) {
-				if (jsonl && !line.isBlank()) {
-					@SuppressWarnings("unchecked")
-					Map<String, Object> record = objectMapper.readValue(line, LinkedHashMap.class);
-					record.put("node", "#" + nodeIndex);
-					line = objectMapper.writeValueAsString(record);
-				} else if (!jsonl) {
-					line = "#" + nodeIndex + " " + line;
-				}
-				target.write(line.getBytes(StandardCharsets.UTF_8));
-				target.write('\n');
+		List<MergedRecordReader> readers = new ArrayList<>();
+		PriorityQueue<PendingMergedRecord> pending = new PriorityQueue<>(Comparator
+				.comparing((PendingMergedRecord value) -> value.record().sortTimestamp())
+				.thenComparingInt(value -> value.reader().nodeIndex)
+				.thenComparingLong(value -> value.record().sequence()));
+		try {
+			for (MergedContribution contribution : contributions) {
+				MergedRecordReader reader = new MergedRecordReader(contribution, jsonl);
+				readers.add(reader);
+				queueNext(reader, pending);
 			}
+			while (!pending.isEmpty()) {
+				PendingMergedRecord next = pending.remove();
+				writeNodeMarked(target, next.record(), next.reader().nodeIndex, jsonl);
+				queueNext(next.reader(), pending);
+			}
+		} finally {
+			for (MergedRecordReader reader : readers)
+				reader.close();
+		}
+	}
+
+	private static void queueNext(MergedRecordReader reader, PriorityQueue<PendingMergedRecord> pending) throws IOException {
+		MergedRecord record = reader.next();
+		if (record != null)
+			pending.add(new PendingMergedRecord(reader, record));
+	}
+
+	private static void writeNodeMarked(ZipOutputStream target, MergedRecord record, int nodeIndex, boolean jsonl)
+			throws IOException {
+		if (jsonl) {
+			target.write(record.text().getBytes(StandardCharsets.UTF_8));
+			target.write('\n');
+			return;
+		}
+		String[] lines = record.text().split("\\n", -1);
+		int length = lines.length > 0 && lines[lines.length - 1].isEmpty() ? lines.length - 1 : lines.length;
+		for (int i = 0; i < length; i++) {
+			target.write(("#" + nodeIndex + " " + lines[i]).getBytes(StandardCharsets.UTF_8));
+			target.write('\n');
+		}
+	}
+
+	private static Instant timestamp(String line) {
+		if (line == null)
+			return null;
+		Matcher matcher = leadingTimestamp.matcher(line);
+		if (!matcher.find())
+			return null;
+		return timestampValue(matcher.group(1));
+	}
+
+	private static Instant timestampValue(Object value) {
+		if (value == null)
+			return null;
+		String normalized = value.toString().trim().replace(' ', 'T').replace(',', '.');
+		if (normalized.matches(".*[+-]\\d{4}$"))
+			normalized = normalized.substring(0, normalized.length() - 2) + ":" + normalized.substring(normalized.length() - 2);
+		if (!normalized.matches(".*(?:Z|[+-]\\d{2}:\\d{2})$"))
+			normalized += "Z";
+		try {
+			return Instant.parse(normalized);
+		} catch (DateTimeParseException ignored) {
+			return null;
 		}
 	}
 
@@ -702,6 +755,83 @@ public class LogBundleWriter {
 	}
 
 	private record MergedContribution(int nodeIndex, StreamPipe content) {
+	}
+
+	private static final class MergedRecordReader implements AutoCloseable {
+		private final int nodeIndex;
+		private final boolean jsonl;
+		private final BufferedReader reader;
+		private String pendingLine;
+		private Instant lastTimestamp;
+		private long sequence;
+
+		private MergedRecordReader(MergedContribution contribution, boolean jsonl) throws IOException {
+			this.nodeIndex = contribution.nodeIndex();
+			this.jsonl = jsonl;
+			this.reader = new BufferedReader(new InputStreamReader(contribution.content().openInputStream(), StandardCharsets.UTF_8));
+		}
+
+		private MergedRecord next() throws IOException {
+			return jsonl ? nextJsonl() : nextNatural();
+		}
+
+		private MergedRecord nextJsonl() throws IOException {
+			String line = reader.readLine();
+			if (line == null)
+				return null;
+			Instant recordTimestamp = null;
+			if (!line.isBlank()) {
+				@SuppressWarnings("unchecked")
+				Map<String, Object> record = objectMapper.readValue(line, LinkedHashMap.class);
+				recordTimestamp = timestampValue(record.get("timestamp"));
+				record.put("node", "#" + nodeIndex);
+				line = objectMapper.writeValueAsString(record);
+			}
+			return record(line, recordTimestamp);
+		}
+
+		private MergedRecord nextNatural() throws IOException {
+			String line = pendingLine;
+			pendingLine = null;
+			if (line == null)
+				line = reader.readLine();
+			if (line == null)
+				return null;
+
+			StringBuilder text = new StringBuilder(line);
+			Instant recordTimestamp = timestamp(line);
+			for (String next; (next = reader.readLine()) != null;) {
+				Instant nextTimestamp = timestamp(next);
+				if (nextTimestamp != null && recordTimestamp != null) {
+					pendingLine = next;
+					break;
+				}
+				text.append('\n').append(next);
+				if (recordTimestamp == null && nextTimestamp != null)
+					recordTimestamp = nextTimestamp;
+			}
+			return record(text.toString(), recordTimestamp);
+		}
+
+		private MergedRecord record(String text, Instant recordTimestamp) {
+			if (recordTimestamp != null)
+				lastTimestamp = recordTimestamp;
+			Instant sortTimestamp = recordTimestamp != null
+					? recordTimestamp
+					: lastTimestamp != null ? lastTimestamp : Instant.MIN;
+			return new MergedRecord(sortTimestamp, sequence++, text);
+		}
+
+		@Override
+		public void close() throws IOException {
+			reader.close();
+		}
+	}
+
+	private record MergedRecord(Instant sortTimestamp, long sequence, String text) {
+	}
+
+	private record PendingMergedRecord(MergedRecordReader reader, MergedRecord record) {
 	}
 
 	private record SegmentStats(long totalRecords, long selectedRecords, long recordsWithoutTimestamp) {
