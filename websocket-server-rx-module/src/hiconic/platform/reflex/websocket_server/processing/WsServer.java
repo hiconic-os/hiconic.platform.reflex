@@ -409,10 +409,22 @@ public class WsServer extends Endpoint
 			logger.debug(() -> "Pushed message to client with identification: " + clientInfo.getClientId());
 			return createResponseMessage(clientInfo, "Pushed message to client", true);
 		} catch (IOException e) {
-			logger.error("Unable to push message to client with identification: " + clientInfo.getClientId(), e);
-			return createResponseMessage(clientInfo, "Unable to push message to client", false);
+			logger.debug(() -> "Unable to push WebSocket message to client " + clientInfo.getClientId(), e);
+			PushResponseMessage failure = createResponseMessage(clientInfo, "Unable to push message to client", false);
+			failure.setDetails(channelFailureDetails(clientInfo, e));
+			return failure;
 		}
 
+	}
+
+	private String channelFailureDetails(WsClientInfo clientInfo, IOException failure) {
+		String cause = failure.getMessage();
+		if (cause == null || cause.isBlank())
+			cause = failure.getClass().getSimpleName();
+		else
+			cause = failure.getClass().getSimpleName() + ": " + cause;
+		return "transport=WebSocket, channelId=" + clientInfo.getPushChannelId() + ", clientId="
+				+ String.valueOf(clientInfo.getClientId()) + ", cause=" + cause;
 	}
 
 	/**

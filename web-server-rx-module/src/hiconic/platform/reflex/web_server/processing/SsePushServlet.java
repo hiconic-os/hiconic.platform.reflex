@@ -220,7 +220,9 @@ public class SsePushServlet extends HttpServlet implements ServiceProcessor<Inte
 			} catch (Exception e) {
 				log.debug(() -> "Unable to push SSE message to client " + channel.clientId, e);
 				channel.close();
-				response.getResponseMessages().add(responseMessage(channel, "Unable to push message to client", false));
+				PushResponseMessage failure = responseMessage(channel, "Unable to push message to client", false);
+				failure.setDetails(channelFailureDetails(channel, e));
+				response.getResponseMessages().add(failure);
 			}
 		}
 		return response;
@@ -306,6 +308,15 @@ public class SsePushServlet extends HttpServlet implements ServiceProcessor<Inte
 		message.setClientIdentification(channel.clientId);
 		message.setOriginId(processingInstanceId);
 		return message;
+	}
+
+	private String channelFailureDetails(SseChannel channel, Exception failure) {
+		String cause = failure.getMessage();
+		if (cause == null || cause.isBlank())
+			cause = failure.getClass().getSimpleName();
+		else
+			cause = failure.getClass().getSimpleName() + ": " + cause;
+		return "transport=SSE, channelId=" + channel.channelId + ", clientId=" + String.valueOf(channel.clientId) + ", cause=" + cause;
 	}
 
 	private class SseChannel implements PushChannel, AsyncListener {
