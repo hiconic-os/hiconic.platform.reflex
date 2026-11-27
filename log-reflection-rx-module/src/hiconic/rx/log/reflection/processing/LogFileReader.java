@@ -168,6 +168,16 @@ public class LogFileReader {
 	}
 
 	private static int findCursorSegment(List<Path> paths, Path active, FileCursor cursor) throws IOException {
+		if (cursor.segment != null)
+			for (int i = paths.size() - 1; i >= 0; i--) {
+				Path candidate = paths.get(i);
+				if (!candidate.equals(active) && Files.isRegularFile(candidate)
+						&& cursor.segment.equals(segmentIdentity(candidate)) && matchesCursor(candidate, cursor))
+					return i;
+			}
+
+		// A cursor originally created for the active file can survive a rename during rotation.
+		// In that case its path identity deliberately no longer matches and the content anchor remains the fallback.
 		for (int i = paths.size() - 1; i >= 0; i--) {
 			Path candidate = paths.get(i);
 			if (!candidate.equals(active) && Files.isRegularFile(candidate) && matchesCursor(candidate, cursor))
@@ -545,12 +555,21 @@ public class LogFileReader {
 	private static boolean valid(Path path, FileState state, FileCursor cursor) throws IOException {
 		if (cursor == null || cursor.generation != state.generation || cursor.offset < 0 || cursor.offset > state.size)
 			return false;
+		if (cursor.segment != null && !cursor.segment.equals(segmentIdentity(path)))
+			return false;
 		return cursor.anchor == null || cursor.anchor.equals(anchor(path, cursor.offset));
 	}
 
 	private static FileCursor cursor(Path path, FileState state, long offset) throws IOException {
 		String name = path.getFileName().toString().toLowerCase(Locale.ROOT);
-		return new FileCursor(state.generation, offset, compressed(name) ? logicalAnchor(path, offset) : anchor(path, offset));
+		return new FileCursor(state.generation, offset, compressed(name) ? logicalAnchor(path, offset) : anchor(path, offset),
+				segmentIdentity(path));
+	}
+
+	private static String segmentIdentity(Path path) {
+		CRC32 crc = new CRC32();
+		crc.update(path.toAbsolutePath().normalize().toString().getBytes(StandardCharsets.UTF_8));
+		return Long.toUnsignedString(crc.getValue(), 16);
 	}
 
 	private static String logicalAnchor(Path path, long offset) throws IOException {
@@ -658,9 +677,9 @@ public class LogFileReader {
 	private record SegmentProgress(Path path, FileState state, long offset) {
 	}
 
-	private record FileCursor(long generation, long offset, String anchor) {
+	private record FileCursor(long generation, long offset, String anchor, String segment) {
 		private String externalForm() {
-			return generation + ":" + offset + ":" + anchor;
+			return generation + ":" + offset + ":" + anchor + ":" + segment;
 		}
 
 		private static FileCursor parse(String cursor) {
@@ -669,8 +688,11 @@ public class LogFileReader {
 			String[] parts = cursor.split(":", 3);
 			try {
 				if (parts.length == 1)
-					return new FileCursor(-1, Long.parseLong(parts[0]), null);
-				return new FileCursor(Long.parseLong(parts[0]), Long.parseLong(parts[1]), parts.length == 3 ? parts[2] : null);
+					return new FileCursor(-1, Long.parseLong(parts[0]), null, null);
+				String[] anchorAndSegment = parts.length == 3 ? parts[2].split(":", 2) : new String[0];
+				return new FileCursor(Long.parseLong(parts[0]), Long.parseLong(parts[1]),
+						anchorAndSegment.length > 0 ? anchorAndSegment[0] : null,
+						anchorAndSegment.length > 1 ? anchorAndSegment[1] : null);
 			} catch (NumberFormatException e) {
 				throw new IllegalArgumentException("Invalid file log cursor: " + cursor, e);
 			}
