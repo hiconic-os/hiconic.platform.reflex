@@ -78,6 +78,19 @@ public class WebEndpointParityTest extends AbstractRxTest {
 		assertThat(response.headers().firstValue("location")).contains("/healthz");
 	}
 
+    @Test
+    public void defaultCompressionAppliesToRealWebApiResponses() throws Exception {
+        String text = "structured-response-".repeat(1000);
+        var request = HttpRequest.newBuilder(uri("/api/lenient")).header("Content-Type", "application/json")
+                .header("Accept-Encoding", "gzip").POST(HttpRequest.BodyPublishers.ofString("{\"text\":\"" + text + "\"}")).build();
+        var response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.headers().firstValue("Content-Encoding")).contains("gzip");
+        try (var input = new java.util.zip.GZIPInputStream(new java.io.ByteArrayInputStream(response.body()))) {
+            assertThat(new String(input.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8)).contains(new StringBuilder(text).reverse().toString());
+        }
+    }
+
 	private HttpResponse<String> get(String path) throws Exception {
 		return httpClient.send(HttpRequest.newBuilder(uri(path)).GET().build(), HttpResponse.BodyHandlers.ofString());
 	}

@@ -45,6 +45,7 @@ import com.braintribe.wire.api.context.WireContextConfiguration;
 
 import dev.hiconic.servlet.api.remote.RemoteClientAddressResolver;
 import dev.hiconic.servlet.impl.remote.StandardRemoteClientAddressResolver;
+import hiconic.platform.reflex.web_server.processing.ResponseCompressionHandler;
 import hiconic.platform.reflex.web_server.processing.AccessLogExclusionPredicate;
 import hiconic.platform.reflex.web_server.processing.AccessLogFailureTrackingHandler;
 import hiconic.platform.reflex.web_server.processing.ApplicationStateGateHandler;
@@ -682,7 +683,9 @@ public class WebServerRxModuleSpace implements RxModuleContract, WebServerContra
 
 	private HttpHandler rootHandler() {
 		String serverHeader = serverHeader();
-		HttpHandler next = new RequestMetaLoggingHandler(configuration().getAccessLogEnabled() ? accessLogHandler() : applicationStateGateHandler());
+		HttpHandler next = ResponseCompressionHandler.wrap(
+				new RequestMetaLoggingHandler(configuration().getAccessLogEnabled() ? accessLogHandler() : applicationStateGateHandler()),
+				configuration().getResponseCompression());
 		return exchange -> {
 			exchange.getResponseHeaders().put(Headers.SERVER, serverHeader);
 			next.handleRequest(exchange);

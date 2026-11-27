@@ -56,6 +56,10 @@ public interface WebServerConfiguration extends GenericEntity {
 	String usePublicUrlAsOrigin = "usePublicUrlAsOrigin";
 	String serverHeader = "serverHeader";
 
+    @Description("Optional overrides for negotiated gzip responses. Omitted configuration enables the streaming defaults.")
+    HttpResponseCompression getResponseCompression();
+    void setResponseCompression(HttpResponseCompression responseCompression);
+
 	@Initializer("'localhost'")
 	String getHostName();
 	void setHostName(String hostName);
