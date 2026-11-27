@@ -1,19 +1,18 @@
 package hiconic.rx.security.web.processing;
 
-import java.util.Date;
-
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.Reason;
 import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.essential.InternalError;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
 import com.braintribe.gm.model.reason.essential.UnsupportedOperation;
-import com.braintribe.gm.model.security.reason.InvalidSession;
+import com.braintribe.gm.model.security.reason.AuthenticationFailure;
+import com.braintribe.gm.model.security.reason.MissingCredentials;
 import com.braintribe.gm.model.security.reason.MissingSession;
 import com.braintribe.gm.model.security.reason.SecurityReason;
-import com.braintribe.gm.model.security.reason.SessionExpired;
 import com.braintribe.logging.Logger;
 import com.braintribe.model.generic.reflection.ConfigurableCloningContext;
+import com.braintribe.model.processing.securityservice.api.attributes.LenientAuthenticationFailure;
 import com.braintribe.model.processing.service.api.ServiceRequestContext;
 import com.braintribe.model.processing.service.common.context.UserSessionAspect;
 import com.braintribe.model.processing.service.impl.AbstractDispatchingServiceProcessor;
@@ -117,16 +116,12 @@ public class WebAuthorizationServiceProcessor extends AbstractDispatchingService
 	private Maybe<? extends WebAuthorization> currentAuthorization(ServiceRequestContext context,
 			@SuppressWarnings("unused") GetWebAuthorization request) {
 		UserSession session = context.findOrNull(UserSessionAspect.class);
-		if (session == null)
-			return Reasons.build(MissingSession.T).text("No authenticated web session found.").toMaybe();
+		if (session == null) {
+			AuthenticationFailure authenticationFailure = context.findOrNull(LenientAuthenticationFailure.class);
+			if (authenticationFailure != null && !(authenticationFailure instanceof MissingCredentials))
+				return authenticationFailure.asMaybe();
 
-		Date now = new Date();
-		if (session.getIsInvalidated()) {
-			return Reasons.build(InvalidSession.T).text("Session is not valid anymore.").toMaybe();
-		}
-		if ((session.getExpiryDate() != null && session.getExpiryDate().before(now))
-				|| (session.getFixedExpiryDate() != null && session.getFixedExpiryDate().before(now))) {
-			return Reasons.build(SessionExpired.T).text("Session exists but is expired.").toMaybe();
+			return Reasons.build(MissingSession.T).text("No authenticated web session found.").toMaybe();
 		}
 
 		return Maybe.complete(toAuthorization(session));
