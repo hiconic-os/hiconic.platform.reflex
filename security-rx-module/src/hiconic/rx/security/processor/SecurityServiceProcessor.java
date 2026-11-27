@@ -256,6 +256,11 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 				// In this case the credentials are blocked via the acquiration mechanism and a reauthentication is not possible
 				SecurityAudit.sessionOpeningFailed("CREDENTIALS_BLOCKED", credentials, requestContext, entryPointName(validationResult.entryPoint()));
 				return acquiredUserSessionMaybe.whyUnsatisfied().asMaybe();
+			} else if (acquiredUserSessionMaybe.isUnsatisfiedBy(SessionExpired.T)) {
+				// An acquired session is part of the credential's local lifecycle. An expired session must not be bypassed by
+				// transparently authenticating the same credential again; a renewed credential may establish a new lifecycle.
+				SecurityAudit.sessionOpeningFailed("SESSION_EXPIRED", credentials, requestContext, entryPointName(validationResult.entryPoint()));
+				return acquiredUserSessionMaybe.whyUnsatisfied().asMaybe();
 
 			} else if (!acquiredUserSessionMaybe.isUnsatisfiedBy(SessionNotFound.T)) {
 				log.debug("Error while finding session via acquiration key: " + acquiredUserSessionMaybe.whyUnsatisfied().stringify());
@@ -556,12 +561,12 @@ public class SecurityServiceProcessor extends AbstractDispatchingServiceProcesso
 			Date now = new Date();
 
 			if (now.after(expiryDate)) {
-				return Reasons.build(SessionExpired.T).text("User session '" + userSession.getSessionId() + "' has expired.").toMaybe();
+				return Reasons.build(SessionExpired.T).text("User session has expired.").toMaybe();
 			}
 		}
 
 		Lazy<Reason> verifyReason = new Lazy<>(
-				() -> Reasons.build(InvalidSession.T).text("User session '" + userSession.getSessionId() + "' is invalid.").toReason());
+				() -> Reasons.build(InvalidSession.T).text("User session is invalid.").toReason());
 
 		if (userSessionAccessVerificationExperts != null && !userSessionAccessVerificationExperts.isEmpty()) {
 			for (UserSessionAccessVerificationExpert expert : userSessionAccessVerificationExperts) {

@@ -32,6 +32,7 @@ import com.braintribe.gm.model.reason.Reasons;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
 import com.braintribe.gm.model.security.reason.InternalSessionRejected;
 import com.braintribe.gm.model.security.reason.InvalidCredentials;
+import com.braintribe.gm.model.security.reason.SessionExpired;
 import com.braintribe.gm.model.usersession.PersistenceUserSession;
 import com.braintribe.logging.Logger;
 import com.braintribe.model.processing.securityservice.api.DeletedSessionInfo;
@@ -253,7 +254,7 @@ public abstract class AbstractUserSessionService implements UserSessionService {
 			Date fixedExpiryDate = pUserSession.getFixedExpiryDate();
 			Date expiryDate = pUserSession.getExpiryDate();
 			if ((fixedExpiryDate != null && fixedExpiryDate.before(now)) || (expiryDate != null && expiryDate.before(now))) {
-				return Reasons.build(InvalidCredentials.T).text("Credentials were expired").toMaybe();
+				return Reasons.build(SessionExpired.T).text("User session has expired.").toMaybe();
 			}
 		}
 

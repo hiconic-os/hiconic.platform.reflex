@@ -22,6 +22,7 @@ import org.junit.Test;
 
 import com.braintribe.gm.model.reason.Maybe;
 import com.braintribe.gm.model.reason.essential.InvalidArgument;
+import com.braintribe.gm.model.security.reason.SessionExpired;
 import com.braintribe.model.processing.securityservice.api.UserSessionService;
 import com.braintribe.model.time.TimeSpan;
 import com.braintribe.model.time.TimeUnit;
@@ -122,6 +123,20 @@ public class JdbcUserSessionCreationTest extends UserSessionServiceTestBase {
 	@Test
 	public void testCreation_AcquirationKey() throws Exception {
 		testCreation(UserConfig.user, null, null, null, null, null, null, "abc-opq-xyz");
+	}
+
+	@Test
+	public void expiredBlockingAcquirationIsNotReusable() throws Exception {
+		String acquirationKey = "expired-blocking-acquiration";
+		User user = getUser(UserConfig.user);
+
+		Maybe<UserSession> created = userSessionService.createUserSession(user, null, null, null, createDate(-1), null, null,
+				acquirationKey, true);
+
+		Assertions.assertThat(created.isSatisfied()).isTrue();
+		Maybe<UserSession> acquired = userSessionService.findUserSessionByAcquirationKey(acquirationKey);
+		Assertions.assertThat(acquired.isUnsatisfiedBy(SessionExpired.T)).isTrue();
+		Assertions.assertThat(acquired.whyUnsatisfied().getText()).isEqualTo("User session has expired.");
 	}
 
 	private TimeSpan tenMinuteTimeSpan() {

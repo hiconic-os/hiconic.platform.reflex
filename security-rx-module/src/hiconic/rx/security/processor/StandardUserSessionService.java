@@ -95,7 +95,7 @@ public class StandardUserSessionService extends AbstractUserSessionService imple
 		PersistenceUserSession pUserSession = userSessionsById.get(sessionId);
 		
 		if (pUserSession == null)
-			return Reasons.build(SessionNotFound.T).text("User session '" + sessionId + "' not found").toMaybe();
+			return Reasons.build(SessionNotFound.T).text("User session was not found.").toMaybe();
 		
 		return Maybe.complete(pUserSession);
 	}
